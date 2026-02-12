@@ -44,6 +44,7 @@ class HomeViewModel(
 	fun onWallpaperSelected(id: String) {
 		selectedWallpaperId = id
 		liveWallpaperId = null
+		snapshotProvider.generateSnapshots(listOf(configFor(id)))
 	}
 
 	fun activateLivePreview(id: String) {
@@ -73,7 +74,7 @@ class HomeViewModel(
 
 	private fun rebuildCatalog(currentDaylight: SunDaylight) {
 		val configs = WallpaperCatalog.buildConfigs(daylight = currentDaylight)
-		snapshotProvider.generateSnapshots(configs)
+		snapshotProvider.generateSnapshots(configs.take(INITIAL_SNAPSHOT_COUNT))
 		_items.clear()
 		_items.addAll(
 			configs.map { config ->
@@ -92,5 +93,6 @@ class HomeViewModel(
 	companion object {
 		private const val DEFAULT_LATITUDE = 41.0082
 		private const val DEFAULT_LONGITUDE = 28.9784
+		private const val INITIAL_SNAPSHOT_COUNT = 10
 	}
 }

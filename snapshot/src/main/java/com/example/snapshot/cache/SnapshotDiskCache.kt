@@ -8,35 +8,51 @@ class SnapshotDiskCache(
 	context: Context,
 	private val maxEntries: Int = 100
 ) {
+	private val lock = Any()
 	private val cacheDir: File = File(context.filesDir, CACHE_FOLDER).apply { mkdirs() }
 
 	fun get(key: String): String? {
-		val file = cacheFile(key)
-		if (!file.exists()) return null
-		file.setLastModified(System.currentTimeMillis())
-		return file.absolutePath
+		synchronized(lock) {
+			val file = cacheFile(key)
+			if (!file.exists()) return null
+			file.setLastModified(System.currentTimeMillis())
+			return file.absolutePath
+		}
 	}
 
 	fun put(key: String, bytes: ByteArray): String {
-		val file = cacheFile(key)
-		file.outputStream().use { stream ->
-			stream.write(bytes)
-			stream.flush()
+		synchronized(lock) {
+			val file = cacheFile(key)
+			file.outputStream().use { stream ->
+				stream.write(bytes)
+				stream.flush()
+			}
+			file.setLastModified(System.currentTimeMillis())
+			trimToSizeLocked()
+			return file.absolutePath
 		}
-		file.setLastModified(System.currentTimeMillis())
-		trimToSize()
-		return file.absolutePath
 	}
 
 	fun clear() {
-		cacheDir.listFiles()?.forEach { it.delete() }
+		synchronized(lock) {
+			cacheDir.listFiles()?.forEach { it.delete() }
+		}
 	}
 
-	private fun trimToSize() {
+	private fun trimToSizeLocked() {
 		val files = cacheDir.listFiles()?.toList() ?: return
 		if (files.size <= maxEntries) return
-		val sorted = files.sortedByDescending { it.lastModified() }
-		sorted.drop(maxEntries).forEach { it.delete() }
+		val entries = files.map { file ->
+			CacheEntry(
+				file = file,
+				lastModified = file.lastModified()
+			)
+		}
+		val sorted = entries.sortedWith(
+			compareByDescending<CacheEntry> { it.lastModified }
+				.thenBy { it.file.name }
+		)
+		sorted.drop(maxEntries).forEach { it.file.delete() }
 	}
 
 	private fun cacheFile(key: String): File {
@@ -52,6 +68,11 @@ class SnapshotDiskCache(
 	companion object {
 		private const val CACHE_FOLDER = "wallpaper_snapshots"
 	}
+
+	private data class CacheEntry(
+		val file: File,
+		val lastModified: Long
+	)
 }
 
 class LruSnapshotManager(

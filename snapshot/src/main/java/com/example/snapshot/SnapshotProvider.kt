@@ -14,6 +14,7 @@ class SnapshotProvider(
 	private val generationLock = Any()
 	@Volatile
 	private var generationRunning: Boolean = false
+	private var lastCatalogHash: Int? = null
 
 	fun warmUp() {
 		delegate.warmUp()
@@ -25,7 +26,12 @@ class SnapshotProvider(
 
 	fun generateSnapshots(configs: List<WallpaperConfig>) {
 		if (configs.isEmpty()) return
+		val catalogHash = configs.hashCode()
 		val shouldStart = synchronized(generationLock) {
+			if (lastCatalogHash == catalogHash) {
+				return@synchronized false
+			}
+			lastCatalogHash = catalogHash
 			worker.enqueue(configs)
 			if (generationRunning) {
 				false
@@ -55,6 +61,9 @@ class SnapshotProvider(
 	}
 
 	fun release() {
+		synchronized(generationLock) {
+			lastCatalogHash = null
+		}
 		worker.release()
 	}
 }

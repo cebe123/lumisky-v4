@@ -3,6 +3,7 @@ package com.example.wallpaper.service
 import android.os.Handler
 import android.os.HandlerThread
 import android.view.SurfaceHolder
+import com.example.engine.config.WallpaperConfig
 import com.example.wallpaper.engine.WallpaperRenderEngine
 import com.example.wallpaper.render.SceneStateHasher
 import com.example.wallpaper.render.SceneStateInput
@@ -19,6 +20,7 @@ class WallpaperRenderController(
 	private var surfaceAttached: Boolean = false
 	private var renderThread: HandlerThread? = null
 	private var renderHandler: Handler? = null
+	private var pendingConfig: WallpaperConfig? = null
 
 	fun onCreate() {
 		if (renderThread != null) return
@@ -26,6 +28,10 @@ class WallpaperRenderController(
 		renderThread = thread
 		renderHandler = Handler(thread.looper)
 		postRenderTask {
+			pendingConfig?.let { config ->
+				renderEngine.setConfig(config)
+				pendingConfig = null
+			}
 			renderEngine.init()
 		}
 	}
@@ -62,6 +68,22 @@ class WallpaperRenderController(
 		}
 	}
 
+	fun setConfig(config: WallpaperConfig) {
+		lastStateHash = null
+		val handler = renderHandler
+		if (handler == null) {
+			pendingConfig = config
+			return
+		}
+		handler.post {
+			renderEngine.setConfig(config)
+			pendingConfig = null
+			if (visible && surfaceAttached) {
+				renderEngine.renderFrame(force = true)
+			}
+		}
+	}
+
 	fun onDestroy() {
 		scheduler.stop()
 		postRenderTaskBlocking {
@@ -81,6 +103,7 @@ class WallpaperRenderController(
 		}
 		renderThread = null
 		lastStateHash = null
+		pendingConfig = null
 		visible = false
 		surfaceAttached = false
 	}

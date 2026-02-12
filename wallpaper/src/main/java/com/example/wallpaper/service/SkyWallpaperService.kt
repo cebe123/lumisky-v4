@@ -3,6 +3,7 @@ package com.example.wallpaper.service
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
 import com.example.core.Logger
+import com.example.engine.config.WallpaperConfigStore
 import com.example.wallpaper.engine.WallpaperRenderEngine
 import com.example.wallpaper.render.SceneStateHasher
 
@@ -13,6 +14,7 @@ open class SkyWallpaperService : WallpaperService() {
 	}
 
 	private inner class SkyWallpaperEngine : Engine() {
+		private val configStore = WallpaperConfigStore(this@SkyWallpaperService.applicationContext)
 		private val renderController = WallpaperRenderController(
 			renderEngine = WallpaperRenderEngine(this@SkyWallpaperService.applicationContext),
 			scheduler = MinuteTickScheduler(),
@@ -22,16 +24,21 @@ open class SkyWallpaperService : WallpaperService() {
 		override fun onCreate(surfaceHolder: SurfaceHolder) {
 			super.onCreate(surfaceHolder)
 			Logger.d("SkyWallpaperService", "Engine.onCreate")
+			applyStoredConfig()
 			renderController.onCreate()
 		}
 
 		override fun onVisibilityChanged(visible: Boolean) {
 			super.onVisibilityChanged(visible)
+			if (visible) {
+				applyStoredConfig()
+			}
 			renderController.onVisibilityChanged(visible)
 		}
 
 		override fun onSurfaceCreated(holder: SurfaceHolder) {
 			super.onSurfaceCreated(holder)
+			applyStoredConfig()
 			renderController.onSurfaceCreated(holder)
 		}
 
@@ -43,6 +50,12 @@ open class SkyWallpaperService : WallpaperService() {
 		override fun onDestroy() {
 			renderController.onDestroy()
 			super.onDestroy()
+		}
+
+		private fun applyStoredConfig() {
+			configStore.loadSelected()?.let { config ->
+				renderController.setConfig(config)
+			}
 		}
 	}
 }

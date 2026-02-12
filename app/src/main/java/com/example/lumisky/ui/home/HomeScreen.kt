@@ -25,9 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,10 +34,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.preview.PreviewGlRenderer
+import com.example.engine.renderer.RenderMode
 import com.example.lumisky.shader.ShaderAssetLoader
 import com.example.lumisky.ui.debug.TemporaryDebugPanel
 import com.example.lumisky.viewmodel.HomeWallpaperItem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
@@ -194,16 +195,36 @@ private fun FocusedWallpaperPreview(
 				context = context,
 				assetPath = config.shader.fragmentAssetPath
 			)
-			GLSurfaceView(context).apply {
+			val renderer = PreviewGlRenderer(
+				config = config,
+				mode = RenderMode.FOCUS,
+				animateFullDayLoop = false,
+				focusCatchUpEnabled = true,
+				fragmentShaderOverride = fragmentOverride
+			)
+			object : GLSurfaceView(context) {
+				private val frameTicker = object : Runnable {
+					override fun run() {
+						requestRender()
+						if (renderer.shouldContinueRendering()) {
+							postDelayed(this, FRAME_INTERVAL_MS)
+						}
+					}
+				}
+
+				override fun onAttachedToWindow() {
+					super.onAttachedToWindow()
+					post(frameTicker)
+				}
+
+				override fun onDetachedFromWindow() {
+					removeCallbacks(frameTicker)
+					super.onDetachedFromWindow()
+				}
+			}.apply {
 				setEGLContextClientVersion(2)
-				setRenderer(
-					PreviewGlRenderer(
-						config = config,
-						animateFullDayLoop = false,
-						fragmentShaderOverride = fragmentOverride
-					)
-				)
-				renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+				setRenderer(renderer)
+				renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
 			}
 		}
 	)
@@ -214,10 +235,14 @@ private fun SnapshotThumbnail(
 	path: String?,
 	modifier: Modifier = Modifier
 ) {
-	val bitmap = remember(path) { decodeSnapshot(path) }
+	val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, key1 = path) {
+		value = withContext(Dispatchers.IO) {
+			decodeSnapshot(path)
+		}
+	}
 	if (bitmap != null) {
 		Image(
-			bitmap = bitmap.asImageBitmap(),
+			bitmap = bitmap!!.asImageBitmap(),
 			contentDescription = null,
 			modifier = modifier
 		)
@@ -249,3 +274,5 @@ private fun decodeDataUri(dataUri: String) = runCatching {
 	val bytes = Base64.decode(payload, Base64.DEFAULT)
 	BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 }.getOrNull()
+
+private const val FRAME_INTERVAL_MS = 16L

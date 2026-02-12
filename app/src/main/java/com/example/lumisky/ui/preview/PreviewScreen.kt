@@ -1,5 +1,7 @@
 package com.example.lumisky.ui.preview
 
+import android.os.Build
+import android.os.PowerManager
 import android.opengl.GLSurfaceView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +41,7 @@ fun PreviewScreen(
 					context = context,
 					assetPath = config.shader.fragmentAssetPath
 				)
+				val powerManager = context.getSystemService(PowerManager::class.java)
 				GLSurfaceView(context).apply {
 					setEGLContextClientVersion(2)
 					setRenderer(
@@ -46,6 +49,13 @@ fun PreviewScreen(
 							config = config,
 							mode = RenderMode.PREVIEW,
 							animateFullDayLoop = true,
+							thermalStatusProvider = {
+								if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+									powerManager?.currentThermalStatus
+								} else {
+									null
+								}
+							},
 							fragmentShaderOverride = fragmentOverride
 						)
 					)

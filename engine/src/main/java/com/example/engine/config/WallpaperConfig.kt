@@ -52,9 +52,10 @@ data class WallpaperConfig(
 	val features: SkyFeatureFlags = SkyFeatureFlags(),
 	val textures: WallpaperTextures = WallpaperTextures(),
 	val customSkyColors: SkyColors? = null,
-	val animationDurationSeconds: Float = 8f,
+	val previewLoopDurationSeconds: Float = 8f,
+	val focusCatchUpDurationSeconds: Float = 2f,
 	val daylight: DaylightConfig = DaylightConfig(),
-	val peakY: Float = 0.92f,
+	val peakY: Float = 0.9f,
 	val belowHorizonOffset: Float = 0.1f,
 	val shader: ShaderProfile = ShaderProfile()
 ) {

@@ -39,10 +39,19 @@ class WebpEncoder {
 }
 
 class BitmapScaler {
-	fun scaleRatio(): Float = 0.7f
+	fun scaleRatio(): Float = SCALE_RATIO
+
+	fun scale(value: Int): Int {
+		return (value * scaleRatio()).toInt().coerceAtLeast(1)
+	}
+
+	companion object {
+		private const val SCALE_RATIO = 0.7f
+	}
 }
 
 class SnapshotBitmapFactory {
+	private val scaler = BitmapScaler()
 
 	private val sunPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
 		color = 0xFFFFD176.toInt()
@@ -56,9 +65,11 @@ class SnapshotBitmapFactory {
 
 	fun create(
 		state: RenderFrameState,
-		width: Int = DEFAULT_WIDTH,
-		height: Int = DEFAULT_HEIGHT
+		baseWidth: Int = BASE_WIDTH,
+		baseHeight: Int = BASE_HEIGHT
 	): Bitmap {
+		val width = scaler.scale(baseWidth)
+		val height = scaler.scale(baseHeight)
 		val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
 		val canvas = Canvas(bitmap)
 		canvas.drawColor(state.skyColor)
@@ -94,8 +105,8 @@ class SnapshotBitmapFactory {
 	}
 
 	companion object {
-		private const val DEFAULT_WIDTH = 512
-		private const val DEFAULT_HEIGHT = 288
+		private const val BASE_WIDTH = 732
+		private const val BASE_HEIGHT = 412
 		private const val CELESTIAL_RADIUS_RATIO = 0.055f
 		private const val MOON_RADIUS_MULTIPLIER = 0.9f
 	}
