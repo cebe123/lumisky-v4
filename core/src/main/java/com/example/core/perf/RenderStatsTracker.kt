@@ -16,6 +16,8 @@ class RenderStatsTracker(
 	private var windowStartMs: Long = SystemClock.elapsedRealtime()
 	private var windowDraws: Long = 0
 	private var windowDrawNanos: Long = 0
+	private var windowMaxDrawNanos: Long = 0
+	private var lastSkipReason: String = "-"
 
 	@Synchronized
 	fun onDraw(drawDurationNanos: Long) {
@@ -23,6 +25,9 @@ class RenderStatsTracker(
 		draws += 1
 		windowDraws += 1
 		windowDrawNanos += drawDurationNanos
+		if (drawDurationNanos > windowMaxDrawNanos) {
+			windowMaxDrawNanos = drawDurationNanos
+		}
 		maybeLog()
 	}
 
@@ -30,6 +35,7 @@ class RenderStatsTracker(
 	fun onSkip(reason: String) {
 		attempts += 1
 		skips += 1
+		lastSkipReason = reason
 		if (attempts % logEvery == 0L) {
 			Logger.d(tag, "skip reason=$reason")
 		}
@@ -44,6 +50,8 @@ class RenderStatsTracker(
 		windowStartMs = SystemClock.elapsedRealtime()
 		windowDraws = 0
 		windowDrawNanos = 0
+		windowMaxDrawNanos = 0
+		lastSkipReason = "-"
 	}
 
 	@Synchronized
@@ -55,6 +63,12 @@ class RenderStatsTracker(
 		val fps = (windowDraws * 1000f) / windowElapsedMs.toFloat()
 		val avgDrawMs = if (windowDraws > 0) {
 			(windowDrawNanos.toDouble() / windowDraws.toDouble()) / 1_000_000.0
+		} else {
+			0.0
+		}
+		val maxDrawMs = windowMaxDrawNanos.toDouble() / 1_000_000.0
+		val windowDrawRatio = if (windowDraws > 0) {
+			(windowDraws.toDouble() / max(1L, attempts.coerceAtMost(logEvery.toLong())).toDouble()) * 100.0
 		} else {
 			0.0
 		}
@@ -73,7 +87,18 @@ class RenderStatsTracker(
 		TemporaryDebugMetrics.publish(
 			DebugMetricLine(
 				tag = tag,
-				summary = "A:$attempts D:$draws S:$skips FPS:${format(fps.toDouble())} Avg:${format(avgDrawMs)}ms",
+				summary = buildString {
+					append("attempts=$attempts")
+					append("|draws=$draws")
+					append("|skips=$skips")
+					append("|drawRatio=${format(drawRatio)}%")
+					append("|windowDrawRatio=${format(windowDrawRatio)}%")
+					append("|fps=${format(fps.toDouble())}")
+					append("|avgDrawMs=${format(avgDrawMs)}")
+					append("|maxDrawMs=${format(maxDrawMs)}")
+					append("|windowMs=$windowElapsedMs")
+					append("|lastSkip=$lastSkipReason")
+				},
 				updatedAtMs = nowMs
 			)
 		)
@@ -81,6 +106,7 @@ class RenderStatsTracker(
 		windowStartMs = nowMs
 		windowDraws = 0
 		windowDrawNanos = 0
+		windowMaxDrawNanos = 0
 	}
 
 	private fun format(value: Double): String {

@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Lumisky</string>
+
+    <string name="wallpaper_description">Dynamischer Hintergrund, der sich mit der Sonne ändert.</string>
+
+    <string name="settings_title">Einstellungen</string>
+    <string name="section_appearance">Erscheinungsbild</string>
+    <string name="theme_title">App-Design</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+    <string name="section_location_time">Standort &amp; Zeit</string>
+    <string name="location_service_disabled">Standortdienst Deaktiviert</string>
+    <string name="location_service_message">GPS ist aus. Möchten Sie es aktivieren, um Ihren Standort zu finden?</string>
+    <string name="btn_go_to_settings">Zu den Einstellungen</string>
+    <string name="btn_cancel">Abbrechen</string>
+    <string name="location_enable">Standort Aktivieren</string>
+    <string name="location_current_gps">Aktueller Standort (GPS)</string>
+    <string name="location_select_city">Stadt Wählen</string>
+    <string name="section_wallpaper_settings">HINTERGRUNDEINSTELLUNGEN</string>
+    <string name="quality_title">Qualität</string>
+    <string name="quality_low">Niedrig (Leistung)</string>
+    <string name="quality_high">Hoch</string>
+    <string name="section_about">ÜBER</string>
+    <string name="app_version">App-Version</string>
+    <string name="language_title">Sprache</string>
+    <string name="language_select">Sprache Wählen</string>
+    <string name="location_unknown">Unbekannt</string>
+</resources>

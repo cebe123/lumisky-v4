@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Lumisky</string>
+
+    <string name="wallpaper_description">Динамические обои, меняющиеся вместе с солнцем.</string>
+
+    <string name="settings_title">Настройки</string>
+    <string name="section_appearance">Внешний вид</string>
+    <string name="theme_title">Тема приложения</string>
+    <string name="theme_system">Системная</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Темная</string>
+    <string name="section_location_time">Местоположение и Время</string>
+    <string name="location_service_disabled">Служба геолокации отключена</string>
+    <string name="location_service_message">GPS выключен. Хотите включить его, чтобы найти ваше местоположение?</string>
+    <string name="btn_go_to_settings">Перейти в настройки</string>
+    <string name="btn_cancel">Отмена</string>
+    <string name="location_enable">Включить местоположение</string>
+    <string name="location_current_gps">Текущее местоположение (GPS)</string>
+    <string name="location_select_city">Выбрать город</string>
+    <string name="section_wallpaper_settings">НАСТРОЙКИ ОБОЕВ</string>
+    <string name="quality_title">Качество</string>
+    <string name="quality_low">Низкое (Производительность)</string>
+    <string name="quality_high">Высокое</string>
+    <string name="section_about">О ПРИЛОЖЕНИИ</string>
+    <string name="app_version">Версия приложения</string>
+    <string name="language_title">Язык</string>
+    <string name="language_select">Выберите язык</string>
+    <string name="location_unknown">Неизвестно</string>
+</resources>

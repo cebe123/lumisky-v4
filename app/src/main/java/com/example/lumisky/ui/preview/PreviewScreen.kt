@@ -3,11 +3,15 @@ package com.example.lumisky.ui.preview
 import android.os.Build
 import android.os.PowerManager
 import android.opengl.GLSurfaceView
+import android.view.Choreographer
+import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +35,8 @@ fun PreviewScreen(
 			mode = ShaderDefaults.DEFAULT_SHADER_MODE
 		)
 	),
+	highRefreshEnabled: Boolean = true,
+	onSetWallpaper: () -> Unit = {},
 	onBack: () -> Unit
 ) {
 	Box(modifier = Modifier.fillMaxSize()) {
@@ -46,6 +52,7 @@ fun PreviewScreen(
 					config = config,
 					mode = RenderMode.PREVIEW,
 					animateFullDayLoop = true,
+					highRefreshEnabled = highRefreshEnabled,
 					thermalStatusProvider = {
 						if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 							powerManager?.currentThermalStatus
@@ -53,26 +60,63 @@ fun PreviewScreen(
 							null
 						}
 					},
-					fragmentShaderOverride = fragmentOverride
+					fragmentShaderOverride = fragmentOverride,
+					textureBytesLoader = { assetPath ->
+						runCatching {
+							context.assets.open(assetPath).use { it.readBytes() }
+						}.getOrNull()
+					}
 				)
 				object : GLSurfaceView(context) {
-					private val frameTicker = object : Runnable {
-						override fun run() {
-							requestRender()
-							if (renderer.shouldContinueRendering()) {
-								postDelayed(this, renderer.nextFrameDelayMs())
+					private var lastRenderFrameNs: Long = 0L
+					private var frameCallbackPosted: Boolean = false
+					private val frameTicker = object : Choreographer.FrameCallback {
+						override fun doFrame(frameTimeNanos: Long) {
+							frameCallbackPosted = false
+							val minIntervalNs = renderer.nextFrameDelayMs() * 1_000_000L
+							if (frameTimeNanos - lastRenderFrameNs >= minIntervalNs) {
+								requestRender()
+								lastRenderFrameNs = frameTimeNanos
+							}
+							if (renderer.shouldContinueRendering() && windowVisibility == View.VISIBLE) {
+								postFrameCallbackIfNeeded()
 							}
 						}
 					}
 
 					override fun onAttachedToWindow() {
 						super.onAttachedToWindow()
-						post(frameTicker)
+						lastRenderFrameNs = 0L
+						postFrameCallbackIfNeeded()
+					}
+
+					override fun onWindowVisibilityChanged(visibility: Int) {
+						super.onWindowVisibilityChanged(visibility)
+						if (visibility == View.VISIBLE && renderer.shouldContinueRendering()) {
+							postFrameCallbackIfNeeded()
+						} else {
+							removeFrameCallback()
+						}
 					}
 
 					override fun onDetachedFromWindow() {
-						removeCallbacks(frameTicker)
+						removeFrameCallback()
+						runCatching {
+							queueEvent { renderer.release() }
+						}
 						super.onDetachedFromWindow()
+					}
+
+					private fun postFrameCallbackIfNeeded() {
+						if (frameCallbackPosted) return
+						frameCallbackPosted = true
+						Choreographer.getInstance().postFrameCallback(frameTicker)
+					}
+
+					private fun removeFrameCallback() {
+						if (!frameCallbackPosted) return
+						frameCallbackPosted = false
+						Choreographer.getInstance().removeFrameCallback(frameTicker)
 					}
 				}.apply {
 					setEGLContextClientVersion(2)
@@ -85,16 +129,25 @@ fun PreviewScreen(
 		Column(
 			modifier = Modifier
 				.fillMaxWidth()
-				.padding(16.dp)
+				.padding(16.dp),
+			verticalArrangement = Arrangement.spacedBy(10.dp)
 		) {
 			Button(onClick = onBack) {
 				Text("Geri")
+			}
+			Button(
+				onClick = onSetWallpaper,
+				modifier = Modifier
+					.fillMaxWidth()
+					.height(48.dp)
+			) {
+				Text("Uygula")
 			}
 		}
 
 		TemporaryDebugPanel(
 			modifier = Modifier
-				.align(Alignment.BottomStart)
+				.align(Alignment.TopEnd)
 				.padding(12.dp)
 		)
 	}

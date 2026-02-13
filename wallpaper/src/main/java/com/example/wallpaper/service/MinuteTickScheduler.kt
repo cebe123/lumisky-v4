@@ -10,21 +10,30 @@ class MinuteTickScheduler(
 	private val nowProvider: () -> Long = { System.currentTimeMillis() }
 ) {
 	private var callback: (() -> Unit)? = null
+	private var started: Boolean = false
 
 	private val runnable = object : Runnable {
 		override fun run() {
-			callback?.invoke()
+			val currentCallback = callback ?: run {
+				started = false
+				return
+			}
+			currentCallback.invoke()
+			if (!started) return
 			postAtNextMinuteBoundary()
 		}
 	}
 
 	fun start(onTick: () -> Unit) {
-		stop()
 		callback = onTick
+		if (started) return
+		started = true
 		postAtNextMinuteBoundary()
 	}
 
 	fun stop() {
+		if (!started && callback == null) return
+		started = false
 		handler.removeCallbacks(runnable)
 		callback = null
 	}

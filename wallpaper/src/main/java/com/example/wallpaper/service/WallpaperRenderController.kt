@@ -2,6 +2,7 @@ package com.example.wallpaper.service
 
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.SystemClock
 import android.view.SurfaceHolder
 import com.example.engine.config.WallpaperConfig
 import com.example.wallpaper.engine.WallpaperRenderEngine
@@ -18,11 +19,15 @@ class WallpaperRenderController(
 	private var lastStateHash: Int? = null
 	@Volatile
 	private var pendingStateHash: Int? = null
+
 	private var visible: Boolean = false
 	private var surfaceAttached: Boolean = false
 	private var renderThread: HandlerThread? = null
 	private var renderHandler: Handler? = null
 	private var pendingConfig: WallpaperConfig? = null
+	private var currentConfig: WallpaperConfig? = null
+	private var pendingFullRedraw: Boolean = true
+	private var lastRenderElapsedMs: Long = 0L
 
 	fun onCreate() {
 		if (renderThread != null) return
@@ -40,6 +45,7 @@ class WallpaperRenderController(
 
 	fun onSurfaceCreated(holder: SurfaceHolder) {
 		surfaceAttached = true
+		pendingFullRedraw = true
 		postRenderTask {
 			renderEngine.attachSurface(holder)
 			if (visible) {
@@ -53,7 +59,9 @@ class WallpaperRenderController(
 		if (value) {
 			scheduler.start { onMinuteTick() }
 			if (surfaceAttached) {
-				onMinuteTick()
+				postRenderTask {
+					renderCurrentScene(force = true)
+				}
 			}
 		} else {
 			scheduler.stop()
@@ -63,14 +71,18 @@ class WallpaperRenderController(
 	fun onSurfaceDestroyed() {
 		scheduler.stop()
 		surfaceAttached = false
+		pendingFullRedraw = true
 		postRenderTask {
 			renderEngine.detachSurface()
 		}
 	}
 
 	fun setConfig(config: WallpaperConfig) {
+		if (config == currentConfig) return
+		currentConfig = config
 		lastStateHash = null
 		pendingStateHash = null
+		pendingFullRedraw = true
 		val handler = renderHandler
 		if (handler == null) {
 			pendingConfig = config
@@ -106,6 +118,9 @@ class WallpaperRenderController(
 		lastStateHash = null
 		pendingStateHash = null
 		pendingConfig = null
+		currentConfig = null
+		pendingFullRedraw = true
+		lastRenderElapsedMs = 0L
 		visible = false
 		surfaceAttached = false
 	}
@@ -130,11 +145,35 @@ class WallpaperRenderController(
 		force: Boolean,
 		expectedHash: Int? = null
 	) {
+		val targetHash = expectedHash ?: computeSceneHash()
+		if (shouldSkipRender(force = force, hash = targetHash)) {
+			if (expectedHash == null) {
+				pendingStateHash = null
+			}
+			return
+		}
+
 		renderEngine.renderFrame(force = force)
-		lastStateHash = expectedHash ?: computeSceneHash()
+		lastStateHash = targetHash
+		lastRenderElapsedMs = SystemClock.elapsedRealtime()
+		pendingFullRedraw = false
 		if (expectedHash == null) {
 			pendingStateHash = null
 		}
+	}
+
+	private fun shouldSkipRender(force: Boolean, hash: Int): Boolean {
+		if (!force) {
+			return hash == lastStateHash
+		}
+		if (pendingFullRedraw) {
+			return false
+		}
+		if (hash != lastStateHash) {
+			return false
+		}
+		val elapsedSinceLastRenderMs = SystemClock.elapsedRealtime() - lastRenderElapsedMs
+		return elapsedSinceLastRenderMs < FORCE_RENDER_DEBOUNCE_MS
 	}
 
 	private fun computeSceneHash(): Int {
@@ -167,5 +206,6 @@ class WallpaperRenderController(
 		private const val RENDER_THREAD_NAME = "WallpaperRenderThread"
 		private const val RELEASE_WAIT_TIMEOUT_MS = 1500L
 		private const val THREAD_JOIN_TIMEOUT_MS = 1500L
+		private const val FORCE_RENDER_DEBOUNCE_MS = 500L
 	}
 }

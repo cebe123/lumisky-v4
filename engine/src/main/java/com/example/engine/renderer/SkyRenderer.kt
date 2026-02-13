@@ -8,7 +8,6 @@ import com.example.engine.config.WallpaperConfig
 import com.example.engine.sky.SkyColorBlender
 import com.example.engine.texture.TexturePool
 import com.example.engine.time.TimeManager
-import kotlin.math.abs
 
 class SkyRenderer(
 	private val timeManager: TimeManager,
@@ -50,7 +49,7 @@ class SkyRenderer(
 		val sunAltitude = normalizedAltitude(y = sun.y)
 		val moonAltitude = normalizedAltitude(y = moon.y)
 		val nightBlend = atmosphere.nightBlendFactor.coerceIn(0f, 1f)
-		val flareIntensity = computeFlareIntensity(sunY = sun.y)
+		val flareIntensity = computeFlareIntensity(sunAltitude = sunAltitude)
 
 		val state = RenderFrameState(
 			frameTimeMillis = frameTimeMillis,
@@ -131,11 +130,10 @@ class SkyRenderer(
 		return ((y - horizonY) / (peakY - horizonY)).coerceIn(0f, 1f)
 	}
 
-	private fun computeFlareIntensity(sunY: Float): Float {
+	private fun computeFlareIntensity(sunAltitude: Float): Float {
 		if (!config.features.lensFlareEnabled) return 0f
-		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
-		val horizonDistance = abs(sunY - horizonY)
-		val proximity = (1f - (horizonDistance / FLARE_HORIZON_BAND)).coerceIn(0f, 1f)
+		if (sunAltitude <= 0f || sunAltitude > FLARE_ALTITUDE_THRESHOLD) return 0f
+		val proximity = (1f - (sunAltitude / FLARE_ALTITUDE_THRESHOLD)).coerceIn(0f, 1f)
 		return (proximity * FLARE_INTENSITY_SCALE).coerceIn(0f, 1f)
 	}
 
@@ -145,7 +143,7 @@ class SkyRenderer(
 
 	companion object {
 		private const val MIN_PEAK_DELTA = 0.05f
-		private const val FLARE_HORIZON_BAND = 0.16f
+		private const val FLARE_ALTITUDE_THRESHOLD = 0.18f
 		private const val FLARE_INTENSITY_SCALE = 0.9f
 	}
 }

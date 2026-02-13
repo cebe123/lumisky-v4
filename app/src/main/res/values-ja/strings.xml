@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Lumisky</string>
+
+    <string name="wallpaper_description">太陽の位置に合わせて変化するダイナミックな壁紙。</string>
+
+    <string name="settings_title">設定</string>
+    <string name="section_appearance">外観</string>
+    <string name="theme_title">アプリのテーマ</string>
+    <string name="theme_system">システム</string>
+    <string name="theme_light">ライト</string>
+    <string name="theme_dark">ダーク</string>
+    <string name="section_location_time">位置情報と時間</string>
+    <string name="location_service_disabled">位置情報サービスが無効です</string>
+    <string name="location_service_message">GPSがオフになっています。位置情報を取得するためにオンにしますか？</string>
+    <string name="btn_go_to_settings">設定へ移動</string>
+    <string name="btn_cancel">キャンセル</string>
+    <string name="location_enable">位置情報を有効にする</string>
+    <string name="location_current_gps">現在地 (GPS)</string>
+    <string name="location_select_city">都市を選択</string>
+    <string name="section_wallpaper_settings">壁紙設定</string>
+    <string name="quality_title">画質</string>
+    <string name="quality_low">低 (パフォーマンス重視)</string>
+    <string name="quality_high">高</string>
+    <string name="section_about">アプリについて</string>
+    <string name="app_version">アプリバージョン</string>
+    <string name="language_title">言語</string>
+    <string name="language_select">言語を選択</string>
+    <string name="location_unknown">不明</string>
+</resources>

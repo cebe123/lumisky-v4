@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Lumisky</string>
+
+    <string name="wallpaper_description">خلفية ديناميكية تتغير مع موقع الشمس.</string>
+
+    <string name="settings_title">الإعدادات</string>
+    <string name="section_appearance">المظهر</string>
+    <string name="theme_title">سمة التطبيق</string>
+    <string name="theme_system">النظام</string>
+    <string name="theme_light">فاتح</string>
+    <string name="theme_dark">داكن</string>
+    <string name="section_location_time">الموقع والوقت</string>
+    <string name="location_service_disabled">خدمة الموقع معطلة</string>
+    <string name="location_service_message">نظام تحديد المواقع العالمي (GPS) متوقف. هل تريد تمكينه للعثور على موقعك؟</string>
+    <string name="btn_go_to_settings">الذهاب إلى الإعدادات</string>
+    <string name="btn_cancel">إلغاء</string>
+    <string name="location_enable">تمكين الموقع</string>
+    <string name="location_current_gps">الموقع الحالي (GPS)</string>
+    <string name="location_select_city">اختر مدينة</string>
+    <string name="section_wallpaper_settings">إعدادات الخلفية</string>
+    <string name="quality_title">الجودة</string>
+    <string name="quality_low">منخفضة (الأداء)</string>
+    <string name="quality_high">عالية</string>
+    <string name="section_about">حول</string>
+    <string name="app_version">إصدار التطبيق</string>
+    <string name="language_title">اللغة</string>
+    <string name="language_select">اختر اللغة</string>
+    <string name="location_unknown">مجهول</string>
+</resources>

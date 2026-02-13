@@ -7,6 +7,7 @@ import android.opengl.EGLDisplay
 import android.opengl.EGLSurface
 import android.opengl.GLES20
 import android.view.SurfaceHolder
+import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
 import com.example.engine.shader.PreviewSkyProgram
 
@@ -22,7 +23,12 @@ class WallpaperEglSession {
 	private var viewportWidth: Int = 0
 	private var viewportHeight: Int = 0
 
-	fun attach(holder: SurfaceHolder, fragmentShaderOverride: String? = null): Boolean {
+	fun attach(
+		holder: SurfaceHolder,
+		config: WallpaperConfig = WallpaperConfig.default(),
+		fragmentShaderOverride: String? = null,
+		textureBytesLoader: ((String) -> ByteArray?)? = null
+	): Boolean {
 		release()
 
 		if (!initDisplay()) return false
@@ -36,6 +42,7 @@ class WallpaperEglSession {
 		viewportHeight = frame.height()
 		GLES20.glViewport(0, 0, viewportWidth, viewportHeight)
 		GLES20.glClearColor(0f, 0f, 0f, 1f)
+		skyProgram.configure(config, textureBytesLoader)
 		skyProgram.init(fragmentShaderOverride)
 		skyProgram.setViewport(viewportWidth, viewportHeight)
 		return true

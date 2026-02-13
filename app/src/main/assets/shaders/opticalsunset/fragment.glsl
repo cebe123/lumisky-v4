@@ -1,26 +1,17 @@
 precision mediump float;
 
-varying vec2 v_TexCoord;
+uniform float u_Time;
+uniform vec2 u_Resolution;
+uniform float u_TimeOfDay;
+uniform sampler2D u_Texture;
 
-uniform vec2 u_SunPos;
-uniform vec3 u_SunColor;
-uniform float u_AspectRatio;
-uniform float u_DrawSun;
-uniform vec2 u_MoonPos;
-uniform float u_IsNight;
-uniform float u_Minute;
-uniform float u_CloudOffset;
-uniform float u_CloudAlpha;
-uniform float u_Sunset;
-uniform float u_Sunrise;
-uniform float u_NightAmount;
-uniform float u_HasAtmosphere;
-uniform float u_HasFlare;
-uniform float u_HasStars;
-uniform float u_FlareIntensity;
+const float PI = 3.14159265359;
+const float HORIZON_Y = 0.5;
 
 const vec3 C_SUN_HIGH = vec3(1.0, 1.0, 0.9);
-const vec3 C_SUN_SET = vec3(1.0, 0.3, 0.05);
+const vec3 C_SUN_SET  = vec3(1.0, 0.3, 0.05);
+const vec3 C_SUN_GONE = vec3(0.5, 0.0, 0.0);
+
 const vec3 SKY_DAY_TOP = vec3(0.2, 0.5, 0.9);
 const vec3 SKY_DAY_BOT = vec3(0.6, 0.8, 0.95);
 const vec3 SKY_SET_TOP = vec3(0.1, 0.15, 0.35);
@@ -28,108 +19,188 @@ const vec3 SKY_SET_MID = vec3(0.8, 0.5, 0.3);
 const vec3 SKY_SET_BOT = vec3(0.95, 0.2, 0.05);
 const vec3 SKY_NIGHT_TOP = vec3(0.0, 0.0, 0.08);
 const vec3 SKY_NIGHT_BOT = vec3(0.01, 0.02, 0.15);
+
 const vec3 C_MOON_RED = vec3(0.8, 0.3, 0.1);
 const vec3 C_MOON_WHITE = vec3(0.9, 0.9, 0.95);
 
 float hash(vec2 p) {
-	p = fract(p * vec2(123.34, 456.21));
-	p += dot(p, p + 45.32);
-	return fract(p.x * p.y);
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
 }
 
 float noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	float a = hash(i);
-	float b = hash(i + vec2(1.0, 0.0));
-	float c = hash(i + vec2(0.0, 1.0));
-	float d = hash(i + vec2(1.0, 1.0));
-	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
 float fbm(vec2 p) {
-	float v = 0.0;
-	float amp = 0.5;
-	for (int i = 0; i < 4; i++) {
-		v += noise(p) * amp;
-		p *= 2.1;
-		amp *= 0.5;
-	}
-	return v;
+    float v = 0.0;
+    float amp = 0.5;
+    for (int i = 0; i < 4; i++) {
+        v += noise(p) * amp;
+        p *= 2.1;
+        amp *= 0.5;
+    }
+    return v;
+}
+
+float sdSun(vec2 p, vec2 center, float r, float flattening) {
+    vec2 d = p - center;
+    d.y /= flattening;
+    return length(d) - r;
+}
+
+vec3 getSkyColor(vec2 uv, float tCycle) {
+    vec3 col = vec3(0.0);
+
+    if (tCycle < 0.4) {
+        float t = tCycle / 0.4;
+        vec3 gradDay = mix(SKY_DAY_BOT, SKY_DAY_TOP, uv.y);
+
+        float h = smoothstep(0.0, 1.0, uv.y + 0.2);
+        vec3 gradSet = mix(SKY_SET_BOT, SKY_SET_MID, smoothstep(0.0, 0.4, uv.y));
+        gradSet = mix(gradSet, SKY_SET_TOP, smoothstep(0.4, 1.0, uv.y));
+
+        col = mix(gradDay, gradSet, t * t);
+
+    } else if (tCycle < 0.6) {
+        float t = (tCycle - 0.4) / 0.2;
+
+        vec3 gradSet = mix(SKY_SET_BOT, SKY_SET_MID, smoothstep(0.0, 0.4, uv.y));
+        gradSet = mix(gradSet, SKY_SET_TOP, smoothstep(0.4, 1.0, uv.y));
+
+        vec3 gradNight = mix(SKY_NIGHT_BOT, SKY_NIGHT_TOP, uv.y);
+
+        col = mix(gradSet, gradNight, t);
+
+        float zodiac = exp(-4.0 * uv.y) * exp(-2.0 * abs(uv.x)) * (1.0 - t);
+        col += vec3(0.3, 0.2, 0.4) * zodiac * 0.5;
+
+    } else {
+        float t = (tCycle - 0.6) / 0.4;
+        vec3 gradNight = mix(SKY_NIGHT_BOT, SKY_NIGHT_TOP, uv.y);
+        col = gradNight;
+    }
+    return col;
 }
 
 void main() {
-	float sunriseBlend = smoothstep(u_Sunrise - 80.0, u_Sunrise + 40.0, u_Minute);
-	float sunsetBlend = smoothstep(u_Sunset - 40.0, u_Sunset + 80.0, u_Minute);
-	float daylight = clamp(sunriseBlend - sunsetBlend, 0.0, 1.0);
+    float aspect = u_Resolution.x / u_Resolution.y;
+    vec2 uv = gl_FragCoord.xy / u_Resolution.xy;
+    vec2 p = uv * 2.0 - 1.0;
+    p.x *= aspect;
 
-	float sunriseBand = 1.0 - smoothstep(0.0, 120.0, abs(u_Minute - u_Sunrise));
-	float sunsetBand = 1.0 - smoothstep(0.0, 140.0, abs(u_Minute - u_Sunset));
-	float warmMix = max(sunriseBand, sunsetBand) * (1.0 - u_NightAmount * 0.7);
+    vec3 color = vec3(0.0);
 
-	vec3 daySky = mix(SKY_DAY_BOT, SKY_DAY_TOP, pow(v_TexCoord.y, 0.8));
-	vec3 sunsetSky = mix(SKY_SET_BOT, SKY_SET_MID, smoothstep(0.0, 0.5, v_TexCoord.y));
-	sunsetSky = mix(sunsetSky, SKY_SET_TOP, smoothstep(0.45, 1.0, v_TexCoord.y));
-	vec3 nightSky = mix(SKY_NIGHT_BOT, SKY_NIGHT_TOP, pow(v_TexCoord.y, 0.7));
+    vec2 sunPos = vec2(0.0, -10.0);
+    vec2 moonPos = vec2(0.0, -10.0);
+    vec3 sunColor = vec3(0.0);
+    vec3 moonColor = vec3(0.0);
+    float sunSize = 0.15;
+    float moonSize = 0.025;
 
-	vec3 color = mix(nightSky, daySky, daylight);
-	if (u_HasAtmosphere > 0.5) {
-		color = mix(color, sunsetSky, warmMix * smoothstep(0.0, 1.0, v_TexCoord.y + 0.05));
-		float horizonHaze = exp(-12.0 * max(v_TexCoord.y, 0.0));
-		color += vec3(0.25, 0.14, 0.08) * horizonHaze * warmMix * 0.45;
-	}
+    if (u_TimeOfDay < 0.45) {
+        float t = u_TimeOfDay / 0.4;
+        sunPos.x = 0.0;
 
-	vec2 sunDelta = v_TexCoord - u_SunPos;
-	sunDelta.y /= max(0.001, u_AspectRatio);
-	float sunDist = length(sunDelta);
-	float sunDisk = smoothstep(0.07, 0.0, sunDist);
-	float sunHalo = exp(-sunDist * 10.0);
-	vec3 sunColor = mix(C_SUN_HIGH, C_SUN_SET, warmMix);
-	sunColor = mix(sunColor, u_SunColor, 0.5);
-	float sunVisible = u_DrawSun * clamp(1.0 - u_NightAmount * 0.85, 0.0, 1.0);
-	color += sunColor * sunHalo * 0.30 * sunVisible;
-	color = mix(color, sunColor, sunDisk * sunVisible);
-	if (u_HasFlare > 0.5 && u_FlareIntensity > 0.001) {
-		float flareCore = exp(-sunDist * 20.0);
-		float flareStreak = exp(-(abs(sunDelta.y) * 14.0 + abs(sunDelta.x) * 2.5));
-		float flare = (flareCore + flareStreak * 0.7) * u_FlareIntensity * sunVisible;
-		color += sunColor * flare * 0.55;
-	}
+        sunPos.y = 0.8 - (t * 1.3);
 
-	vec2 moonDelta = v_TexCoord - u_MoonPos;
-	moonDelta.y /= max(0.001, u_AspectRatio);
-	float moonDist = length(moonDelta);
-	float moonDisk = smoothstep(0.05, 0.0, moonDist);
-	float moonHalo = exp(-moonDist * 14.0);
-	float moonVisible = clamp(max(u_NightAmount, u_IsNight), 0.0, 1.0);
-	vec3 moonColor = mix(C_MOON_RED, C_MOON_WHITE, smoothstep(0.0, 1.0, moonVisible));
-	color += moonColor * moonHalo * 0.24 * moonVisible;
-	color = mix(color, moonColor, moonDisk * moonVisible);
+        sunColor = mix(C_SUN_HIGH, C_SUN_SET, t * t);
+        if (t > 0.8) sunColor = mix(sunColor, C_SUN_GONE, (t - 0.8) * 5.0);
+    }
 
-	float nightStars = smoothstep(0.45, 1.0, u_NightAmount);
-	vec2 starCell = floor(v_TexCoord * vec2(180.0, 110.0));
-	float starSeed = hash(starCell);
-	float star = step(0.9925, starSeed);
-	float twinkle = 0.5 + 0.5 * sin(u_Minute * 0.12 + starSeed * 23.0);
-	color += vec3(1.0) * star * twinkle * nightStars * u_HasStars * smoothstep(0.2, 1.0, v_TexCoord.y);
+    if (u_TimeOfDay > 0.55) {
+        float t = (u_TimeOfDay - 0.55) / 0.45;
+        float horizonP = (HORIZON_Y * 2.0) - 1.0;
+        moonPos.x = 0.0;
+        moonPos.y = (horizonP - 0.2) + (t * 1.0);
 
-	if (u_HasAtmosphere > 0.5) {
-		vec2 cloudUv = vec2(v_TexCoord.x * 2.0 + u_CloudOffset * 3.0, v_TexCoord.y * 3.0);
-		float cloudField = fbm(cloudUv + vec2(0.0, u_Minute * 0.0005));
-		float cloudMask = smoothstep(0.58, 0.78, cloudField) * smoothstep(0.12, 0.92, v_TexCoord.y);
-		vec3 cloudColor = mix(vec3(0.96, 0.94, 0.90), vec3(0.28, 0.30, 0.37), u_NightAmount);
-		color = mix(color, cloudColor, cloudMask * u_CloudAlpha * 0.55);
-	}
+        moonColor = mix(C_MOON_RED, C_MOON_WHITE, smoothstep(0.0, 0.6, t));
+        moonSize = 0.05 * (1.0 + 0.3 * exp(-2.0 * max(0.0, moonPos.y - horizonP)));
+    }
 
-	float duneHeight = 0.14
-		+ 0.03 * sin(v_TexCoord.x * 6.2831853 * 1.3)
-		+ 0.02 * noise(vec2(v_TexCoord.x * 12.0, 0.25));
-	float groundMask = 1.0 - smoothstep(duneHeight - 0.01, duneHeight + 0.01, v_TexCoord.y);
-	vec3 groundDay = vec3(0.42, 0.30, 0.18);
-	vec3 groundNight = vec3(0.05, 0.05, 0.08);
-	vec3 ground = mix(groundNight, groundDay, clamp(daylight * 0.85 + warmMix * 0.15, 0.0, 1.0));
-	color = mix(color, ground, groundMask);
+    color = getSkyColor(uv, u_TimeOfDay);
 
-	gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+    if (u_TimeOfDay < 0.5) {
+        float distCenter = length(p.x);
+        float flattening = 1.0;
+        float d = sdSun(p, sunPos, sunSize, flattening);
+
+        float sunGlow = exp(-20.0 * d) * 2.0;
+        color += sunColor * sunGlow * 0.1;
+
+        float s = smoothstep(0.005, 0.0, d);
+        color = mix(color, sunColor, s);
+    }
+
+    if (u_TimeOfDay > 0.5) {
+        float d = length(p - moonPos) - moonSize;
+
+        vec2 moonUV = (p - moonPos) / moonSize;
+        float craters = fbm(moonUV * 4.0);
+        vec3 lunarSurf = mix(moonColor * 0.8, moonColor * 1.2, craters);
+
+        float halo = exp(-8.0 * d) * 0.5;
+        color += moonColor * halo * 0.2;
+
+        float m = smoothstep(0.005, 0.0, d);
+        color = mix(color, lunarSurf, m);
+
+        if (u_TimeOfDay > 0.6) {
+            float starThresh = 0.98;
+            float n = hash(uv * 10.0 + vec2(0.0, 1.0));
+            float twinkle = noise(uv * 50.0 + u_Time);
+            if (n > starThresh) {
+                float brightness = (n - starThresh) / (1.0 - starThresh);
+                color += vec3(brightness) * twinkle * (1.0 - halo);
+            }
+        }
+    }
+
+    float terrainMaxHeight = 0.9;
+    float v = 1.0 - (uv.y / terrainMaxHeight);
+
+    if (v >= 0.0 && v <= 1.0) {
+        vec2 texUV = vec2(uv.x, v);
+        vec4 desertSample = texture2D(u_Texture, texUV);
+        vec3 desertColor = desertSample.rgb;
+
+        float brightness = 1.0;
+        if (u_TimeOfDay < 0.4) {
+            brightness = 1.0 - (u_TimeOfDay / 0.4) * 0.6;
+        } else if (u_TimeOfDay < 0.6) {
+            float t = (u_TimeOfDay - 0.4) / 0.2;
+            brightness = 0.4 - t * 0.15;
+        } else {
+            float t = (u_TimeOfDay - 0.6) / 0.4;
+            brightness = 0.25 + t * 0.1;
+        }
+
+        vec3 nightTint = vec3(0.05, 0.05, 0.15);
+        if (u_TimeOfDay >= 0.4) {
+            float nightFactor = smoothstep(0.4, 0.6, u_TimeOfDay);
+            desertColor = mix(desertColor, desertColor * nightTint * 4.0, nightFactor);
+        }
+        desertColor *= brightness;
+
+        if (u_TimeOfDay < 0.5) {
+            float sunDir = max(0.0, dot(normalize(vec3(p.x - sunPos.x, p.y - sunPos.y, 1.0)), vec3(0.0, 1.0, 0.0)));
+            desertColor += sunColor * sunDir * 0.1 * brightness;
+        }
+
+        float edgeFade = smoothstep(0.0, 0.015, v);
+
+        float finalMask = desertSample.a * edgeFade;
+
+        color = mix(color, desertColor, finalMask);
+    }
+
+    gl_FragColor = vec4(color, 1.0);
 }

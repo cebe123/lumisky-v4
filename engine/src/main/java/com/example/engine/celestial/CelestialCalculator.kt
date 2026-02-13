@@ -4,103 +4,101 @@ import com.example.engine.config.PathType
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.sky.Vec2
 import kotlin.math.PI
-import kotlin.math.max
 import kotlin.math.sin
 
-private enum class DayPhase {
-	DAYLIGHT,
-	NIGHT
-}
-
 class CelestialCalculator {
+
 	fun computeSunPosition(progress: Float, config: WallpaperConfig): Vec2 {
-		return computePosition(progress, config, config.celestial.sunPathType, DayPhase.DAYLIGHT)
+		val minute = minuteOfDay(progress)
+		val sunrise = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
+		val sunset = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
+		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
+		val peakY = config.peakY.coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
+		val hiddenY = hiddenY(horizonY)
+
+		if (sunset <= sunrise) {
+			val fallbackProgress = progress.coerceIn(0f, 1f)
+			return Vec2(
+				x = resolveX(config.celestial.sunPathType, fallbackProgress),
+				y = arcY(horizonY, peakY, fallbackProgress)
+			)
+		}
+
+		return if (minute in sunrise..sunset) {
+			val dayDuration = (sunset - sunrise).coerceAtLeast(1).toFloat()
+			val dayProgress = ((minute - sunrise) / dayDuration).coerceIn(0f, 1f)
+			Vec2(
+				x = resolveX(config.celestial.sunPathType, dayProgress),
+				y = arcY(horizonY, peakY, dayProgress)
+			)
+		} else {
+			Vec2(
+				x = resolveX(config.celestial.sunPathType, 0.5f),
+				y = hiddenY
+			)
+		}
 	}
 
 	fun computeMoonPosition(progress: Float, config: WallpaperConfig): Vec2 {
-		return computePosition(progress, config, config.celestial.moonPathType, DayPhase.NIGHT)
-	}
-
-	private fun computePosition(
-		dayProgress: Float,
-		config: WallpaperConfig,
-		pathType: PathType,
-		phase: DayPhase
-	): Vec2 {
-		val progress = dayProgress.coerceIn(0f, 1f)
-		val sunrise = normalizeMinute(config.daylight.sunriseMinute)
-		val sunset = normalizeMinute(config.daylight.sunsetMinute)
-
-		val phaseProgress = when (phase) {
-			DayPhase.DAYLIGHT -> daylightProgress(progress, sunrise, sunset)
-			DayPhase.NIGHT -> nightProgress(progress, sunrise, sunset)
-		}
-
+		val minute = minuteOfDay(progress)
+		val sunrise = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
+		val sunset = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
 		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
 		val peakY = config.peakY.coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
-		val belowHorizonY = (horizonY - config.belowHorizonOffset).coerceIn(0f, 1f)
+		val hiddenY = hiddenY(horizonY)
 
-		val pathProgress = phaseProgress ?: when (phase) {
-			DayPhase.DAYLIGHT -> if (progress < sunrise) 0f else 1f
-			DayPhase.NIGHT -> if (progress < sunrise) 1f else 0f
+		if (sunset <= sunrise) {
+			val fallbackProgress = progress.coerceIn(0f, 1f)
+			return Vec2(
+				x = resolveX(config.celestial.moonPathType, fallbackProgress),
+				y = arcY(horizonY, peakY, fallbackProgress)
+			)
 		}
 
-		val altitude = if (phaseProgress == null) {
-			0f
+		return if (minute in sunrise..sunset) {
+			Vec2(
+				x = resolveX(config.celestial.moonPathType, 0.5f),
+				y = hiddenY
+			)
 		} else {
-			sin(PI.toFloat() * pathProgress).coerceIn(0f, 1f)
+			var minutesAfterSunset = minute - sunset
+			if (minutesAfterSunset < 0) minutesAfterSunset += MINUTES_PER_DAY
+			val nightDuration = (MINUTES_PER_DAY - sunset + sunrise).coerceAtLeast(1).toFloat()
+			val nightProgress = (minutesAfterSunset / nightDuration).coerceIn(0f, 1f)
+			Vec2(
+				x = resolveX(config.celestial.moonPathType, nightProgress),
+				y = arcY(horizonY, peakY, nightProgress)
+			)
 		}
+	}
 
-		val x = when (pathType) {
-			PathType.ARC -> pathProgress
+	private fun resolveX(pathType: PathType, phaseProgress: Float): Float {
+		return when (pathType) {
 			PathType.VERTICAL -> VERTICAL_PATH_X
+			PathType.ARC -> phaseProgress.coerceIn(0f, 1f)
 		}
-		val y = belowHorizonY + ((peakY - belowHorizonY) * altitude)
-		return Vec2(x.coerceIn(0f, 1f), y.coerceIn(0f, 1f))
 	}
 
-	private fun normalizeMinute(minute: Int): Float {
-		val clamped = minute.coerceIn(0, MINUTES_PER_DAY)
-		return clamped / MINUTES_PER_DAY.toFloat()
+	private fun arcY(horizonY: Float, peakY: Float, phaseProgress: Float): Float {
+		val amplitude = (peakY - horizonY).coerceAtLeast(0f)
+		return horizonY + (sin(phaseProgress.coerceIn(0f, 1f) * PI.toFloat()) * amplitude)
 	}
 
-	private fun daylightProgress(progress: Float, sunrise: Float, sunset: Float): Float? {
-		if (sunset <= sunrise) {
-			return fallbackPhaseProgress(progress)
-		}
-		if (progress < sunrise || progress > sunset) {
-			return null
-		}
-		val daylightWindow = max(sunset - sunrise, EPSILON)
-		return ((progress - sunrise) / daylightWindow).coerceIn(0f, 1f)
+	private fun hiddenY(horizonY: Float): Float {
+		return (horizonY - HIDDEN_DEPTH).coerceAtMost(HIDDEN_Y_MAX)
 	}
 
-	private fun nightProgress(progress: Float, sunrise: Float, sunset: Float): Float? {
-		if (sunset <= sunrise) {
-			return fallbackPhaseProgress(progress)
-		}
-		if (progress in sunrise..sunset) {
-			return null
-		}
-
-		val nightDuration = max((1f - sunset) + sunrise, EPSILON)
-		val elapsed = if (progress >= sunset) {
-			progress - sunset
-		} else {
-			(1f - sunset) + progress
-		}
-		return (elapsed / nightDuration).coerceIn(0f, 1f)
-	}
-
-	private fun fallbackPhaseProgress(progress: Float): Float {
-		return progress.coerceIn(0f, 1f)
+	private fun minuteOfDay(progress: Float): Int {
+		val wrapped = ((progress % 1f) + 1f) % 1f
+		return (wrapped * MINUTES_PER_DAY).toInt().coerceIn(0, MINUTES_PER_DAY)
 	}
 
 	companion object {
 		private const val MINUTES_PER_DAY = 24 * 60
 		private const val VERTICAL_PATH_X = 0.5f
 		private const val MIN_PEAK_DELTA = 0.05f
-		private const val EPSILON = 0.0001f
+		private const val HIDDEN_DEPTH = 0.75f
+		private const val HIDDEN_Y_MAX = -0.15f
 	}
 }
 

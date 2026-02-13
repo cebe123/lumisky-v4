@@ -1,6 +1,7 @@
 package com.example.lumisky.ui.debug
 
 import android.content.pm.ApplicationInfo
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,16 +38,29 @@ fun TemporaryDebugPanel(
 
 	Column(
 		modifier = modifier
-			.background(Color(0xAA101418))
+			.background(Color(0x66101418))
 			.padding(horizontal = 10.dp, vertical = 8.dp),
 		verticalArrangement = Arrangement.spacedBy(4.dp)
 	) {
-		Text("TEMP DEBUG HUD", color = Color(0xFF9CE8B0))
+		Text("TEMP DEBUG HUD", color = Color(0xFFD2F7DF))
 		if (lines.isEmpty()) {
 			Text("No metrics yet", color = Color.White)
 		} else {
-			lines.take(6).forEach { line ->
-				Text("${line.tag}: ${line.summary}", color = Color.White)
+			val now = SystemClock.elapsedRealtime()
+				lines.take(20).forEach { line ->
+				Text(
+					text = "${line.tag}  (${ageLabel(now, line.updatedAtMs)})",
+					color = Color(0xFFBEE7FF)
+				)
+				line.summary
+					.split('|')
+					.filter { it.isNotBlank() }
+					.forEach { metric ->
+						Text(
+							text = metric.trim(),
+							color = Color.White
+						)
+					}
 			}
 		}
 	}
@@ -58,4 +72,9 @@ private fun isDebuggableApp(): Boolean {
 	return remember(context) {
 		(context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 	}
+}
+
+private fun ageLabel(nowMs: Long, updatedAtMs: Long): String {
+	val ageMs = (nowMs - updatedAtMs).coerceAtLeast(0L)
+	return "${ageMs / 1000L}s"
 }

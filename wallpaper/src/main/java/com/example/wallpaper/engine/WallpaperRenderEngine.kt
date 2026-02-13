@@ -54,7 +54,16 @@ class WallpaperRenderEngine(
 
 	fun attachSurface(surfaceHolder: SurfaceHolder) {
 		holder = surfaceHolder
-		val attached = eglSession.attach(surfaceHolder, fragmentShaderOverride)
+		val attached = eglSession.attach(
+			holder = surfaceHolder,
+			config = config,
+			fragmentShaderOverride = fragmentShaderOverride,
+			textureBytesLoader = { assetPath ->
+				runCatching {
+					appContext.assets.open(assetPath).use { it.readBytes() }
+				}.getOrNull()
+			}
+		)
 		if (!attached) {
 			Logger.e(TAG, "EGL attach failed")
 		}

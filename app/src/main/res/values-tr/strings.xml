@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">Lumisky</string>
+
+    <string name="wallpaper_description">Güneşin konumuna göre değişen dinamik canlı duvar kağıdı.</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Ayarlar</string>
+    <string name="section_appearance">Görünüm</string>
+    <string name="theme_title">Uygulama Teması</string>
+    <string name="theme_system">Sistem</string>
+    <string name="theme_light">Açık</string>
+    <string name="theme_dark">Koyu</string>
+    <string name="section_location_time">Konum &amp; Zaman</string>
+    <string name="location_service_disabled">Konum Servisi Kapalı</string>
+    <string name="location_service_message">GPS şu anda kapalı. Konumunuzu bulabilmek için açmak ister misiniz?</string>
+    <string name="btn_go_to_settings">Ayarlara Git</string>
+    <string name="btn_cancel">İptal</string>
+    <string name="location_enable">Konum Aç</string>
+    <string name="location_current_gps">Şu Anki Konum (GPS)</string>
+    <string name="location_select_city">Şehir Seç</string>
+    <string name="section_wallpaper_settings">DUVAR KAĞIDI AYARLARI</string>
+    <string name="quality_title">Kalite</string>
+    <string name="quality_low">Düşük (Performans)</string>
+    <string name="quality_high">Yüksek</string>
+    <string name="section_about">HAKKINDA</string>
+    <string name="app_version">Uygulama Sürümü</string>
+    <string name="language_title">Dil</string>
+    <string name="language_select">Dil Seçin</string>
+    <string name="location_unknown">Bilinmiyor</string>
+</resources>
