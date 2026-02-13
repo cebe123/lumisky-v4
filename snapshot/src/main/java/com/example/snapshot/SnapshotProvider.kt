@@ -3,6 +3,8 @@ package com.example.snapshot
 import android.content.Context
 import android.os.Process
 import android.os.SystemClock
+import com.example.core.Logger
+import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
 import com.example.snapshot.provider.SnapshotProvider as InternalSnapshotProvider
 import com.example.snapshot.worker.SnapshotWorker
@@ -12,6 +14,7 @@ class SnapshotProvider(
 	context: Context,
 	private val delegate: InternalSnapshotProvider = InternalSnapshotProvider(context)
 ) {
+	private val tag = "SnapshotProvider"
 	private val appContext = context.applicationContext
 	@Volatile
 	private var snapshotUpdatedListener: ((String) -> Unit)? = null
@@ -30,6 +33,11 @@ class SnapshotProvider(
 		delegate.warmUp()
 	}
 
+	fun setPerformanceMode(mode: PerformanceMode) {
+		worker.setPerformanceMode(mode)
+		Logger.event(tag, "performance_mode_set", "mode" to mode)
+	}
+
 	fun getSnapshotPath(wallpaperId: String): String? {
 		return delegate.getSnapshotPath(wallpaperId)
 	}
@@ -44,6 +52,7 @@ class SnapshotProvider(
 			.distinctBy { it.id }
 			.filter { delegate.getSnapshotPath(snapshotKey(it)) == null }
 		if (pending.isEmpty()) return
+		Logger.event(tag, "enqueue_generate", "requested" to configs.size, "pending" to pending.size)
 
 		val shouldStart = synchronized(generationLock) {
 			worker.enqueue(pending)
@@ -56,6 +65,7 @@ class SnapshotProvider(
 		}
 
 		if (!shouldStart) return
+		Logger.d(tag, "starting background snapshot worker")
 		runWorkerLoopInBackground()
 	}
 
@@ -65,6 +75,7 @@ class SnapshotProvider(
 			.distinctBy { it.id }
 			.filter { delegate.getSnapshotPath(snapshotKey(it)) == null }
 		if (pending.isEmpty()) return
+		Logger.event(tag, "enqueue_accelerate", "requested" to configs.size, "pending" to pending.size)
 		val shouldStart = synchronized(generationLock) {
 			worker.boost(12_000L)
 			worker.enqueue(pending)
@@ -76,6 +87,31 @@ class SnapshotProvider(
 			}
 		}
 		if (shouldStart) {
+			Logger.d(tag, "starting worker from accelerate")
+			runWorkerLoopInBackground()
+		}
+	}
+
+	fun prioritizeSnapshotGeneration(configs: List<WallpaperConfig>) {
+		if (configs.isEmpty()) return
+		val pending = configs
+			.distinctBy { it.id }
+			.filter { delegate.getSnapshotPath(snapshotKey(it)) == null }
+		if (pending.isEmpty()) return
+		Logger.event(tag, "enqueue_prioritize", "requested" to configs.size, "pending" to pending.size)
+
+		val shouldStart = synchronized(generationLock) {
+			worker.prioritize(pending)
+			worker.boost(10_000L)
+			if (generationRunning) {
+				false
+			} else {
+				generationRunning = true
+				true
+			}
+		}
+		if (shouldStart) {
+			Logger.d(tag, "starting worker from prioritize")
 			runWorkerLoopInBackground()
 		}
 	}
@@ -84,15 +120,35 @@ class SnapshotProvider(
 		return configs.any { delegate.getSnapshotPath(snapshotKey(it)) == null }
 	}
 
+	fun snapshotProgress(configs: List<WallpaperConfig>): Float {
+		val uniqueKeys = configs
+			.asSequence()
+			.map { snapshotKey(it) }
+			.distinct()
+			.toList()
+		if (uniqueKeys.isEmpty()) return 1f
+		val available = uniqueKeys.count { key -> delegate.getSnapshotPath(key) != null }
+		return (available.toFloat() / uniqueKeys.size.toFloat()).coerceIn(0f, 1f)
+	}
+
 	fun generateSnapshotsBlocking(
 		configs: List<WallpaperConfig>,
-		timeoutMs: Long = 5_000L
+		timeoutMs: Long = 5_000L,
+		strict: Boolean = false
 	): Boolean {
 		if (configs.isEmpty()) return true
 		val pending = configs
 			.distinctBy { it.id }
 			.filter { delegate.getSnapshotPath(snapshotKey(it)) == null }
 		if (pending.isEmpty()) return true
+		Logger.event(
+			tag,
+			"generate_blocking_start",
+			"requested" to configs.size,
+			"pending" to pending.size,
+			"timeoutMs" to timeoutMs,
+			"strict" to strict
+		)
 
 		val runInline = synchronized(generationLock) {
 			worker.boost(timeoutMs + 2_000L)
@@ -111,29 +167,35 @@ class SnapshotProvider(
 				if (!hasMissingSnapshots(configs)) return true
 				Thread.sleep(WAIT_POLL_MS)
 			}
-			return !hasMissingSnapshots(configs)
+			val done = !hasMissingSnapshots(configs)
+			Logger.event(tag, "generate_blocking_wait_done", "completed" to done)
+			return done
 		}
 
 		while (SystemClock.elapsedRealtime() < deadlineMs) {
-			val progressed = worker.runNext()
+			val progressed = worker.runNext(ignoreThermalLimits = strict)
 			if (!progressed) break
 			if (!hasMissingSnapshots(configs)) break
-			Thread.sleep(worker.nextDelayMs().coerceAtMost(MAX_BLOCKING_DELAY_MS))
+			Thread.sleep(
+				worker.nextDelayMs(ignoreThermalLimits = strict).coerceAtMost(MAX_BLOCKING_DELAY_MS)
+			)
 		}
 
 		val completed = !hasMissingSnapshots(configs)
 		synchronized(generationLock) {
 			generationRunning = false
 		}
-		if (!completed) {
+		if (!completed && !strict) {
 			generateSnapshots(configs)
 		}
+		Logger.event(tag, "generate_blocking_end", "completed" to completed)
 		return completed
 	}
 
 	private fun runWorkerLoopInBackground() {
 		thread(start = true, isDaemon = true, name = "SnapshotGenerate") {
 			Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+			Logger.d(tag, "worker thread started")
 			while (true) {
 				if (worker.runNext()) {
 					try {
@@ -155,12 +217,22 @@ class SnapshotProvider(
 				}
 				if (stop) break
 			}
+			Logger.d(tag, "worker thread stopped")
 		}
 	}
 
 	fun release() {
 		snapshotUpdatedListener = null
 		worker.release()
+	}
+
+	fun clearAllSnapshots() {
+		synchronized(generationLock) {
+			worker.clearPending()
+			generationRunning = false
+		}
+		delegate.clearAll()
+		Logger.w(tag, "all snapshots cleared")
 	}
 
 	fun setOnSnapshotUpdatedListener(listener: ((String) -> Unit)?) {
@@ -198,7 +270,7 @@ class SnapshotProvider(
 	}
 
 	companion object {
-		private const val SNAPSHOT_KEY_VERSION = "snapshot_v2"
+		private const val SNAPSHOT_KEY_VERSION = "snapshot_v8"
 		private const val WAIT_POLL_MS = 40L
 		private const val MAX_BLOCKING_DELAY_MS = 20L
 	}

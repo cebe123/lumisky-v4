@@ -22,12 +22,20 @@ class WallpaperRenderController(
 
 	private var visible: Boolean = false
 	private var surfaceAttached: Boolean = false
+	private var previewMode: Boolean = false
 	private var renderThread: HandlerThread? = null
 	private var renderHandler: Handler? = null
 	private var pendingConfig: WallpaperConfig? = null
 	private var currentConfig: WallpaperConfig? = null
 	private var pendingFullRedraw: Boolean = true
 	private var lastRenderElapsedMs: Long = 0L
+	private val previewFrameTicker = object : Runnable {
+		override fun run() {
+			if (!visible || !surfaceAttached || !previewMode) return
+			renderCurrentScene(force = true)
+			renderHandler?.postDelayed(this, PREVIEW_FRAME_INTERVAL_MS)
+		}
+	}
 
 	fun onCreate() {
 		if (renderThread != null) return
@@ -49,6 +57,7 @@ class WallpaperRenderController(
 		postRenderTask {
 			renderEngine.attachSurface(holder)
 			if (visible) {
+				updatePreviewLoopLocked()
 				renderCurrentScene(force = true)
 			}
 		}
@@ -57,14 +66,22 @@ class WallpaperRenderController(
 	fun onVisibilityChanged(value: Boolean) {
 		visible = value
 		if (value) {
-			scheduler.start { onMinuteTick() }
+			if (previewMode) {
+				scheduler.stop()
+			} else {
+				scheduler.start { onMinuteTick() }
+			}
 			if (surfaceAttached) {
 				postRenderTask {
+					updatePreviewLoopLocked()
 					renderCurrentScene(force = true)
 				}
 			}
 		} else {
 			scheduler.stop()
+			postRenderTask {
+				stopPreviewLoopLocked()
+			}
 		}
 	}
 
@@ -73,7 +90,15 @@ class WallpaperRenderController(
 		surfaceAttached = false
 		pendingFullRedraw = true
 		postRenderTask {
+			stopPreviewLoopLocked()
 			renderEngine.detachSurface()
+		}
+	}
+
+	fun setPreviewMode(enabled: Boolean) {
+		previewMode = enabled
+		postRenderTask {
+			updatePreviewLoopLocked()
 		}
 	}
 
@@ -100,6 +125,7 @@ class WallpaperRenderController(
 	fun onDestroy() {
 		scheduler.stop()
 		postRenderTaskBlocking {
+			stopPreviewLoopLocked()
 			renderEngine.release()
 		}
 		renderHandler?.removeCallbacksAndMessages(null)
@@ -145,6 +171,17 @@ class WallpaperRenderController(
 		force: Boolean,
 		expectedHash: Int? = null
 	) {
+		if (previewMode) {
+			renderEngine.renderFrame(force = true, previewLoop = true)
+			lastRenderElapsedMs = SystemClock.elapsedRealtime()
+			pendingFullRedraw = false
+			lastStateHash = computeSceneHash()
+			if (expectedHash == null) {
+				pendingStateHash = null
+			}
+			return
+		}
+
 		val targetHash = expectedHash ?: computeSceneHash()
 		if (shouldSkipRender(force = force, hash = targetHash)) {
 			if (expectedHash == null) {
@@ -189,6 +226,24 @@ class WallpaperRenderController(
 		renderHandler?.post(task)
 	}
 
+	private fun updatePreviewLoopLocked() {
+		if (visible && surfaceAttached && previewMode) {
+			startPreviewLoopLocked()
+		} else {
+			stopPreviewLoopLocked()
+		}
+	}
+
+	private fun startPreviewLoopLocked() {
+		val handler = renderHandler ?: return
+		handler.removeCallbacks(previewFrameTicker)
+		handler.post(previewFrameTicker)
+	}
+
+	private fun stopPreviewLoopLocked() {
+		renderHandler?.removeCallbacks(previewFrameTicker)
+	}
+
 	private fun postRenderTaskBlocking(task: () -> Unit) {
 		val handler = renderHandler ?: return
 		val latch = CountDownLatch(1)
@@ -207,5 +262,6 @@ class WallpaperRenderController(
 		private const val RELEASE_WAIT_TIMEOUT_MS = 1500L
 		private const val THREAD_JOIN_TIMEOUT_MS = 1500L
 		private const val FORCE_RENDER_DEBOUNCE_MS = 500L
+		private const val PREVIEW_FRAME_INTERVAL_MS = 16L
 	}
 }

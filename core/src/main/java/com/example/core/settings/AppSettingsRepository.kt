@@ -15,6 +15,7 @@ class AppSettingsRepository(
 			appThemeMode = getAppThemeMode(),
 			languageTag = getLanguageTag(),
 			highRefreshEnabled = isHighRefreshEnabled(),
+			performanceMode = getPerformanceMode(),
 			locationMode = getLocationMode(),
 			manualCity = getManualCity()
 		)
@@ -50,6 +51,18 @@ class AppSettingsRepository(
 	fun setHighRefreshEnabled(enabled: Boolean) {
 		prefs.edit()
 			.putBoolean(KEY_HIGH_REFRESH_ENABLED, enabled)
+			.apply()
+	}
+
+	fun getPerformanceMode(): PerformanceMode {
+		val raw = prefs.getString(KEY_PERFORMANCE_MODE, DEFAULT_PERFORMANCE_MODE.name)
+			?: DEFAULT_PERFORMANCE_MODE.name
+		return runCatching { PerformanceMode.valueOf(raw) }.getOrElse { DEFAULT_PERFORMANCE_MODE }
+	}
+
+	fun setPerformanceMode(mode: PerformanceMode) {
+		prefs.edit()
+			.putString(KEY_PERFORMANCE_MODE, mode.name)
 			.apply()
 	}
 
@@ -104,6 +117,23 @@ class AppSettingsRepository(
 			.apply()
 	}
 
+	fun clearSnapshotBootstrapState() {
+		prefs.edit()
+			.putBoolean(KEY_SNAPSHOT_BOOTSTRAP_COMPLETED, false)
+			.remove(KEY_SNAPSHOT_CATALOG_FINGERPRINT)
+			.apply()
+	}
+
+	fun getSnapshotStorageVersion(): Int {
+		return prefs.getInt(KEY_SNAPSHOT_STORAGE_VERSION, 0)
+	}
+
+	fun setSnapshotStorageVersion(version: Int) {
+		prefs.edit()
+			.putInt(KEY_SNAPSHOT_STORAGE_VERSION, version.coerceAtLeast(0))
+			.apply()
+	}
+
 	private fun readDouble(key: String, defaultValue: Double): Double {
 		if (!prefs.contains(key)) return defaultValue
 		return Double.fromBits(prefs.getLong(key, 0L))
@@ -116,14 +146,17 @@ class AppSettingsRepository(
 		private const val KEY_APP_THEME_MODE = "app_theme_mode"
 		private const val KEY_LANGUAGE_TAG = "language_tag"
 		private const val KEY_HIGH_REFRESH_ENABLED = "high_refresh_enabled"
+		private const val KEY_PERFORMANCE_MODE = "performance_mode"
 		private const val KEY_LOCATION_MODE = "location_mode"
 		private const val KEY_MANUAL_CITY_NAME = "manual_city_name"
 		private const val KEY_MANUAL_CITY_LAT = "manual_city_lat"
 		private const val KEY_MANUAL_CITY_LNG = "manual_city_lng"
 		private const val KEY_SNAPSHOT_BOOTSTRAP_COMPLETED = "snapshot_bootstrap_completed"
 		private const val KEY_SNAPSHOT_CATALOG_FINGERPRINT = "snapshot_catalog_fingerprint"
+		private const val KEY_SNAPSHOT_STORAGE_VERSION = "snapshot_storage_version"
 
 		private const val DEFAULT_HIGH_REFRESH_ENABLED = false
+		private val DEFAULT_PERFORMANCE_MODE = PerformanceMode.AUTO
 		private val DEFAULT_LOCATION_MODE = LocationMode.GPS
 	}
 }

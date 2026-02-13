@@ -11,6 +11,12 @@ enum class LocationMode {
 	MANUAL
 }
 
+enum class PerformanceMode {
+	AUTO,
+	SMOOTH,
+	BATTERY
+}
+
 data class ManualCity(
 	val name: String,
 	val latitude: Double,
@@ -21,6 +27,7 @@ data class AppSettingsSnapshot(
 	val appThemeMode: AppThemeMode,
 	val languageTag: String,
 	val highRefreshEnabled: Boolean,
+	val performanceMode: PerformanceMode,
 	val locationMode: LocationMode,
 	val manualCity: ManualCity
 )

@@ -188,7 +188,7 @@ object WallpaperCatalog {
 			fragmentAssetPath = "shaders/city/fragment_shader.glsl",
 			horizonOffset = 0.48f,
 			textures = WallpaperTextures(
-				backgroundTexture = "backgrounds/city_istanbul.png"
+				backgroundTexture = "backgrounds/city_istanbul.webp"
 			)
 		),
 		ThemePreset(
@@ -197,7 +197,7 @@ object WallpaperCatalog {
 			fragmentAssetPath = "shaders/city/fragment_shader.glsl",
 			horizonOffset = 0.48f,
 			textures = WallpaperTextures(
-				backgroundTexture = "backgrounds/city_newyork.png"
+				backgroundTexture = "backgrounds/city_newyork.webp"
 			)
 		),
 		ThemePreset(
@@ -206,7 +206,7 @@ object WallpaperCatalog {
 			fragmentAssetPath = "shaders/city/fragment_shader.glsl",
 			horizonOffset = 0.48f,
 			textures = WallpaperTextures(
-				backgroundTexture = "backgrounds/city_tokyo.png"
+				backgroundTexture = "backgrounds/city_tokyo.webp"
 			)
 		),
 		ThemePreset(
@@ -215,7 +215,7 @@ object WallpaperCatalog {
 			fragmentAssetPath = "shaders/city/fragment_shader.glsl",
 			horizonOffset = 0.48f,
 			textures = WallpaperTextures(
-				backgroundTexture = "backgrounds/city_paris.png"
+				backgroundTexture = "backgrounds/city_paris.webp"
 			)
 		),
 		ThemePreset(
@@ -231,9 +231,9 @@ object WallpaperCatalog {
 				starsEnabled = true
 			),
 			textures = WallpaperTextures(
-				backgroundTexture = "anime/anime_sakura.png",
-				sunTexture = "anime/anime_sun.png",
-				moonTexture = "anime/anime_moon.png"
+				backgroundTexture = "anime/anime_sakura.webp",
+				sunTexture = "anime/anime_sun.webp",
+				moonTexture = "anime/anime_moon.webp"
 			)
 		)
 	)

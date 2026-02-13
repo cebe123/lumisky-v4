@@ -6,7 +6,7 @@ import java.security.MessageDigest
 
 class SnapshotDiskCache(
 	context: Context,
-	private val maxEntries: Int = 100
+	private val maxEntries: Int = 512
 ) {
 	private val lock = Any()
 	private val cacheDir: File = File(context.filesDir, CACHE_FOLDER).apply { mkdirs() }

@@ -61,6 +61,7 @@ import androidx.core.content.ContextCompat
 import com.example.core.settings.AppThemeMode
 import com.example.core.settings.LocationMode
 import com.example.core.settings.ManualCity
+import com.example.core.settings.PerformanceMode
 import com.example.lumisky.R
 import com.example.lumisky.ui.components.BottomNavBar
 
@@ -72,6 +73,8 @@ fun SettingsScreen(
 	onCycleTheme: () -> Unit,
 	highRefreshEnabled: Boolean,
 	onHighRefreshChanged: (Boolean) -> Unit,
+	performanceMode: PerformanceMode,
+	onPerformanceModeChanged: (PerformanceMode) -> Unit,
 	locationMode: LocationMode,
 	locationLabel: String,
 	gpsLocationAvailable: Boolean,
@@ -167,7 +170,7 @@ fun SettingsScreen(
 							SettingSwitchRow(
 								icon = Icons.Filled.LocationOn,
 								title = stringResource(R.string.location_enable),
-								checked = locationMode == LocationMode.GPS && systemLocationEnabled,
+								checked = locationMode == LocationMode.GPS,
 								onCheckedChange = { enabled ->
 									if (!enabled) {
 										onLocationModeChanged(LocationMode.MANUAL)
@@ -194,28 +197,26 @@ fun SettingsScreen(
 									if (gpsLocationAvailable && systemLocationEnabled) {
 										locationLabel
 									} else {
-										"${locationLabel} / GPS unavailable"
+										"$locationLabel / GPS unavailable"
 									}
 								} else {
-									manualCity.name
+									locationLabel
 								},
 								onClick = {
-									if (locationMode == LocationMode.MANUAL || !systemLocationEnabled) {
-										showCityDialog = true
-									}
+									showCityDialog = true
 								},
-								enabled = locationMode == LocationMode.MANUAL || !systemLocationEnabled
+								enabled = true
 							)
 						}
 					}
 
 						sectionWallpaper -> {
 						SectionCard(title = section) {
-							SettingSwitchRow(
+							SettingActionRow(
 								icon = Icons.Filled.Tune,
-								title = stringResource(R.string.quality_title),
-								checked = highRefreshEnabled,
-								onCheckedChange = onHighRefreshChanged
+								title = stringResource(R.string.performance_mode_title),
+								value = performanceModeLabel(performanceMode),
+								onClick = { onPerformanceModeChanged(nextPerformanceMode(performanceMode)) }
 							)
 						}
 					}
@@ -447,6 +448,23 @@ private fun themeLabel(mode: AppThemeMode): String {
 
 private fun languageLabel(tag: String): String {
 	return languageOptions()[tag] ?: languageOptions()[AppSettingsLanguage.SYSTEM] ?: "System"
+}
+
+@Composable
+private fun performanceModeLabel(mode: PerformanceMode): String {
+	return when (mode) {
+		PerformanceMode.AUTO -> stringResource(R.string.performance_mode_auto)
+		PerformanceMode.SMOOTH -> stringResource(R.string.performance_mode_smooth)
+		PerformanceMode.BATTERY -> stringResource(R.string.performance_mode_battery)
+	}
+}
+
+private fun nextPerformanceMode(mode: PerformanceMode): PerformanceMode {
+	return when (mode) {
+		PerformanceMode.AUTO -> PerformanceMode.SMOOTH
+		PerformanceMode.SMOOTH -> PerformanceMode.BATTERY
+		PerformanceMode.BATTERY -> PerformanceMode.AUTO
+	}
 }
 
 private object AppSettingsLanguage {

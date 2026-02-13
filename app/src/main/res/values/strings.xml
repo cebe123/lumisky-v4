@@ -21,6 +21,10 @@
     <string name="quality_title">Quality</string>
     <string name="quality_low">Low (Performance)</string>
     <string name="quality_high">High</string>
+    <string name="performance_mode_title">Performance Mode</string>
+    <string name="performance_mode_auto">Auto</string>
+    <string name="performance_mode_smooth">Smooth</string>
+    <string name="performance_mode_battery">Battery</string>
     <string name="section_about">ABOUT</string>
     <string name="app_version">App Version</string>
     <string name="language_title">Language</string>

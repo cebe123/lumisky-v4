@@ -24,12 +24,14 @@ open class SkyWallpaperService : WallpaperService() {
 		override fun onCreate(surfaceHolder: SurfaceHolder) {
 			super.onCreate(surfaceHolder)
 			Logger.d("SkyWallpaperService", "Engine.onCreate")
+			renderController.setPreviewMode(isPreview)
 			applyStoredConfig()
 			renderController.onCreate()
 		}
 
 		override fun onVisibilityChanged(visible: Boolean) {
 			super.onVisibilityChanged(visible)
+			renderController.setPreviewMode(isPreview)
 			if (visible) {
 				applyStoredConfig()
 			}
@@ -38,6 +40,7 @@ open class SkyWallpaperService : WallpaperService() {
 
 		override fun onSurfaceCreated(holder: SurfaceHolder) {
 			super.onSurfaceCreated(holder)
+			renderController.setPreviewMode(isPreview)
 			applyStoredConfig()
 			renderController.onSurfaceCreated(holder)
 		}

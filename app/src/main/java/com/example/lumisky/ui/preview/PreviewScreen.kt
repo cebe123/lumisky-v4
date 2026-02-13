@@ -5,6 +5,7 @@ import android.os.PowerManager
 import android.opengl.GLSurfaceView
 import android.view.Choreographer
 import android.view.View
+import android.view.WindowManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,13 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.core.settings.PerformanceMode
 import com.example.engine.config.ShaderDefaults
 import com.example.engine.config.ShaderProfile
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.preview.PreviewGlRenderer
 import com.example.engine.renderer.RenderMode
-import com.example.lumisky.ui.debug.TemporaryDebugPanel
-import com.example.lumisky.shader.ShaderAssetLoader
+import com.example.lumisky.shader.RenderAssetCache
 
 @Composable
 fun PreviewScreen(
@@ -36,6 +37,7 @@ fun PreviewScreen(
 		)
 	),
 	highRefreshEnabled: Boolean = true,
+	performanceMode: PerformanceMode = PerformanceMode.AUTO,
 	onSetWallpaper: () -> Unit = {},
 	onBack: () -> Unit
 ) {
@@ -43,7 +45,7 @@ fun PreviewScreen(
 		AndroidView(
 			modifier = Modifier.fillMaxSize(),
 			factory = { context ->
-				val fragmentOverride = ShaderAssetLoader.loadFragment(
+				val fragmentOverride = RenderAssetCache.loadFragment(
 					context = context,
 					assetPath = config.shader.fragmentAssetPath
 				)
@@ -53,6 +55,8 @@ fun PreviewScreen(
 					mode = RenderMode.PREVIEW,
 					animateFullDayLoop = true,
 					highRefreshEnabled = highRefreshEnabled,
+					performanceMode = performanceMode,
+					deviceRefreshRateProvider = { resolveDisplayRefreshRate(context) },
 					thermalStatusProvider = {
 						if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 							powerManager?.currentThermalStatus
@@ -60,11 +64,12 @@ fun PreviewScreen(
 							null
 						}
 					},
+					isPowerSaveModeProvider = {
+						powerManager?.isPowerSaveMode == true
+					},
 					fragmentShaderOverride = fragmentOverride,
 					textureBytesLoader = { assetPath ->
-						runCatching {
-							context.assets.open(assetPath).use { it.readBytes() }
-						}.getOrNull()
+						RenderAssetCache.loadTextureBytes(context, assetPath)
 					}
 				)
 				object : GLSurfaceView(context) {
@@ -145,10 +150,19 @@ fun PreviewScreen(
 			}
 		}
 
-		TemporaryDebugPanel(
-			modifier = Modifier
-				.align(Alignment.TopEnd)
-				.padding(12.dp)
-		)
 	}
 }
+
+private fun resolveDisplayRefreshRate(context: android.content.Context): Int {
+	val refresh = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+		context.display?.refreshRate
+	} else {
+		val windowManager = context.getSystemService(android.content.Context.WINDOW_SERVICE) as? WindowManager
+		@Suppress("DEPRECATION")
+		windowManager?.defaultDisplay?.refreshRate
+	} ?: DEFAULT_REFRESH_RATE.toFloat()
+	return refresh.toInt().coerceIn(DEFAULT_REFRESH_RATE, MAX_REFRESH_RATE)
+}
+
+private const val DEFAULT_REFRESH_RATE = 60
+private const val MAX_REFRESH_RATE = 120

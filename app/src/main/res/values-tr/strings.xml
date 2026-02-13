@@ -22,6 +22,10 @@
     <string name="quality_title">Kalite</string>
     <string name="quality_low">Düşük (Performans)</string>
     <string name="quality_high">Yüksek</string>
+    <string name="performance_mode_title">Performans Modu</string>
+    <string name="performance_mode_auto">Otomatik</string>
+    <string name="performance_mode_smooth">Akıcı</string>
+    <string name="performance_mode_battery">Batarya</string>
     <string name="section_about">HAKKINDA</string>
     <string name="app_version">Uygulama Sürümü</string>
     <string name="language_title">Dil</string>

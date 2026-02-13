@@ -1,6 +1,10 @@
 package com.example.lumisky
 
+import android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER
+import android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER
+import android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -16,11 +20,14 @@ import androidx.compose.runtime.setValue
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import com.example.core.Logger
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppThemeMode
+import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.ui.home.HomeScreen
 import com.example.lumisky.ui.settings.SettingsScreen
+import com.example.lumisky.ui.debug.FrameJankTelemetry
 import com.example.lumisky.ui.theme.LumiskyTheme
 import com.example.lumisky.viewmodel.HomeViewModel
 import com.example.snapshot.SnapshotProvider
@@ -28,9 +35,10 @@ import com.example.snapshot.SnapshotProvider
 class MainActivity : AppCompatActivity() {
 
 	private val appSettingsRepository by lazy { AppSettingsRepository(applicationContext) }
+	private val wallpaperConfigStore by lazy { WallpaperConfigStore(applicationContext) }
 	private val snapshotProvider by lazy { SnapshotProvider(applicationContext) }
 	private var locationReceiverRegistered: Boolean = false
-	private val homeViewModel by lazy {
+	internal val homeViewModel by lazy {
 		HomeViewModel(
 			context = applicationContext,
 			snapshotProvider = snapshotProvider,
@@ -40,16 +48,24 @@ class MainActivity : AppCompatActivity() {
 	private val locationModeReceiver = object : BroadcastReceiver() {
 		override fun onReceive(context: Context?, intent: Intent?) {
 			if (intent?.action == LocationManager.MODE_CHANGED_ACTION) {
+				Logger.d(TAG, "LocationManager MODE_CHANGED broadcast received")
 				homeViewModel.onSystemLocationProviderChanged()
 			}
 		}
 	}
 
 	override fun onCreate(savedInstanceState: Bundle?) {
+		configureLogging()
+		Logger.event(
+			tag = TAG,
+			name = "onCreate",
+			"savedState" to (savedInstanceState != null)
+		)
 		applyLanguage(appSettingsRepository.getLanguageTag())
 		super.onCreate(savedInstanceState)
 
 		snapshotProvider.warmUp()
+		Logger.d(TAG, "snapshotProvider warmed up")
 
 		setContent {
 			val darkTheme = when (homeViewModel.appThemeMode) {
@@ -70,32 +86,31 @@ class MainActivity : AppCompatActivity() {
 						liveWallpaperId = homeViewModel.liveWallpaperId,
 						daylightLabel = "${homeViewModel.daylight.sunriseMinute} / ${homeViewModel.daylight.sunsetMinute}",
 						startupLoading = homeViewModel.startupLoading,
+						startupProgress = homeViewModel.startupProgress,
 						highRefreshEnabled = homeViewModel.highRefreshEnabled,
+						performanceMode = homeViewModel.performanceMode,
 						onWallpaperSelected = { id ->
+							Logger.event(TAG, "wallpaper_selected", "id" to id)
 							homeViewModel.onWallpaperSelected(id)
 						},
+						onCategoryFocused = { ids ->
+							Logger.event(TAG, "category_focused", "count" to ids.size)
+							homeViewModel.onCategoryFocused(ids)
+						},
 						onFocusReady = { id ->
+							Logger.event(TAG, "focus_ready", "id" to id)
 							homeViewModel.activateLivePreview(id)
 						},
 						onFocusCleared = {
+							Logger.d(TAG, "focus_cleared")
 							homeViewModel.clearLivePreview()
 						},
 						onOpenPreview = { id ->
-							homeViewModel.clearLivePreview()
-							startActivity(
-								Intent(this, PreviewActivity::class.java)
-									.putExtra(PreviewActivity.EXTRA_WALLPAPER_ID, id)
-									.putExtra(
-										PreviewActivity.EXTRA_SUNRISE_MINUTE,
-										homeViewModel.daylight.sunriseMinute
-									)
-									.putExtra(
-										PreviewActivity.EXTRA_SUNSET_MINUTE,
-										homeViewModel.daylight.sunsetMinute
-									)
-							)
+							Logger.event(TAG, "open_set_screen", "id" to id)
+							openWallpaperSetScreen(id)
 						},
 						onNavigateSettings = {
+							Logger.d(TAG, "navigate_settings")
 							homeViewModel.clearLivePreview()
 							currentScreen = "settings"
 						}
@@ -106,6 +121,8 @@ class MainActivity : AppCompatActivity() {
 						onCycleTheme = { homeViewModel.cycleAppThemeMode() },
 						highRefreshEnabled = homeViewModel.highRefreshEnabled,
 						onHighRefreshChanged = { enabled -> homeViewModel.updateHighRefreshEnabled(enabled) },
+						performanceMode = homeViewModel.performanceMode,
+						onPerformanceModeChanged = { mode -> homeViewModel.updatePerformanceMode(mode) },
 						locationMode = homeViewModel.locationMode,
 						locationLabel = homeViewModel.locationLabel,
 						gpsLocationAvailable = homeViewModel.gpsLocationAvailable,
@@ -120,6 +137,7 @@ class MainActivity : AppCompatActivity() {
 						},
 						onRefreshGpsState = { homeViewModel.refreshLocationAndSunTimes() },
 						onNavigateHome = {
+							Logger.d(TAG, "navigate_home")
 							currentScreen = "home"
 						}
 					)
@@ -130,16 +148,22 @@ class MainActivity : AppCompatActivity() {
 
 	override fun onStart() {
 		super.onStart()
+		Logger.d(TAG, "onStart")
+		FrameJankTelemetry.start(this, "MainActivity")
 		registerLocationModeReceiver()
 		homeViewModel.onSystemLocationProviderChanged()
 	}
 
 	override fun onStop() {
+		Logger.d(TAG, "onStop")
+		FrameJankTelemetry.stop("MainActivity")
 		unregisterLocationModeReceiver()
 		super.onStop()
 	}
 
 	override fun onDestroy() {
+		Logger.d(TAG, "onDestroy")
+		FrameJankTelemetry.stop("MainActivity")
 		unregisterLocationModeReceiver()
 		homeViewModel.release()
 		snapshotProvider.release()
@@ -147,6 +171,7 @@ class MainActivity : AppCompatActivity() {
 	}
 
 	private fun applyLanguage(tag: String) {
+		Logger.event(TAG, "apply_language", "tag" to tag)
 		val locales = if (tag == AppSettingsDefaults.LANGUAGE_SYSTEM) {
 			LocaleListCompat.getEmptyLocaleList()
 		} else {
@@ -168,11 +193,59 @@ class MainActivity : AppCompatActivity() {
 			registerReceiver(locationModeReceiver, filter)
 		}
 		locationReceiverRegistered = true
+		Logger.d(TAG, "location receiver registered")
 	}
 
 	private fun unregisterLocationModeReceiver() {
 		if (!locationReceiverRegistered) return
 		runCatching { unregisterReceiver(locationModeReceiver) }
 		locationReceiverRegistered = false
+		Logger.d(TAG, "location receiver unregistered")
+	}
+
+	private fun openWallpaperSetScreen(wallpaperId: String) {
+		val config = homeViewModel.configFor(wallpaperId)
+		wallpaperConfigStore.saveSelected(config)
+		Logger.event(TAG, "open_wallpaper_set", "id" to wallpaperId, "configName" to config.name)
+		val directIntent = Intent(ACTION_CHANGE_LIVE_WALLPAPER).apply {
+			putExtra(
+				EXTRA_LIVE_WALLPAPER_COMPONENT,
+				ComponentName(
+					this@MainActivity,
+					com.example.wallpaper.SkyWallpaperService::class.java
+				)
+			)
+		}
+		runCatching {
+			startActivity(directIntent)
+			overridePendingTransition(0, 0)
+			Logger.d(TAG, "opened ACTION_CHANGE_LIVE_WALLPAPER")
+		}.onFailure {
+			Logger.w(TAG, "direct live wallpaper intent failed, falling back chooser", it)
+			runCatching {
+				startActivity(Intent(ACTION_LIVE_WALLPAPER_CHOOSER))
+				overridePendingTransition(0, 0)
+				Logger.d(TAG, "opened ACTION_LIVE_WALLPAPER_CHOOSER")
+			}
+		}
+	}
+
+	private fun configureLogging() {
+		val debuggable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+		Logger.configure(
+			Logger.Config(
+				enabled = true,
+				minLevel = if (debuggable) Logger.Level.VERBOSE else Logger.Level.DEBUG,
+				tagPrefix = "Lumisky",
+				includeThread = true,
+				includeUptimeMs = true
+			)
+		)
+		Logger.restartSession()
+		Logger.event(TAG, "logger_configured", "debuggable" to debuggable)
+	}
+
+	companion object {
+		private const val TAG = "MainActivity"
 	}
 }

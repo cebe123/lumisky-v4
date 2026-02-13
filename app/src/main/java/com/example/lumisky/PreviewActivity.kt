@@ -1,6 +1,9 @@
 package com.example.lumisky
 
+import android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER
 import android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER
+import android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -8,6 +11,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import com.example.core.Logger
 import com.example.core.api.SunDaylight
 import com.example.core.api.SunLocation
 import com.example.core.api.SunTimesRepository
@@ -20,6 +24,7 @@ import com.example.engine.config.DaylightConfig
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.data.WallpaperCatalog
+import com.example.lumisky.ui.debug.FrameJankTelemetry
 import com.example.lumisky.ui.preview.PreviewScreen
 import com.example.lumisky.ui.theme.LumiskyTheme
 import java.util.concurrent.CountDownLatch
@@ -35,8 +40,10 @@ class PreviewActivity : AppCompatActivity() {
 	private val setWallpaperExecutor by lazy { Executors.newSingleThreadExecutor() }
 	@Volatile
 	private var applyingWallpaper: Boolean = false
+	private var autoApplyMode: Boolean = false
 
 	override fun onCreate(savedInstanceState: Bundle?) {
+		Logger.event(TAG, "onCreate", "savedState" to (savedInstanceState != null))
 		applyLanguage(appSettingsRepository.getLanguageTag())
 		super.onCreate(savedInstanceState)
 		val wallpaperId = intent.getStringExtra(EXTRA_WALLPAPER_ID) ?: "preview_default"
@@ -51,8 +58,22 @@ class PreviewActivity : AppCompatActivity() {
 				sunsetMinute = daylight.sunsetMinute
 			)
 		).copy(daylight = daylight)
+		autoApplyMode = intent.getBooleanExtra(EXTRA_AUTO_APPLY, false)
 		val appThemeMode = appSettingsRepository.getAppThemeMode()
 		val highRefreshEnabled = appSettingsRepository.isHighRefreshEnabled()
+		val performanceMode = appSettingsRepository.getPerformanceMode()
+		Logger.event(
+			TAG,
+			"preview_init",
+			"wallpaperId" to wallpaperId,
+			"autoApply" to autoApplyMode,
+			"highRefresh" to highRefreshEnabled,
+			"performanceMode" to performanceMode
+		)
+		if (autoApplyMode) {
+			applyWallpaperWithFreshSunTimes(config)
+			return
+		}
 
 		setContent {
 			val darkTheme = when (appThemeMode) {
@@ -67,6 +88,7 @@ class PreviewActivity : AppCompatActivity() {
 				PreviewScreen(
 					config = config,
 					highRefreshEnabled = highRefreshEnabled,
+					performanceMode = performanceMode,
 					onSetWallpaper = {
 						applyWallpaperWithFreshSunTimes(config)
 					},
@@ -89,13 +111,31 @@ class PreviewActivity : AppCompatActivity() {
 	}
 
 	override fun onDestroy() {
+		Logger.d(TAG, "onDestroy")
+		FrameJankTelemetry.stop("PreviewActivity")
 		setWallpaperExecutor.shutdownNow()
 		sunTimesRepository.release()
 		super.onDestroy()
 	}
 
+	override fun onStart() {
+		super.onStart()
+		Logger.d(TAG, "onStart")
+		FrameJankTelemetry.start(this, "PreviewActivity")
+	}
+
+	override fun onStop() {
+		Logger.d(TAG, "onStop")
+		FrameJankTelemetry.stop("PreviewActivity")
+		super.onStop()
+	}
+
 	private fun applyWallpaperWithFreshSunTimes(baseConfig: WallpaperConfig) {
-		if (applyingWallpaper) return
+		if (applyingWallpaper) {
+			Logger.w(TAG, "applyWallpaper ignored, already running")
+			return
+		}
+		Logger.event(TAG, "applyWallpaper_start", "wallpaperId" to baseConfig.id)
 		applyingWallpaper = true
 		setWallpaperExecutor.execute {
 			try {
@@ -128,6 +168,12 @@ class PreviewActivity : AppCompatActivity() {
 					add(manualLocation)
 					add(defaultLocation)
 				}.distinctBy { "${it.latitude}|${it.longitude}" }
+				Logger.event(
+					TAG,
+					"sunTimes_candidates",
+					"count" to candidates.size,
+					"locationMode" to settings.locationMode
+				)
 
 				val latch = CountDownLatch(1)
 				var resolvedDaylight = SunDaylight(
@@ -138,7 +184,14 @@ class PreviewActivity : AppCompatActivity() {
 					resolvedDaylight = fetched
 					latch.countDown()
 				}
-				latch.await(SET_WALLPAPER_REFRESH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+				val completedInTime = latch.await(SET_WALLPAPER_REFRESH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+				Logger.event(
+					TAG,
+					"sunTimes_resolved",
+					"completedInTime" to completedInTime,
+					"sunrise" to resolvedDaylight.sunriseMinute,
+					"sunset" to resolvedDaylight.sunsetMinute
+				)
 
 				val finalConfig = baseConfig.copy(
 					daylight = DaylightConfig(
@@ -148,18 +201,44 @@ class PreviewActivity : AppCompatActivity() {
 				)
 				wallpaperConfigStore.saveSelected(finalConfig)
 				runOnUiThread {
-					startActivity(Intent(ACTION_LIVE_WALLPAPER_CHOOSER))
+					val directIntent = Intent(ACTION_CHANGE_LIVE_WALLPAPER).apply {
+						putExtra(
+							EXTRA_LIVE_WALLPAPER_COMPONENT,
+							ComponentName(
+								this@PreviewActivity,
+								com.example.wallpaper.SkyWallpaperService::class.java
+							)
+						)
+					}
+					runCatching {
+						startActivity(directIntent)
+						Logger.d(TAG, "opened ACTION_CHANGE_LIVE_WALLPAPER")
+					}.onFailure {
+						Logger.w(TAG, "direct apply failed, opening chooser", it)
+						startActivity(Intent(ACTION_LIVE_WALLPAPER_CHOOSER))
+						Logger.d(TAG, "opened ACTION_LIVE_WALLPAPER_CHOOSER")
+					}
+					if (autoApplyMode) {
+						Logger.d(TAG, "autoApplyMode true -> finish")
+						finish()
+					}
 				}
+			} catch (t: Throwable) {
+				Logger.e(TAG, "applyWallpaperWithFreshSunTimes failed", t)
+				throw t
 			} finally {
 				applyingWallpaper = false
+				Logger.d(TAG, "applyWallpaper finished")
 			}
 		}
 	}
 
 	companion object {
+		private const val TAG = "PreviewActivity"
 		const val EXTRA_WALLPAPER_ID = "extra_wallpaper_id"
 		const val EXTRA_SUNRISE_MINUTE = "extra_sunrise_minute"
 		const val EXTRA_SUNSET_MINUTE = "extra_sunset_minute"
+		const val EXTRA_AUTO_APPLY = "extra_auto_apply"
 		private const val SET_WALLPAPER_REFRESH_TIMEOUT_MS = 1_800L
 	}
 }

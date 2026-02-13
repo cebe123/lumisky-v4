@@ -4,8 +4,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.opengl.GLES20
 import android.opengl.GLUtils
+import android.os.SystemClock
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
+import com.example.engine.renderer.RenderMode
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -99,6 +101,10 @@ class PreviewSkyProgram {
 		config = value
 		textureBytesLoader = textureLoader
 		qualityScale = renderQualityScale.coerceIn(0.3f, 1f)
+	}
+
+	fun setRenderQuality(value: Float) {
+		qualityScale = value.coerceIn(0.3f, 1f)
 	}
 
 	fun init(fragmentShaderOverride: String? = null) {
@@ -196,6 +202,14 @@ class PreviewSkyProgram {
 			sunrise = state.sunriseMinute.toFloat(),
 			sunset = state.sunsetMinute.toFloat()
 		)
+		val effectiveAtmosphere = state.atmosphereEnabled && qualityScale >= QUALITY_ATMOSPHERE_THRESHOLD
+		val effectiveFlare = state.lensFlareEnabled && qualityScale >= QUALITY_FLARE_THRESHOLD
+		val effectiveStars = state.starsEnabled && qualityScale >= QUALITY_STARS_THRESHOLD
+		val qualityScaledFlare = if (effectiveFlare) {
+			(state.flareIntensity * qualityScale.coerceAtLeast(0.35f)).coerceIn(0f, 1f)
+		} else {
+			0f
+		}
 		val isWarriorTheme = isWarrior(config.id)
 
 		setVec3(skyColorHandle, skyR, skyG, skyB)
@@ -216,10 +230,10 @@ class PreviewSkyProgram {
 		setFloat(uSunriseHandle, state.sunriseMinute.toFloat())
 		setFloat(uSunsetHandle, state.sunsetMinute.toFloat())
 		setFloat(uNightAmountHandle, legacyNightAmount)
-		setFloat(uHasAtmosphereHandle, if (state.atmosphereEnabled) 1f else 0f)
-		setFloat(uHasFlareHandle, if (state.lensFlareEnabled) 1f else 0f)
-		setFloat(uHasStarsHandle, if (state.starsEnabled) 1f else 0f)
-		setFloat(uFlareIntensityHandle, state.flareIntensity)
+		setFloat(uHasAtmosphereHandle, if (effectiveAtmosphere) 1f else 0f)
+		setFloat(uHasFlareHandle, if (effectiveFlare) 1f else 0f)
+		setFloat(uHasStarsHandle, if (effectiveStars) 1f else 0f)
+		setFloat(uFlareIntensityHandle, qualityScaledFlare)
 		setVec2(uResolutionHandle, viewportWidth.toFloat(), viewportHeight.toFloat())
 		setFloat(uTimeHandle, seconds)
 		setFloat(uTimeOfDayHandle, legacyTimeOfDay)
@@ -332,7 +346,11 @@ class PreviewSkyProgram {
 	private fun loadTexture(path: String?): Int {
 		val normalized = path?.takeIf { it.isNotBlank() } ?: return 0
 		val loader = textureBytesLoader ?: return 0
-		val bytes = runCatching { loader(normalized) }.getOrNull() ?: return 0
+		val resolvedPath = resolvePreferredTexturePath(
+			originalPath = normalized,
+			loader = loader
+		)
+		val bytes = runCatching { loader(resolvedPath) }.getOrNull() ?: return 0
 		if (bytes.isEmpty()) return 0
 
 		val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return 0
@@ -343,7 +361,7 @@ class PreviewSkyProgram {
 			if (handle == 0) return 0
 
 			GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, handle)
-			val isPixelArt = isPixelArtTexture(normalized)
+			val isPixelArt = isPixelArtTexture(resolvedPath)
 			val isPot = isPowerOfTwo(bitmap.width) && isPowerOfTwo(bitmap.height)
 			val minFilter = if (isPixelArt) {
 				GLES20.GL_NEAREST
@@ -365,6 +383,19 @@ class PreviewSkyProgram {
 		} finally {
 			bitmap.recycle()
 		}
+	}
+
+	private fun resolvePreferredTexturePath(
+		originalPath: String,
+		loader: (String) -> ByteArray?
+	): String {
+		val lower = originalPath.lowercase()
+		if (lower.endsWith(".webp")) return originalPath
+		val extIndex = originalPath.lastIndexOf('.')
+		if (extIndex == -1) return originalPath
+		val webpCandidate = "${originalPath.substring(0, extIndex)}.webp"
+		val webpBytes = runCatching { loader(webpCandidate) }.getOrNull()
+		return if (webpBytes != null && webpBytes.isNotEmpty()) webpCandidate else originalPath
 	}
 
 	private fun initSpriteProgram() {
@@ -646,12 +677,10 @@ class PreviewSkyProgram {
 
 	private fun resolveLegacyTimeSeconds(state: RenderFrameState): Float {
 		val id = config.id.lowercase()
-		val windowMs = if (id.contains("city_") || id.contains("solar_horizon")) {
-			LEGACY_TIME_WINDOW_LONG_MS
-		} else {
-			LEGACY_TIME_WINDOW_MS
+		if (isWarrior(id) && (state.mode == RenderMode.PREVIEW || state.mode == RenderMode.FOCUS)) {
+			return (SystemClock.elapsedRealtime() % LEGACY_REALTIME_WINDOW_MS).toFloat() / 1000f
 		}
-		return (state.frameTimeMillis % windowMs).toFloat() / 1000f
+		return (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f
 	}
 
 	private fun isPixelArtTexture(path: String): Boolean {
@@ -744,11 +773,14 @@ class PreviewSkyProgram {
 		private const val SPRITE_STRIDE_BYTES = SPRITE_STRIDE_FLOATS * FLOAT_SIZE_BYTES
 		private const val MINUTES_PER_DAY = 1440
 		private const val LEGACY_TIME_WINDOW_MS = 100_000L
-		private const val LEGACY_TIME_WINDOW_LONG_MS = 1_000_000L
+		private const val LEGACY_REALTIME_WINDOW_MS = 1_000_000L
 		private const val NIGHT_TRANSITION_AFTER_SUNSET_MIN = 20f
 		private const val NIGHT_TRANSITION_BEFORE_SUNRISE_MIN = 20f
 		private const val NIGHT_TRANSITION_BEFORE_SUNRISE_WIDE_MIN = 30f
 		private const val NIGHT_TRANSITION_AFTER_SUNRISE_MIN = 10f
+		private const val QUALITY_ATMOSPHERE_THRESHOLD = 0.45f
+		private const val QUALITY_FLARE_THRESHOLD = 0.55f
+		private const val QUALITY_STARS_THRESHOLD = 0.70f
 		private const val SUN_MIN_ALTITUDE = 0.01f
 		private const val MIN_CELESTIAL_ALPHA = 0.02f
 		private const val SUN_SPRITE_SIZE = 0.065f

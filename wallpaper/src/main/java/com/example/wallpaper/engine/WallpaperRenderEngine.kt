@@ -13,6 +13,7 @@ import com.example.engine.renderer.RenderFrameState
 import com.example.wallpaper.render.WallpaperEglSession
 import com.example.wallpaper.render.SceneStateInput
 import com.example.wallpaper.render.WallpaperShaderAssetLoader
+import kotlin.math.max
 
 class WallpaperRenderEngine(
 	private val appContext: Context,
@@ -28,6 +29,8 @@ class WallpaperRenderEngine(
 	)
 	private var renderMode: RenderMode = RenderMode.WALLPAPER_SERVICE
 	private var fragmentShaderOverride: String? = null
+	private var previewLoopStartMillis: Long = 0L
+	private var previewLoopConfigId: String = config.id
 	private val stats = RenderStatsTracker(
 		tag = TAG,
 		logEvery = 10
@@ -46,6 +49,8 @@ class WallpaperRenderEngine(
 	fun setConfig(value: WallpaperConfig) {
 		config = value
 		skyEngine.setConfig(value)
+		previewLoopStartMillis = 0L
+		previewLoopConfigId = value.id
 		fragmentShaderOverride = WallpaperShaderAssetLoader.loadFragment(
 			context = appContext,
 			assetPath = config.shader.fragmentAssetPath
@@ -74,13 +79,32 @@ class WallpaperRenderEngine(
 		eglSession.detachSurface()
 	}
 
-	fun renderFrame(force: Boolean = false) {
+	fun renderFrame(
+		force: Boolean = false,
+		previewLoop: Boolean = false
+	) {
 		if (holder == null) {
 			stats.onSkip("holder_null")
 			return
 		}
 		val frameStartNs = System.nanoTime()
-		val state = skyEngine.renderNow(force = force)
+		val state = if (previewLoop) {
+			val now = System.currentTimeMillis()
+			if (previewLoopStartMillis == 0L || previewLoopConfigId != config.id) {
+				previewLoopStartMillis = now
+				previewLoopConfigId = config.id
+			}
+			val loopDurationMs = max((config.previewLoopDurationSeconds * 1000f).toLong(), MIN_PREVIEW_LOOP_MS)
+			val elapsedMs = (now - previewLoopStartMillis).coerceAtLeast(0L)
+			val loopProgress = (elapsedMs % loopDurationMs).toFloat() / loopDurationMs.toFloat()
+			skyEngine.sampleAtDayProgress(
+				dayProgress = loopProgress,
+				mode = renderMode,
+				force = true
+			)
+		} else {
+			skyEngine.renderNow(force = force)
+		}
 		if (state == null) {
 			Logger.d(TAG, "renderFrame skipped")
 			stats.onSkip("engine_state_skip")
@@ -181,6 +205,7 @@ class WallpaperRenderEngine(
 		private const val TAG = "WallpaperRenderEngine"
 		private const val QUANTIZE_SCALE = 1000f
 		private const val ACTIVE_FLARE_THRESHOLD = 0.02f
+		private const val MIN_PREVIEW_LOOP_MS = 1000L
 	}
 
 	private fun quantize(value: Float?): Int {

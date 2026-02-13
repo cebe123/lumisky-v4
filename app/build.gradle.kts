@@ -1,3 +1,20 @@
+import org.gradle.api.GradleException
+import org.gradle.api.tasks.Sync
+import java.io.File
+import javax.imageio.IIOImage
+import javax.imageio.ImageIO
+import javax.imageio.ImageWriter
+
+buildscript {
+	repositories {
+		google()
+		mavenCentral()
+	}
+	dependencies {
+		classpath("org.sejda.imageio:webp-imageio:0.1.6")
+	}
+}
+
 plugins {
 	alias(libs.plugins.android.application)
 	alias(libs.plugins.kotlin.compose)
@@ -60,4 +77,113 @@ dependencies {
 	implementation(project(":engine"))
 	implementation(project(":wallpaper"))
 	implementation(project(":snapshot"))
+}
+
+val convertWallpaperTexturesToWebp by tasks.registering {
+	group = "assets"
+	description = "Converts added wallpaper textures in assets to WebP."
+
+	val assetsDir = layout.projectDirectory.dir("src/main/assets")
+	val sourceTree = fileTree(assetsDir) {
+		include("**/*.png", "**/*.jpg", "**/*.jpeg")
+		exclude("**/shaders/**")
+	}
+
+	inputs.files(sourceTree)
+	outputs.dir(assetsDir)
+
+	doLast {
+		val files = sourceTree.files.sortedBy { it.absolutePath.lowercase() }
+		if (files.isEmpty()) {
+			logger.lifecycle("convertWallpaperTexturesToWebp: no source textures found.")
+			return@doLast
+		}
+
+		var converted = 0
+		var skipped = 0
+		var failed = 0
+
+		files.forEach { source ->
+			val target = File(source.parentFile, "${source.nameWithoutExtension}.webp")
+			if (target.exists() && target.length() > 0L && target.lastModified() >= source.lastModified()) {
+				skipped += 1
+				return@forEach
+			}
+
+			val image = runCatching { ImageIO.read(source) }.getOrNull()
+			if (image == null) {
+				logger.warn("convertWallpaperTexturesToWebp: failed to read ${source.path}")
+				failed += 1
+				return@forEach
+			}
+
+			val writer = findWebpWriter()
+			if (writer == null) {
+				throw GradleException(
+					"WebP writer not found. Ensure org.sejda.imageio:webp-imageio is available."
+				)
+			}
+
+			runCatching {
+				target.parentFile?.mkdirs()
+				ImageIO.createImageOutputStream(target).use { output ->
+					writer.output = output
+					val params = writer.defaultWriteParam.apply {
+						if (canWriteCompressed()) {
+							compressionMode = javax.imageio.ImageWriteParam.MODE_EXPLICIT
+							compressionTypes?.firstOrNull()?.let { type ->
+								compressionType = type
+							}
+							compressionQuality = 0.90f
+						}
+					}
+					writer.write(null, IIOImage(image, null, null), params)
+					output.flush()
+				}
+				target.setLastModified(source.lastModified())
+			}.onSuccess {
+				if (target.length() <= 0L) {
+					target.delete()
+					logger.warn("convertWallpaperTexturesToWebp: empty output ${target.path}")
+					failed += 1
+				} else {
+					converted += 1
+				}
+			}.onFailure { error ->
+				logger.warn("convertWallpaperTexturesToWebp: failed ${source.path} -> ${target.path}", error)
+				failed += 1
+			}.also {
+				writer.dispose()
+			}
+		}
+
+		logger.lifecycle(
+			"convertWallpaperTexturesToWebp: converted=$converted skipped=$skipped failed=$failed"
+		)
+		if (failed > 0) {
+			throw GradleException("WebP conversion failed for $failed texture(s).")
+		}
+	}
+}
+
+val filteredAssetsDir = layout.buildDirectory.dir("generated/filteredAssets/main").get().asFile
+val prepareFilteredAssets by tasks.registering(Sync::class) {
+	group = "assets"
+	description = "Copies app assets for packaging without source raster textures."
+	dependsOn(convertWallpaperTexturesToWebp)
+	from(layout.projectDirectory.dir("src/main/assets")) {
+		exclude("**/*.png", "**/*.jpg", "**/*.jpeg")
+	}
+	into(filteredAssetsDir)
+}
+
+android.sourceSets.getByName("main").assets.setSrcDirs(listOf(filteredAssetsDir))
+
+tasks.named("preBuild") {
+	dependsOn(prepareFilteredAssets)
+}
+
+fun findWebpWriter(): ImageWriter? {
+	return ImageIO.getImageWritersByMIMEType("image/webp").asSequence().firstOrNull()
+		?: ImageIO.getImageWritersBySuffix("webp").asSequence().firstOrNull()
 }

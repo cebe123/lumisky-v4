@@ -84,23 +84,20 @@ class RenderStatsTracker(
 				format(drawRatio)
 			}% windowFps=${format(fps.toDouble())} avgDrawMs=${format(avgDrawMs)}"
 		)
-		TemporaryDebugMetrics.publish(
-			DebugMetricLine(
-				tag = tag,
-				summary = buildString {
-					append("attempts=$attempts")
-					append("|draws=$draws")
-					append("|skips=$skips")
-					append("|drawRatio=${format(drawRatio)}%")
-					append("|windowDrawRatio=${format(windowDrawRatio)}%")
-					append("|fps=${format(fps.toDouble())}")
-					append("|avgDrawMs=${format(avgDrawMs)}")
-					append("|maxDrawMs=${format(maxDrawMs)}")
-					append("|windowMs=$windowElapsedMs")
-					append("|lastSkip=$lastSkipReason")
-				},
-				updatedAtMs = nowMs
-			)
+		Logger.event(
+			tag = tag,
+			name = "render_window",
+			"attempts" to attempts,
+			"draws" to draws,
+			"skips" to skips,
+			"drawRatioPct" to format(drawRatio),
+			"windowDrawRatioPct" to format(windowDrawRatio),
+			"fps" to format(fps.toDouble()),
+			"avgDrawMs" to format(avgDrawMs),
+			"maxDrawMs" to format(maxDrawMs),
+			"windowMs" to windowElapsedMs,
+			"lastSkip" to lastSkipReason,
+			"timestampMs" to nowMs
 		)
 
 		windowStartMs = nowMs

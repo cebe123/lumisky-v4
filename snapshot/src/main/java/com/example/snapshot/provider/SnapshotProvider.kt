@@ -23,4 +23,8 @@ class SnapshotProvider(
 	fun putSnapshotBytes(wallpaperId: String, bytes: ByteArray): String {
 		return diskCache.put(wallpaperId, bytes)
 	}
+
+	fun clearAll() {
+		diskCache.clear()
+	}
 }
