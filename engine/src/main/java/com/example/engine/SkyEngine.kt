@@ -66,6 +66,14 @@ class SkyEngine(
 		return candidate
 	}
 
+	fun peekState(
+		atMillis: Long = timeManager.nowMillis(),
+		mode: RenderMode = modeController.mode
+	): RenderFrameState? {
+		if (!initialized) return null
+		return renderer.renderFrame(atMillis, mode)
+	}
+
 	fun sampleAtDayProgress(
 		dayProgress: Float,
 		mode: RenderMode = modeController.mode,

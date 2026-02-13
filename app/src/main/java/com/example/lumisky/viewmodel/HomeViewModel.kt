@@ -7,10 +7,13 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.core.api.SunDaylight
+import com.example.core.api.SunLocation
 import com.example.core.api.SunTimesRepository
 import com.example.engine.config.WallpaperConfig
 import com.example.lumisky.data.WallpaperCatalog
 import com.example.snapshot.SnapshotProvider
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 data class HomeWallpaperItem(
 	val config: WallpaperConfig,
@@ -22,6 +25,7 @@ class HomeViewModel(
 	private val sunTimesRepository: SunTimesRepository = SunTimesRepository()
 ) {
 	private val mainHandler = Handler(Looper.getMainLooper())
+	private val catalogExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 	private val _items = mutableStateListOf<HomeWallpaperItem>()
 
 	val items: List<HomeWallpaperItem>
@@ -36,6 +40,8 @@ class HomeViewModel(
 	var daylight by mutableStateOf(sunTimesRepository.currentOrFallback())
 		private set
 
+	private var selectedCity: SunLocation? = null
+
 	init {
 		rebuildCatalog(daylight)
 		refreshSunTimes()
@@ -48,8 +54,13 @@ class HomeViewModel(
 	}
 
 	fun activateLivePreview(id: String) {
-		if (selectedWallpaperId != id) return
+		if (liveWallpaperId == id) return
 		liveWallpaperId = id
+		snapshotProvider.generateSnapshots(listOf(configFor(id)))
+	}
+
+	fun clearLivePreview() {
+		liveWallpaperId = null
 	}
 
 	fun configFor(id: String): WallpaperConfig {
@@ -59,11 +70,19 @@ class HomeViewModel(
 
 	fun allConfigs(): List<WallpaperConfig> = _items.map { it.config }
 
+	fun setSelectedCity(location: SunLocation?) {
+		selectedCity = location
+		refreshSunTimes()
+	}
+
+	fun release() {
+		catalogExecutor.shutdownNow()
+	}
+
 	private fun refreshSunTimes() {
-		// Default location can be replaced by device location service later.
-		sunTimesRepository.refreshAsync(
-			latitude = DEFAULT_LATITUDE,
-			longitude = DEFAULT_LONGITUDE
+		sunTimesRepository.refreshAsyncWithFallback(
+			selectedCity = selectedCity,
+			defaultCity = DEFAULT_CITY
 		) { fetched ->
 			mainHandler.post {
 				daylight = fetched
@@ -73,26 +92,31 @@ class HomeViewModel(
 	}
 
 	private fun rebuildCatalog(currentDaylight: SunDaylight) {
-		val configs = WallpaperCatalog.buildConfigs(daylight = currentDaylight)
-		snapshotProvider.generateSnapshots(configs.take(INITIAL_SNAPSHOT_COUNT))
-		_items.clear()
-		_items.addAll(
-			configs.map { config ->
+		catalogExecutor.execute {
+			val configs = WallpaperCatalog.buildConfigs(daylight = currentDaylight)
+			snapshotProvider.generateSnapshots(configs.take(INITIAL_SNAPSHOT_COUNT))
+			val mapped = configs.map { config ->
 				HomeWallpaperItem(
 					config = config,
 					snapshotPath = snapshotProvider.getSnapshotPath(config.id)
 				)
 			}
-		)
-
-		if (selectedWallpaperId == null && _items.isNotEmpty()) {
-			selectedWallpaperId = _items.first().config.id
+			mainHandler.post {
+				_items.clear()
+				_items.addAll(mapped)
+				if (selectedWallpaperId == null && _items.isNotEmpty()) {
+					selectedWallpaperId = _items.first().config.id
+				}
+			}
 		}
 	}
 
 	companion object {
-		private const val DEFAULT_LATITUDE = 41.0082
-		private const val DEFAULT_LONGITUDE = 28.9784
+		private val DEFAULT_CITY = SunLocation(
+			label = "default_city",
+			latitude = 41.0082,
+			longitude = 28.9784
+		)
 		private const val INITIAL_SNAPSHOT_COUNT = 10
 	}
 }

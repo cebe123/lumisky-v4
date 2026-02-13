@@ -10,7 +10,11 @@ class SnapshotProvider(
 	context: Context,
 	private val delegate: InternalSnapshotProvider = InternalSnapshotProvider(context)
 ) {
-	private val worker = SnapshotWorker(snapshotProvider = delegate)
+	private val appContext = context.applicationContext
+	private val worker = SnapshotWorker(
+		snapshotProvider = delegate,
+		appContext = appContext
+	)
 	private val generationLock = Any()
 	@Volatile
 	private var generationRunning: Boolean = false
@@ -45,7 +49,15 @@ class SnapshotProvider(
 
 		thread(start = true, isDaemon = true, name = "SnapshotGenerate") {
 			while (true) {
-				if (worker.runNext()) continue
+				if (worker.runNext()) {
+					try {
+						Thread.sleep(worker.nextDelayMs())
+					} catch (_: InterruptedException) {
+						Thread.currentThread().interrupt()
+						break
+					}
+					continue
+				}
 
 				val stop = synchronized(generationLock) {
 					if (worker.hasPending()) {

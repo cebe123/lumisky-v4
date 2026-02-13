@@ -3,6 +3,7 @@ package com.example.engine.shader
 import android.graphics.Bitmap
 import android.opengl.GLES20
 import android.opengl.GLUtils
+import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -42,6 +43,10 @@ class PreviewSkyProgram {
 	private var uSunsetHandle: Int = -1
 	private var uSunriseHandle: Int = -1
 	private var uNightAmountHandle: Int = -1
+	private var uHasAtmosphereHandle: Int = -1
+	private var uHasFlareHandle: Int = -1
+	private var uHasStarsHandle: Int = -1
+	private var uFlareIntensityHandle: Int = -1
 
 	private var uSunTextureHandle: Int = -1
 	private var uMoonTextureHandle: Int = -1
@@ -51,6 +56,11 @@ class PreviewSkyProgram {
 	private var viewportWidth: Int = 1
 	private var viewportHeight: Int = 1
 	private var fallbackTextureHandle: Int = 0
+	private var config: WallpaperConfig = WallpaperConfig.default()
+
+	fun configure(value: WallpaperConfig) {
+		config = value
+	}
 
 	fun init(fragmentShaderOverride: String? = null) {
 		if (programHandle != 0) return
@@ -81,6 +91,10 @@ class PreviewSkyProgram {
 		uSunsetHandle = GLES20.glGetUniformLocation(programHandle, "u_Sunset")
 		uSunriseHandle = GLES20.glGetUniformLocation(programHandle, "u_Sunrise")
 		uNightAmountHandle = GLES20.glGetUniformLocation(programHandle, "u_NightAmount")
+		uHasAtmosphereHandle = GLES20.glGetUniformLocation(programHandle, "u_HasAtmosphere")
+		uHasFlareHandle = GLES20.glGetUniformLocation(programHandle, "u_HasFlare")
+		uHasStarsHandle = GLES20.glGetUniformLocation(programHandle, "u_HasStars")
+		uFlareIntensityHandle = GLES20.glGetUniformLocation(programHandle, "u_FlareIntensity")
 
 		uSunTextureHandle = GLES20.glGetUniformLocation(programHandle, "u_SunTexture")
 		uMoonTextureHandle = GLES20.glGetUniformLocation(programHandle, "u_MoonTexture")
@@ -113,7 +127,7 @@ class PreviewSkyProgram {
 		val skyG = ((state.skyColor shr 8) and 0xFF) / 255f
 		val skyB = (state.skyColor and 0xFF) / 255f
 		val sunAlpha = sin((state.dayProgress.coerceIn(0f, 1f)) * PI.toFloat()).coerceAtLeast(0f)
-		val nightAmount = (1f - sunAlpha).coerceIn(0f, 1f)
+		val nightAmount = state.nightBlend.coerceIn(0f, 1f)
 		val minute = (state.dayProgress * MINUTES_PER_DAY).coerceIn(0f, MINUTES_PER_DAY.toFloat())
 		val aspect = viewportWidth.toFloat() / viewportHeight.toFloat()
 
@@ -126,15 +140,19 @@ class PreviewSkyProgram {
 		setVec2(uSunPosHandle, state.sun.x, state.sun.y)
 		setVec3(uSunColorHandle, 1.0f, 0.88f, 0.55f)
 		setFloat(uAspectRatioHandle, aspect)
-		setFloat(uDrawSunHandle, if (nightAmount < 0.95f) 1f else 0f)
+		setFloat(uDrawSunHandle, if (state.sunAltitude > SUN_MIN_ALTITUDE) 1f else 0f)
 		setVec2(uMoonPosHandle, state.moon.x, state.moon.y)
-		setFloat(uIsNightHandle, if (nightAmount > 0.5f) 1f else 0f)
+		setFloat(uIsNightHandle, if (state.isNight) 1f else 0f)
 		setFloat(uMinuteHandle, minute)
 		setFloat(uCloudOffsetHandle, state.dayProgress * 0.25f)
-		setFloat(uCloudAlphaHandle, 0.5f)
-		setFloat(uSunriseHandle, 6f * 60f)
-		setFloat(uSunsetHandle, 18f * 60f)
+		setFloat(uCloudAlphaHandle, if (state.atmosphereEnabled) 0.5f else 0f)
+		setFloat(uSunriseHandle, state.sunriseMinute.toFloat())
+		setFloat(uSunsetHandle, state.sunsetMinute.toFloat())
 		setFloat(uNightAmountHandle, nightAmount)
+		setFloat(uHasAtmosphereHandle, if (state.atmosphereEnabled) 1f else 0f)
+		setFloat(uHasFlareHandle, if (state.lensFlareEnabled) 1f else 0f)
+		setFloat(uHasStarsHandle, if (state.starsEnabled) 1f else 0f)
+		setFloat(uFlareIntensityHandle, state.flareIntensity)
 
 		bindTextureUnit(uSunTextureHandle, 0)
 		bindTextureUnit(uMoonTextureHandle, 1)
@@ -241,6 +259,8 @@ class PreviewSkyProgram {
 		private const val FLOAT_SIZE_BYTES = 4
 		private const val VERTEX_COUNT = 4
 		private const val MINUTES_PER_DAY = 1440
+		private const val NIGHT_THRESHOLD = 0.5f
+		private const val SUN_MIN_ALTITUDE = 0.01f
 
 		private val FULLSCREEN_VERTICES = floatArrayOf(
 			-1f, -1f,

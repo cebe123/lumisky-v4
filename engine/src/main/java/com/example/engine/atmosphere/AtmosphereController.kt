@@ -6,20 +6,65 @@ import kotlin.math.abs
 
 class AtmosphereController {
 	fun resolveSkyColor(progress: Float, sunY: Float, config: WallpaperConfig): Int {
+		return resolveState(progress = progress, sunY = sunY, moonY = 0f, config = config).skyColor
+	}
+
+	fun resolveState(
+		progress: Float,
+		sunY: Float,
+		moonY: Float,
+		config: WallpaperConfig
+	): AtmosphereState {
 		val palette = config.customSkyColors ?: DEFAULT_COLORS
 		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
 		val peakY = config.peakY.coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
 
-		val dayFactor = ((sunY - horizonY) / (peakY - horizonY)).coerceIn(0f, 1f)
-		val twilightFactor = (1f - abs(dayFactor - 0.5f) * 2f).coerceIn(0f, 1f)
+		val sunAltitude = ((sunY - horizonY) / (peakY - horizonY)).coerceIn(0f, 1f)
+		val moonAltitude = ((moonY - horizonY) / (peakY - horizonY)).coerceIn(0f, 1f)
+		val twilightFactor = (1f - abs(sunAltitude - 0.5f) * 2f).coerceIn(0f, 1f)
 		val twilightColor = if (progress < 0.5f) palette.sunriseColor else palette.sunsetColor
+		val preSunriseGlow = preSunriseGlow(progress = progress, config = config)
 
-		val dayBlend = lerpColor(palette.nightColor, palette.dayColor, dayFactor)
+		val dayBlend = lerpColor(palette.nightColor, palette.dayColor, sunAltitude)
 		if (!config.features.atmosphereEnabled) {
-			return dayBlend
+			return AtmosphereState(
+				skyTopColor = dayBlend,
+				skyHorizonColor = dayBlend,
+				skyColor = dayBlend,
+				nightBlendFactor = (1f - sunAltitude).coerceIn(0f, 1f),
+				preSunriseGlowFactor = 0f
+			)
 		}
 
-		return lerpColor(dayBlend, twilightColor, twilightFactor * TWILIGHT_BLEND_WEIGHT)
+		val horizonWarm = (twilightFactor * TWILIGHT_BLEND_WEIGHT + preSunriseGlow * PRE_SUNRISE_WEIGHT)
+			.coerceIn(0f, 1f)
+		val skyTopColor = lerpColor(dayBlend, twilightColor, horizonWarm * TOP_BLEND_SCALE)
+		val skyHorizonColor = lerpColor(dayBlend, twilightColor, horizonWarm)
+		val skyColor = lerpColor(skyTopColor, skyHorizonColor, HORIZON_BIAS)
+		val nightBlend = (1f - maxOf(sunAltitude, moonAltitude * MOON_LIFT_SCALE)).coerceIn(0f, 1f)
+
+		return AtmosphereState(
+			skyTopColor = skyTopColor,
+			skyHorizonColor = skyHorizonColor,
+			skyColor = skyColor,
+			nightBlendFactor = nightBlend,
+			preSunriseGlowFactor = preSunriseGlow
+		)
+	}
+
+	private fun preSunriseGlow(
+		progress: Float,
+		config: WallpaperConfig
+	): Float {
+		val sunrise = (config.daylight.sunriseMinute / MINUTES_PER_DAY.toFloat()).coerceIn(0f, 1f)
+		val delta = (sunrise - progress).normalizeUnitDistance()
+		if (delta <= 0f || delta > PRE_SUNRISE_WINDOW) return 0f
+		return (1f - (delta / PRE_SUNRISE_WINDOW)).coerceIn(0f, 1f)
+	}
+
+	private fun Float.normalizeUnitDistance(): Float {
+		val wrapped = (this + 1f) % 1f
+		return wrapped
 	}
 
 	private fun lerpColor(start: Int, end: Int, t: Float): Int {
@@ -42,6 +87,12 @@ class AtmosphereController {
 	companion object {
 		private const val TWILIGHT_BLEND_WEIGHT = 0.65f
 		private const val MIN_PEAK_DELTA = 0.05f
+		private const val HORIZON_BIAS = 0.65f
+		private const val TOP_BLEND_SCALE = 0.5f
+		private const val MOON_LIFT_SCALE = 0.4f
+		private const val PRE_SUNRISE_WINDOW = 0.12f
+		private const val PRE_SUNRISE_WEIGHT = 0.75f
+		private const val MINUTES_PER_DAY = 24 * 60
 		private val DEFAULT_COLORS = SkyColors(
 			sunriseColor = 0xFFFFB266.toInt(),
 			dayColor = 0xFF78B8FF.toInt(),
@@ -50,6 +101,14 @@ class AtmosphereController {
 		)
 	}
 }
+
+data class AtmosphereState(
+	val skyTopColor: Int,
+	val skyHorizonColor: Int,
+	val skyColor: Int,
+	val nightBlendFactor: Float,
+	val preSunriseGlowFactor: Float
+)
 
 class HorizonLight {
 	fun intensity(progress: Float): Float {

@@ -6,7 +6,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
-import com.example.engine.SkyEngine
 import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.ui.home.HomeScreen
 import com.example.lumisky.viewmodel.HomeViewModel
@@ -14,7 +13,6 @@ import com.example.snapshot.SnapshotProvider
 
 class MainActivity : ComponentActivity() {
 
-	private val engine = SkyEngine()
 	private val snapshotProvider by lazy { SnapshotProvider(applicationContext) }
 	private val homeViewModel by lazy { HomeViewModel(snapshotProvider) }
 	private val wallpaperConfigStore by lazy { WallpaperConfigStore(applicationContext) }
@@ -22,7 +20,6 @@ class MainActivity : ComponentActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 
-		engine.init()
 		snapshotProvider.warmUp()
 
 		setContent {
@@ -37,6 +34,9 @@ class MainActivity : ComponentActivity() {
 					},
 					onFocusReady = { id ->
 						homeViewModel.activateLivePreview(id)
+					},
+					onFocusCleared = {
+						homeViewModel.clearLivePreview()
 					},
 					onOpenPreview = { id ->
 						startActivity(
@@ -56,8 +56,8 @@ class MainActivity : ComponentActivity() {
 	}
 
 	override fun onDestroy() {
+		homeViewModel.release()
 		snapshotProvider.release()
-		engine.release()
 		super.onDestroy()
 	}
 }

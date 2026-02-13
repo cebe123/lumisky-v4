@@ -14,6 +14,10 @@ uniform float u_CloudAlpha;
 uniform float u_Sunset;
 uniform float u_Sunrise;
 uniform float u_NightAmount;
+uniform float u_HasAtmosphere;
+uniform float u_HasFlare;
+uniform float u_HasStars;
+uniform float u_FlareIntensity;
 
 const vec3 C_SUN_HIGH = vec3(1.0, 1.0, 0.9);
 const vec3 C_SUN_SET = vec3(1.0, 0.3, 0.05);
@@ -70,10 +74,11 @@ void main() {
 	vec3 nightSky = mix(SKY_NIGHT_BOT, SKY_NIGHT_TOP, pow(v_TexCoord.y, 0.7));
 
 	vec3 color = mix(nightSky, daySky, daylight);
-	color = mix(color, sunsetSky, warmMix * smoothstep(0.0, 1.0, v_TexCoord.y + 0.05));
-
-	float horizonHaze = exp(-12.0 * max(v_TexCoord.y, 0.0));
-	color += vec3(0.25, 0.14, 0.08) * horizonHaze * warmMix * 0.45;
+	if (u_HasAtmosphere > 0.5) {
+		color = mix(color, sunsetSky, warmMix * smoothstep(0.0, 1.0, v_TexCoord.y + 0.05));
+		float horizonHaze = exp(-12.0 * max(v_TexCoord.y, 0.0));
+		color += vec3(0.25, 0.14, 0.08) * horizonHaze * warmMix * 0.45;
+	}
 
 	vec2 sunDelta = v_TexCoord - u_SunPos;
 	sunDelta.y /= max(0.001, u_AspectRatio);
@@ -82,9 +87,15 @@ void main() {
 	float sunHalo = exp(-sunDist * 10.0);
 	vec3 sunColor = mix(C_SUN_HIGH, C_SUN_SET, warmMix);
 	sunColor = mix(sunColor, u_SunColor, 0.5);
-	float sunVisible = u_DrawSun * (1.0 - u_NightAmount);
+	float sunVisible = u_DrawSun * clamp(1.0 - u_NightAmount * 0.85, 0.0, 1.0);
 	color += sunColor * sunHalo * 0.30 * sunVisible;
 	color = mix(color, sunColor, sunDisk * sunVisible);
+	if (u_HasFlare > 0.5 && u_FlareIntensity > 0.001) {
+		float flareCore = exp(-sunDist * 20.0);
+		float flareStreak = exp(-(abs(sunDelta.y) * 14.0 + abs(sunDelta.x) * 2.5));
+		float flare = (flareCore + flareStreak * 0.7) * u_FlareIntensity * sunVisible;
+		color += sunColor * flare * 0.55;
+	}
 
 	vec2 moonDelta = v_TexCoord - u_MoonPos;
 	moonDelta.y /= max(0.001, u_AspectRatio);
@@ -101,13 +112,15 @@ void main() {
 	float starSeed = hash(starCell);
 	float star = step(0.9925, starSeed);
 	float twinkle = 0.5 + 0.5 * sin(u_Minute * 0.12 + starSeed * 23.0);
-	color += vec3(1.0) * star * twinkle * nightStars * smoothstep(0.2, 1.0, v_TexCoord.y);
+	color += vec3(1.0) * star * twinkle * nightStars * u_HasStars * smoothstep(0.2, 1.0, v_TexCoord.y);
 
-	vec2 cloudUv = vec2(v_TexCoord.x * 2.0 + u_CloudOffset * 3.0, v_TexCoord.y * 3.0);
-	float cloudField = fbm(cloudUv + vec2(0.0, u_Minute * 0.0005));
-	float cloudMask = smoothstep(0.58, 0.78, cloudField) * smoothstep(0.12, 0.92, v_TexCoord.y);
-	vec3 cloudColor = mix(vec3(0.96, 0.94, 0.90), vec3(0.28, 0.30, 0.37), u_NightAmount);
-	color = mix(color, cloudColor, cloudMask * u_CloudAlpha * 0.55);
+	if (u_HasAtmosphere > 0.5) {
+		vec2 cloudUv = vec2(v_TexCoord.x * 2.0 + u_CloudOffset * 3.0, v_TexCoord.y * 3.0);
+		float cloudField = fbm(cloudUv + vec2(0.0, u_Minute * 0.0005));
+		float cloudMask = smoothstep(0.58, 0.78, cloudField) * smoothstep(0.12, 0.92, v_TexCoord.y);
+		vec3 cloudColor = mix(vec3(0.96, 0.94, 0.90), vec3(0.28, 0.30, 0.37), u_NightAmount);
+		color = mix(color, cloudColor, cloudMask * u_CloudAlpha * 0.55);
+	}
 
 	float duneHeight = 0.14
 		+ 0.03 * sin(v_TexCoord.x * 6.2831853 * 1.3)

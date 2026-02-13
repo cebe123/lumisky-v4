@@ -6,7 +6,6 @@ import android.view.SurfaceHolder
 import com.example.engine.config.WallpaperConfig
 import com.example.wallpaper.engine.WallpaperRenderEngine
 import com.example.wallpaper.render.SceneStateHasher
-import com.example.wallpaper.render.SceneStateInput
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -15,7 +14,10 @@ class WallpaperRenderController(
 	private val scheduler: MinuteTickScheduler,
 	private val hasher: SceneStateHasher
 ) {
+	@Volatile
 	private var lastStateHash: Int? = null
+	@Volatile
+	private var pendingStateHash: Int? = null
 	private var visible: Boolean = false
 	private var surfaceAttached: Boolean = false
 	private var renderThread: HandlerThread? = null
@@ -41,7 +43,7 @@ class WallpaperRenderController(
 		postRenderTask {
 			renderEngine.attachSurface(holder)
 			if (visible) {
-				renderEngine.renderFrame(force = true)
+				renderCurrentScene(force = true)
 			}
 		}
 	}
@@ -51,9 +53,7 @@ class WallpaperRenderController(
 		if (value) {
 			scheduler.start { onMinuteTick() }
 			if (surfaceAttached) {
-				postRenderTask {
-					renderEngine.renderFrame(force = true)
-				}
+				onMinuteTick()
 			}
 		} else {
 			scheduler.stop()
@@ -70,6 +70,7 @@ class WallpaperRenderController(
 
 	fun setConfig(config: WallpaperConfig) {
 		lastStateHash = null
+		pendingStateHash = null
 		val handler = renderHandler
 		if (handler == null) {
 			pendingConfig = config
@@ -79,7 +80,7 @@ class WallpaperRenderController(
 			renderEngine.setConfig(config)
 			pendingConfig = null
 			if (visible && surfaceAttached) {
-				renderEngine.renderFrame(force = true)
+				renderCurrentScene(force = true)
 			}
 		}
 	}
@@ -103,6 +104,7 @@ class WallpaperRenderController(
 		}
 		renderThread = null
 		lastStateHash = null
+		pendingStateHash = null
 		pendingConfig = null
 		visible = false
 		surfaceAttached = false
@@ -110,20 +112,38 @@ class WallpaperRenderController(
 
 	private fun onMinuteTick() {
 		if (!visible || !surfaceAttached) return
-		val hash = hasher.compute(
-			SceneStateInput(
-				minute = System.currentTimeMillis() / 60_000L,
+		val hash = computeSceneHash()
+		if (hash == lastStateHash || hash == pendingStateHash) return
+		pendingStateHash = hash
+		postRenderTask {
+			try {
+				renderCurrentScene(force = false, expectedHash = hash)
+			} finally {
+				if (pendingStateHash == hash) {
+					pendingStateHash = null
+				}
+			}
+		}
+	}
+
+	private fun renderCurrentScene(
+		force: Boolean,
+		expectedHash: Int? = null
+	) {
+		renderEngine.renderFrame(force = force)
+		lastStateHash = expectedHash ?: computeSceneHash()
+		if (expectedHash == null) {
+			pendingStateHash = null
+		}
+	}
+
+	private fun computeSceneHash(): Int {
+		return hasher.compute(
+			renderEngine.snapshotSceneStateInput(
 				visible = visible,
-				surfaceAttached = surfaceAttached,
-				configFingerprint = renderEngine.sceneFingerprint(),
-				renderMode = renderEngine.renderModeName()
+				surfaceAttached = surfaceAttached
 			)
 		)
-		if (hash == lastStateHash) return
-		lastStateHash = hash
-		postRenderTask {
-			renderEngine.renderFrame(force = false)
-		}
 	}
 
 	private fun postRenderTask(task: () -> Unit) {

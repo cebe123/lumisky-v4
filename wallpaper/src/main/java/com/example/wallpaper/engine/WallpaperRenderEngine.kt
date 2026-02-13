@@ -9,7 +9,9 @@ import com.example.engine.config.ShaderDefaults
 import com.example.engine.config.ShaderProfile
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderMode
+import com.example.engine.renderer.RenderFrameState
 import com.example.wallpaper.render.WallpaperEglSession
+import com.example.wallpaper.render.SceneStateInput
 import com.example.wallpaper.render.WallpaperShaderAssetLoader
 
 class WallpaperRenderEngine(
@@ -89,19 +91,73 @@ class WallpaperRenderEngine(
 		)
 	}
 
+	fun snapshotSceneStateInput(
+		visible: Boolean,
+		surfaceAttached: Boolean
+	): SceneStateInput {
+		val snapshot = skyEngine.peekState(mode = renderMode)
+		return SceneStateInput(
+			visible = visible,
+			surfaceAttached = surfaceAttached,
+			configFingerprint = sceneFingerprint(),
+			renderMode = renderMode.name,
+			sunX = quantize(snapshot?.sun?.x),
+			sunY = quantize(snapshot?.sun?.y),
+			moonX = quantize(snapshot?.moon?.x),
+			moonY = quantize(snapshot?.moon?.y),
+			nightBlend = quantize(snapshot?.nightBlend),
+			skyColor = snapshot?.skyColor ?: 0,
+			flareActive = isFlareActive(snapshot)
+		)
+	}
+
 	fun sceneFingerprint(): String {
 		return buildString {
 			append(config.id)
 			append('|')
 			append(config.horizon.offset)
 			append('|')
+			append(config.peakY)
+			append('|')
+			append(config.belowHorizonOffset)
+			append('|')
 			append(config.celestial.sunPathType)
 			append('|')
 			append(config.celestial.moonPathType)
 			append('|')
+			append(config.features.atmosphereEnabled)
+			append('|')
+			append(config.features.lensFlareEnabled)
+			append('|')
+			append(config.features.starsEnabled)
+			append('|')
+			append(config.textures.sunTexture)
+			append('|')
+			append(config.textures.moonTexture)
+			append('|')
+			append(config.textures.flareTexture ?: "")
+			append('|')
+			append(config.textures.backgroundTexture ?: "")
+			append('|')
+			append(config.shader.fragmentAssetPath ?: "")
+			append('|')
+			append(config.shader.mode)
+			append('|')
 			append(config.daylight.sunriseMinute)
 			append('|')
 			append(config.daylight.sunsetMinute)
+			append('|')
+			append(config.previewLoopDurationSeconds)
+			append('|')
+			append(config.focusCatchUpDurationSeconds)
+			append('|')
+			append(config.customSkyColors?.sunriseColor ?: 0)
+			append('|')
+			append(config.customSkyColors?.dayColor ?: 0)
+			append('|')
+			append(config.customSkyColors?.sunsetColor ?: 0)
+			append('|')
+			append(config.customSkyColors?.nightColor ?: 0)
 		}
 	}
 
@@ -114,5 +170,16 @@ class WallpaperRenderEngine(
 
 	companion object {
 		private const val TAG = "WallpaperRenderEngine"
+		private const val QUANTIZE_SCALE = 1000f
+		private const val ACTIVE_FLARE_THRESHOLD = 0.02f
+	}
+
+	private fun quantize(value: Float?): Int {
+		return ((value ?: 0f) * QUANTIZE_SCALE).toInt()
+	}
+
+	private fun isFlareActive(state: RenderFrameState?): Boolean {
+		if (state == null) return false
+		return state.lensFlareEnabled && state.flareIntensity > ACTIVE_FLARE_THRESHOLD
 	}
 }

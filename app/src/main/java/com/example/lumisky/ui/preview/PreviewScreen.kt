@@ -42,24 +42,42 @@ fun PreviewScreen(
 					assetPath = config.shader.fragmentAssetPath
 				)
 				val powerManager = context.getSystemService(PowerManager::class.java)
-				GLSurfaceView(context).apply {
+				val renderer = PreviewGlRenderer(
+					config = config,
+					mode = RenderMode.PREVIEW,
+					animateFullDayLoop = true,
+					thermalStatusProvider = {
+						if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+							powerManager?.currentThermalStatus
+						} else {
+							null
+						}
+					},
+					fragmentShaderOverride = fragmentOverride
+				)
+				object : GLSurfaceView(context) {
+					private val frameTicker = object : Runnable {
+						override fun run() {
+							requestRender()
+							if (renderer.shouldContinueRendering()) {
+								postDelayed(this, renderer.nextFrameDelayMs())
+							}
+						}
+					}
+
+					override fun onAttachedToWindow() {
+						super.onAttachedToWindow()
+						post(frameTicker)
+					}
+
+					override fun onDetachedFromWindow() {
+						removeCallbacks(frameTicker)
+						super.onDetachedFromWindow()
+					}
+				}.apply {
 					setEGLContextClientVersion(2)
-					setRenderer(
-						PreviewGlRenderer(
-							config = config,
-							mode = RenderMode.PREVIEW,
-							animateFullDayLoop = true,
-							thermalStatusProvider = {
-								if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-									powerManager?.currentThermalStatus
-								} else {
-									null
-								}
-							},
-							fragmentShaderOverride = fragmentOverride
-						)
-					)
-					renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+					setRenderer(renderer)
+					renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
 				}
 			}
 		)

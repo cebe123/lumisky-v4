@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,9 +41,12 @@ import com.example.lumisky.shader.ShaderAssetLoader
 import com.example.lumisky.ui.debug.TemporaryDebugPanel
 import com.example.lumisky.viewmodel.HomeWallpaperItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.math.abs
 
 @Composable
 fun HomeScreen(
@@ -51,13 +56,38 @@ fun HomeScreen(
 	daylightLabel: String,
 	onWallpaperSelected: (String) -> Unit,
 	onFocusReady: (String) -> Unit,
+	onFocusCleared: () -> Unit,
 	onOpenPreview: (String) -> Unit,
 	onOpenWallpaperPicker: () -> Unit
 ) {
-	LaunchedEffect(selectedWallpaperId) {
-		val id = selectedWallpaperId ?: return@LaunchedEffect
-		delay(1_000L)
-		onFocusReady(id)
+	val listState = rememberLazyListState()
+
+	LaunchedEffect(listState) {
+		snapshotFlow { listState.isScrollInProgress }
+			.distinctUntilChanged()
+			.collectLatest { isScrolling ->
+				if (isScrolling) {
+					onFocusCleared()
+				}
+			}
+	}
+
+	LaunchedEffect(listState, items) {
+		snapshotFlow {
+			if (listState.isScrollInProgress) {
+				null
+			} else {
+				findCenteredItemId(listState)
+			}
+		}
+			.distinctUntilChanged()
+			.collectLatest { centeredId ->
+				if (centeredId.isNullOrBlank()) return@collectLatest
+				delay(1_000L)
+				if (!listState.isScrollInProgress && findCenteredItemId(listState) == centeredId) {
+					onFocusReady(centeredId)
+				}
+			}
 	}
 
 	Box(modifier = Modifier.fillMaxSize()) {
@@ -81,6 +111,7 @@ fun HomeScreen(
 					modifier = Modifier
 						.weight(1f)
 						.fillMaxWidth(),
+					state = listState,
 					verticalArrangement = Arrangement.spacedBy(10.dp)
 				) {
 					items(items, key = { it.config.id }) { item ->
@@ -207,7 +238,7 @@ private fun FocusedWallpaperPreview(
 					override fun run() {
 						requestRender()
 						if (renderer.shouldContinueRendering()) {
-							postDelayed(this, FRAME_INTERVAL_MS)
+							postDelayed(this, renderer.nextFrameDelayMs())
 						}
 					}
 				}
@@ -275,4 +306,13 @@ private fun decodeDataUri(dataUri: String) = runCatching {
 	BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 }.getOrNull()
 
-private const val FRAME_INTERVAL_MS = 16L
+private fun findCenteredItemId(listState: androidx.compose.foundation.lazy.LazyListState): String? {
+	val layoutInfo = listState.layoutInfo
+	if (layoutInfo.visibleItemsInfo.isEmpty()) return null
+	val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+	val closest = layoutInfo.visibleItemsInfo.minByOrNull { item ->
+		val itemCenter = item.offset + (item.size / 2)
+		abs(itemCenter - viewportCenter)
+	}
+	return closest?.key?.toString()
+}

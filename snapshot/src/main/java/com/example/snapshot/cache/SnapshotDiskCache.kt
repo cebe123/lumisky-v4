@@ -15,7 +15,6 @@ class SnapshotDiskCache(
 		synchronized(lock) {
 			val file = cacheFile(key)
 			if (!file.exists()) return null
-			file.setLastModified(System.currentTimeMillis())
 			return file.absolutePath
 		}
 	}

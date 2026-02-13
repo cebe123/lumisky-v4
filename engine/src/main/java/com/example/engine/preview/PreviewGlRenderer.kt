@@ -28,7 +28,6 @@ class PreviewGlRenderer(
 	private var focusFinalState: RenderFrameState? = null
 	@Volatile
 	private var focusAnimationCompleted: Boolean = false
-	private var lastDrawMillis: Long = 0L
 	private var movingAvgDrawMillis: Float = 16f
 
 	private val skyProgram = PreviewSkyProgram()
@@ -41,9 +40,9 @@ class PreviewGlRenderer(
 		skyEngine.init(config)
 		skyEngine.setRenderMode(mode)
 		previewStartMillis = nowProvider()
-		lastDrawMillis = 0L
 		movingAvgDrawMillis = 16f
 		initializeFocusState()
+		skyProgram.configure(config)
 		skyProgram.init(fragmentShaderOverride)
 		GLES20.glClearColor(0f, 0f, 0f, 1f)
 		stats.reset()
@@ -56,12 +55,6 @@ class PreviewGlRenderer(
 
 	override fun onDrawFrame(gl: GL10?) {
 		val frameNowMillis = nowProvider()
-		if (!shouldRenderAt(frameNowMillis)) {
-			stats.onSkip("fps_cap")
-			return
-		}
-		lastDrawMillis = frameNowMillis
-
 		val frameStartNs = System.nanoTime()
 		val state = resolveFrameState(frameNowMillis)
 
@@ -74,6 +67,11 @@ class PreviewGlRenderer(
 		} else {
 			stats.onSkip("state_null")
 		}
+	}
+
+	fun nextFrameDelayMs(): Long {
+		val targetFps = resolveTargetFps().coerceIn(MIN_TARGET_FPS, MAX_TARGET_FPS)
+		return (1000L / targetFps).coerceAtLeast(1L)
 	}
 
 	fun shouldContinueRendering(): Boolean {
@@ -123,14 +121,6 @@ class PreviewGlRenderer(
 			focusAnimationCompleted = true
 		}
 		return state
-	}
-
-	private fun shouldRenderAt(nowMillis: Long): Boolean {
-		val targetFps = resolveTargetFps()
-		val minInterval = (1000L / targetFps.coerceIn(MIN_TARGET_FPS, MAX_TARGET_FPS)).coerceAtLeast(1L)
-		val previous = lastDrawMillis
-		if (previous == 0L) return true
-		return nowMillis - previous >= minInterval
 	}
 
 	private fun resolveTargetFps(): Int {
