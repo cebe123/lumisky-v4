@@ -70,7 +70,6 @@ import com.example.lumisky.shader.RenderAssetCache
 import com.example.lumisky.ui.components.BottomNavBar
 import com.example.lumisky.viewmodel.HomeWallpaperItem
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
@@ -175,8 +174,9 @@ fun HomeScreen(
 			return@LaunchedEffect
 		}
 		if (verticalState.isScrollInProgress) return@LaunchedEffect
-		delay(CATEGORY_FOCUS_DISPATCH_DEBOUNCE_MS)
-		if (verticalState.isScrollInProgress) return@LaunchedEffect
+		if (focusCandidateId == null || focusCandidateId !in activeCategoryIds) {
+			focusCandidateId = activeCategoryIds.firstOrNull()
+		}
 		val limitedIds = activeCategoryIds.take(CATEGORY_FOCUS_MAX_ITEMS)
 		val dispatchKey = limitedIds.joinToString(separator = "|")
 		if (dispatchKey == lastCategoryDispatchKey) return@LaunchedEffect
@@ -194,8 +194,6 @@ fun HomeScreen(
 			return@LaunchedEffect
 		}
 		if (candidate == lastDispatchedFocusId) return@LaunchedEffect
-		delay(FOCUS_DISPATCH_DEBOUNCE_MS)
-		if (focusCandidateId != candidate) return@LaunchedEffect
 		lastDispatchedFocusId = candidate
 		onFocusReady(candidate)
 	}
@@ -274,12 +272,13 @@ fun HomeScreen(
 							selectedWallpaperId = selectedWallpaperId,
 							liveWallpaperId = liveWallpaperId,
 							isCategoryActive = isCategoryActive,
+							parentScrollInProgress = verticalState.isScrollInProgress,
 							highRefreshEnabled = highRefreshEnabled,
 							performanceMode = performanceMode,
 							cardWidth = cardWidth,
 							cardHeight = cardHeight,
 							onFocusCandidate = { candidate ->
-								if (isCategoryActive && candidate != null) {
+								if (candidate != null) {
 									focusCandidateId = candidate
 								}
 							},
@@ -303,6 +302,7 @@ private fun CategorySection(
 	selectedWallpaperId: String?,
 	liveWallpaperId: String?,
 	isCategoryActive: Boolean,
+	parentScrollInProgress: Boolean,
 	highRefreshEnabled: Boolean,
 	performanceMode: PerformanceMode,
 	cardWidth: Dp,
@@ -335,16 +335,24 @@ private fun CategorySection(
 		}
 	}
 
-	LaunchedEffect(isCategoryActive, centeredWallpaperId, wallpapers, rowState.isScrollInProgress) {
+	LaunchedEffect(
+		isCategoryActive,
+		parentScrollInProgress,
+		centeredWallpaperId,
+		wallpapers,
+		rowState.isScrollInProgress
+	) {
 		if (!isCategoryActive) {
 			return@LaunchedEffect
 		}
+		if (parentScrollInProgress) return@LaunchedEffect
 		if (rowState.isScrollInProgress) return@LaunchedEffect
 		val focused = centeredWallpaperId ?: wallpapers.firstOrNull()?.id ?: return@LaunchedEffect
 		onFocusCandidate(focused)
 		val focusedIndex = wallpapers.indexOfFirst { it.id == focused }
 		if (focusedIndex < 0) return@LaunchedEffect
-		val candidates = listOf(focusedIndex - 1, focusedIndex, focusedIndex + 1)
+		val candidates = (-2..2)
+			.map { offset -> focusedIndex + offset }
 			.filter { it in wallpapers.indices }
 			.map { wallpapers[it] }
 		val warmupKey = candidates.joinToString("|") { it.id }
@@ -545,7 +553,7 @@ private class HomeFocusPreviewView(
 
 	fun setPlaybackEnabled(enabled: Boolean) {
 		if (playbackEnabled == enabled) {
-			if (enabled && windowVisibility == View.VISIBLE) {
+			if (enabled && shouldScheduleFrame()) {
 				postFrameCallbackIfNeeded()
 			}
 			return
@@ -763,6 +771,4 @@ private fun findCenteredIndex(listState: LazyListState): Int {
 private const val DEFAULT_REFRESH_RATE = 60
 private const val MAX_REFRESH_RATE = 120
 private const val HOME_FOCUS_CATCHUP_SECONDS = 4f
-private const val CATEGORY_FOCUS_DISPATCH_DEBOUNCE_MS = 200L
 private const val CATEGORY_FOCUS_MAX_ITEMS = 24
-private const val FOCUS_DISPATCH_DEBOUNCE_MS = 160L

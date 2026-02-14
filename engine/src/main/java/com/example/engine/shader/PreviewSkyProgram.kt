@@ -2,6 +2,7 @@ package com.example.engine.shader
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.opengl.EGL14
 import android.opengl.GLES20
 import android.opengl.GLUtils
 import android.os.SystemClock
@@ -267,6 +268,17 @@ class PreviewSkyProgram {
 	}
 
 	fun release() {
+		if (!hasCurrentGlContext()) {
+			programHandle = 0
+			spriteProgramHandle = 0
+			fallbackSolidTextureHandle = 0
+			fallbackTransparentTextureHandle = 0
+			backgroundTextureHandle = 0
+			sunTextureHandle = 0
+			moonTextureHandle = 0
+			flareTextureHandle = 0
+			return
+		}
 		if (programHandle != 0) {
 			GLES20.glDeleteProgram(programHandle)
 			programHandle = 0
@@ -284,6 +296,11 @@ class PreviewSkyProgram {
 			fallbackTransparentTextureHandle = 0
 		}
 		deleteConfiguredTextures()
+	}
+
+	private fun hasCurrentGlContext(): Boolean {
+		val context = EGL14.eglGetCurrentContext()
+		return context != null && context != EGL14.EGL_NO_CONTEXT
 	}
 
 	private fun ensureFallbackTextures() {

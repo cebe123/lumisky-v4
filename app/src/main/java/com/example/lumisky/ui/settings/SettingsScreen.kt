@@ -84,8 +84,7 @@ fun SettingsScreen(
 	manualCity: ManualCity,
 	onManualCitySelected: (ManualCity) -> Unit,
 	languageTag: String,
-	onLanguageSelected: (String) -> Unit,
-	onRefreshGpsState: () -> Unit
+	onLanguageSelected: (String) -> Unit
 ) {
 	val context = LocalContext.current
 	var showLanguageDialog by remember { mutableStateOf(false) }
@@ -107,7 +106,6 @@ fun SettingsScreen(
 			if (!systemLocationEnabled) {
 				onRequestEnableSystemLocation()
 			}
-			onRefreshGpsState()
 		}
 	}
 
@@ -190,7 +188,6 @@ fun SettingsScreen(
 										if (!systemLocationEnabled) {
 											onRequestEnableSystemLocation()
 										}
-										onRefreshGpsState()
 									} else {
 										permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
 									}

@@ -41,6 +41,7 @@ class HomeViewModel(
 	private val _items = mutableStateListOf<HomeWallpaperItem>()
 	private var lastFocusedCategoryKey: String? = null
 	private var lastGpsRequestAtMs: Long = 0L
+	private var lastLocationStateRefreshAtMs: Long = 0L
 
 	val items: List<HomeWallpaperItem>
 		get() = _items
@@ -208,6 +209,7 @@ class HomeViewModel(
 	}
 
 	fun refreshLocationState() {
+		val refreshAtMs = SystemClock.elapsedRealtime()
 		runCatching {
 			systemLocationEnabled = runCatching { lastKnownLocationProvider.isLocationEnabled() }
 				.getOrDefault(false)
@@ -270,6 +272,18 @@ class HomeViewModel(
 			locationLabel = "${manualCity.name} (Default)"
 			Logger.w(tag, "refreshLocationState fallback", it)
 		}
+		lastLocationStateRefreshAtMs = refreshAtMs
+	}
+
+	fun refreshOnForegroundIfStale(
+		maxStaleMs: Long = FOREGROUND_LOCATION_REFRESH_STALE_MS
+	) {
+		val elapsed = SystemClock.elapsedRealtime() - lastLocationStateRefreshAtMs
+		if (elapsed in 0 until maxStaleMs) {
+			Logger.d(tag, "foreground refresh skipped elapsedMs=$elapsed thresholdMs=$maxStaleMs")
+			return
+		}
+		onSystemLocationProviderChanged()
 	}
 
 	fun onSystemLocationProviderChanged() {
@@ -284,7 +298,7 @@ class HomeViewModel(
 				"mode" to locationMode
 			)
 			if (locationMode != LocationMode.GPS) return
-			if (systemLocationEnabled && (!before || !gpsLocationAvailable || liveGpsLocation == null)) {
+			if (systemLocationEnabled && (!before || !gpsLocationAvailable)) {
 				requestImmediateGpsLocation()
 			}
 			if (before != systemLocationEnabled) {
@@ -486,5 +500,6 @@ class HomeViewModel(
 		private const val SUN_TIMES_REFRESH_INTERVAL_MS = 60L * 60L * 1000L
 		private const val CATEGORY_PRIORITIZE_LIMIT = 24
 		private const val GPS_REQUEST_THROTTLE_MS = 1_500L
+		private const val FOREGROUND_LOCATION_REFRESH_STALE_MS = 1_500L
 	}
 }

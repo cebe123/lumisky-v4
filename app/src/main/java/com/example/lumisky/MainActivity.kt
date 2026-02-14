@@ -25,7 +25,6 @@ import com.example.core.Logger
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppThemeMode
-import com.example.core.settings.LocationMode
 import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.ui.home.HomeScreen
 import com.example.lumisky.ui.settings.SettingsScreen
@@ -132,7 +131,6 @@ class MainActivity : AppCompatActivity() {
 							homeViewModel.updateLanguageTag(tag)
 							applyLanguage(tag)
 						},
-						onRefreshGpsState = { homeViewModel.refreshLocationAndSunTimes() },
 						onNavigateHome = {
 							Logger.d(TAG, "navigate_home")
 							currentScreen = "home"
@@ -148,10 +146,7 @@ class MainActivity : AppCompatActivity() {
 		Logger.d(TAG, "onStart")
 		FrameJankTelemetry.start(this, "MainActivity")
 		registerLocationModeReceiver()
-		homeViewModel.onSystemLocationProviderChanged()
-		if (homeViewModel.locationMode == LocationMode.GPS) {
-			homeViewModel.refreshLocationAndSunTimes()
-		}
+		homeViewModel.refreshOnForegroundIfStale()
 	}
 
 	override fun onStop() {
@@ -159,14 +154,6 @@ class MainActivity : AppCompatActivity() {
 		FrameJankTelemetry.stop("MainActivity")
 		unregisterLocationModeReceiver()
 		super.onStop()
-	}
-
-	override fun onResume() {
-		super.onResume()
-		homeViewModel.onSystemLocationProviderChanged()
-		if (homeViewModel.locationMode == LocationMode.GPS) {
-			homeViewModel.refreshLocationAndSunTimes()
-		}
 	}
 
 	override fun onDestroy() {

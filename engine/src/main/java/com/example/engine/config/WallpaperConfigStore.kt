@@ -1,32 +1,81 @@
 package com.example.engine.config
 
 import android.content.Context
+import android.content.SharedPreferences
 import org.json.JSONObject
 
 class WallpaperConfigStore(
 	context: Context
 ) {
 	private val appContext = context.applicationContext
-	private val preferences by lazy {
-		appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+	private val credentialPreferences by lazy {
+		runCatching {
+			appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+		}.getOrNull()
+	}
+	private val deviceProtectedPreferences by lazy {
+		runCatching {
+			appContext.createDeviceProtectedStorageContext()
+				.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+		}.getOrNull()
 	}
 
 	fun saveSelected(config: WallpaperConfig) {
 		val encoded = WallpaperConfigJsonCodec.encode(config)
-		preferences.edit()
-			.putString(KEY_SELECTED_CONFIG_JSON, encoded)
-			.apply()
+		writeEncoded(credentialPreferences, encoded)
+		writeEncoded(deviceProtectedPreferences, encoded)
 	}
 
 	fun loadSelected(): WallpaperConfig? {
-		val encoded = preferences.getString(KEY_SELECTED_CONFIG_JSON, null) ?: return null
-		return WallpaperConfigJsonCodec.decode(encoded)
+		val deviceEncoded = readEncoded(deviceProtectedPreferences)
+		if (deviceEncoded != null) {
+			WallpaperConfigJsonCodec.decode(deviceEncoded)?.let { return it }
+			removeEncoded(deviceProtectedPreferences)
+		}
+
+		val credentialEncoded = readEncoded(credentialPreferences)
+		if (credentialEncoded != null) {
+			val decoded = WallpaperConfigJsonCodec.decode(credentialEncoded)
+			if (decoded != null) {
+				writeEncoded(deviceProtectedPreferences, credentialEncoded)
+				return decoded
+			}
+			removeEncoded(credentialPreferences)
+		}
+		return null
 	}
 
 	fun clearSelected() {
-		preferences.edit()
-			.remove(KEY_SELECTED_CONFIG_JSON)
-			.apply()
+		removeEncoded(credentialPreferences)
+		removeEncoded(deviceProtectedPreferences)
+	}
+
+	private fun readEncoded(preferences: SharedPreferences?): String? {
+		if (preferences == null) return null
+		return runCatching {
+			preferences.getString(KEY_SELECTED_CONFIG_JSON, null)
+		}.getOrNull()
+	}
+
+	private fun writeEncoded(
+		preferences: SharedPreferences?,
+		encoded: String
+	) {
+		if (preferences == null) return
+		runCatching {
+			preferences.edit()
+				.putString(KEY_SELECTED_CONFIG_JSON, encoded)
+				.apply()
+		}
+	}
+
+	private fun removeEncoded(preferences: SharedPreferences?) {
+		if (preferences == null) return
+		runCatching {
+			preferences.edit()
+				.remove(KEY_SELECTED_CONFIG_JSON)
+				.apply()
+		}
 	}
 
 	companion object {
