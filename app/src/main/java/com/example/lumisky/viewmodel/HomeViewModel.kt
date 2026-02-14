@@ -20,20 +20,16 @@ import com.example.core.settings.ManualCity
 import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
 import com.example.lumisky.data.WallpaperCatalog
-import com.example.snapshot.SnapshotProvider
-import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 data class HomeWallpaperItem(
-	val config: WallpaperConfig,
-	val snapshotPath: String?
+	val config: WallpaperConfig
 )
 
 class HomeViewModel(
 	context: Context,
-	private val snapshotProvider: SnapshotProvider,
 	private val sunTimesRepository: SunTimesRepository = SunTimesRepository(),
 	private val settingsRepository: AppSettingsRepository = AppSettingsRepository(context),
 	private val lastKnownLocationProvider: LastKnownLocationProvider = LastKnownLocationProvider(context)
@@ -44,6 +40,7 @@ class HomeViewModel(
 	private val locationLabelExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 	private val _items = mutableStateListOf<HomeWallpaperItem>()
 	private var lastFocusedCategoryKey: String? = null
+	private var lastGpsRequestAtMs: Long = 0L
 
 	val items: List<HomeWallpaperItem>
 		get() = _items
@@ -86,16 +83,17 @@ class HomeViewModel(
 	)
 		private set
 
-	var startupLoading by mutableStateOf(true)
+	var startupLoading by mutableStateOf(false)
 		private set
 
-	var startupProgress by mutableStateOf(0f)
+	var startupProgress by mutableStateOf(1f)
 		private set
 
 	private var lastEffectiveLocation: SunLocation? = null
 	private var liveGpsLocation: SunLocation? = null
 	private var gpsPlaceLabel: String? = null
 	private var lastGpsPlaceKey: String? = null
+
 	private val sunTimesRefreshRunnable = object : Runnable {
 		override fun run() {
 			refreshSunTimes()
@@ -104,15 +102,8 @@ class HomeViewModel(
 	}
 
 	init {
-		snapshotProvider.setPerformanceMode(performanceMode)
-		snapshotProvider.setOnSnapshotUpdatedListener { _ ->
-			mainHandler.post {
-				refreshSnapshotPaths()
-			}
-		}
 		refreshLocationState()
 		seedInitialCatalog(daylight)
-		bootstrapCatalogAndSnapshots(daylight)
 		refreshSunTimes()
 		schedulePeriodicSunTimesRefresh()
 		Logger.event(
@@ -129,31 +120,27 @@ class HomeViewModel(
 		selectedWallpaperId = id
 		liveWallpaperId = id
 		Logger.event(tag, "wallpaper_selected", "id" to id)
-		snapshotProvider.accelerateSnapshotGeneration(listOf(configFor(id)))
 	}
 
 	fun activateLivePreview(id: String) {
 		if (liveWallpaperId == id) return
 		liveWallpaperId = id
 		Logger.event(tag, "live_preview_activated", "id" to id)
-		snapshotProvider.accelerateSnapshotGeneration(listOf(configFor(id)))
 	}
 
 	fun onCategoryFocused(categoryWallpaperIds: List<String>) {
 		if (categoryWallpaperIds.isEmpty()) return
-		val normalized = categoryWallpaperIds.distinct()
+		val normalized = categoryWallpaperIds
+			.distinct()
+			.take(CATEGORY_PRIORITIZE_LIMIT)
 		val key = normalized.joinToString(separator = "|")
 		if (key == lastFocusedCategoryKey) return
 		lastFocusedCategoryKey = key
-		val byId = _items.associateBy { it.config.id }
-		val focusedConfigs = normalized.mapNotNull { id -> byId[id]?.config }
-		if (focusedConfigs.isEmpty()) return
 		Logger.event(
 			tag,
 			"category_focus_prioritize",
-			"wallpaperCount" to focusedConfigs.size
+			"wallpaperCount" to normalized.size
 		)
-		snapshotProvider.prioritizeSnapshotGeneration(focusedConfigs)
 	}
 
 	fun clearLivePreview() {
@@ -195,7 +182,6 @@ class HomeViewModel(
 		if (performanceMode == mode) return
 		performanceMode = mode
 		settingsRepository.setPerformanceMode(mode)
-		snapshotProvider.setPerformanceMode(mode)
 		Logger.event(tag, "performance_mode_updated", "mode" to mode)
 	}
 
@@ -225,6 +211,7 @@ class HomeViewModel(
 		runCatching {
 			systemLocationEnabled = runCatching { lastKnownLocationProvider.isLocationEnabled() }
 				.getOrDefault(false)
+
 			if (locationMode != LocationMode.GPS) {
 				liveGpsLocation = null
 				val lastGps = runCatching {
@@ -242,9 +229,11 @@ class HomeViewModel(
 				}
 				return
 			}
+
 			if (!systemLocationEnabled) {
 				liveGpsLocation = null
 			}
+
 			val liveGps = if (systemLocationEnabled) {
 				liveGpsLocation ?: runCatching {
 					lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
@@ -276,7 +265,6 @@ class HomeViewModel(
 				"label" to locationLabel
 			)
 		}.onFailure {
-			// Safety fallback to avoid crashes during location/provider transitions.
 			liveGpsLocation = null
 			gpsLocationAvailable = false
 			locationLabel = "${manualCity.name} (Default)"
@@ -296,7 +284,7 @@ class HomeViewModel(
 				"mode" to locationMode
 			)
 			if (locationMode != LocationMode.GPS) return
-			if (!before && systemLocationEnabled) {
+			if (systemLocationEnabled && (!before || !gpsLocationAvailable || liveGpsLocation == null)) {
 				requestImmediateGpsLocation()
 			}
 			if (before != systemLocationEnabled) {
@@ -322,7 +310,6 @@ class HomeViewModel(
 
 	fun release() {
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
-		snapshotProvider.setOnSnapshotUpdatedListener(null)
 		catalogExecutor.shutdownNow()
 		locationLabelExecutor.shutdownNow()
 		sunTimesRepository.release()
@@ -353,77 +340,10 @@ class HomeViewModel(
 		}
 	}
 
-	private fun bootstrapCatalogAndSnapshots(initialDaylight: SunDaylight) {
-		catalogExecutor.execute {
-			applySnapshotStorageMigrationIfNeeded()
-			val configs = WallpaperCatalog.buildConfigs(daylight = initialDaylight)
-			val startupOrderedConfigs = prioritizeForStartup(configs)
-			val criticalStartupConfigs = selectStartupCriticalConfigs(startupOrderedConfigs)
-			Logger.event(
-				tag,
-				"startup_snapshot_begin",
-				"totalConfigs" to configs.size,
-				"criticalConfigs" to criticalStartupConfigs.size
-			)
-			val fingerprint = buildCatalogFingerprint(configs)
-			val startupStartMs = SystemClock.elapsedRealtime()
-			val startupDeadlineMs = startupStartMs + STARTUP_MAX_WAIT_MS
-			publishStartupProgress(
-				configs = criticalStartupConfigs,
-				startMs = startupStartMs,
-				deadlineMs = startupDeadlineMs
-			)
-			while (
-				snapshotProvider.hasMissingSnapshots(criticalStartupConfigs) &&
-				SystemClock.elapsedRealtime() < startupDeadlineMs
-			) {
-				snapshotProvider.generateSnapshotsBlocking(
-					configs = criticalStartupConfigs,
-					timeoutMs = STARTUP_BLOCKING_CHUNK_MS,
-					strict = true
-				)
-				publishStartupProgress(
-					configs = criticalStartupConfigs,
-					startMs = startupStartMs,
-					deadlineMs = startupDeadlineMs
-				)
-			}
-
-			publishStartupProgress(
-				configs = criticalStartupConfigs,
-				startMs = startupStartMs,
-				deadlineMs = startupDeadlineMs
-			)
-			settingsRepository.setSnapshotCatalogFingerprint(fingerprint)
-			settingsRepository.setSnapshotBootstrapCompleted(true)
-
-			postCatalog(configs)
-			mainHandler.post {
-				startupProgress = 1f
-				startupLoading = false
-			}
-			Logger.event(
-				tag,
-				"startup_snapshot_done",
-				"elapsedMs" to (SystemClock.elapsedRealtime() - startupStartMs),
-				"hasMissing" to snapshotProvider.hasMissingSnapshots(configs)
-			)
-			if (snapshotProvider.hasMissingSnapshots(configs)) {
-				snapshotProvider.generateSnapshots(startupOrderedConfigs)
-			}
-		}
-	}
-
 	private fun seedInitialCatalog(currentDaylight: SunDaylight) {
 		val configs = WallpaperCatalog.buildConfigs(daylight = currentDaylight)
-		val mapped = configs.map { config ->
-			HomeWallpaperItem(
-				config = config,
-				snapshotPath = null
-			)
-		}
 		_items.clear()
-		_items.addAll(mapped)
+		_items.addAll(configs.map { config -> HomeWallpaperItem(config = config) })
 		if (selectedWallpaperId == null && _items.isNotEmpty()) {
 			selectedWallpaperId = _items.first().config.id
 		}
@@ -432,20 +352,12 @@ class HomeViewModel(
 	private fun rebuildCatalog(currentDaylight: SunDaylight) {
 		catalogExecutor.execute {
 			val configs = WallpaperCatalog.buildConfigs(daylight = currentDaylight)
-			if (snapshotProvider.hasMissingSnapshots(configs)) {
-				snapshotProvider.generateSnapshots(configs)
-			}
 			postCatalog(configs)
 		}
 	}
 
 	private fun postCatalog(configs: List<WallpaperConfig>) {
-		val mapped = configs.map { config ->
-			HomeWallpaperItem(
-				config = config,
-				snapshotPath = snapshotProvider.getSnapshotPath(config)
-			)
-		}
+		val mapped = configs.map { config -> HomeWallpaperItem(config = config) }
 		mainHandler.post {
 			_items.clear()
 			_items.addAll(mapped)
@@ -453,17 +365,6 @@ class HomeViewModel(
 				_items.any { it.config.id == selectedWallpaperId }
 			if (!selectedStillExists && _items.isNotEmpty()) {
 				selectedWallpaperId = _items.first().config.id
-			}
-		}
-	}
-
-	private fun refreshSnapshotPaths() {
-		if (_items.isEmpty()) return
-		_items.indices.forEach { index ->
-			val current = _items[index]
-			val latestPath = snapshotProvider.getSnapshotPath(current.config)
-			if (current.snapshotPath != latestPath) {
-				_items[index] = current.copy(snapshotPath = latestPath)
 			}
 		}
 	}
@@ -517,6 +418,9 @@ class HomeViewModel(
 
 	private fun requestImmediateGpsLocation() {
 		if (locationMode != LocationMode.GPS || !systemLocationEnabled) return
+		val now = SystemClock.elapsedRealtime()
+		if ((now - lastGpsRequestAtMs) < GPS_REQUEST_THROTTLE_MS) return
+		lastGpsRequestAtMs = now
 		Logger.d(tag, "requestImmediateGpsLocation started")
 		lastKnownLocationProvider.requestCurrentLocation(label = "gps_live") { location ->
 			mainHandler.post {
@@ -554,79 +458,6 @@ class HomeViewModel(
 		return String.format(Locale.US, "%.3f|%.3f", location.latitude, location.longitude)
 	}
 
-	private fun applySnapshotStorageMigrationIfNeeded() {
-		val currentVersion = settingsRepository.getSnapshotStorageVersion()
-		if (currentVersion >= SNAPSHOT_STORAGE_VERSION) return
-		Logger.event(
-			tag,
-			"snapshot_migration",
-			"fromVersion" to currentVersion,
-			"toVersion" to SNAPSHOT_STORAGE_VERSION
-		)
-		snapshotProvider.clearAllSnapshots()
-		settingsRepository.clearSnapshotBootstrapState()
-		settingsRepository.setSnapshotStorageVersion(SNAPSHOT_STORAGE_VERSION)
-	}
-
-	private fun publishStartupProgress(
-		configs: List<WallpaperConfig>,
-		startMs: Long,
-		deadlineMs: Long
-	) {
-		val progress = snapshotProvider.snapshotProgress(configs)
-		val now = SystemClock.elapsedRealtime()
-		val timeProgress = if (deadlineMs > startMs) {
-			((now - startMs).toFloat() / (deadlineMs - startMs).toFloat()).coerceIn(0f, 1f)
-		} else {
-			1f
-		}
-		val blended = maxOf(progress, timeProgress * STARTUP_TIME_PROGRESS_WEIGHT)
-		mainHandler.post {
-			startupProgress = blended.coerceIn(0f, 0.99f)
-		}
-	}
-
-	private fun prioritizeForStartup(configs: List<WallpaperConfig>): List<WallpaperConfig> {
-		if (configs.isEmpty()) return emptyList()
-		val grouped = configs.groupBy { config -> startupCategoryOf(config) }
-		val prioritized = buildList {
-			STARTUP_CATEGORY_ORDER.forEach { category ->
-				grouped[category]
-					.orEmpty()
-					.take(STARTUP_TOP_PER_CATEGORY)
-					.forEach { add(it) }
-			}
-		}
-		if (prioritized.isEmpty()) return configs
-		val prioritizedIds = prioritized.asSequence().map { it.id }.toSet()
-		val remaining = configs.filterNot { prioritizedIds.contains(it.id) }
-		return prioritized + remaining
-	}
-
-	private fun selectStartupCriticalConfigs(configs: List<WallpaperConfig>): List<WallpaperConfig> {
-		if (configs.isEmpty()) return emptyList()
-		val grouped = configs.groupBy { config -> startupCategoryOf(config) }
-		return buildList {
-			STARTUP_CATEGORY_ORDER.forEach { category ->
-				grouped[category]
-					.orEmpty()
-					.take(STARTUP_TOP_PER_CATEGORY)
-					.forEach { add(it) }
-			}
-		}.distinctBy { config -> config.id }
-	}
-
-	private fun startupCategoryOf(config: WallpaperConfig): StartupCategory {
-		return when {
-			config.id.startsWith("city_") -> StartupCategory.CITIES
-			config.id.startsWith("anime_") -> StartupCategory.ANIME
-			config.id.startsWith("solar_horizon") ||
-				config.id.startsWith("optical_sunset") ||
-				config.id.startsWith("mars") -> StartupCategory.LANDSCAPES
-			else -> StartupCategory.SPECIAL
-		}
-	}
-
 	private fun resolveDefaultCity(): SunLocation {
 		return SunLocation(
 			label = DEFAULT_CITY.label,
@@ -644,45 +475,16 @@ class HomeViewModel(
 		mainHandler.postDelayed(sunTimesRefreshRunnable, SUN_TIMES_REFRESH_INTERVAL_MS)
 	}
 
-	private fun buildCatalogFingerprint(configs: List<WallpaperConfig>): String {
-		val digest = MessageDigest.getInstance("SHA-1")
-		configs.forEach { config ->
-			digest.update(config.id.toByteArray(Charsets.UTF_8))
-			digest.update((config.shader.fragmentAssetPath ?: "").toByteArray(Charsets.UTF_8))
-			digest.update((config.shader.mode).toByteArray(Charsets.UTF_8))
-			digest.update((config.textures.backgroundTexture ?: "").toByteArray(Charsets.UTF_8))
-			digest.update((config.textures.sunTexture).toByteArray(Charsets.UTF_8))
-			digest.update((config.textures.moonTexture).toByteArray(Charsets.UTF_8))
-		}
-		return digest.digest().joinToString("") { "%02x".format(it) }
-	}
-
 	private fun Double.toDisplay(): String = String.format(Locale.US, "%.2f", this)
 
-	private enum class StartupCategory {
-		SPECIAL,
-		LANDSCAPES,
-		CITIES,
-		ANIME
-	}
-
 	companion object {
-		private val STARTUP_CATEGORY_ORDER = listOf(
-			StartupCategory.SPECIAL,
-			StartupCategory.LANDSCAPES,
-			StartupCategory.CITIES,
-			StartupCategory.ANIME
-		)
 		private val DEFAULT_CITY = SunLocation(
 			label = "default_city",
 			latitude = 41.0082,
 			longitude = 28.9784
 		)
 		private const val SUN_TIMES_REFRESH_INTERVAL_MS = 60L * 60L * 1000L
-		private const val STARTUP_MAX_WAIT_MS = 10_000L
-		private const val STARTUP_BLOCKING_CHUNK_MS = 500L
-		private const val STARTUP_TOP_PER_CATEGORY = 3
-		private const val STARTUP_TIME_PROGRESS_WEIGHT = 0.85f
-		private const val SNAPSHOT_STORAGE_VERSION = 7
+		private const val CATEGORY_PRIORITIZE_LIMIT = 24
+		private const val GPS_REQUEST_THROTTLE_MS = 1_500L
 	}
 }

@@ -102,12 +102,20 @@ class LastKnownLocationProvider(
 		}
 
 		try {
-				LocationManagerCompat.getCurrentLocation(
-					manager,
-					provider,
-					null as android.os.CancellationSignal?,
+			LocationManagerCompat.getCurrentLocation(
+				manager,
+				provider,
+				null as android.os.CancellationSignal?,
 				ContextCompat.getMainExecutor(appContext),
-				Consumer<Location> { location: Location ->
+				Consumer<Location?> { location: Location? ->
+					if (location == null) {
+						Logger.w(
+							"LocationProvider",
+							"getCurrentLocation returned null, fallback to last known"
+						)
+						onResult(getLastKnownLocation(label = label, allowWhenLocationDisabled = true))
+						return@Consumer
+					}
 					val resolved = SunLocation(
 						label = label,
 						latitude = location.latitude,

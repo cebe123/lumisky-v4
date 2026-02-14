@@ -76,7 +76,6 @@ dependencies {
 	implementation(project(":core"))
 	implementation(project(":engine"))
 	implementation(project(":wallpaper"))
-	implementation(project(":snapshot"))
 }
 
 val convertWallpaperTexturesToWebp by tasks.registering {

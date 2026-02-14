@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
@@ -24,24 +25,22 @@ import com.example.core.Logger
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppThemeMode
+import com.example.core.settings.LocationMode
 import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.ui.home.HomeScreen
 import com.example.lumisky.ui.settings.SettingsScreen
 import com.example.lumisky.ui.debug.FrameJankTelemetry
 import com.example.lumisky.ui.theme.LumiskyTheme
 import com.example.lumisky.viewmodel.HomeViewModel
-import com.example.snapshot.SnapshotProvider
 
 class MainActivity : AppCompatActivity() {
 
 	private val appSettingsRepository by lazy { AppSettingsRepository(applicationContext) }
 	private val wallpaperConfigStore by lazy { WallpaperConfigStore(applicationContext) }
-	private val snapshotProvider by lazy { SnapshotProvider(applicationContext) }
 	private var locationReceiverRegistered: Boolean = false
 	internal val homeViewModel by lazy {
 		HomeViewModel(
 			context = applicationContext,
-			snapshotProvider = snapshotProvider,
 			settingsRepository = appSettingsRepository
 		)
 	}
@@ -63,9 +62,6 @@ class MainActivity : AppCompatActivity() {
 		)
 		applyLanguage(appSettingsRepository.getLanguageTag())
 		super.onCreate(savedInstanceState)
-
-		snapshotProvider.warmUp()
-		Logger.d(TAG, "snapshotProvider warmed up")
 
 		setContent {
 			val darkTheme = when (homeViewModel.appThemeMode) {
@@ -128,6 +124,7 @@ class MainActivity : AppCompatActivity() {
 						gpsLocationAvailable = homeViewModel.gpsLocationAvailable,
 						systemLocationEnabled = homeViewModel.systemLocationEnabled,
 						onLocationModeChanged = { mode -> homeViewModel.updateLocationMode(mode) },
+						onRequestEnableSystemLocation = { openSystemLocationPanel() },
 						manualCity = homeViewModel.manualCity,
 						onManualCitySelected = { city -> homeViewModel.updateManualCity(city) },
 						languageTag = homeViewModel.languageTag,
@@ -152,6 +149,9 @@ class MainActivity : AppCompatActivity() {
 		FrameJankTelemetry.start(this, "MainActivity")
 		registerLocationModeReceiver()
 		homeViewModel.onSystemLocationProviderChanged()
+		if (homeViewModel.locationMode == LocationMode.GPS) {
+			homeViewModel.refreshLocationAndSunTimes()
+		}
 	}
 
 	override fun onStop() {
@@ -161,12 +161,19 @@ class MainActivity : AppCompatActivity() {
 		super.onStop()
 	}
 
+	override fun onResume() {
+		super.onResume()
+		homeViewModel.onSystemLocationProviderChanged()
+		if (homeViewModel.locationMode == LocationMode.GPS) {
+			homeViewModel.refreshLocationAndSunTimes()
+		}
+	}
+
 	override fun onDestroy() {
 		Logger.d(TAG, "onDestroy")
 		FrameJankTelemetry.stop("MainActivity")
 		unregisterLocationModeReceiver()
 		homeViewModel.release()
-		snapshotProvider.release()
 		super.onDestroy()
 	}
 
@@ -227,6 +234,16 @@ class MainActivity : AppCompatActivity() {
 				overridePendingTransition(0, 0)
 				Logger.d(TAG, "opened ACTION_LIVE_WALLPAPER_CHOOSER")
 			}
+		}
+	}
+
+	private fun openSystemLocationPanel() {
+		val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+		runCatching {
+			startActivity(intent)
+			Logger.d(TAG, "opened system location panel")
+		}.onFailure {
+			Logger.w(TAG, "failed to open system location panel", it)
 		}
 	}
 

@@ -7,7 +7,6 @@ import android.opengl.GLUtils
 import android.os.SystemClock
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
-import com.example.engine.renderer.RenderMode
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -677,7 +676,7 @@ class PreviewSkyProgram {
 
 	private fun resolveLegacyTimeSeconds(state: RenderFrameState): Float {
 		val id = config.id.lowercase()
-		if (isWarrior(id) && (state.mode == RenderMode.PREVIEW || state.mode == RenderMode.FOCUS)) {
+		if (isWarrior(id)) {
 			return (SystemClock.elapsedRealtime() % LEGACY_REALTIME_WINDOW_MS).toFloat() / 1000f
 		}
 		return (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f

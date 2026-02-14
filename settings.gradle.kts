@@ -26,5 +26,4 @@ rootProject.name = "Lumisky"
 include(":app")
 include(":core")
 include(":engine")
-include(":snapshot")
 include(":wallpaper")

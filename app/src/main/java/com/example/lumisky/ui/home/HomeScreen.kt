@@ -1,16 +1,12 @@
 package com.example.lumisky.ui.home
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.PowerManager
 import android.opengl.GLSurfaceView
-import android.util.Base64
-import android.util.LruCache
 import android.view.Choreographer
 import android.view.View
 import android.view.WindowManager
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -49,7 +45,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
@@ -59,9 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -77,10 +70,10 @@ import com.example.lumisky.shader.RenderAssetCache
 import com.example.lumisky.ui.components.BottomNavBar
 import com.example.lumisky.viewmodel.HomeWallpaperItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
-import java.io.File
 import kotlin.math.abs
 
 private data class StoreWallpaperModel(
@@ -172,16 +165,39 @@ fun HomeScreen(
 	}
 
 	var focusCandidateId by remember { mutableStateOf<String?>(null) }
+	var lastDispatchedFocusId by remember { mutableStateOf<String?>(null) }
+	var lastCategoryDispatchKey by remember { mutableStateOf<String?>(null) }
 
-	LaunchedEffect(activeCategoryIds) {
-		if (activeCategoryIds.isNotEmpty()) {
-			onCategoryFocused(activeCategoryIds)
+	LaunchedEffect(activeCategoryIds, verticalState.isScrollInProgress) {
+		if (activeCategoryIds.isEmpty()) {
+			focusCandidateId = null
+			lastCategoryDispatchKey = null
+			return@LaunchedEffect
 		}
+		if (verticalState.isScrollInProgress) return@LaunchedEffect
+		delay(CATEGORY_FOCUS_DISPATCH_DEBOUNCE_MS)
+		if (verticalState.isScrollInProgress) return@LaunchedEffect
+		val limitedIds = activeCategoryIds.take(CATEGORY_FOCUS_MAX_ITEMS)
+		val dispatchKey = limitedIds.joinToString(separator = "|")
+		if (dispatchKey == lastCategoryDispatchKey) return@LaunchedEffect
+		lastCategoryDispatchKey = dispatchKey
+		onCategoryFocused(limitedIds)
 	}
 
 	LaunchedEffect(focusCandidateId) {
 		val candidate = focusCandidateId
-		if (candidate != null) onFocusReady(candidate)
+		if (candidate == null) {
+			if (lastDispatchedFocusId != null) {
+				lastDispatchedFocusId = null
+				onFocusCleared()
+			}
+			return@LaunchedEffect
+		}
+		if (candidate == lastDispatchedFocusId) return@LaunchedEffect
+		delay(FOCUS_DISPATCH_DEBOUNCE_MS)
+		if (focusCandidateId != candidate) return@LaunchedEffect
+		lastDispatchedFocusId = candidate
+		onFocusReady(candidate)
 	}
 
 	Scaffold(
@@ -319,8 +335,11 @@ private fun CategorySection(
 		}
 	}
 
-	LaunchedEffect(isCategoryActive, centeredWallpaperId, wallpapers) {
-		if (!isCategoryActive) return@LaunchedEffect
+	LaunchedEffect(isCategoryActive, centeredWallpaperId, wallpapers, rowState.isScrollInProgress) {
+		if (!isCategoryActive) {
+			return@LaunchedEffect
+		}
+		if (rowState.isScrollInProgress) return@LaunchedEffect
 		val focused = centeredWallpaperId ?: wallpapers.firstOrNull()?.id ?: return@LaunchedEffect
 		onFocusCandidate(focused)
 		val focusedIndex = wallpapers.indexOfFirst { it.id == focused }
@@ -402,10 +421,7 @@ private fun WallpaperCard(
 		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
 	) {
 		Box(modifier = Modifier.fillMaxSize()) {
-			SnapshotThumbnail(
-				path = item.snapshotPath,
-				modifier = Modifier.fillMaxSize()
-			)
+			PreviewPlaceholderFrame(modifier = Modifier.fillMaxSize())
 			if (isLive || isPrepared) {
 				FocusedWallpaperPreview(
 					config = item.config,
@@ -596,29 +612,7 @@ private class HomeFocusPreviewView(
 }
 
 @Composable
-private fun SnapshotThumbnail(
-	path: String?,
-	modifier: Modifier = Modifier
-) {
-	val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, key1 = path) {
-		value = withContext(Dispatchers.IO) {
-			decodeSnapshot(path)
-		}
-	}
-	if (bitmap != null) {
-		Image(
-			bitmap = bitmap!!.asImageBitmap(),
-			contentDescription = null,
-			modifier = modifier,
-			contentScale = ContentScale.Crop
-		)
-	} else {
-		SnapshotLoadingFrame(modifier = modifier)
-	}
-}
-
-@Composable
-private fun SnapshotLoadingFrame(modifier: Modifier = Modifier) {
+private fun PreviewPlaceholderFrame(modifier: Modifier = Modifier) {
 	Box(
 		modifier = modifier
 			.clip(RoundedCornerShape(16.dp))
@@ -727,35 +721,6 @@ private fun SnapshotLoadingFrame(modifier: Modifier = Modifier) {
 	}
 }
 
-private fun decodeSnapshot(path: String?) = when {
-	path.isNullOrBlank() -> null
-	path.startsWith("data:image") -> decodeDataUri(path)
-	else -> decodeFile(path)
-}
-
-private fun decodeFile(path: String) = runCatching {
-	val file = File(path)
-	if (!file.exists()) return@runCatching null
-	SnapshotBitmapMemoryCache.get(file.absolutePath)?.let { cached ->
-		return@runCatching cached
-	}
-	val options = BitmapFactory.Options().apply {
-		inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
-	}
-	val decoded = BitmapFactory.decodeFile(file.absolutePath, options)
-	if (decoded != null) {
-		SnapshotBitmapMemoryCache.put(file.absolutePath, decoded)
-	}
-	decoded
-}.getOrNull()
-
-private fun decodeDataUri(dataUri: String) = runCatching {
-	val payload = dataUri.substringAfter("base64,", missingDelimiterValue = "")
-	if (payload.isBlank()) return@runCatching null
-	val bytes = Base64.decode(payload, Base64.DEFAULT)
-	BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-}.getOrNull()
-
 private fun resolveDisplayRefreshRate(context: Context): Int {
 	val refresh = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
 		context.display?.refreshRate
@@ -795,29 +760,9 @@ private fun findCenteredIndex(listState: LazyListState): Int {
 	return closestItem?.index ?: -1
 }
 
-private object SnapshotBitmapMemoryCache {
-	private const val MAX_CACHE_BYTES = 24 * 1024 * 1024
-	private val cache = object : LruCache<String, android.graphics.Bitmap>(MAX_CACHE_BYTES) {
-		override fun sizeOf(
-			key: String,
-			value: android.graphics.Bitmap
-		): Int {
-			return value.byteCount
-		}
-	}
-
-	@Synchronized
-	fun get(path: String): android.graphics.Bitmap? = cache.get(path)
-
-	@Synchronized
-	fun put(
-		path: String,
-		bitmap: android.graphics.Bitmap
-	) {
-		cache.put(path, bitmap)
-	}
-}
-
 private const val DEFAULT_REFRESH_RATE = 60
 private const val MAX_REFRESH_RATE = 120
 private const val HOME_FOCUS_CATCHUP_SECONDS = 4f
+private const val CATEGORY_FOCUS_DISPATCH_DEBOUNCE_MS = 200L
+private const val CATEGORY_FOCUS_MAX_ITEMS = 24
+private const val FOCUS_DISPATCH_DEBOUNCE_MS = 160L

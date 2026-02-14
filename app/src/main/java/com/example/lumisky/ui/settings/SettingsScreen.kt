@@ -80,6 +80,7 @@ fun SettingsScreen(
 	gpsLocationAvailable: Boolean,
 	systemLocationEnabled: Boolean,
 	onLocationModeChanged: (LocationMode) -> Unit,
+	onRequestEnableSystemLocation: () -> Unit,
 	manualCity: ManualCity,
 	onManualCitySelected: (ManualCity) -> Unit,
 	languageTag: String,
@@ -103,6 +104,9 @@ fun SettingsScreen(
 	) { granted ->
 		if (granted) {
 			onLocationModeChanged(LocationMode.GPS)
+			if (!systemLocationEnabled) {
+				onRequestEnableSystemLocation()
+			}
 			onRefreshGpsState()
 		}
 	}
@@ -183,6 +187,9 @@ fun SettingsScreen(
 									) == PackageManager.PERMISSION_GRANTED
 									if (hasPermission) {
 										onLocationModeChanged(LocationMode.GPS)
+										if (!systemLocationEnabled) {
+											onRequestEnableSystemLocation()
+										}
 										onRefreshGpsState()
 									} else {
 										permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
