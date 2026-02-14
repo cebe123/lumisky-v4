@@ -1,5 +1,6 @@
 package com.example.core.location
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -38,6 +39,7 @@ class LastKnownLocationProvider(
 			}
 	}
 
+	@SuppressLint("MissingPermission")
 	fun getLastKnownLocation(
 		label: String = "gps_last_known",
 		allowWhenLocationDisabled: Boolean = false
@@ -77,6 +79,7 @@ class LastKnownLocationProvider(
 		return resolved
 	}
 
+	@SuppressLint("MissingPermission")
 	fun requestCurrentLocation(
 		label: String = "gps_live",
 		onResult: (SunLocation?) -> Unit

@@ -26,4 +26,17 @@
     <string name="language_title">Lingua</string>
     <string name="language_select">Seleziona Lingua</string>
     <string name="location_unknown">Sconosciuto</string>
+    <string name="performance_mode_title">Performance Mode</string>
+    <string name="performance_mode_auto">Auto</string>
+    <string name="performance_mode_smooth">Smooth</string>
+    <string name="performance_mode_battery">Battery</string>
+    <string name="cat_special">Special</string>
+    <string name="cat_landscapes">Landscapes</string>
+    <string name="cat_cities">Cities</string>
+    <string name="cat_space">Space &amp; 4K</string>
+    <string name="cat_abstract">Anime</string>
+    <string name="cat_nature">Nature</string>
+    <string name="coming_soon">COMING SOON</string>
+    <string name="coming_soon_desc">Something exciting is on the way!</string>
 </resources>
+

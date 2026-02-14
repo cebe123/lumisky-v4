@@ -531,6 +531,7 @@ private class HomeFocusPreviewView(
 	private var playbackEnabled: Boolean = false
 	private var lastRenderFrameNs: Long = 0L
 	private var frameCallbackPosted: Boolean = false
+	private var warmupFramesRemaining: Int = 0
 	private val frameTicker = object : Choreographer.FrameCallback {
 		override fun doFrame(frameTimeNanos: Long) {
 			frameCallbackPosted = false
@@ -538,6 +539,9 @@ private class HomeFocusPreviewView(
 			if (frameTimeNanos - lastRenderFrameNs >= minIntervalNs) {
 				requestRender()
 				lastRenderFrameNs = frameTimeNanos
+				if (warmupFramesRemaining > 0) {
+					warmupFramesRemaining--
+				}
 			}
 			if (shouldScheduleFrame()) {
 				postFrameCallbackIfNeeded()
@@ -553,7 +557,10 @@ private class HomeFocusPreviewView(
 
 	fun setPlaybackEnabled(enabled: Boolean) {
 		if (playbackEnabled == enabled) {
-			if (enabled && shouldScheduleFrame()) {
+			if (enabled && windowVisibility == View.VISIBLE) {
+				if (warmupFramesRemaining < FOCUS_ENABLE_WARMUP_FRAMES) {
+					warmupFramesRemaining = FOCUS_ENABLE_WARMUP_FRAMES
+				}
 				postFrameCallbackIfNeeded()
 			}
 			return
@@ -569,9 +576,11 @@ private class HomeFocusPreviewView(
 			}
 		}
 		if (enabled && windowVisibility == View.VISIBLE) {
+			warmupFramesRemaining = FOCUS_ENABLE_WARMUP_FRAMES
 			lastRenderFrameNs = 0L
 			postFrameCallbackIfNeeded()
 		} else {
+			warmupFramesRemaining = 0
 			removeFrameCallback()
 		}
 	}
@@ -603,7 +612,8 @@ private class HomeFocusPreviewView(
 	}
 
 	private fun shouldScheduleFrame(): Boolean {
-		return windowVisibility == View.VISIBLE && playbackEnabled && renderer.shouldContinueRendering()
+		if (windowVisibility != View.VISIBLE || !playbackEnabled) return false
+		return renderer.shouldContinueRendering() || warmupFramesRemaining > 0
 	}
 
 	private fun postFrameCallbackIfNeeded() {
@@ -616,6 +626,10 @@ private class HomeFocusPreviewView(
 		if (!frameCallbackPosted) return
 		frameCallbackPosted = false
 		Choreographer.getInstance().removeFrameCallback(frameTicker)
+	}
+
+	private companion object {
+		private const val FOCUS_ENABLE_WARMUP_FRAMES = 6
 	}
 }
 
