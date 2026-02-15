@@ -63,18 +63,22 @@ class WallpaperConfigStore(
 	) {
 		if (preferences == null) return
 		runCatching {
-			preferences.edit()
+			val editor = preferences.edit()
 				.putString(KEY_SELECTED_CONFIG_JSON, encoded)
-				.apply()
+			if (!editor.commit()) {
+				editor.apply()
+			}
 		}
 	}
 
 	private fun removeEncoded(preferences: SharedPreferences?) {
 		if (preferences == null) return
 		runCatching {
-			preferences.edit()
+			val editor = preferences.edit()
 				.remove(KEY_SELECTED_CONFIG_JSON)
-				.apply()
+			if (!editor.commit()) {
+				editor.apply()
+			}
 		}
 	}
 

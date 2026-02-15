@@ -36,6 +36,17 @@ class WallpaperRenderController(
 			renderHandler?.postDelayed(this, PREVIEW_FRAME_INTERVAL_MS)
 		}
 	}
+	private val continuousFrameTicker = object : Runnable {
+		override fun run() {
+			if (!visible || !surfaceAttached || previewMode) return
+			if (!renderEngine.requiresContinuousRendering()) return
+			renderContinuousScene()
+			renderHandler?.postDelayed(
+				this,
+				renderEngine.continuousFrameIntervalMs().coerceAtLeast(1L)
+			)
+		}
+	}
 
 	fun onCreate() {
 		if (renderThread != null) return
@@ -54,10 +65,11 @@ class WallpaperRenderController(
 	fun onSurfaceCreated(holder: SurfaceHolder) {
 		surfaceAttached = true
 		pendingFullRedraw = true
+		updateSchedulerState()
 		postRenderTask {
 			renderEngine.attachSurface(holder)
 			if (visible) {
-				updatePreviewLoopLocked()
+				updateRenderLoopsLocked()
 				renderCurrentScene(force = true)
 			}
 		}
@@ -65,40 +77,36 @@ class WallpaperRenderController(
 
 	fun onVisibilityChanged(value: Boolean) {
 		visible = value
+		updateSchedulerState()
 		if (value) {
-			if (previewMode) {
-				scheduler.stop()
-			} else {
-				scheduler.start { onMinuteTick() }
-			}
 			if (surfaceAttached) {
 				postRenderTask {
-					updatePreviewLoopLocked()
+					updateRenderLoopsLocked()
 					renderCurrentScene(force = true)
 				}
 			}
 		} else {
-			scheduler.stop()
 			postRenderTask {
-				stopPreviewLoopLocked()
+				stopRenderLoopsLocked()
 			}
 		}
 	}
 
 	fun onSurfaceDestroyed() {
-		scheduler.stop()
 		surfaceAttached = false
 		pendingFullRedraw = true
+		updateSchedulerState()
 		postRenderTask {
-			stopPreviewLoopLocked()
+			stopRenderLoopsLocked()
 			renderEngine.detachSurface()
 		}
 	}
 
 	fun setPreviewMode(enabled: Boolean) {
 		previewMode = enabled
+		updateSchedulerState()
 		postRenderTask {
-			updatePreviewLoopLocked()
+			updateRenderLoopsLocked()
 		}
 	}
 
@@ -113,10 +121,12 @@ class WallpaperRenderController(
 			pendingConfig = config
 			return
 		}
+		updateSchedulerState()
 		handler.post {
 			renderEngine.setConfig(config)
 			pendingConfig = null
 			if (visible && surfaceAttached) {
+				updateRenderLoopsLocked()
 				renderCurrentScene(force = true)
 			}
 		}
@@ -125,7 +135,7 @@ class WallpaperRenderController(
 	fun onDestroy() {
 		scheduler.stop()
 		postRenderTaskBlocking {
-			stopPreviewLoopLocked()
+			stopRenderLoopsLocked()
 			renderEngine.release()
 		}
 		renderHandler?.removeCallbacksAndMessages(null)
@@ -153,6 +163,7 @@ class WallpaperRenderController(
 
 	private fun onMinuteTick() {
 		if (!visible || !surfaceAttached) return
+		if (previewMode || shouldUseContinuousRendering()) return
 		val hash = computeSceneHash()
 		if (hash == lastStateHash || hash == pendingStateHash) return
 		pendingStateHash = hash
@@ -199,6 +210,14 @@ class WallpaperRenderController(
 		}
 	}
 
+	private fun renderContinuousScene() {
+		renderEngine.renderFrame(force = true)
+		lastRenderElapsedMs = SystemClock.elapsedRealtime()
+		pendingFullRedraw = false
+		lastStateHash = computeSceneHash()
+		pendingStateHash = null
+	}
+
 	private fun shouldSkipRender(force: Boolean, hash: Int): Boolean {
 		if (!force) {
 			return hash == lastStateHash
@@ -226,11 +245,37 @@ class WallpaperRenderController(
 		renderHandler?.post(task)
 	}
 
-	private fun updatePreviewLoopLocked() {
-		if (visible && surfaceAttached && previewMode) {
-			startPreviewLoopLocked()
+	private fun updateSchedulerState() {
+		if (!visible || !surfaceAttached) {
+			scheduler.stop()
+			return
+		}
+		if (previewMode || shouldUseContinuousRendering()) {
+			scheduler.stop()
 		} else {
-			stopPreviewLoopLocked()
+			scheduler.start { onMinuteTick() }
+		}
+	}
+
+	private fun shouldUseContinuousRendering(): Boolean {
+		return renderEngine.requiresContinuousRendering()
+	}
+
+	private fun updateRenderLoopsLocked() {
+		if (!visible || !surfaceAttached) {
+			stopRenderLoopsLocked()
+			return
+		}
+		if (previewMode) {
+			stopContinuousLoopLocked()
+			startPreviewLoopLocked()
+			return
+		}
+		stopPreviewLoopLocked()
+		if (renderEngine.requiresContinuousRendering()) {
+			startContinuousLoopLocked()
+		} else {
+			stopContinuousLoopLocked()
 		}
 	}
 
@@ -242,6 +287,21 @@ class WallpaperRenderController(
 
 	private fun stopPreviewLoopLocked() {
 		renderHandler?.removeCallbacks(previewFrameTicker)
+	}
+
+	private fun startContinuousLoopLocked() {
+		val handler = renderHandler ?: return
+		handler.removeCallbacks(continuousFrameTicker)
+		handler.post(continuousFrameTicker)
+	}
+
+	private fun stopContinuousLoopLocked() {
+		renderHandler?.removeCallbacks(continuousFrameTicker)
+	}
+
+	private fun stopRenderLoopsLocked() {
+		stopPreviewLoopLocked()
+		stopContinuousLoopLocked()
 	}
 
 	private fun postRenderTaskBlocking(task: () -> Unit) {

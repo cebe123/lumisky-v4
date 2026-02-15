@@ -24,15 +24,7 @@ object WallpaperCatalog {
 		if (count <= ordered.size) {
 			return ordered.take(count)
 		}
-
-		val first = ordered.first()
-		val tail = List(count - ordered.size) { index ->
-			first.copy(
-				id = "${first.id}_dup_${index + 1}",
-				name = first.name
-			)
-		}
-		return ordered + tail
+		return ordered
 	}
 
 	fun configById(

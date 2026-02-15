@@ -64,6 +64,30 @@ class WallpaperEglSession {
 		return EGL14.eglSwapBuffers(display, surface)
 	}
 
+	fun reconfigure(
+		config: WallpaperConfig,
+		fragmentShaderOverride: String? = null,
+		textureBytesLoader: ((String) -> ByteArray?)? = null
+	): Boolean {
+		if (display == EGL14.EGL_NO_DISPLAY ||
+			context == EGL14.EGL_NO_CONTEXT ||
+			surface == EGL14.EGL_NO_SURFACE
+		) {
+			return false
+		}
+		if (!makeCurrent()) return false
+		skyProgram.release()
+		skyProgram.configure(config, textureBytesLoader)
+		skyProgram.init(fragmentShaderOverride)
+		if (viewportWidth <= 0 || viewportHeight <= 0) {
+			queryViewportSize()
+		}
+		if (viewportWidth > 0 && viewportHeight > 0) {
+			skyProgram.setViewport(viewportWidth, viewportHeight)
+		}
+		return true
+	}
+
 	fun detachSurface() {
 		release()
 	}

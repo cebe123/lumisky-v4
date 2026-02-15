@@ -34,9 +34,11 @@
     <string name="cat_landscapes">Landscapes</string>
     <string name="cat_cities">Cities</string>
     <string name="cat_space">Space &amp; 4K</string>
-    <string name="cat_abstract">Anime</string>
+    <string name="cat_abstract">Anime</string>
+    <string name="cat_games">Игры</string>
     <string name="cat_nature">Nature</string>
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
 </resources>
+
 

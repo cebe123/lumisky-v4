@@ -1,5 +1,10 @@
 package com.example.wallpaper.service
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
 import com.example.core.Logger
@@ -20,10 +25,19 @@ open class SkyWallpaperService : WallpaperService() {
 			scheduler = MinuteTickScheduler(),
 			hasher = SceneStateHasher()
 		)
+		private var configRefreshReceiverRegistered: Boolean = false
+		private val configRefreshReceiver = object : BroadcastReceiver() {
+			override fun onReceive(context: Context?, intent: Intent?) {
+				if (intent?.action != ACTION_APPLY_STORED_WALLPAPER_CONFIG) return
+				Logger.d("SkyWallpaperService", "applyStoredConfig broadcast received")
+				applyStoredConfig()
+			}
+		}
 
 		override fun onCreate(surfaceHolder: SurfaceHolder) {
 			super.onCreate(surfaceHolder)
 			Logger.d("SkyWallpaperService", "Engine.onCreate")
+			registerConfigRefreshReceiver()
 			renderController.setPreviewMode(isPreview)
 			applyStoredConfig()
 			renderController.onCreate()
@@ -51,14 +65,43 @@ open class SkyWallpaperService : WallpaperService() {
 		}
 
 		override fun onDestroy() {
+			unregisterConfigRefreshReceiver()
 			renderController.onDestroy()
 			super.onDestroy()
 		}
 
 		private fun applyStoredConfig() {
 			configStore.loadSelected()?.let { config ->
+				Logger.event(
+					"SkyWallpaperService",
+					"apply_stored_config",
+					"id" to config.id,
+					"isPreview" to isPreview,
+					"sunrise" to config.daylight.sunriseMinute,
+					"sunset" to config.daylight.sunsetMinute
+				)
 				renderController.setConfig(config)
+			} ?: run {
+				Logger.w("SkyWallpaperService", "apply_stored_config skipped: no saved config")
 			}
+		}
+
+		private fun registerConfigRefreshReceiver() {
+			if (configRefreshReceiverRegistered) return
+			val filter = IntentFilter(ACTION_APPLY_STORED_WALLPAPER_CONFIG)
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+				registerReceiver(configRefreshReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+			} else {
+				@Suppress("DEPRECATION")
+				registerReceiver(configRefreshReceiver, filter)
+			}
+			configRefreshReceiverRegistered = true
+		}
+
+		private fun unregisterConfigRefreshReceiver() {
+			if (!configRefreshReceiverRegistered) return
+			runCatching { unregisterReceiver(configRefreshReceiver) }
+			configRefreshReceiverRegistered = false
 		}
 	}
 }

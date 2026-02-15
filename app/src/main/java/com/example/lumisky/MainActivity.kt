@@ -22,20 +22,37 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.example.core.Logger
+import com.example.core.api.SunDaylight
+import com.example.core.api.SunLocation
+import com.example.core.api.SunTimesRepository
+import com.example.core.location.LastKnownLocationProvider
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppThemeMode
+import com.example.core.settings.LocationMode
+import com.example.engine.config.DaylightConfig
+import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.ui.home.HomeScreen
 import com.example.lumisky.ui.settings.SettingsScreen
 import com.example.lumisky.ui.debug.FrameJankTelemetry
 import com.example.lumisky.ui.theme.LumiskyTheme
 import com.example.lumisky.viewmodel.HomeViewModel
+import com.example.wallpaper.service.ACTION_APPLY_STORED_WALLPAPER_CONFIG
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
 	private val appSettingsRepository by lazy { AppSettingsRepository(applicationContext) }
 	private val wallpaperConfigStore by lazy { WallpaperConfigStore(applicationContext) }
+	private val sunTimesRepository by lazy { SunTimesRepository() }
+	private val lastKnownLocationProvider by lazy { LastKnownLocationProvider(applicationContext) }
+	private val setWallpaperExecutor by lazy { Executors.newSingleThreadExecutor() }
+	@Volatile
+	private var applyingWallpaper: Boolean = false
 	private var locationReceiverRegistered: Boolean = false
 	internal val homeViewModel by lazy {
 		HomeViewModel(
@@ -160,6 +177,8 @@ class MainActivity : AppCompatActivity() {
 		Logger.d(TAG, "onDestroy")
 		FrameJankTelemetry.stop("MainActivity")
 		unregisterLocationModeReceiver()
+		setWallpaperExecutor.shutdownNow()
+		sunTimesRepository.release()
 		homeViewModel.release()
 		super.onDestroy()
 	}
@@ -198,9 +217,111 @@ class MainActivity : AppCompatActivity() {
 	}
 
 	private fun openWallpaperSetScreen(wallpaperId: String) {
-		val config = homeViewModel.configFor(wallpaperId)
-		wallpaperConfigStore.saveSelected(config)
-		Logger.event(TAG, "open_wallpaper_set", "id" to wallpaperId, "configName" to config.name)
+		val baseConfig = homeViewModel.configFor(wallpaperId)
+		Logger.event(TAG, "open_wallpaper_set", "id" to wallpaperId, "configName" to baseConfig.name)
+		applyWallpaperWithFreshSunTimes(baseConfig)
+	}
+
+	private fun applyWallpaperWithFreshSunTimes(baseConfig: WallpaperConfig) {
+		if (applyingWallpaper) {
+			Logger.w(TAG, "set wallpaper ignored, apply already in progress")
+			return
+		}
+		applyingWallpaper = true
+		Logger.event(TAG, "set_wallpaper_start", "id" to baseConfig.id)
+		setWallpaperExecutor.execute {
+			try {
+				val candidates = buildSunTimesCandidates()
+				Logger.event(
+					TAG,
+					"sunTimes_candidates",
+					"count" to candidates.size
+				)
+				val latch = CountDownLatch(1)
+				var resolvedDaylight = SunDaylight(
+					sunriseMinute = baseConfig.daylight.sunriseMinute,
+					sunsetMinute = baseConfig.daylight.sunsetMinute
+				)
+				Logger.event(TAG, "sunTimes_fetch_request", "policy" to "daily_location_swr")
+				sunTimesRepository.refreshAsyncWithCandidates(
+					candidates = candidates
+				) { fetched ->
+					resolvedDaylight = fetched
+					latch.countDown()
+				}
+				val completedInTime = latch.await(SET_WALLPAPER_REFRESH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+				Logger.event(
+					TAG,
+					"sunTimes_resolved",
+					"completedInTime" to completedInTime,
+					"sunrise" to resolvedDaylight.sunriseMinute,
+					"sunset" to resolvedDaylight.sunsetMinute,
+					"sunriseTime" to toClockLabel(resolvedDaylight.sunriseMinute),
+					"sunsetTime" to toClockLabel(resolvedDaylight.sunsetMinute)
+				)
+
+				val finalConfig = baseConfig.copy(
+					daylight = DaylightConfig(
+						sunriseMinute = resolvedDaylight.sunriseMinute,
+						sunsetMinute = resolvedDaylight.sunsetMinute
+					)
+				)
+				wallpaperConfigStore.saveSelected(finalConfig)
+				Logger.event(
+					TAG,
+					"wallpaper_config_saved",
+					"id" to finalConfig.id,
+					"sunrise" to finalConfig.daylight.sunriseMinute,
+					"sunset" to finalConfig.daylight.sunsetMinute,
+					"sunriseTime" to toClockLabel(finalConfig.daylight.sunriseMinute),
+					"sunsetTime" to toClockLabel(finalConfig.daylight.sunsetMinute)
+				)
+				notifyWallpaperConfigChanged()
+				runOnUiThread {
+					launchSystemWallpaperSetFlow()
+				}
+			} catch (t: Throwable) {
+				Logger.e(TAG, "applyWallpaperWithFreshSunTimes failed", t)
+			} finally {
+				applyingWallpaper = false
+				Logger.d(TAG, "set wallpaper flow finished")
+			}
+		}
+	}
+
+	private fun buildSunTimesCandidates(): List<SunLocation> {
+		val settings = appSettingsRepository.snapshot()
+		val manualLocation = SunLocation(
+			label = settings.manualCity.name,
+			latitude = settings.manualCity.latitude,
+			longitude = settings.manualCity.longitude
+		)
+		val defaultLocation = SunLocation(
+			label = "default_city",
+			latitude = AppSettingsDefaults.DEFAULT_CITY.latitude,
+			longitude = AppSettingsDefaults.DEFAULT_CITY.longitude
+		)
+
+		return buildList {
+			if (settings.locationMode == LocationMode.GPS) {
+				val liveGps = if (lastKnownLocationProvider.isLocationEnabled()) {
+					lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
+				} else {
+					null
+				}
+				val lastGps = lastKnownLocationProvider.getLastKnownLocation(
+					label = "gps_last",
+					allowWhenLocationDisabled = true
+				)
+				liveGps?.let { add(it) }
+				lastGps?.let { add(it) }
+			}
+			add(manualLocation)
+			add(defaultLocation)
+		}.distinctBy { "${it.latitude}|${it.longitude}" }
+	}
+
+	private fun launchSystemWallpaperSetFlow() {
 		val directIntent = Intent(ACTION_CHANGE_LIVE_WALLPAPER).apply {
 			putExtra(
 				EXTRA_LIVE_WALLPAPER_COMPONENT,
@@ -221,6 +342,18 @@ class MainActivity : AppCompatActivity() {
 				overridePendingTransition(0, 0)
 				Logger.d(TAG, "opened ACTION_LIVE_WALLPAPER_CHOOSER")
 			}
+		}
+	}
+
+	private fun notifyWallpaperConfigChanged() {
+		runCatching {
+			sendBroadcast(
+				Intent(ACTION_APPLY_STORED_WALLPAPER_CONFIG)
+					.setPackage(packageName)
+			)
+			Logger.d(TAG, "broadcasted wallpaper config update")
+		}.onFailure {
+			Logger.w(TAG, "failed to broadcast wallpaper config update", it)
 		}
 	}
 
@@ -249,7 +382,15 @@ class MainActivity : AppCompatActivity() {
 		Logger.event(TAG, "logger_configured", "debuggable" to debuggable)
 	}
 
+	private fun toClockLabel(minute: Int): String {
+		val normalized = minute.coerceIn(0, (24 * 60) - 1)
+		val hours = normalized / 60
+		val minutes = normalized % 60
+		return String.format(Locale.US, "%02d:%02d", hours, minutes)
+	}
+
 	companion object {
 		private const val TAG = "MainActivity"
+		private const val SET_WALLPAPER_REFRESH_TIMEOUT_MS = 1_800L
 	}
 }

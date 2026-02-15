@@ -7,11 +7,13 @@ import android.opengl.GLES20
 import android.opengl.GLUtils
 import android.os.SystemClock
 import com.example.engine.config.WallpaperConfig
+import com.example.engine.renderer.RenderMode
 import com.example.engine.renderer.RenderFrameState
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.PI
+import kotlin.math.floor
 import kotlin.math.sin
 
 class PreviewSkyProgram {
@@ -693,10 +695,34 @@ class PreviewSkyProgram {
 
 	private fun resolveLegacyTimeSeconds(state: RenderFrameState): Float {
 		val id = config.id.lowercase()
-		if (isWarrior(id)) {
-			return (SystemClock.elapsedRealtime() % LEGACY_REALTIME_WINDOW_MS).toFloat() / 1000f
+		if (!isWarrior(id)) {
+			return (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f
 		}
-		return (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f
+
+		return when (state.mode) {
+			RenderMode.FOCUS -> {
+				// Home screen: warrior textures run on real wall-clock time (no compressed timeline).
+				(System.currentTimeMillis() % MILLIS_PER_DAY).toFloat() / 1000f
+			}
+			RenderMode.PREVIEW -> {
+				// Set screen: match accelerated day progression and sample textures at 10 FPS.
+				val acceleratedSeconds = (state.frameTimeMillis % MILLIS_PER_DAY).toFloat() / 1000f
+				quantizeTimeSeconds(acceleratedSeconds, WARRIOR_TEXTURE_FPS)
+			}
+			RenderMode.WALLPAPER_SERVICE -> {
+				// Applied wallpaper: keep texture animation at fixed 10 FPS.
+				val realtimeSeconds =
+					(SystemClock.elapsedRealtime() % LEGACY_REALTIME_WINDOW_MS).toFloat() / 1000f
+				quantizeTimeSeconds(realtimeSeconds, WARRIOR_TEXTURE_FPS)
+			}
+			else -> (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f
+		}
+	}
+
+	private fun quantizeTimeSeconds(seconds: Float, fps: Float): Float {
+		if (fps <= 0f) return seconds
+		val frameStep = 1f / fps
+		return floor(seconds / frameStep) * frameStep
 	}
 
 	private fun isPixelArtTexture(path: String): Boolean {
@@ -788,8 +814,10 @@ class PreviewSkyProgram {
 		private const val SPRITE_VERTEX_CAPACITY = VERTEX_COUNT * SPRITE_STRIDE_FLOATS
 		private const val SPRITE_STRIDE_BYTES = SPRITE_STRIDE_FLOATS * FLOAT_SIZE_BYTES
 		private const val MINUTES_PER_DAY = 1440
+		private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
 		private const val LEGACY_TIME_WINDOW_MS = 100_000L
 		private const val LEGACY_REALTIME_WINDOW_MS = 1_000_000L
+		private const val WARRIOR_TEXTURE_FPS = 10f
 		private const val NIGHT_TRANSITION_AFTER_SUNSET_MIN = 20f
 		private const val NIGHT_TRANSITION_BEFORE_SUNRISE_MIN = 20f
 		private const val NIGHT_TRANSITION_BEFORE_SUNRISE_WIDE_MIN = 30f

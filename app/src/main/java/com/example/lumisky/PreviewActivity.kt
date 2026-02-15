@@ -27,9 +27,11 @@ import com.example.lumisky.data.WallpaperCatalog
 import com.example.lumisky.ui.debug.FrameJankTelemetry
 import com.example.lumisky.ui.preview.PreviewScreen
 import com.example.lumisky.ui.theme.LumiskyTheme
+import com.example.wallpaper.service.ACTION_APPLY_STORED_WALLPAPER_CONFIG
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.Locale
 
 class PreviewActivity : AppCompatActivity() {
 
@@ -168,30 +170,35 @@ class PreviewActivity : AppCompatActivity() {
 					add(manualLocation)
 					add(defaultLocation)
 				}.distinctBy { "${it.latitude}|${it.longitude}" }
-				Logger.event(
-					TAG,
-					"sunTimes_candidates",
-					"count" to candidates.size,
-					"locationMode" to settings.locationMode
-				)
+					Logger.event(
+						TAG,
+						"sunTimes_candidates",
+						"count" to candidates.size,
+						"locationMode" to settings.locationMode
+					)
 
-				val latch = CountDownLatch(1)
-				var resolvedDaylight = SunDaylight(
-					sunriseMinute = baseConfig.daylight.sunriseMinute,
-					sunsetMinute = baseConfig.daylight.sunsetMinute
-				)
-				sunTimesRepository.refreshAsyncWithCandidates(candidates) { fetched ->
-					resolvedDaylight = fetched
-					latch.countDown()
-				}
-				val completedInTime = latch.await(SET_WALLPAPER_REFRESH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-				Logger.event(
-					TAG,
-					"sunTimes_resolved",
-					"completedInTime" to completedInTime,
-					"sunrise" to resolvedDaylight.sunriseMinute,
-					"sunset" to resolvedDaylight.sunsetMinute
-				)
+					val latch = CountDownLatch(1)
+					var resolvedDaylight = SunDaylight(
+						sunriseMinute = baseConfig.daylight.sunriseMinute,
+						sunsetMinute = baseConfig.daylight.sunsetMinute
+					)
+					Logger.event(TAG, "sunTimes_fetch_request", "policy" to "daily_location_swr")
+					sunTimesRepository.refreshAsyncWithCandidates(
+						candidates = candidates
+					) { fetched ->
+						resolvedDaylight = fetched
+						latch.countDown()
+					}
+					val completedInTime = latch.await(SET_WALLPAPER_REFRESH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+					Logger.event(
+						TAG,
+						"sunTimes_resolved",
+						"completedInTime" to completedInTime,
+						"sunrise" to resolvedDaylight.sunriseMinute,
+						"sunset" to resolvedDaylight.sunsetMinute,
+						"sunriseTime" to toClockLabel(resolvedDaylight.sunriseMinute),
+						"sunsetTime" to toClockLabel(resolvedDaylight.sunsetMinute)
+					)
 
 				val finalConfig = baseConfig.copy(
 					daylight = DaylightConfig(
@@ -200,6 +207,7 @@ class PreviewActivity : AppCompatActivity() {
 					)
 				)
 				wallpaperConfigStore.saveSelected(finalConfig)
+				notifyWallpaperConfigChanged()
 				runOnUiThread {
 					val directIntent = Intent(ACTION_CHANGE_LIVE_WALLPAPER).apply {
 						putExtra(
@@ -231,6 +239,25 @@ class PreviewActivity : AppCompatActivity() {
 				Logger.d(TAG, "applyWallpaper finished")
 			}
 		}
+	}
+
+	private fun notifyWallpaperConfigChanged() {
+		runCatching {
+			sendBroadcast(
+				Intent(ACTION_APPLY_STORED_WALLPAPER_CONFIG)
+					.setPackage(packageName)
+			)
+			Logger.d(TAG, "broadcasted wallpaper config update")
+		}.onFailure {
+			Logger.w(TAG, "failed to broadcast wallpaper config update", it)
+		}
+	}
+
+	private fun toClockLabel(minute: Int): String {
+		val normalized = minute.coerceIn(0, (24 * 60) - 1)
+		val hours = normalized / 60
+		val minutes = normalized % 60
+		return String.format(Locale.US, "%02d:%02d", hours, minutes)
 	}
 
 	companion object {

@@ -58,6 +58,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppThemeMode
 import com.example.core.settings.LocationMode
 import com.example.core.settings.ManualCity
@@ -127,7 +128,8 @@ fun SettingsScreen(
 					}
 				},
 				colors = TopAppBarDefaults.topAppBarColors(
-					containerColor = MaterialTheme.colorScheme.background
+					containerColor = MaterialTheme.colorScheme.background,
+					scrolledContainerColor = MaterialTheme.colorScheme.background
 				)
 			)
 		},
@@ -506,18 +508,7 @@ private fun languageOptions(): Map<String, String> {
 }
 
 private fun cityOptions(): List<ManualCity> {
-	return listOf(
-		ManualCity("Istanbul", 41.0082, 28.9784),
-		ManualCity("Ankara", 39.9334, 32.8597),
-		ManualCity("Izmir", 38.4192, 27.1287),
-		ManualCity("Bursa", 40.1885, 29.0610),
-		ManualCity("Antalya", 36.8969, 30.7133),
-		ManualCity("London", 51.5074, -0.1278),
-		ManualCity("New York", 40.7128, -74.0060),
-		ManualCity("Tokyo", 35.6762, 139.6503),
-		ManualCity("Berlin", 52.5200, 13.4050),
-		ManualCity("Paris", 48.8566, 2.3522)
-	)
+	return AppSettingsDefaults.SUPPORTED_CITIES
 }
 
 private fun resolveAppVersionName(context: android.content.Context): String {

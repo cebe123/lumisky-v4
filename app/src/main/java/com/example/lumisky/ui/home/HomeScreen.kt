@@ -104,11 +104,13 @@ fun HomeScreen(
 	val landscapesCategory = androidx.compose.ui.res.stringResource(R.string.cat_landscapes)
 	val citiesCategory = androidx.compose.ui.res.stringResource(R.string.cat_cities)
 	val animeCategory = androidx.compose.ui.res.stringResource(R.string.cat_abstract)
+	val gamesCategory = androidx.compose.ui.res.stringResource(R.string.cat_games)
 	val orderedCategories = listOf(
 		specialCategory,
 		landscapesCategory,
 		citiesCategory,
-		animeCategory
+		animeCategory,
+		gamesCategory
 	)
 
 	val wallpapers = remember(
@@ -116,7 +118,8 @@ fun HomeScreen(
 		specialCategory,
 		landscapesCategory,
 		citiesCategory,
-		animeCategory
+		animeCategory,
+		gamesCategory
 	) {
 		items.map { item ->
 			StoreWallpaperModel(
@@ -127,7 +130,8 @@ fun HomeScreen(
 					specialCategory = specialCategory,
 					landscapesCategory = landscapesCategory,
 					citiesCategory = citiesCategory,
-					animeCategory = animeCategory
+					animeCategory = animeCategory,
+					gamesCategory = gamesCategory
 				),
 				item = item
 			)
@@ -759,11 +763,13 @@ private fun resolveCategory(
 	specialCategory: String,
 	landscapesCategory: String,
 	citiesCategory: String,
-	animeCategory: String
+	animeCategory: String,
+	gamesCategory: String
 ): String {
 	return when {
 		id.startsWith("city_") -> citiesCategory
 		id.startsWith("anime_") -> animeCategory
+		id == "warrior" || id.startsWith("game_") -> gamesCategory
 		id.startsWith("solar_horizon") || id.startsWith("optical_sunset") || id.startsWith("mars") ->
 			landscapesCategory
 		else -> specialCategory

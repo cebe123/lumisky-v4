@@ -35,6 +35,7 @@ object FrameJankTelemetry {
 	) {
 		private val handler = Handler(Looper.getMainLooper())
 		private val aggregator = FrameMetricsAggregator(FrameMetricsAggregator.TOTAL_DURATION)
+		private var lastPublishedTotalFrames: Long = 0L
 		private val ticker = object : Runnable {
 			override fun run() {
 				publishCurrent()
@@ -55,6 +56,9 @@ object FrameJankTelemetry {
 
 		private fun publishCurrent(metricsArray: Array<SparseIntArray>? = aggregator.metrics) {
 			val totals = computeTotals(metricsArray)
+			// Suppress telemetry spam when there are no new frames since last publish.
+			if (!hasNewFrames(totals.totalFrames)) return
+			lastPublishedTotalFrames = totals.totalFrames
 			Logger.event(
 				tag = "FrameJankTelemetry",
 				name = "jank_sample",
@@ -116,6 +120,15 @@ object FrameJankTelemetry {
 
 		private fun format(value: Double): String {
 			return String.format(Locale.US, "%.2f", value)
+		}
+
+		private fun hasNewFrames(currentTotalFrames: Long): Boolean {
+			if (currentTotalFrames <= 0L) return false
+			if (currentTotalFrames < lastPublishedTotalFrames) {
+				// Aggregator reset edge-case.
+				lastPublishedTotalFrames = 0L
+			}
+			return currentTotalFrames > lastPublishedTotalFrames
 		}
 	}
 

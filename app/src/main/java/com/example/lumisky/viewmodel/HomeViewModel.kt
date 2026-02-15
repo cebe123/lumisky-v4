@@ -13,6 +13,7 @@ import com.example.core.api.SunDaylight
 import com.example.core.api.SunLocation
 import com.example.core.api.SunTimesRepository
 import com.example.core.location.LastKnownLocationProvider
+import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppThemeMode
 import com.example.core.settings.LocationMode
@@ -101,12 +102,20 @@ class HomeViewModel(
 			schedulePeriodicSunTimesRefresh()
 		}
 	}
+	private val backupCityRefreshRunnable = object : Runnable {
+		override fun run() {
+			prefetchBackupCityCache()
+			schedulePeriodicBackupCityRefresh()
+		}
+	}
 
 	init {
 		refreshLocationState()
 		seedInitialCatalog(daylight)
 		refreshSunTimes()
+		prefetchBackupCityCache()
 		schedulePeriodicSunTimesRefresh()
+		schedulePeriodicBackupCityRefresh()
 		Logger.event(
 			tag = tag,
 			name = "init",
@@ -206,6 +215,7 @@ class HomeViewModel(
 		Logger.event(tag, "manual_city_updated", "city" to city.name)
 		refreshLocationState()
 		refreshSunTimes()
+		prefetchBackupCityCache()
 	}
 
 	fun refreshLocationState() {
@@ -324,6 +334,7 @@ class HomeViewModel(
 
 	fun release() {
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
+		mainHandler.removeCallbacks(backupCityRefreshRunnable)
 		catalogExecutor.shutdownNow()
 		locationLabelExecutor.shutdownNow()
 		sunTimesRepository.release()
@@ -489,6 +500,44 @@ class HomeViewModel(
 		mainHandler.postDelayed(sunTimesRefreshRunnable, SUN_TIMES_REFRESH_INTERVAL_MS)
 	}
 
+	private fun schedulePeriodicBackupCityRefresh() {
+		mainHandler.removeCallbacks(backupCityRefreshRunnable)
+		mainHandler.postDelayed(backupCityRefreshRunnable, BACKUP_CITY_REFRESH_INTERVAL_MS)
+	}
+
+	private fun prefetchBackupCityCache() {
+		val defaultCity = resolveDefaultCity()
+		val supportedCities = AppSettingsDefaults.SUPPORTED_CITIES.map { city ->
+			SunLocation(
+				label = city.name,
+				latitude = city.latitude,
+				longitude = city.longitude
+			)
+		}
+		val manual = SunLocation(
+			label = manualCity.name,
+			latitude = manualCity.latitude,
+			longitude = manualCity.longitude
+		)
+		val candidates = buildList {
+			add(defaultCity)
+			addAll(supportedCities)
+			add(manual)
+		}.distinctBy { candidate ->
+			"${candidate.latitude}|${candidate.longitude}"
+		}
+		Logger.event(
+			tag,
+			"backup_suntimes_prefetch_request",
+			"candidateCount" to candidates.size,
+			"intervalHours" to (BACKUP_CITY_REFRESH_INTERVAL_MS / (60L * 60L * 1000L))
+		)
+		sunTimesRepository.prefetchBackupAsync(
+			candidates = candidates,
+			minRefreshIntervalMs = BACKUP_CITY_REFRESH_INTERVAL_MS
+		)
+	}
+
 	private fun Double.toDisplay(): String = String.format(Locale.US, "%.2f", this)
 
 	companion object {
@@ -497,9 +546,10 @@ class HomeViewModel(
 			latitude = 41.0082,
 			longitude = 28.9784
 		)
-		private const val SUN_TIMES_REFRESH_INTERVAL_MS = 60L * 60L * 1000L
+		private const val SUN_TIMES_REFRESH_INTERVAL_MS = 3L * 60L * 60L * 1000L
 		private const val CATEGORY_PRIORITIZE_LIMIT = 24
 		private const val GPS_REQUEST_THROTTLE_MS = 1_500L
 		private const val FOREGROUND_LOCATION_REFRESH_STALE_MS = 1_500L
+		private const val BACKUP_CITY_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
 	}
 }

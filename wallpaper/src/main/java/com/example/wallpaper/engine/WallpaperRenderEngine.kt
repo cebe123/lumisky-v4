@@ -14,6 +14,7 @@ import com.example.wallpaper.render.WallpaperEglSession
 import com.example.wallpaper.render.SceneStateInput
 import com.example.wallpaper.render.WallpaperShaderAssetLoader
 import kotlin.math.max
+import java.util.Locale
 
 class WallpaperRenderEngine(
 	private val appContext: Context,
@@ -47,6 +48,13 @@ class WallpaperRenderEngine(
 	}
 
 	fun setConfig(value: WallpaperConfig) {
+		Logger.event(
+			TAG,
+			"set_config",
+			"id" to value.id,
+			"sunrise" to value.daylight.sunriseMinute,
+			"sunset" to value.daylight.sunsetMinute
+		)
 		config = value
 		skyEngine.setConfig(value)
 		previewLoopStartMillis = 0L
@@ -55,6 +63,33 @@ class WallpaperRenderEngine(
 			context = appContext,
 			assetPath = config.shader.fragmentAssetPath
 		)
+		holder?.let { surfaceHolder ->
+			val reconfigured = eglSession.reconfigure(
+				config = config,
+				fragmentShaderOverride = fragmentShaderOverride,
+				textureBytesLoader = { assetPath ->
+					runCatching {
+						appContext.assets.open(assetPath).use { it.readBytes() }
+					}.getOrNull()
+				}
+			)
+			if (!reconfigured) {
+				Logger.w(TAG, "EGL reconfigure failed on config change, attempting reattach")
+				val attached = eglSession.attach(
+					holder = surfaceHolder,
+					config = config,
+					fragmentShaderOverride = fragmentShaderOverride,
+					textureBytesLoader = { assetPath ->
+						runCatching {
+							appContext.assets.open(assetPath).use { it.readBytes() }
+						}.getOrNull()
+					}
+				)
+				if (!attached) {
+					Logger.e(TAG, "EGL reattach failed on config change")
+				}
+			}
+		}
 	}
 
 	fun attachSurface(surfaceHolder: SurfaceHolder) {
@@ -196,6 +231,20 @@ class WallpaperRenderEngine(
 
 	fun renderModeName(): String = renderMode.name
 
+	fun requiresContinuousRendering(): Boolean {
+		val configId = config.id.lowercase(Locale.US)
+		return DYNAMIC_RENDER_CONFIG_HINTS.any { hint -> configId.contains(hint) }
+	}
+
+	fun continuousFrameIntervalMs(): Long {
+		val configId = config.id.lowercase(Locale.US)
+		return if (configId.contains("warrior")) {
+			WARRIOR_CONTINUOUS_FRAME_INTERVAL_MS
+		} else {
+			DEFAULT_CONTINUOUS_FRAME_INTERVAL_MS
+		}
+	}
+
 	fun release() {
 		eglSession.release()
 		skyEngine.release()
@@ -206,6 +255,9 @@ class WallpaperRenderEngine(
 		private const val QUANTIZE_SCALE = 1000f
 		private const val ACTIVE_FLARE_THRESHOLD = 0.02f
 		private const val MIN_PREVIEW_LOOP_MS = 1000L
+		private val DYNAMIC_RENDER_CONFIG_HINTS = listOf("warrior")
+		private const val DEFAULT_CONTINUOUS_FRAME_INTERVAL_MS = 16L
+		private const val WARRIOR_CONTINUOUS_FRAME_INTERVAL_MS = 100L
 	}
 
 	private fun quantize(value: Float?): Int {
