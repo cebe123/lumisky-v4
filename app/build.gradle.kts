@@ -3,7 +3,6 @@ import org.gradle.api.tasks.Sync
 import java.io.File
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
-import javax.imageio.ImageWriter
 
 buildscript {
 	repositories {
@@ -140,7 +139,8 @@ val convertWallpaperTexturesToWebp by tasks.registering {
 				return@forEach
 			}
 
-			val writer = findWebpWriter()
+			val writer = ImageIO.getImageWritersByMIMEType("image/webp").asSequence().firstOrNull()
+				?: ImageIO.getImageWritersBySuffix("webp").asSequence().firstOrNull()
 			if (writer == null) {
 				throw GradleException(
 					"WebP writer not found. Ensure org.sejda.imageio:webp-imageio is available."
@@ -194,6 +194,8 @@ val prepareFilteredAssets by tasks.registering(Sync::class) {
 	group = "assets"
 	description = "Copies app assets for packaging without source raster textures."
 	dependsOn(convertWallpaperTexturesToWebp)
+	// Prefer checked-in .webp assets when both source and generated outputs exist.
+	duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
 	from(layout.projectDirectory.dir("src/main/assets")) {
 		exclude("**/*.png", "**/*.jpg", "**/*.jpeg")
 	}
@@ -207,9 +209,4 @@ tasks.matching { task ->
 	task.name.startsWith("merge") && task.name.endsWith("Assets")
 }.configureEach {
 	dependsOn(prepareFilteredAssets)
-}
-
-fun findWebpWriter(): ImageWriter? {
-	return ImageIO.getImageWritersByMIMEType("image/webp").asSequence().firstOrNull()
-		?: ImageIO.getImageWritersBySuffix("webp").asSequence().firstOrNull()
 }
