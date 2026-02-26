@@ -82,17 +82,22 @@ val convertWallpaperTexturesToWebp by tasks.registering {
 	group = "assets"
 	description = "Converts added wallpaper textures in assets to WebP."
 
-	val assetsDir = layout.projectDirectory.dir("src/main/assets")
-	val sourceTree = fileTree(assetsDir) {
+	val sourceAssetsDir = layout.projectDirectory.dir("src/main/assets").asFile
+	val convertedTexturesDir = layout.buildDirectory.dir("generated/convertedWallpaperTextures/main").get().asFile
+	val sourceTree = fileTree(sourceAssetsDir) {
 		include("**/*.png", "**/*.jpg", "**/*.jpeg")
 		exclude("**/shaders/**")
 	}
 
 	inputs.files(sourceTree)
-	outputs.dir(assetsDir)
+	outputs.dir(convertedTexturesDir)
 
 	doLast {
 		val files = sourceTree.files.sortedBy { it.absolutePath.lowercase() }
+		if (convertedTexturesDir.exists()) {
+			convertedTexturesDir.deleteRecursively()
+		}
+		convertedTexturesDir.mkdirs()
 		if (files.isEmpty()) {
 			logger.lifecycle("convertWallpaperTexturesToWebp: no source textures found.")
 			return@doLast
@@ -103,11 +108,9 @@ val convertWallpaperTexturesToWebp by tasks.registering {
 		var failed = 0
 
 		files.forEach { source ->
-			val target = File(source.parentFile, "${source.nameWithoutExtension}.webp")
-			if (target.exists() && target.length() > 0L && target.lastModified() >= source.lastModified()) {
-				skipped += 1
-				return@forEach
-			}
+			val relativePath = source.relativeTo(sourceAssetsDir).invariantSeparatorsPath
+			val relativeTargetPath = relativePath.substringBeforeLast('.') + ".webp"
+			val target = File(convertedTexturesDir, relativeTargetPath)
 
 			val image = runCatching { ImageIO.read(source) }.getOrNull()
 			if (image == null) {
@@ -173,6 +176,7 @@ val prepareFilteredAssets by tasks.registering(Sync::class) {
 	from(layout.projectDirectory.dir("src/main/assets")) {
 		exclude("**/*.png", "**/*.jpg", "**/*.jpeg")
 	}
+	from(layout.buildDirectory.dir("generated/convertedWallpaperTextures/main"))
 	into(filteredAssetsDir)
 }
 

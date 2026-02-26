@@ -46,6 +46,8 @@ class HomeViewModel(
 	private var refreshPipelineScheduled = false
 	private var refreshPipelineNeedsSunTimes = false
 	private var refreshPipelineNeedsGpsRequest = false
+	private var startupBackupPrefetchScheduled = false
+	private var startupBackupPrefetchCompleted = false
 
 	val items: List<HomeWallpaperItem>
 		get() = _items
@@ -100,6 +102,9 @@ class HomeViewModel(
 		}
 	}
 	private val startupBackupPrefetchRunnable = Runnable {
+		startupBackupPrefetchScheduled = false
+		if (startupBackupPrefetchCompleted) return@Runnable
+		startupBackupPrefetchCompleted = true
 		prefetchBackupCityCache(maxCandidateCount = BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT)
 	}
 	private val backupCityRefreshRunnable = object : Runnable {
@@ -128,7 +133,6 @@ class HomeViewModel(
 		refreshLocationState()
 		seedInitialCatalog(daylight)
 		refreshSunTimes()
-		scheduleStartupBackupPrefetch()
 		schedulePeriodicSunTimesRefresh()
 		schedulePeriodicBackupCityRefresh()
 		Logger.event(
@@ -171,6 +175,10 @@ class HomeViewModel(
 	fun clearLivePreview() {
 		liveWallpaperId = null
 		Logger.d(tag, "live preview cleared")
+	}
+
+	fun onUserInteraction() {
+		scheduleStartupBackupPrefetchIfNeeded(reason = "user_interaction")
 	}
 
 	fun updateAppThemeMode(mode: AppThemeMode) {
@@ -574,6 +582,14 @@ class HomeViewModel(
 	private fun scheduleStartupBackupPrefetch() {
 		mainHandler.removeCallbacks(startupBackupPrefetchRunnable)
 		mainHandler.postDelayed(startupBackupPrefetchRunnable, BACKUP_PREFETCH_STARTUP_DELAY_MS)
+	}
+
+	private fun scheduleStartupBackupPrefetchIfNeeded(reason: String) {
+		if (startupBackupPrefetchCompleted) return
+		if (startupBackupPrefetchScheduled) return
+		startupBackupPrefetchScheduled = true
+		Logger.d(tag, "startup backup prefetch armed reason=$reason delayMs=$BACKUP_PREFETCH_STARTUP_DELAY_MS")
+		scheduleStartupBackupPrefetch()
 	}
 
 	private fun prefetchBackupCityCache(maxCandidateCount: Int = Int.MAX_VALUE) {

@@ -6,6 +6,8 @@ import com.example.engine.config.CelestialConfig
 import com.example.engine.config.DaylightConfig
 import com.example.engine.config.HorizonConfig
 import com.example.engine.config.PathType
+import com.example.engine.config.RenderPolicy
+import com.example.engine.config.RuntimeRenderPolicy
 import com.example.engine.config.ShaderProfile
 import com.example.engine.config.SkyFeatureFlags
 import com.example.engine.config.WallpaperConfig
@@ -63,7 +65,8 @@ object WallpaperCatalog {
 			shader = ShaderProfile(
 				fragmentAssetPath = fragmentAssetPath,
 				mode = "external_theme"
-			)
+			),
+			runtimeRenderPolicy = runtimeRenderPolicy
 		)
 	}
 
@@ -83,7 +86,11 @@ object WallpaperCatalog {
 			lensFlareEnabled = true,
 			starsEnabled = true
 		),
-		val textures: WallpaperTextures = WallpaperTextures()
+		val textures: WallpaperTextures = WallpaperTextures(),
+		val runtimeRenderPolicy: RuntimeRenderPolicy = RuntimeRenderPolicy(
+			policy = RenderPolicy.MINUTE_TICK,
+			continuousFrameIntervalMs = 16L
+		)
 	)
 
 	// ThemeRepository order from D:\LiveWallpaper-v4
@@ -161,6 +168,10 @@ object WallpaperCatalog {
 			textures = WallpaperTextures(
 				backgroundTexture = "warrior/warrior1.webp",
 				flareTexture = "warrior/warrior2.webp"
+			),
+			runtimeRenderPolicy = RuntimeRenderPolicy(
+				policy = RenderPolicy.CONTINUOUS,
+				continuousFrameIntervalMs = 100L
 			)
 		),
 		ThemePreset(

@@ -122,6 +122,9 @@ internal object WallpaperConfigJsonCodec {
 	private const val KEY_SHADER = "shader"
 	private const val KEY_FRAGMENT_ASSET_PATH = "fragmentAssetPath"
 	private const val KEY_MODE = "mode"
+	private const val KEY_RUNTIME_RENDER_POLICY = "runtimeRenderPolicy"
+	private const val KEY_POLICY = "policy"
+	private const val KEY_CONTINUOUS_FRAME_INTERVAL_MS = "continuousFrameIntervalMs"
 
 	fun encode(config: WallpaperConfig): String {
 		return JSONObject().apply {
@@ -165,6 +168,13 @@ internal object WallpaperConfigJsonCodec {
 			put(KEY_SHADER, JSONObject().apply {
 				put(KEY_FRAGMENT_ASSET_PATH, config.shader.fragmentAssetPath ?: JSONObject.NULL)
 				put(KEY_MODE, config.shader.mode)
+			})
+			put(KEY_RUNTIME_RENDER_POLICY, JSONObject().apply {
+				put(KEY_POLICY, config.runtimeRenderPolicy.policy.name)
+				put(
+					KEY_CONTINUOUS_FRAME_INTERVAL_MS,
+					config.runtimeRenderPolicy.continuousFrameIntervalMs
+				)
 			})
 		}.toString()
 	}
@@ -253,6 +263,10 @@ internal object WallpaperConfigJsonCodec {
 			val mode = shader?.optString(KEY_MODE, defaults.shader.mode)?.ifBlank {
 				defaults.shader.mode
 			} ?: defaults.shader.mode
+			val runtimeRenderPolicy = decodeRuntimeRenderPolicy(
+				json = root.optJSONObject(KEY_RUNTIME_RENDER_POLICY),
+				configId = id
+			)
 
 			WallpaperConfig(
 				id = id,
@@ -285,7 +299,8 @@ internal object WallpaperConfigJsonCodec {
 				shader = ShaderProfile(
 					fragmentAssetPath = fragmentAssetPath,
 					mode = mode
-				)
+				),
+				runtimeRenderPolicy = runtimeRenderPolicy
 			)
 		}.getOrNull()
 	}
@@ -308,6 +323,36 @@ internal object WallpaperConfigJsonCodec {
 			sunsetColor = json.optInt(KEY_SUNSET_COLOR),
 			nightColor = json.optInt(KEY_NIGHT_COLOR)
 		)
+	}
+
+	private fun decodeRuntimeRenderPolicy(
+		json: JSONObject?,
+		configId: String
+	): RuntimeRenderPolicy {
+		if (json == null) {
+			return WallpaperConfig.legacyRuntimeRenderPolicy(configId)
+		}
+		val fallback = WallpaperConfig.legacyRuntimeRenderPolicy(configId)
+		val policy = parseRenderPolicy(
+			raw = json.optString(KEY_POLICY, fallback.policy.name),
+			fallback = fallback.policy
+		)
+		val intervalMs = json.optLong(
+			KEY_CONTINUOUS_FRAME_INTERVAL_MS,
+			fallback.continuousFrameIntervalMs
+		).coerceAtLeast(1L)
+		return RuntimeRenderPolicy(
+			policy = policy,
+			continuousFrameIntervalMs = intervalMs
+		)
+	}
+
+	private fun parseRenderPolicy(
+		raw: String?,
+		fallback: RenderPolicy
+	): RenderPolicy {
+		if (raw.isNullOrBlank()) return fallback
+		return runCatching { RenderPolicy.valueOf(raw) }.getOrElse { fallback }
 	}
 
 	private fun JSONObject.optNullableString(key: String): String? {

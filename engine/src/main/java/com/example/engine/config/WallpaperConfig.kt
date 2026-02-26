@@ -44,6 +44,17 @@ data class DaylightConfig(
 	val sunsetMinute: Int = 18 * 60
 )
 
+enum class RenderPolicy {
+	STATIC,
+	MINUTE_TICK,
+	CONTINUOUS
+}
+
+data class RuntimeRenderPolicy(
+	val policy: RenderPolicy = RenderPolicy.MINUTE_TICK,
+	val continuousFrameIntervalMs: Long = 16L
+)
+
 data class WallpaperConfig(
 	val id: String,
 	val name: String,
@@ -57,14 +68,28 @@ data class WallpaperConfig(
 	val daylight: DaylightConfig = DaylightConfig(),
 	val peakY: Float = 0.9f,
 	val belowHorizonOffset: Float = 0.1f,
-	val shader: ShaderProfile = ShaderProfile()
+	val shader: ShaderProfile = ShaderProfile(),
+	val runtimeRenderPolicy: RuntimeRenderPolicy = RuntimeRenderPolicy()
 ) {
 	companion object {
 		fun default(id: String = "default"): WallpaperConfig {
 			return WallpaperConfig(
 				id = id,
-				name = "Default Sky"
+				name = "Default Sky",
+				runtimeRenderPolicy = legacyRuntimeRenderPolicy(id)
 			)
+		}
+
+		fun legacyRuntimeRenderPolicy(configId: String): RuntimeRenderPolicy {
+			val normalized = configId.lowercase()
+			return if (normalized.contains("warrior")) {
+				RuntimeRenderPolicy(
+					policy = RenderPolicy.CONTINUOUS,
+					continuousFrameIntervalMs = 100L
+				)
+			} else {
+				RuntimeRenderPolicy(policy = RenderPolicy.MINUTE_TICK, continuousFrameIntervalMs = 16L)
+			}
 		}
 	}
 }

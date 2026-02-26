@@ -1,9 +1,9 @@
-package com.example.lumisky.shader
+package com.example.core.assets
 
 import android.content.Context
 
-object ShaderAssetLoader {
-	fun loadFragment(context: Context, assetPath: String?): String? {
+object AssetTextLoader {
+	fun load(context: Context, assetPath: String?): String? {
 		if (assetPath.isNullOrBlank()) return null
 		return runCatching {
 			context.assets.open(assetPath).bufferedReader().use { it.readText() }

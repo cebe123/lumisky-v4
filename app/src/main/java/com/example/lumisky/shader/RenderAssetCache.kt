@@ -2,6 +2,7 @@ package com.example.lumisky.shader
 
 import android.content.Context
 import android.util.LruCache
+import com.example.core.assets.AssetTextLoader
 import com.example.engine.config.WallpaperConfig
 
 object RenderAssetCache {
@@ -19,9 +20,7 @@ object RenderAssetCache {
 		synchronized(fragmentCache) {
 			fragmentCache.get(normalized)?.let { return it }
 		}
-		val loaded = runCatching {
-			context.assets.open(normalized).bufferedReader().use { it.readText() }
-		}.getOrNull() ?: return null
+		val loaded = AssetTextLoader.load(context, normalized) ?: return null
 		synchronized(fragmentCache) {
 			fragmentCache.put(normalized, loaded)
 		}

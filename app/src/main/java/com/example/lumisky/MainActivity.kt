@@ -162,6 +162,11 @@ class MainActivity : AppCompatActivity() {
 		homeViewModel.refreshOnForegroundIfStale()
 	}
 
+	override fun onUserInteraction() {
+		super.onUserInteraction()
+		homeViewModel.onUserInteraction()
+	}
+
 	override fun onStop() {
 		Logger.d(TAG, "onStop")
 		FrameJankTelemetry.stop("MainActivity")

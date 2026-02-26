@@ -6,6 +6,7 @@ import android.view.SurfaceHolder
 import com.example.core.Logger
 import com.example.core.perf.RenderStatsTracker
 import com.example.engine.SkyEngine
+import com.example.engine.config.RenderPolicy
 import com.example.engine.config.ShaderDefaults
 import com.example.engine.config.ShaderProfile
 import com.example.engine.config.WallpaperConfig
@@ -15,7 +16,6 @@ import com.example.wallpaper.render.WallpaperEglSession
 import com.example.wallpaper.render.SceneStateInput
 import com.example.wallpaper.render.WallpaperShaderAssetLoader
 import kotlin.math.max
-import java.util.Locale
 
 class WallpaperRenderEngine(
 	private val appContext: Context,
@@ -212,6 +212,10 @@ class WallpaperRenderEngine(
 			append('|')
 			append(config.shader.mode)
 			append('|')
+			append(config.runtimeRenderPolicy.policy)
+			append('|')
+			append(config.runtimeRenderPolicy.continuousFrameIntervalMs)
+			append('|')
 			append(config.daylight.sunriseMinute)
 			append('|')
 			append(config.daylight.sunsetMinute)
@@ -233,17 +237,11 @@ class WallpaperRenderEngine(
 	fun renderModeName(): String = renderMode.name
 
 	fun requiresContinuousRendering(): Boolean {
-		val configId = config.id.lowercase(Locale.US)
-		return DYNAMIC_RENDER_CONFIG_HINTS.any { hint -> configId.contains(hint) }
+		return config.runtimeRenderPolicy.policy == RenderPolicy.CONTINUOUS
 	}
 
 	fun continuousFrameIntervalMs(): Long {
-		val configId = config.id.lowercase(Locale.US)
-		return if (configId.contains("warrior")) {
-			WARRIOR_CONTINUOUS_FRAME_INTERVAL_MS
-		} else {
-			DEFAULT_CONTINUOUS_FRAME_INTERVAL_MS
-		}
+		return config.runtimeRenderPolicy.continuousFrameIntervalMs.coerceAtLeast(1L)
 	}
 
 	fun release() {
@@ -259,9 +257,6 @@ class WallpaperRenderEngine(
 		private const val QUANTIZE_SCALE = 1000f
 		private const val ACTIVE_FLARE_THRESHOLD = 0.02f
 		private const val MIN_PREVIEW_LOOP_MS = 1000L
-		private val DYNAMIC_RENDER_CONFIG_HINTS = listOf("warrior")
-		private const val DEFAULT_CONTINUOUS_FRAME_INTERVAL_MS = 16L
-		private const val WARRIOR_CONTINUOUS_FRAME_INTERVAL_MS = 100L
 		private const val MAX_TEXTURE_CACHE_BYTES = 12 * 1024 * 1024
 	}
 

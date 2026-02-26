@@ -1,12 +1,9 @@
 package com.example.lumisky.ui.home
 
 import android.content.Context
-import android.os.Build
 import android.os.PowerManager
 import android.opengl.GLSurfaceView
-import android.view.Choreographer
 import android.view.View
-import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -65,6 +62,8 @@ import com.example.engine.preview.PreviewGlRenderer
 import com.example.engine.renderer.RenderMode
 import com.example.lumisky.R
 import com.example.lumisky.shader.RenderAssetCache
+import com.example.lumisky.ui.common.ChoreographerFrameLoop
+import com.example.lumisky.ui.common.resolveDisplayRefreshRate
 import com.example.lumisky.ui.components.BottomNavBar
 import com.example.lumisky.viewmodel.HomeWallpaperItem
 import kotlinx.coroutines.Dispatchers
@@ -520,11 +519,9 @@ private class HomeFocusPreviewView(
 ) : GLSurfaceView(context) {
 	private var playbackEnabled: Boolean = false
 	private var lastRenderFrameNs: Long = 0L
-	private var frameCallbackPosted: Boolean = false
 	private var warmupFramesRemaining: Int = 0
-	private val frameTicker = object : Choreographer.FrameCallback {
-		override fun doFrame(frameTimeNanos: Long) {
-			frameCallbackPosted = false
+	private val frameLoop = ChoreographerFrameLoop(
+		onFrame = { frameTimeNanos ->
 			val minIntervalNs = renderer.nextFrameDelayMs() * 1_000_000L
 			if (frameTimeNanos - lastRenderFrameNs >= minIntervalNs) {
 				requestRender()
@@ -534,10 +531,11 @@ private class HomeFocusPreviewView(
 				}
 			}
 			if (shouldScheduleFrame()) {
-				postFrameCallbackIfNeeded()
+				frameLoop.postIfNeeded()
 			}
-		}
-	}
+		},
+		shouldContinue = { shouldScheduleFrame() }
+	)
 
 	init {
 		setEGLContextClientVersion(2)
@@ -551,7 +549,7 @@ private class HomeFocusPreviewView(
 				if (warmupFramesRemaining < FOCUS_ENABLE_WARMUP_FRAMES) {
 					warmupFramesRemaining = FOCUS_ENABLE_WARMUP_FRAMES
 				}
-				postFrameCallbackIfNeeded()
+				frameLoop.postIfNeeded()
 			}
 			return
 		}
@@ -568,10 +566,10 @@ private class HomeFocusPreviewView(
 		if (enabled && windowVisibility == View.VISIBLE) {
 			warmupFramesRemaining = FOCUS_ENABLE_WARMUP_FRAMES
 			lastRenderFrameNs = 0L
-			postFrameCallbackIfNeeded()
+			frameLoop.postIfNeeded()
 		} else {
 			warmupFramesRemaining = 0
-			removeFrameCallback()
+			frameLoop.remove()
 		}
 	}
 
@@ -580,21 +578,21 @@ private class HomeFocusPreviewView(
 		lastRenderFrameNs = 0L
 		requestRender()
 		if (shouldScheduleFrame()) {
-			postFrameCallbackIfNeeded()
+			frameLoop.postIfNeeded()
 		}
 	}
 
 	override fun onWindowVisibilityChanged(visibility: Int) {
 		super.onWindowVisibilityChanged(visibility)
 		if (visibility == View.VISIBLE && shouldScheduleFrame()) {
-			postFrameCallbackIfNeeded()
+			frameLoop.postIfNeeded()
 		} else {
-			removeFrameCallback()
+			frameLoop.remove()
 		}
 	}
 
 	override fun onDetachedFromWindow() {
-		removeFrameCallback()
+		frameLoop.remove()
 		runCatching {
 			queueEvent { renderer.release() }
 		}
@@ -604,18 +602,6 @@ private class HomeFocusPreviewView(
 	private fun shouldScheduleFrame(): Boolean {
 		if (windowVisibility != View.VISIBLE || !playbackEnabled) return false
 		return renderer.shouldContinueRendering() || warmupFramesRemaining > 0
-	}
-
-	private fun postFrameCallbackIfNeeded() {
-		if (frameCallbackPosted) return
-		frameCallbackPosted = true
-		Choreographer.getInstance().postFrameCallback(frameTicker)
-	}
-
-	private fun removeFrameCallback() {
-		if (!frameCallbackPosted) return
-		frameCallbackPosted = false
-		Choreographer.getInstance().removeFrameCallback(frameTicker)
 	}
 
 	private companion object {
@@ -733,17 +719,6 @@ private fun PreviewPlaceholderFrame(modifier: Modifier = Modifier) {
 	}
 }
 
-private fun resolveDisplayRefreshRate(context: Context): Int {
-	val refresh = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-		context.display?.refreshRate
-	} else {
-		val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-		@Suppress("DEPRECATION")
-		windowManager?.defaultDisplay?.refreshRate
-	} ?: DEFAULT_REFRESH_RATE.toFloat()
-	return refresh.toInt().coerceIn(DEFAULT_REFRESH_RATE, MAX_REFRESH_RATE)
-}
-
 private fun resolveCategory(
 	id: String,
 	specialCategory: String,
@@ -774,8 +749,6 @@ private fun findCenteredIndex(listState: LazyListState): Int {
 	return closestItem?.index ?: -1
 }
 
-private const val DEFAULT_REFRESH_RATE = 60
-private const val MAX_REFRESH_RATE = 120
 private const val HOME_FOCUS_CATCHUP_SECONDS = 4f
 private const val CATEGORY_FOCUS_MAX_ITEMS = 24
 private const val FOCUS_INIT_DELAY_MS = 100L
