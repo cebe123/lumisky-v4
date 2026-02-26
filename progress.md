@@ -12,6 +12,57 @@ Bu doküman, Lumisky projesini fazlara bölerek:
 
 adım adım ve kontrollü şekilde geliştirmek için hazırlanmıştır.
 
+## AGENTS.md Uyum Notları (Repo-Seviyesi Çalışma Kuralları)
+
+Bu plan uygulanırken aşağıdaki repo kuralları sabit kabul edilir:
+
+### Kaynak Gerçeklik (Source of Truth)
+
+- Modül kararlarında öncelik: `settings.gradle.kts` + gerçek kaynak ağacı
+- `docs/PROJECT_STRUCTURE.md` yalnızca yardımcı doküman; sapma olabilir
+
+### Modül Sınırları (Korunacak)
+
+- `app` -> UI / Activity / kullanıcı akışı / wallpaper seçimi
+- `core` -> shared helper / settings / location / API / logger
+- `engine` -> render logic / domain / GL çekirdeği
+- `wallpaper` -> `WallpaperService` lifecycle / render controller / EGL entegrasyonu
+
+Kural:
+- Faz çalışmalarında gereksiz çapraz-modül taşma yapılmayacak.
+
+### Wallpaper Service Mimari Kuralları (Korunacak)
+
+- Manifest servis sınıfı `com.example.wallpaper.SkyWallpaperService` wrapper olarak kalır
+- Gerçek implementasyon `wallpaper.service.SkyWallpaperService` içinde kalır
+- Wallpaper config apply akışı `WallpaperConfigStore` + `ACTION_APPLY_STORED_WALLPAPER_CONFIG` broadcast patternini korur
+- Ağır işler (sun-times fetch / wallpaper apply / benzeri IO) UI thread dışında kalır
+
+### Asset Pipeline Kuralları (Kritik)
+
+- `:app` içinde `preBuild -> prepareFilteredAssets -> convertWallpaperTexturesToWebp` zinciri korunur
+- Paketleme kaynağı `app/build/generated/filteredAssets/main` olur
+- `assets/shaders/**` texture conversion dışında kalır
+- `app/build/**` altındaki generated asset'ler elle düzenlenmez
+- Yeni raster texture eklendiğinde mümkünse `.webp` çıktısı üretilir ve doğrulanır
+
+### Kodlama Kuralları (Repo-Özel)
+
+- Yeni loglar için `com.example.core.Logger` kullanılır (`println` yok)
+- Ayarlar için doğrudan dağınık `SharedPreferences` erişimi açılmaz; `AppSettingsRepository` kullanılır
+- Android lifecycle register/unregister patternleri (özellikle receiver kayıtları ve API 33+ branch'leri) korunur
+- Kotlin/Gradle dosyalarında mevcut stil (çoğunlukla tab indentation) korunur
+
+### Doğrulama / Teslim Kuralı
+
+- Her önemli faz sonunda ilgili modülde en az build/test doğrulaması yapılır
+- Referans komutlar (PowerShell):
+  - `.\gradlew :engine:testDebugUnitTest`
+  - `.\gradlew :wallpaper:testDebugUnitTest`
+  - `.\gradlew :app:testDebugUnitTest`
+  - `.\gradlew :app:assembleDebug`
+- `build/`, `.gradle/`, `.idea/` çıktıları commit kapsamına alınmaz
+
 ## Repo İncelemesi Sonucu (Düzeltmeler + Tamamlanan Maddeler)
 
 ### Genel Mimari (Mevcut Durum)
@@ -211,6 +262,7 @@ Wallpaper başına bağımsız override yapılabilecek, ileriye dönük genişle
 - Shader uniform override alanı
 - Config codec migration (`WallpaperConfigJsonCodec`) geriye uyumluluk
 - Capabilities/performance policy alanları (`requiresContinuousRendering` yerine)
+- `WallpaperConfigStore` persist/decode akışını bozmadan migration yapmak
 
 ### Önerilen Yeni Alanlar (örnek)
 
@@ -238,6 +290,7 @@ Wallpaper başına bağımsız override yapılabilecek, ileriye dönük genişle
 - En az 2 wallpaper, kod değiştirmeden yalnız config override ile farklı güneş/moon davranışı verebilmeli
 - Eski persist edilmiş config decode olmaya devam etmeli
 - `requiresContinuousRendering` string-hint bağımlılığı kaldırılmalı veya deprecated olmalı
+- Config apply akışı (`WallpaperConfigStore` + broadcast) çalışmaya devam etmeli
 
 ### Tahmini Süre
 
@@ -260,6 +313,7 @@ Yeni wallpaper eklemeyi preset kodundan çıkarıp manifest tabanlı hale getirm
 - kategori/tag alanları
 - sürüm/hash alanları (gelecekte hibrit/remote için)
 - fallback: manifest bozuksa güvenli skip
+- mevcut asset pipeline (`prepareFilteredAssets` / WebP dönüşümü) ile uyumlu path kuralları
 
 ### Çıktılar
 
@@ -278,6 +332,7 @@ Yeni wallpaper eklemeyi preset kodundan çıkarıp manifest tabanlı hale getirm
 - Yeni bir wallpaper, sadece asset + manifest eklenerek listede görünebilmeli
 - Uygulama bozuk bir manifest yüzünden çökmeden diğer wallpaper’ları göstermeye devam etmeli
 - Home açılış süresi kabul edilebilir kalmalı (ölçüm yapılmış olmalı)
+- `app/build/generated/**` elle düzenleme gerektirmeyen bir içerik akışı tanımlanmış olmalı
 
 ### Tahmini Süre
 
@@ -297,6 +352,7 @@ Bulut, yağmur, kar, yıldız, sis gibi efektleri birbirini bozmadan ekleyebilec
 - Draw order / z-order sistemi
 - Capability flags + graceful degradation
 - Legacy shader temaları için compatibility katmanı
+- Modül sınırı korunumu (`engine` render logic, `wallpaper` service integration)
 
 ### Olası Mimari Parçalar
 
@@ -322,6 +378,7 @@ Bulut, yağmur, kar, yıldız, sis gibi efektleri birbirini bozmadan ekleyebilec
 - Bir wallpaper’da `clouds` açılıp diğerinde kapatıldığında başka temalar etkilenmemeli
 - Efekt ekleme işlemi tek bir monolitik shader dosyasını değiştirmeyi gerektirmemeli (en azından yeni sistemde)
 - Geçiş sonrası mevcut temaların büyük çoğunluğu render olmaya devam etmeli
+- Yeni debug/telemetry logları varsa `Logger` üzerinden olmalı
 
 ### Tahmini Süre
 
@@ -342,6 +399,7 @@ Düşük cihazlarda da stabil çalışan, batarya dostu ve ölçeklenebilir runt
 - home preview prewarm bütçesi ve cache limitleri
 - texture çözünürlük seçimi (DPI + device tier) aktif kullanımı
 - memory budget ve cache eviction tuning
+- Service lifecycle receiver/scheduler patternlerini koruyarak implementasyon
 
 ### Çıktılar
 
@@ -361,6 +419,7 @@ Düşük cihazlarda da stabil çalışan, batarya dostu ve ölçeklenebilir runt
 - static/minute-tick wallpaper’larda gereksiz continuous render kapalı
 - dynamic wallpaper’larda config’de tanımlı FPS cap uygulanıyor
 - ciddi jank/regression gözlenmiyor
+- `WallpaperService` lifecycle regressions (visible/surface/create/destroy) gözlenmiyor
 
 ### Tahmini Süre
 
@@ -415,6 +474,7 @@ Wallpaper davranışını çevresel bağlama (zaman, konum, hava durumu) göre g
 - hava durumu fallback stratejisi (offline-safe)
 - weather-based theme/effect mapping
 - izin/ayar UX’i
+- `AppSettingsRepository` merkezli ayar yönetimi korunumu
 
 ### Çıktılar
 
@@ -487,12 +547,14 @@ Performans ve kalite hedeflerini güvence altına alıp release’e hazır hale 
 - cihaz matrisi testleri
 - jank/battery smoke test checklist
 - crash/ANR odaklı hardening
+- Faz bazlı doğrulama komutlarının standardizasyonu (AGENTS.md komutları)
 
 ### Çıktılar
 
 - test coverage artışı (özellikle config/policy/celestial)
 - release checklist
 - known issues listesi
+- modül bazlı build/test komut listesi (PowerShell) release checklist içine ekli
 
 ### Riskler
 
@@ -524,6 +586,16 @@ Performans ve kalite hedeflerini güvence altına alıp release’e hazır hale 
 Not:
 - Teoride Faz 3 (modüler efekt sistemi) Faz 4’ten önce gibi görünür, fakat pratikte Faz 4’ün bir kısmı erken yapılırsa refactor sırasında performans regressions daha hızlı yakalanır.
 
+## Faz Uygularken Sabit Kurallar (Kısa Checklist)
+
+- Minimum kapsamlı değişiklik: ilgili modül içinde çöz, gerekmedikçe çapraz modüle yayma
+- `Logger` kullan, `println` ekleme
+- Ayarlar için `AppSettingsRepository` dışı dağınık `SharedPreferences` açma
+- Receiver register/unregister ve API 33+ branch patternlerini bozma
+- `WallpaperConfigStore` + broadcast apply akışını koru
+- `app/build/**` generated asset'leri elle düzenleme
+- Faz sonunda en az etkilenen modül build/test doğrulaması yap
+
 ## İlk Sprint İçin Net Görevler (Öneri)
 
 ### Sprint 1 (başlamak için en doğru yer)
@@ -546,4 +618,3 @@ Not:
 1. Override şeması JSON tabanlı mı başlasın, yoksa önce Kotlin data class + codec ile mi?
 2. Modüler efekt sistemi shader-pass tabanlı mı olsun, yoksa CPU update + sprite layer karışık mı?
 3. Weather entegrasyonu için ilk sağlayıcı stratejisi ne olacak (tam local mock / gerçek API / opsiyonel modül)?
-

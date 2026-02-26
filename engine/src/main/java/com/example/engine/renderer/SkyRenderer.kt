@@ -106,22 +106,22 @@ class SkyRenderer(
 		flareIntensity: Float,
 		preSunriseGlow: Float
 	): Int {
-		return listOf(
-			config.id,
-			mode.ordinal,
-			quantize(progress),
-			quantize(sunX),
-			quantize(sunY),
-			quantize(moonX),
-			quantize(moonY),
-			quantize(nightBlend),
-			quantize(flareIntensity),
-			quantize(preSunriseGlow),
-			config.features.atmosphereEnabled,
-			config.features.lensFlareEnabled,
-			config.features.starsEnabled,
-			skyColor
-		).hashCode()
+		var result = 17
+		result = 31 * result + config.id.hashCode()
+		result = 31 * result + mode.ordinal
+		result = 31 * result + quantize(progress)
+		result = 31 * result + quantize(sunX)
+		result = 31 * result + quantize(sunY)
+		result = 31 * result + quantize(moonX)
+		result = 31 * result + quantize(moonY)
+		result = 31 * result + quantize(nightBlend)
+		result = 31 * result + quantize(flareIntensity)
+		result = 31 * result + quantize(preSunriseGlow)
+		result = 31 * result + config.features.atmosphereEnabled.hashCode()
+		result = 31 * result + config.features.lensFlareEnabled.hashCode()
+		result = 31 * result + config.features.starsEnabled.hashCode()
+		result = 31 * result + skyColor
+		return result
 	}
 
 	private fun normalizedAltitude(y: Float): Float {

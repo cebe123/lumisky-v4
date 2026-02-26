@@ -6,6 +6,7 @@ import com.example.engine.config.WallpaperConfig
 
 object RenderAssetCache {
 	private val fragmentCache = object : LruCache<String, String>(MAX_FRAGMENT_ENTRIES) {}
+	private val resolvedTexturePathCache = object : LruCache<String, String>(MAX_RESOLVED_TEXTURE_PATH_ENTRIES) {}
 	private val textureCache = object : LruCache<String, ByteArray>(MAX_TEXTURE_CACHE_BYTES) {
 		override fun sizeOf(key: String, value: ByteArray): Int = value.size
 	}
@@ -60,12 +61,19 @@ object RenderAssetCache {
 		context: Context,
 		originalPath: String
 	): String {
+		synchronized(resolvedTexturePathCache) {
+			resolvedTexturePathCache.get(originalPath)?.let { return it }
+		}
 		val lower = originalPath.lowercase()
 		if (lower.endsWith(".webp")) return originalPath
 		val dot = originalPath.lastIndexOf('.')
 		if (dot < 0) return originalPath
 		val webpPath = "${originalPath.substring(0, dot)}.webp"
-		return if (assetExists(context, webpPath)) webpPath else originalPath
+		val resolved = if (assetExists(context, webpPath)) webpPath else originalPath
+		synchronized(resolvedTexturePathCache) {
+			resolvedTexturePathCache.put(originalPath, resolved)
+		}
+		return resolved
 	}
 
 	private fun assetExists(
@@ -73,14 +81,13 @@ object RenderAssetCache {
 		assetPath: String
 	): Boolean {
 		return runCatching {
-			context.assets.open(assetPath).use { input ->
-				input.read()
-			}
+			context.assets.open(assetPath).use { }
 			true
 		}.getOrDefault(false)
 	}
 
 	private const val MAX_FRAGMENT_ENTRIES = 24
+	private const val MAX_RESOLVED_TEXTURE_PATH_ENTRIES = 256
 	private const val MAX_TEXTURE_CACHE_BYTES = 28 * 1024 * 1024
 }
 

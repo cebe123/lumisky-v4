@@ -1,6 +1,7 @@
 package com.example.wallpaper.engine
 
 import android.content.Context
+import android.util.LruCache
 import android.view.SurfaceHolder
 import com.example.core.Logger
 import com.example.core.perf.RenderStatsTracker
@@ -28,10 +29,17 @@ class WallpaperRenderEngine(
 			mode = ShaderDefaults.DEFAULT_SHADER_MODE
 		)
 	)
+	private var sceneFingerprintCache: String = buildSceneFingerprint(config)
 	private var renderMode: RenderMode = RenderMode.WALLPAPER_SERVICE
 	private var fragmentShaderOverride: String? = null
 	private var previewLoopStartMillis: Long = 0L
 	private var previewLoopConfigId: String = config.id
+	private val textureBytesCache = object : LruCache<String, ByteArray>(MAX_TEXTURE_CACHE_BYTES) {
+		override fun sizeOf(key: String, value: ByteArray): Int = value.size
+	}
+	private val textureBytesLoader: (String) -> ByteArray? = { assetPath ->
+		loadTextureBytes(assetPath)
+	}
 	private val stats = RenderStatsTracker(
 		tag = TAG,
 		logEvery = 10
@@ -56,6 +64,7 @@ class WallpaperRenderEngine(
 			"sunset" to value.daylight.sunsetMinute
 		)
 		config = value
+		sceneFingerprintCache = buildSceneFingerprint(value)
 		skyEngine.setConfig(value)
 		previewLoopStartMillis = 0L
 		previewLoopConfigId = value.id
@@ -67,11 +76,7 @@ class WallpaperRenderEngine(
 			val reconfigured = eglSession.reconfigure(
 				config = config,
 				fragmentShaderOverride = fragmentShaderOverride,
-				textureBytesLoader = { assetPath ->
-					runCatching {
-						appContext.assets.open(assetPath).use { it.readBytes() }
-					}.getOrNull()
-				}
+				textureBytesLoader = textureBytesLoader
 			)
 			if (!reconfigured) {
 				Logger.w(TAG, "EGL reconfigure failed on config change, attempting reattach")
@@ -79,11 +84,7 @@ class WallpaperRenderEngine(
 					holder = surfaceHolder,
 					config = config,
 					fragmentShaderOverride = fragmentShaderOverride,
-					textureBytesLoader = { assetPath ->
-						runCatching {
-							appContext.assets.open(assetPath).use { it.readBytes() }
-						}.getOrNull()
-					}
+					textureBytesLoader = textureBytesLoader
 				)
 				if (!attached) {
 					Logger.e(TAG, "EGL reattach failed on config change")
@@ -98,11 +99,7 @@ class WallpaperRenderEngine(
 			holder = surfaceHolder,
 			config = config,
 			fragmentShaderOverride = fragmentShaderOverride,
-			textureBytesLoader = { assetPath ->
-				runCatching {
-					appContext.assets.open(assetPath).use { it.readBytes() }
-				}.getOrNull()
-			}
+			textureBytesLoader = textureBytesLoader
 		)
 		if (!attached) {
 			Logger.e(TAG, "EGL attach failed")
@@ -180,6 +177,10 @@ class WallpaperRenderEngine(
 	}
 
 	fun sceneFingerprint(): String {
+		return sceneFingerprintCache
+	}
+
+	private fun buildSceneFingerprint(config: WallpaperConfig): String {
 		return buildString {
 			append(config.id)
 			append('|')
@@ -248,6 +249,9 @@ class WallpaperRenderEngine(
 	fun release() {
 		eglSession.release()
 		skyEngine.release()
+		synchronized(textureBytesCache) {
+			textureBytesCache.evictAll()
+		}
 	}
 
 	companion object {
@@ -258,10 +262,24 @@ class WallpaperRenderEngine(
 		private val DYNAMIC_RENDER_CONFIG_HINTS = listOf("warrior")
 		private const val DEFAULT_CONTINUOUS_FRAME_INTERVAL_MS = 16L
 		private const val WARRIOR_CONTINUOUS_FRAME_INTERVAL_MS = 100L
+		private const val MAX_TEXTURE_CACHE_BYTES = 12 * 1024 * 1024
 	}
 
 	private fun quantize(value: Float?): Int {
 		return ((value ?: 0f) * QUANTIZE_SCALE).toInt()
+	}
+
+	private fun loadTextureBytes(assetPath: String): ByteArray? {
+		synchronized(textureBytesCache) {
+			textureBytesCache.get(assetPath)?.let { return it }
+		}
+		val loaded = runCatching {
+			appContext.assets.open(assetPath).use { it.readBytes() }
+		}.getOrNull() ?: return null
+		synchronized(textureBytesCache) {
+			textureBytesCache.put(assetPath, loaded)
+		}
+		return loaded
 	}
 
 	private fun isFlareActive(state: RenderFrameState?): Boolean {

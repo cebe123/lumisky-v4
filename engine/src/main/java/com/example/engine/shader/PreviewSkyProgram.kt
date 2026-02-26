@@ -364,12 +364,12 @@ class PreviewSkyProgram {
 	private fun loadTexture(path: String?): Int {
 		val normalized = path?.takeIf { it.isNotBlank() } ?: return 0
 		val loader = textureBytesLoader ?: return 0
-		val resolvedPath = resolvePreferredTexturePath(
+		val resolvedTexture = resolveTextureBytes(
 			originalPath = normalized,
 			loader = loader
-		)
-		val bytes = runCatching { loader(resolvedPath) }.getOrNull() ?: return 0
-		if (bytes.isEmpty()) return 0
+		) ?: return 0
+		val resolvedPath = resolvedTexture.path
+		val bytes = resolvedTexture.bytes
 
 		val decodedBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return 0
 		val bitmap = preprocessTextureBitmap(
@@ -465,17 +465,29 @@ class PreviewSkyProgram {
 		)
 	}
 
-	private fun resolvePreferredTexturePath(
+	private fun resolveTextureBytes(
 		originalPath: String,
 		loader: (String) -> ByteArray?
-	): String {
+	): ResolvedTexture? {
 		val lower = originalPath.lowercase()
-		if (lower.endsWith(".webp")) return originalPath
+		if (lower.endsWith(".webp")) {
+			val bytes = runCatching { loader(originalPath) }.getOrNull()
+				?.takeIf { it.isNotEmpty() }
+				?: return null
+			return ResolvedTexture(path = originalPath, bytes = bytes)
+		}
 		val extIndex = originalPath.lastIndexOf('.')
-		if (extIndex == -1) return originalPath
-		val webpCandidate = "${originalPath.substring(0, extIndex)}.webp"
-		val webpBytes = runCatching { loader(webpCandidate) }.getOrNull()
-		return if (webpBytes != null && webpBytes.isNotEmpty()) webpCandidate else originalPath
+		if (extIndex != -1) {
+			val webpCandidate = "${originalPath.substring(0, extIndex)}.webp"
+			val webpBytes = runCatching { loader(webpCandidate) }.getOrNull()
+			if (webpBytes != null && webpBytes.isNotEmpty()) {
+				return ResolvedTexture(path = webpCandidate, bytes = webpBytes)
+			}
+		}
+		val originalBytes = runCatching { loader(originalPath) }.getOrNull()
+			?.takeIf { it.isNotEmpty() }
+			?: return null
+		return ResolvedTexture(path = originalPath, bytes = originalBytes)
 	}
 
 	private fun initSpriteProgram() {
@@ -964,5 +976,10 @@ class PreviewSkyProgram {
 		val zoom: Float,
 		val verticalOffset: Float,
 		val horizontalOffset: Float
+	)
+
+	private data class ResolvedTexture(
+		val path: String,
+		val bytes: ByteArray
 	)
 }

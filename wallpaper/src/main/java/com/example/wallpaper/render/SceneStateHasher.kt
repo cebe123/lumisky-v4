@@ -16,18 +16,18 @@ data class SceneStateInput(
 
 class SceneStateHasher {
 	fun compute(input: SceneStateInput): Int {
-		return listOf(
-			input.visible,
-			input.surfaceAttached,
-			input.configFingerprint,
-			input.renderMode,
-			input.sunX,
-			input.sunY,
-			input.moonX,
-			input.moonY,
-			input.nightBlend,
-			input.skyColor,
-			input.flareActive
-		).hashCode()
+		var result = 17
+		result = 31 * result + input.visible.hashCode()
+		result = 31 * result + input.surfaceAttached.hashCode()
+		result = 31 * result + input.configFingerprint.hashCode()
+		result = 31 * result + input.renderMode.hashCode()
+		result = 31 * result + input.sunX
+		result = 31 * result + input.sunY
+		result = 31 * result + input.moonX
+		result = 31 * result + input.moonY
+		result = 31 * result + input.nightBlend
+		result = 31 * result + input.skyColor
+		result = 31 * result + input.flareActive.hashCode()
+		return result
 	}
 }

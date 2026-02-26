@@ -92,6 +92,7 @@ class HomeViewModel(
 		private set
 
 	private var liveGpsLocation: SunLocation? = null
+	private var lastKnownGpsLocation: SunLocation? = null
 	private var gpsPlaceLabel: String? = null
 	private var lastGpsPlaceKey: String? = null
 
@@ -102,7 +103,7 @@ class HomeViewModel(
 		}
 	}
 	private val startupBackupPrefetchRunnable = Runnable {
-		prefetchBackupCityCache()
+		prefetchBackupCityCache(maxCandidateCount = BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT)
 	}
 	private val backupCityRefreshRunnable = object : Runnable {
 		override fun run() {
@@ -232,6 +233,7 @@ class HomeViewModel(
 
 			if (locationMode != LocationMode.GPS) {
 				liveGpsLocation = null
+				lastKnownGpsLocation = null
 				gpsLocationAvailable = false
 				locationLabel = manualCity.name
 				return
@@ -239,6 +241,7 @@ class HomeViewModel(
 
 			if (!systemLocationEnabled) {
 				liveGpsLocation = null
+				lastKnownGpsLocation = null
 				gpsLocationAvailable = false
 				locationLabel = manualCity.name
 				Logger.event(
@@ -265,15 +268,11 @@ class HomeViewModel(
 					allowWhenLocationDisabled = true
 				)
 			}.getOrNull()
+			liveGpsLocation = liveGps
+			lastKnownGpsLocation = lastGps
 			val preferredGps = liveGps ?: lastGps
 			preferredGps?.let { maybeResolveGpsPlaceLabel(it) }
-			gpsLocationAvailable = liveGps != null || lastGps != null
-
-			locationLabel = when {
-				liveGps != null -> gpsPlaceLabel ?: formatGpsLabel(liveGps)
-				lastGps != null -> "Last GPS ${gpsPlaceLabel ?: formatGpsLabel(lastGps)}"
-				else -> manualCity.name
-			}
+			updateLocationLabelFromCachedGpsState()
 			Logger.event(
 				tag,
 				"location_state",
@@ -284,6 +283,7 @@ class HomeViewModel(
 			)
 		}.onFailure {
 			liveGpsLocation = null
+			lastKnownGpsLocation = null
 			gpsLocationAvailable = false
 			locationLabel = manualCity.name
 			Logger.w(tag, "refreshLocationState fallback", it)
@@ -429,13 +429,17 @@ class HomeViewModel(
 				if (systemLocationEnabled) {
 					val liveGps = liveGpsLocation ?: runCatching {
 						lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
-					}.getOrNull()
-					val lastGps = runCatching {
+					}.getOrNull()?.also { resolved ->
+						liveGpsLocation = resolved
+					}
+					val lastGps = lastKnownGpsLocation ?: runCatching {
 						lastKnownLocationProvider.getLastKnownLocation(
 							label = "gps_last",
 							allowWhenLocationDisabled = true
 						)
-					}.getOrNull()
+					}.getOrNull()?.also { resolved ->
+						lastKnownGpsLocation = resolved
+					}
 					liveGps?.let { add(it) }
 					lastGps?.let { add(it) }
 				}
@@ -480,8 +484,21 @@ class HomeViewModel(
 				if (key != lastGpsPlaceKey) return@post
 				if (gpsPlaceLabel == resolved) return@post
 				gpsPlaceLabel = resolved
-				refreshLocationState()
+				if (locationMode == LocationMode.GPS) {
+					updateLocationLabelFromCachedGpsState()
+				}
 			}
+		}
+	}
+
+	private fun updateLocationLabelFromCachedGpsState() {
+		val liveGps = liveGpsLocation
+		val lastGps = lastKnownGpsLocation
+		gpsLocationAvailable = liveGps != null || lastGps != null
+		locationLabel = when {
+			liveGps != null -> gpsPlaceLabel ?: formatGpsLabel(liveGps)
+			lastGps != null -> "Last GPS ${gpsPlaceLabel ?: formatGpsLabel(lastGps)}"
+			else -> manualCity.name
 		}
 	}
 
@@ -517,7 +534,7 @@ class HomeViewModel(
 		mainHandler.postDelayed(startupBackupPrefetchRunnable, BACKUP_PREFETCH_STARTUP_DELAY_MS)
 	}
 
-	private fun prefetchBackupCityCache() {
+	private fun prefetchBackupCityCache(maxCandidateCount: Int = Int.MAX_VALUE) {
 		val defaultCity = resolveDefaultCity()
 		val supportedCities = AppSettingsDefaults.supportedCities(languageTag).map { city ->
 			SunLocation(
@@ -533,19 +550,26 @@ class HomeViewModel(
 		)
 		val candidates = buildList {
 			add(defaultCity)
-			addAll(supportedCities)
 			add(manual)
+			addAll(supportedCities)
 		}.distinctBy { candidate ->
 			"${candidate.latitude}|${candidate.longitude}"
 		}
+		val boundedCandidates = if (maxCandidateCount > 0) {
+			candidates.take(maxCandidateCount)
+		} else {
+			emptyList()
+		}
+		if (boundedCandidates.isEmpty()) return
 		Logger.event(
 			tag,
 			"backup_suntimes_prefetch_request",
-			"candidateCount" to candidates.size,
+			"candidateCount" to boundedCandidates.size,
+			"totalCandidates" to candidates.size,
 			"intervalHours" to (BACKUP_CITY_REFRESH_INTERVAL_MS / (60L * 60L * 1000L))
 		)
 		sunTimesRepository.prefetchBackupAsync(
-			candidates = candidates,
+			candidates = boundedCandidates,
 			minRefreshIntervalMs = BACKUP_CITY_REFRESH_INTERVAL_MS
 		)
 	}
@@ -558,6 +582,7 @@ class HomeViewModel(
 		private const val GPS_REQUEST_THROTTLE_MS = 1_500L
 		private const val FOREGROUND_LOCATION_REFRESH_STALE_MS = 1_500L
 		private const val BACKUP_CITY_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
-		private const val BACKUP_PREFETCH_STARTUP_DELAY_MS = 2_000L
+		private const val BACKUP_PREFETCH_STARTUP_DELAY_MS = 30_000L
+		private const val BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT = 8
 	}
 }
