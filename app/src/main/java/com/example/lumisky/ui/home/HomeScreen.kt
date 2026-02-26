@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,7 +33,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -89,9 +87,6 @@ fun HomeScreen(
 	items: List<HomeWallpaperItem>,
 	selectedWallpaperId: String?,
 	liveWallpaperId: String?,
-	daylightLabel: String,
-	startupLoading: Boolean,
-	startupProgress: Float,
 	highRefreshEnabled: Boolean,
 	performanceMode: PerformanceMode,
 	onWallpaperSelected: (String) -> Unit,
@@ -140,10 +135,20 @@ fun HomeScreen(
 	}
 
 	val groupedWallpapers = remember(wallpapers, orderedCategories) {
+		val byCategory = wallpapers.groupBy { it.category }
 		orderedCategories.mapNotNull { category ->
-			val list = wallpapers.filter { it.category == category }
-			if (list.isEmpty()) null else category to list
+			byCategory[category]?.takeIf { it.isNotEmpty() }?.let { category to it }
 		}
+	}
+	val allWallpaperIds by remember(groupedWallpapers) {
+		derivedStateOf {
+			groupedWallpapers.asSequence()
+				.flatMap { (_, list) -> list.asSequence().map { it.id } }
+				.toList()
+		}
+	}
+	val allWallpaperIdSet by remember(allWallpaperIds) {
+		derivedStateOf { allWallpaperIds.toHashSet() }
 	}
 	val configuration = LocalConfiguration.current
 	val wallpaperAspectRatio = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
@@ -174,12 +179,11 @@ fun HomeScreen(
 
 	LaunchedEffect(groupedWallpapers, selectedWallpaperId, liveWallpaperId) {
 		if (focusCandidateId != null) return@LaunchedEffect
-		val allIds = groupedWallpapers.flatMap { (_, list) -> list.map { it.id } }
-		if (allIds.isEmpty()) return@LaunchedEffect
+		if (allWallpaperIds.isEmpty()) return@LaunchedEffect
 		focusCandidateId = when {
-			selectedWallpaperId != null && allIds.contains(selectedWallpaperId) -> selectedWallpaperId
-			liveWallpaperId != null && allIds.contains(liveWallpaperId) -> liveWallpaperId
-			else -> allIds.first()
+			selectedWallpaperId != null && selectedWallpaperId in allWallpaperIdSet -> selectedWallpaperId
+			liveWallpaperId != null && liveWallpaperId in allWallpaperIdSet -> liveWallpaperId
+			else -> allWallpaperIds.first()
 		}
 	}
 
@@ -249,65 +253,38 @@ fun HomeScreen(
 		}
 	) { innerPadding ->
 		Box(modifier = Modifier.fillMaxSize()) {
-			if (startupLoading) {
-				Box(
-					modifier = Modifier
-						.fillMaxSize()
-						.padding(innerPadding),
-					contentAlignment = Alignment.Center
-				) {
-					Column(
-						horizontalAlignment = Alignment.CenterHorizontally,
-						verticalArrangement = Arrangement.spacedBy(12.dp)
-					) {
-						LinearProgressIndicator(
-							progress = { startupProgress.coerceIn(0f, 1f) },
-							modifier = Modifier
-								.fillMaxWidth(0.68f)
-								.height(10.dp)
-								.clip(RoundedCornerShape(10.dp))
-						)
-						Text(
-							text = "Preparing ${(startupProgress * 100f).toInt()}%",
-							style = MaterialTheme.typography.bodyMedium
-						)
-					}
-				}
-			} else {
-				LazyColumn(
-					state = verticalState,
-					modifier = Modifier
-						.fillMaxSize()
-						.padding(innerPadding),
-					contentPadding = PaddingValues(bottom = 80.dp),
-					verticalArrangement = Arrangement.spacedBy(24.dp)
-				) {
-					itemsIndexed(groupedWallpapers) { index, entry ->
-						val isCategoryActive = (index == centerCategoryIndex) || (centerCategoryIndex == -1 && index == 0)
-						CategorySection(
-							categoryName = entry.first,
-							wallpapers = entry.second,
-							liveWallpaperId = liveWallpaperId,
-							isCategoryActive = isCategoryActive,
-							parentScrollInProgress = verticalState.isScrollInProgress,
-							highRefreshEnabled = highRefreshEnabled,
-							performanceMode = performanceMode,
-							cardWidth = cardWidth,
-							cardHeight = cardHeight,
-							onFocusCandidate = { candidate ->
-								if (candidate != null) {
-									focusCandidateId = candidate
-								}
-							},
-							onWallpaperClick = { id ->
-								onWallpaperSelected(id)
-								onOpenPreview(id)
+			LazyColumn(
+				state = verticalState,
+				modifier = Modifier
+					.fillMaxSize()
+					.padding(innerPadding),
+				contentPadding = PaddingValues(bottom = 80.dp),
+				verticalArrangement = Arrangement.spacedBy(24.dp)
+			) {
+				itemsIndexed(groupedWallpapers) { index, entry ->
+					val isCategoryActive = (index == centerCategoryIndex) || (centerCategoryIndex == -1 && index == 0)
+					CategorySection(
+						categoryName = entry.first,
+						wallpapers = entry.second,
+						liveWallpaperId = liveWallpaperId,
+						isCategoryActive = isCategoryActive,
+						parentScrollInProgress = verticalState.isScrollInProgress,
+						highRefreshEnabled = highRefreshEnabled,
+						performanceMode = performanceMode,
+						cardWidth = cardWidth,
+						cardHeight = cardHeight,
+						onFocusCandidate = { candidate ->
+							if (candidate != null) {
+								focusCandidateId = candidate
 							}
-						)
-					}
+						},
+						onWallpaperClick = { id ->
+							onWallpaperSelected(id)
+							onOpenPreview(id)
+						}
+					)
 				}
 			}
-
 		}
 	}
 }
@@ -330,6 +307,12 @@ private fun CategorySection(
 	val rowState = rememberLazyListState()
 	var centeredWallpaperId by remember(wallpapers) { mutableStateOf<String?>(null) }
 	var lastPrewarmIds by remember { mutableStateOf("") }
+	val wallpaperIdSet by remember(wallpapers) {
+		derivedStateOf { wallpapers.asSequence().map { it.id }.toHashSet() }
+	}
+	val wallpaperIndexById by remember(wallpapers) {
+		derivedStateOf { wallpapers.mapIndexed { index, model -> model.id to index }.toMap() }
+	}
 
 	LaunchedEffect(rowState, wallpapers) {
 		snapshotFlow {
@@ -345,7 +328,7 @@ private fun CategorySection(
 	}
 
 	LaunchedEffect(wallpapers) {
-		if (centeredWallpaperId == null || wallpapers.none { it.id == centeredWallpaperId }) {
+		if (centeredWallpaperId == null || centeredWallpaperId !in wallpaperIdSet) {
 			delay(FOCUS_INIT_DELAY_MS)
 			centeredWallpaperId = wallpapers.firstOrNull()?.id
 		}
@@ -365,7 +348,7 @@ private fun CategorySection(
 		if (rowState.isScrollInProgress) return@LaunchedEffect
 		val focused = centeredWallpaperId ?: wallpapers.firstOrNull()?.id ?: return@LaunchedEffect
 		onFocusCandidate(focused)
-		val focusedIndex = wallpapers.indexOfFirst { it.id == focused }
+		val focusedIndex = wallpaperIndexById[focused] ?: -1
 		if (focusedIndex < 0) return@LaunchedEffect
 		val candidates = (-2..2)
 			.map { offset -> focusedIndex + offset }
@@ -399,7 +382,7 @@ private fun CategorySection(
 			} else {
 				null
 			}
-			val liveIndex = wallpapers.indexOfFirst { it.id == activeLiveId }
+			val liveIndex = activeLiveId?.let { wallpaperIndexById[it] } ?: -1
 			itemsIndexed(wallpapers, key = { _, model -> model.id }) { index, model ->
 				val isFocusedLive = isCategoryActive &&
 					liveIndex >= 0 &&

@@ -34,13 +34,11 @@ object WallpaperCatalog {
 		daylight: SunDaylight = SunDaylight.fallback(),
 		languageTag: String = AppSettingsDefaults.LANGUAGE_SYSTEM
 	): WallpaperConfig {
-		val all = buildConfigs(
-			count = DEFAULT_COUNT,
-			daylight = daylight,
-			languageTag = languageTag
-		)
-		return all.firstOrNull { it.id == id }
-			?: all.first().copy(id = id)
+		val preset = PRESET_BY_ID[id]
+		if (preset != null) {
+			return preset.toConfig(daylight = daylight)
+		}
+		return ORDERED_PRESETS.first().toConfig(daylight = daylight).copy(id = id)
 	}
 
 	private fun ThemePreset.toConfig(daylight: SunDaylight): WallpaperConfig {
@@ -252,6 +250,7 @@ object WallpaperCatalog {
 			)
 		)
 	)
+	private val PRESET_BY_ID = ORDERED_PRESETS.associateBy { it.id }
 
 	private const val DEFAULT_COUNT = 120
 }

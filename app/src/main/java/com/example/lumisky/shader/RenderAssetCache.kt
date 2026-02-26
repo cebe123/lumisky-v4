@@ -33,17 +33,17 @@ object RenderAssetCache {
 		assetPath: String?
 	): ByteArray? {
 		val normalized = assetPath?.takeIf { it.isNotBlank() } ?: return null
-		val resolvedPath = resolvePreferredTexturePath(context, normalized)
-		synchronized(textureCache) {
-			textureCache.get(resolvedPath)?.let { return it }
+		val cachedResolvedPath = getCachedResolvedTexturePath(normalized)
+		if (cachedResolvedPath != null) {
+			return loadTextureBytesForResolvedPath(context, cachedResolvedPath)
 		}
-		val loaded = runCatching {
-			context.assets.open(resolvedPath).use { it.readBytes() }
-		}.getOrNull() ?: return null
+
+		val resolvedTexture = resolvePreferredTextureBytes(context, normalized) ?: return null
+		putCachedResolvedTexturePath(normalized, resolvedTexture.path)
 		synchronized(textureCache) {
-			textureCache.put(resolvedPath, loaded)
+			textureCache.put(resolvedTexture.path, resolvedTexture.bytes)
 		}
-		return loaded
+		return resolvedTexture.bytes
 	}
 
 	fun prewarmWallpaper(
@@ -57,34 +57,71 @@ object RenderAssetCache {
 		loadTextureBytes(context, config.textures.flareTexture)
 	}
 
-	private fun resolvePreferredTexturePath(
+	private fun resolvePreferredTextureBytes(
 		context: Context,
 		originalPath: String
-	): String {
-		synchronized(resolvedTexturePathCache) {
-			resolvedTexturePathCache.get(originalPath)?.let { return it }
-		}
+	): ResolvedTextureBytes? {
 		val lower = originalPath.lowercase()
-		if (lower.endsWith(".webp")) return originalPath
-		val dot = originalPath.lastIndexOf('.')
-		if (dot < 0) return originalPath
-		val webpPath = "${originalPath.substring(0, dot)}.webp"
-		val resolved = if (assetExists(context, webpPath)) webpPath else originalPath
-		synchronized(resolvedTexturePathCache) {
-			resolvedTexturePathCache.put(originalPath, resolved)
+		if (lower.endsWith(".webp")) {
+			val bytes = loadTextureBytesForResolvedPath(context, originalPath) ?: return null
+			return ResolvedTextureBytes(originalPath, bytes)
 		}
-		return resolved
+
+		val dot = originalPath.lastIndexOf('.')
+		if (dot >= 0) {
+			val webpPath = "${originalPath.substring(0, dot)}.webp"
+			val webpBytes = loadTextureBytesForResolvedPath(context, webpPath)
+			if (webpBytes != null) {
+				return ResolvedTextureBytes(webpPath, webpBytes)
+			}
+		}
+
+		val bytes = loadTextureBytesForResolvedPath(context, originalPath) ?: return null
+		return ResolvedTextureBytes(originalPath, bytes)
 	}
 
-	private fun assetExists(
+	private fun loadTextureBytesForResolvedPath(
 		context: Context,
 		assetPath: String
-	): Boolean {
-		return runCatching {
-			context.assets.open(assetPath).use { }
-			true
-		}.getOrDefault(false)
+	): ByteArray? {
+		synchronized(textureCache) {
+			textureCache.get(assetPath)?.let { return it }
+		}
+		val loaded = runCatching {
+			context.assets.open(assetPath).use { it.readBytes() }
+		}.getOrNull() ?: return null
+		synchronized(textureCache) {
+			textureCache.put(assetPath, loaded)
+		}
+		return loaded
 	}
+
+	private fun getCachedResolvedTexturePath(originalPath: String): String? {
+		synchronized(resolvedTexturePathCache) {
+			return resolvedTexturePathCache.get(originalPath)
+		}
+	}
+
+	private fun putCachedResolvedTexturePath(
+		originalPath: String,
+		resolvedPath: String
+	) {
+		synchronized(resolvedTexturePathCache) {
+			resolvedTexturePathCache.put(originalPath, resolvedPath)
+		}
+		if (originalPath != resolvedPath) {
+			synchronized(resolvedTexturePathCache) {
+				if (resolvedTexturePathCache.get(resolvedPath) == null) {
+					resolvedTexturePathCache.put(resolvedPath, resolvedPath)
+				}
+			}
+		}
+	}
+
+	private data class ResolvedTextureBytes(
+		val path: String,
+		val bytes: ByteArray
+	)
 
 	private const val MAX_FRAGMENT_ENTRIES = 24
 	private const val MAX_RESOLVED_TEXTURE_PATH_ENTRIES = 256

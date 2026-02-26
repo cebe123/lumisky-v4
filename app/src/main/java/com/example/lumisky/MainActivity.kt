@@ -96,9 +96,6 @@ class MainActivity : AppCompatActivity() {
 						items = homeViewModel.items,
 						selectedWallpaperId = homeViewModel.selectedWallpaperId,
 						liveWallpaperId = homeViewModel.liveWallpaperId,
-						daylightLabel = "${homeViewModel.daylight.sunriseMinute} / ${homeViewModel.daylight.sunsetMinute}",
-						startupLoading = homeViewModel.startupLoading,
-						startupProgress = homeViewModel.startupProgress,
 						highRefreshEnabled = homeViewModel.highRefreshEnabled,
 						performanceMode = homeViewModel.performanceMode,
 						onWallpaperSelected = { id ->
