@@ -9,22 +9,19 @@ import com.example.engine.renderer.RenderFrameState
 import com.example.engine.renderer.RenderMode
 import com.example.engine.renderer.RenderModeController
 import com.example.engine.renderer.SkyRenderer
-import com.example.engine.texture.TexturePool
 import com.example.engine.time.TimeManager
 
 class SkyEngine(
 	private val timeManager: TimeManager = TimeManager(),
 	private val celestialCalculator: CelestialCalculator = CelestialCalculator(),
 	private val atmosphereController: AtmosphereController = AtmosphereController(),
-	private val texturePool: TexturePool = TexturePool(),
 	private val modeController: RenderModeController = RenderModeController(),
 	private val frameScheduler: FrameScheduler = FrameScheduler()
 ) {
 	private val renderer = SkyRenderer(
 		timeManager = timeManager,
 		celestialCalculator = celestialCalculator,
-		atmosphereController = atmosphereController,
-		texturePool = texturePool
+		atmosphereController = atmosphereController
 	)
 
 	private var initialized = false

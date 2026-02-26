@@ -1,9 +1,6 @@
 package com.example.lumisky.ui.home
 
-import android.content.Context
 import android.os.PowerManager
-import android.opengl.GLSurfaceView
-import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -62,7 +59,7 @@ import com.example.engine.preview.PreviewGlRenderer
 import com.example.engine.renderer.RenderMode
 import com.example.lumisky.R
 import com.example.lumisky.shader.RenderAssetCache
-import com.example.lumisky.ui.common.ChoreographerFrameLoop
+import com.example.lumisky.ui.common.PreviewRendererSurfaceView
 import com.example.lumisky.ui.common.resolveDisplayRefreshRate
 import com.example.lumisky.ui.components.BottomNavBar
 import com.example.lumisky.viewmodel.HomeWallpaperItem
@@ -503,7 +500,19 @@ private fun FocusedWallpaperPreview(
 					RenderAssetCache.loadTextureBytes(context, assetPath)
 				}
 			)
-			HomeFocusPreviewView(context, renderer).apply {
+			PreviewRendererSurfaceView(
+				context = context,
+				previewRenderer = renderer,
+				initialPlaybackEnabled = playbackEnabled,
+				warmupFramesOnEnable = HOME_PREVIEW_ENABLE_WARMUP_FRAMES,
+				requestRenderOnAttach = true,
+				onPlaybackStateChanged = { enabled, enteringEnabled ->
+					renderer.setFocusPlaybackEnabled(
+						enabled = enabled,
+						restartOnEnable = enteringEnabled
+					)
+				}
+			).apply {
 				setPlaybackEnabled(playbackEnabled)
 			}
 		},
@@ -511,102 +520,6 @@ private fun FocusedWallpaperPreview(
 			view.setPlaybackEnabled(playbackEnabled)
 		}
 	)
-}
-
-private class HomeFocusPreviewView(
-	context: Context,
-	private val renderer: PreviewGlRenderer
-) : GLSurfaceView(context) {
-	private var playbackEnabled: Boolean = false
-	private var lastRenderFrameNs: Long = 0L
-	private var warmupFramesRemaining: Int = 0
-	private val frameLoop = ChoreographerFrameLoop(
-		onFrame = { frameTimeNanos ->
-			val minIntervalNs = renderer.nextFrameDelayMs() * 1_000_000L
-			if (frameTimeNanos - lastRenderFrameNs >= minIntervalNs) {
-				requestRender()
-				lastRenderFrameNs = frameTimeNanos
-				if (warmupFramesRemaining > 0) {
-					warmupFramesRemaining--
-				}
-			}
-			if (shouldScheduleFrame()) {
-				frameLoop.postIfNeeded()
-			}
-		},
-		shouldContinue = { shouldScheduleFrame() }
-	)
-
-	init {
-		setEGLContextClientVersion(2)
-		setRenderer(renderer)
-		renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-	}
-
-	fun setPlaybackEnabled(enabled: Boolean) {
-		if (playbackEnabled == enabled) {
-			if (enabled && windowVisibility == View.VISIBLE) {
-				if (warmupFramesRemaining < FOCUS_ENABLE_WARMUP_FRAMES) {
-					warmupFramesRemaining = FOCUS_ENABLE_WARMUP_FRAMES
-				}
-				frameLoop.postIfNeeded()
-			}
-			return
-		}
-		val enteringFocus = !playbackEnabled && enabled
-		playbackEnabled = enabled
-		runCatching {
-			queueEvent {
-				renderer.setFocusPlaybackEnabled(
-					enabled = enabled,
-					restartOnEnable = enteringFocus
-				)
-			}
-		}
-		if (enabled && windowVisibility == View.VISIBLE) {
-			warmupFramesRemaining = FOCUS_ENABLE_WARMUP_FRAMES
-			lastRenderFrameNs = 0L
-			frameLoop.postIfNeeded()
-		} else {
-			warmupFramesRemaining = 0
-			frameLoop.remove()
-		}
-	}
-
-	override fun onAttachedToWindow() {
-		super.onAttachedToWindow()
-		lastRenderFrameNs = 0L
-		requestRender()
-		if (shouldScheduleFrame()) {
-			frameLoop.postIfNeeded()
-		}
-	}
-
-	override fun onWindowVisibilityChanged(visibility: Int) {
-		super.onWindowVisibilityChanged(visibility)
-		if (visibility == View.VISIBLE && shouldScheduleFrame()) {
-			frameLoop.postIfNeeded()
-		} else {
-			frameLoop.remove()
-		}
-	}
-
-	override fun onDetachedFromWindow() {
-		frameLoop.remove()
-		runCatching {
-			queueEvent { renderer.release() }
-		}
-		super.onDetachedFromWindow()
-	}
-
-	private fun shouldScheduleFrame(): Boolean {
-		if (windowVisibility != View.VISIBLE || !playbackEnabled) return false
-		return renderer.shouldContinueRendering() || warmupFramesRemaining > 0
-	}
-
-	private companion object {
-		private const val FOCUS_ENABLE_WARMUP_FRAMES = 6
-	}
 }
 
 @Composable
@@ -750,5 +663,6 @@ private fun findCenteredIndex(listState: LazyListState): Int {
 }
 
 private const val HOME_FOCUS_CATCHUP_SECONDS = 4f
+private const val HOME_PREVIEW_ENABLE_WARMUP_FRAMES = 6
 private const val CATEGORY_FOCUS_MAX_ITEMS = 24
 private const val FOCUS_INIT_DELAY_MS = 100L

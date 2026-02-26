@@ -2,8 +2,6 @@ package com.example.lumisky.ui.preview
 
 import android.os.Build
 import android.os.PowerManager
-import android.opengl.GLSurfaceView
-import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +23,7 @@ import com.example.engine.config.WallpaperConfig
 import com.example.engine.preview.PreviewGlRenderer
 import com.example.engine.renderer.RenderMode
 import com.example.lumisky.shader.RenderAssetCache
-import com.example.lumisky.ui.common.ChoreographerFrameLoop
+import com.example.lumisky.ui.common.PreviewRendererSurfaceView
 import com.example.lumisky.ui.common.resolveDisplayRefreshRate
 
 @Composable
@@ -72,48 +70,11 @@ fun PreviewScreen(
 						RenderAssetCache.loadTextureBytes(context, assetPath)
 					}
 				)
-				object : GLSurfaceView(context) {
-					private var lastRenderFrameNs: Long = 0L
-					private val frameLoop = ChoreographerFrameLoop(
-						onFrame = { frameTimeNanos ->
-							val minIntervalNs = renderer.nextFrameDelayMs() * 1_000_000L
-							if (frameTimeNanos - lastRenderFrameNs >= minIntervalNs) {
-								requestRender()
-								lastRenderFrameNs = frameTimeNanos
-							}
-						},
-						shouldContinue = {
-							renderer.shouldContinueRendering() && windowVisibility == View.VISIBLE
-						}
-					)
-
-					override fun onAttachedToWindow() {
-						super.onAttachedToWindow()
-						lastRenderFrameNs = 0L
-						frameLoop.postIfNeeded()
-					}
-
-					override fun onWindowVisibilityChanged(visibility: Int) {
-						super.onWindowVisibilityChanged(visibility)
-						if (visibility == View.VISIBLE && renderer.shouldContinueRendering()) {
-							frameLoop.postIfNeeded()
-						} else {
-							frameLoop.remove()
-						}
-					}
-
-					override fun onDetachedFromWindow() {
-						frameLoop.remove()
-						runCatching {
-							queueEvent { renderer.release() }
-						}
-						super.onDetachedFromWindow()
-					}
-				}.apply {
-					setEGLContextClientVersion(2)
-					setRenderer(renderer)
-					renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-				}
+				PreviewRendererSurfaceView(
+					context = context,
+					previewRenderer = renderer,
+					initialPlaybackEnabled = true
+				)
 			}
 		)
 

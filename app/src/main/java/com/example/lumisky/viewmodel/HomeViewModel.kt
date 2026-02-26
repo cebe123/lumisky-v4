@@ -24,6 +24,7 @@ import com.example.lumisky.data.WallpaperCatalog
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.random.Random
 
 data class HomeWallpaperItem(
 	val config: WallpaperConfig
@@ -48,6 +49,11 @@ class HomeViewModel(
 	private var refreshPipelineNeedsGpsRequest = false
 	private var startupBackupPrefetchScheduled = false
 	private var startupBackupPrefetchCompleted = false
+	private var lastLiveGpsProbeAtMs: Long = 0L
+	private var lastLastGpsProbeAtMs: Long = 0L
+	private var locationCandidatesCacheKey: String? = null
+	private var locationCandidatesCache: List<SunLocation> = emptyList()
+	private var locationCandidatesCacheAtMs: Long = 0L
 
 	val items: List<HomeWallpaperItem>
 		get() = _items
@@ -254,6 +260,8 @@ class HomeViewModel(
 			if (locationMode != LocationMode.GPS) {
 				liveGpsLocation = null
 				lastKnownGpsLocation = null
+				lastLiveGpsProbeAtMs = 0L
+				lastLastGpsProbeAtMs = 0L
 				gpsLocationAvailable = false
 				locationLabel = manualCity.name
 				return
@@ -262,6 +270,8 @@ class HomeViewModel(
 			if (!systemLocationEnabled) {
 				liveGpsLocation = null
 				lastKnownGpsLocation = null
+				lastLiveGpsProbeAtMs = 0L
+				lastLastGpsProbeAtMs = 0L
 				gpsLocationAvailable = false
 				locationLabel = manualCity.name
 				Logger.event(
@@ -276,18 +286,11 @@ class HomeViewModel(
 			}
 
 			val liveGps = if (systemLocationEnabled) {
-				liveGpsLocation ?: runCatching {
-					lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
-				}.getOrNull()
+				resolveCachedLiveGpsProbe(refreshAtMs)
 			} else {
 				null
 			}
-			val lastGps = runCatching {
-				lastKnownLocationProvider.getLastKnownLocation(
-					label = "gps_last",
-					allowWhenLocationDisabled = true
-				)
-			}.getOrNull()
+			val lastGps = resolveCachedLastGpsProbe(refreshAtMs)
 			liveGpsLocation = liveGps
 			lastKnownGpsLocation = lastGps
 			val preferredGps = liveGps ?: lastGps
@@ -441,8 +444,19 @@ class HomeViewModel(
 			longitude = manualCity.longitude
 		)
 		val defaultCity = resolveDefaultCity()
+		val now = SystemClock.elapsedRealtime()
 
-		return when (locationMode) {
+		val cachedKey = buildLocationCandidatesCacheKey(
+			manual = manual,
+			defaultCity = defaultCity
+		)
+		if (locationCandidatesCacheKey == cachedKey &&
+			(now - locationCandidatesCacheAtMs) in 0 until LOCATION_CANDIDATES_CACHE_TTL_MS
+		) {
+			return locationCandidatesCache
+		}
+
+		val resolved = when (locationMode) {
 			LocationMode.MANUAL -> buildList {
 				add(manual)
 				add(defaultCity)
@@ -451,19 +465,9 @@ class HomeViewModel(
 			}
 			LocationMode.GPS -> buildList {
 				if (systemLocationEnabled) {
-					val liveGps = liveGpsLocation ?: runCatching {
-						lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
-					}.getOrNull()?.also { resolved ->
-						liveGpsLocation = resolved
-					}
-					val lastGps = lastKnownGpsLocation ?: runCatching {
-						lastKnownLocationProvider.getLastKnownLocation(
-							label = "gps_last",
-							allowWhenLocationDisabled = true
-						)
-					}.getOrNull()?.also { resolved ->
-						lastKnownGpsLocation = resolved
-					}
+					val probeNowMs = SystemClock.elapsedRealtime()
+					val liveGps = resolveCachedLiveGpsProbe(probeNowMs)
+					val lastGps = resolveCachedLastGpsProbe(probeNowMs)
 					liveGps?.let { add(it) }
 					lastGps?.let { add(it) }
 				}
@@ -473,6 +477,10 @@ class HomeViewModel(
 				"${candidate.latitude}|${candidate.longitude}"
 			}
 		}
+		locationCandidatesCacheKey = cachedKey
+		locationCandidatesCache = resolved
+		locationCandidatesCacheAtMs = now
+		return resolved
 	}
 
 	private fun requestImmediateGpsLocation() {
@@ -486,8 +494,10 @@ class HomeViewModel(
 				if (locationMode != LocationMode.GPS) return@post
 				if (location != null) {
 					liveGpsLocation = location
+					lastLiveGpsProbeAtMs = SystemClock.elapsedRealtime()
 					Logger.event(tag, "gps_live_result", "lat" to location.latitude, "lon" to location.longitude)
 				} else {
+					lastLiveGpsProbeAtMs = SystemClock.elapsedRealtime()
 					Logger.w(tag, "gps_live_result null")
 				}
 				scheduleCoalescedLocationAndSunTimesRefresh(
@@ -579,17 +589,80 @@ class HomeViewModel(
 		mainHandler.postDelayed(backupCityRefreshRunnable, BACKUP_CITY_REFRESH_INTERVAL_MS)
 	}
 
-	private fun scheduleStartupBackupPrefetch() {
+	private fun scheduleStartupBackupPrefetch(delayMs: Long) {
 		mainHandler.removeCallbacks(startupBackupPrefetchRunnable)
-		mainHandler.postDelayed(startupBackupPrefetchRunnable, BACKUP_PREFETCH_STARTUP_DELAY_MS)
+		mainHandler.postDelayed(startupBackupPrefetchRunnable, delayMs)
 	}
 
 	private fun scheduleStartupBackupPrefetchIfNeeded(reason: String) {
 		if (startupBackupPrefetchCompleted) return
 		if (startupBackupPrefetchScheduled) return
 		startupBackupPrefetchScheduled = true
-		Logger.d(tag, "startup backup prefetch armed reason=$reason delayMs=$BACKUP_PREFETCH_STARTUP_DELAY_MS")
-		scheduleStartupBackupPrefetch()
+		val delayMs = resolveStartupBackupPrefetchDelayMs()
+		scheduleStartupBackupPrefetch(delayMs)
+		Logger.d(tag, "startup backup prefetch armed reason=$reason delayMs=$delayMs")
+	}
+
+	private fun resolveCachedLiveGpsProbe(nowMs: Long): SunLocation? {
+		if ((nowMs - lastLiveGpsProbeAtMs) in 0 until LAST_KNOWN_GPS_PROBE_CACHE_TTL_MS) {
+			return liveGpsLocation
+		}
+		lastLiveGpsProbeAtMs = nowMs
+		liveGpsLocation = runCatching {
+			lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
+		}.getOrNull()
+		return liveGpsLocation
+	}
+
+	private fun resolveCachedLastGpsProbe(nowMs: Long): SunLocation? {
+		if ((nowMs - lastLastGpsProbeAtMs) in 0 until LAST_KNOWN_GPS_PROBE_CACHE_TTL_MS) {
+			return lastKnownGpsLocation
+		}
+		lastLastGpsProbeAtMs = nowMs
+		lastKnownGpsLocation = runCatching {
+			lastKnownLocationProvider.getLastKnownLocation(
+				label = "gps_last",
+				allowWhenLocationDisabled = true
+			)
+		}.getOrNull()
+		return lastKnownGpsLocation
+	}
+
+	private fun buildLocationCandidatesCacheKey(
+		manual: SunLocation,
+		defaultCity: SunLocation
+	): String {
+		val liveGps = liveGpsLocation
+		val lastGps = lastKnownGpsLocation
+		return buildString {
+			append(locationMode.name)
+			append('|')
+			append(systemLocationEnabled)
+			append('|')
+			append(manual.latitude)
+			append('|')
+			append(manual.longitude)
+			append('|')
+			append(defaultCity.latitude)
+			append('|')
+			append(defaultCity.longitude)
+			append('|')
+			append(liveGps?.latitude ?: "null")
+			append('|')
+			append(liveGps?.longitude ?: "null")
+			append('|')
+			append(lastGps?.latitude ?: "null")
+			append('|')
+			append(lastGps?.longitude ?: "null")
+		}
+	}
+
+	private fun resolveStartupBackupPrefetchDelayMs(): Long {
+		val jitter = Random.nextLong(
+			from = 0L,
+			until = BACKUP_PREFETCH_STARTUP_JITTER_MS + 1L
+		)
+		return BACKUP_PREFETCH_STARTUP_DELAY_MS + jitter
 	}
 
 	private fun prefetchBackupCityCache(maxCandidateCount: Int = Int.MAX_VALUE) {
@@ -641,7 +714,10 @@ class HomeViewModel(
 		private const val FOREGROUND_LOCATION_REFRESH_STALE_MS = 1_500L
 		private const val BACKUP_CITY_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
 		private const val BACKUP_PREFETCH_STARTUP_DELAY_MS = 30_000L
+		private const val BACKUP_PREFETCH_STARTUP_JITTER_MS = 10_000L
 		private const val BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT = 8
 		private const val LOCATION_REFRESH_COALESCE_DELAY_MS = 120L
+		private const val LAST_KNOWN_GPS_PROBE_CACHE_TTL_MS = 1_500L
+		private const val LOCATION_CANDIDATES_CACHE_TTL_MS = 1_500L
 	}
 }

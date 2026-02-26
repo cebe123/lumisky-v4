@@ -20,6 +20,10 @@ plugins {
 	alias(libs.plugins.kotlin.compose)
 }
 
+val lintIncludeTestSources = providers.gradleProperty("lumisky.lint.includeTestSources")
+	.map { raw -> raw.equals("true", ignoreCase = true) }
+	.orElse(false)
+
 android {
 	namespace = "com.example.lumisky"
 	compileSdk {
@@ -52,6 +56,11 @@ android {
 	buildFeatures {
 		compose = true
 	}
+	lint {
+		// Fast local lint by default; enable test-source lint in CI/full runs with:
+		// -Plumisky.lint.includeTestSources=true
+		checkTestSources = lintIncludeTestSources.get()
+	}
 }
 
 dependencies {
@@ -76,6 +85,18 @@ dependencies {
 	implementation(project(":core"))
 	implementation(project(":engine"))
 	implementation(project(":wallpaper"))
+}
+
+tasks.register("lintDebugLocal") {
+	group = "verification"
+	description = "Runs :app:lintDebug with test-source lint disabled by default."
+	dependsOn("lintDebug")
+}
+
+tasks.register("lintDebugFull") {
+	group = "verification"
+	description = "Runs :app:lintDebug with test-source lint enabled when invoked with -Plumisky.lint.includeTestSources=true."
+	dependsOn("lintDebug")
 }
 
 val convertWallpaperTexturesToWebp by tasks.registering {
@@ -182,7 +203,9 @@ val prepareFilteredAssets by tasks.registering(Sync::class) {
 
 android.sourceSets.getByName("main").assets.setSrcDirs(listOf(filteredAssetsDir))
 
-tasks.named("preBuild") {
+tasks.matching { task ->
+	task.name.startsWith("merge") && task.name.endsWith("Assets")
+}.configureEach {
 	dependsOn(prepareFilteredAssets)
 }
 

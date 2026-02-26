@@ -6,14 +6,12 @@ import com.example.engine.celestial.MoonController
 import com.example.engine.celestial.SunController
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.sky.SkyColorBlender
-import com.example.engine.texture.TexturePool
 import com.example.engine.time.TimeManager
 
 class SkyRenderer(
 	private val timeManager: TimeManager,
 	private val celestialCalculator: CelestialCalculator,
-	private val atmosphereController: AtmosphereController,
-	private val texturePool: TexturePool
+	private val atmosphereController: AtmosphereController
 ) : BaseRenderer() {
 
 	private val sunController = SunController(celestialCalculator)
@@ -45,7 +43,6 @@ class SkyRenderer(
 			config = config
 		)
 		val finalColor = colorBlender.blend(atmosphere.skyColor, 0)
-		texturePool.touch(config.id)
 		val sunAltitude = normalizedAltitude(y = sun.y)
 		val moonAltitude = normalizedAltitude(y = moon.y)
 		val nightBlend = atmosphere.nightBlendFactor.coerceIn(0f, 1f)
