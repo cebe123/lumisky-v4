@@ -91,7 +91,6 @@ class HomeViewModel(
 	var startupProgress by mutableStateOf(1f)
 		private set
 
-	private var lastEffectiveLocation: SunLocation? = null
 	private var liveGpsLocation: SunLocation? = null
 	private var gpsPlaceLabel: String? = null
 	private var lastGpsPlaceKey: String? = null
@@ -101,6 +100,9 @@ class HomeViewModel(
 			refreshSunTimes()
 			schedulePeriodicSunTimesRefresh()
 		}
+	}
+	private val startupBackupPrefetchRunnable = Runnable {
+		prefetchBackupCityCache()
 	}
 	private val backupCityRefreshRunnable = object : Runnable {
 		override fun run() {
@@ -113,7 +115,7 @@ class HomeViewModel(
 		refreshLocationState()
 		seedInitialCatalog(daylight)
 		refreshSunTimes()
-		prefetchBackupCityCache()
+		scheduleStartupBackupPrefetch()
 		schedulePeriodicSunTimesRefresh()
 		schedulePeriodicBackupCityRefresh()
 		Logger.event(
@@ -178,7 +180,11 @@ class HomeViewModel(
 		if (languageTag == normalized) return
 		languageTag = normalized
 		settingsRepository.setLanguageTag(normalized)
+		manualCity = AppSettingsDefaults.resolveCityById(manualCity.id, normalized)
+		settingsRepository.setManualCity(manualCity)
 		Logger.event(this.tag, "language_updated", "tag" to normalized)
+		refreshLocationState()
+		rebuildCatalog(daylight)
 	}
 
 	fun updateHighRefreshEnabled(enabled: Boolean) {
@@ -226,24 +232,24 @@ class HomeViewModel(
 
 			if (locationMode != LocationMode.GPS) {
 				liveGpsLocation = null
-				val lastGps = runCatching {
-					lastKnownLocationProvider.getLastKnownLocation(
-						label = "gps_last_manual",
-						allowWhenLocationDisabled = true
-					)
-				}.getOrNull()
-				lastGps?.let { maybeResolveGpsPlaceLabel(it) }
-				gpsLocationAvailable = lastGps != null
-				locationLabel = if (lastGps != null) {
-					"Last GPS ${gpsPlaceLabel ?: formatGpsLabel(lastGps)}"
-				} else {
-					"${manualCity.name} (Default)"
-				}
+				gpsLocationAvailable = false
+				locationLabel = manualCity.name
 				return
 			}
 
 			if (!systemLocationEnabled) {
 				liveGpsLocation = null
+				gpsLocationAvailable = false
+				locationLabel = manualCity.name
+				Logger.event(
+					tag,
+					"location_state",
+					"mode" to locationMode,
+					"systemEnabled" to systemLocationEnabled,
+					"gpsAvailable" to gpsLocationAvailable,
+					"label" to locationLabel
+				)
+				return
 			}
 
 			val liveGps = if (systemLocationEnabled) {
@@ -266,7 +272,7 @@ class HomeViewModel(
 			locationLabel = when {
 				liveGps != null -> gpsPlaceLabel ?: formatGpsLabel(liveGps)
 				lastGps != null -> "Last GPS ${gpsPlaceLabel ?: formatGpsLabel(lastGps)}"
-				else -> "${manualCity.name} (Default)"
+				else -> manualCity.name
 			}
 			Logger.event(
 				tag,
@@ -279,7 +285,7 @@ class HomeViewModel(
 		}.onFailure {
 			liveGpsLocation = null
 			gpsLocationAvailable = false
-			locationLabel = "${manualCity.name} (Default)"
+			locationLabel = manualCity.name
 			Logger.w(tag, "refreshLocationState fallback", it)
 		}
 		lastLocationStateRefreshAtMs = refreshAtMs
@@ -327,13 +333,18 @@ class HomeViewModel(
 
 	fun configFor(id: String): WallpaperConfig {
 		return _items.firstOrNull { it.config.id == id }?.config
-			?: WallpaperCatalog.configById(id, daylight)
+			?: WallpaperCatalog.configById(
+				id = id,
+				daylight = daylight,
+				languageTag = languageTag
+			)
 	}
 
 	fun allConfigs(): List<WallpaperConfig> = _items.map { it.config }
 
 	fun release() {
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
+		mainHandler.removeCallbacks(startupBackupPrefetchRunnable)
 		mainHandler.removeCallbacks(backupCityRefreshRunnable)
 		catalogExecutor.shutdownNow()
 		locationLabelExecutor.shutdownNow()
@@ -349,7 +360,6 @@ class HomeViewModel(
 			"candidateCount" to candidates.size,
 			"firstLabel" to candidates.firstOrNull()?.label
 		)
-		lastEffectiveLocation = candidates.firstOrNull()
 		sunTimesRepository.refreshAsyncWithCandidates(candidates) { fetched ->
 			mainHandler.post {
 				if (fetched == daylight) return@post
@@ -366,7 +376,10 @@ class HomeViewModel(
 	}
 
 	private fun seedInitialCatalog(currentDaylight: SunDaylight) {
-		val configs = WallpaperCatalog.buildConfigs(daylight = currentDaylight)
+		val configs = WallpaperCatalog.buildConfigs(
+			daylight = currentDaylight,
+			languageTag = languageTag
+		)
 		_items.clear()
 		_items.addAll(configs.map { config -> HomeWallpaperItem(config = config) })
 		if (selectedWallpaperId == null && _items.isNotEmpty()) {
@@ -376,7 +389,10 @@ class HomeViewModel(
 
 	private fun rebuildCatalog(currentDaylight: SunDaylight) {
 		catalogExecutor.execute {
-			val configs = WallpaperCatalog.buildConfigs(daylight = currentDaylight)
+			val configs = WallpaperCatalog.buildConfigs(
+				daylight = currentDaylight,
+				languageTag = languageTag
+			)
 			postCatalog(configs)
 		}
 	}
@@ -404,35 +420,25 @@ class HomeViewModel(
 
 		return when (locationMode) {
 			LocationMode.MANUAL -> buildList {
-				val lastGps = runCatching {
-					lastKnownLocationProvider.getLastKnownLocation(
-						label = "gps_last_manual",
-						allowWhenLocationDisabled = true
-					)
-				}.getOrNull()
-				lastGps?.let { add(it) }
 				add(manual)
 				add(defaultCity)
 			}.distinctBy { candidate ->
 				"${candidate.latitude}|${candidate.longitude}"
 			}
 			LocationMode.GPS -> buildList {
-				val liveGps = if (systemLocationEnabled) {
-					liveGpsLocation ?: runCatching {
+				if (systemLocationEnabled) {
+					val liveGps = liveGpsLocation ?: runCatching {
 						lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
 					}.getOrNull()
-				} else {
-					null
+					val lastGps = runCatching {
+						lastKnownLocationProvider.getLastKnownLocation(
+							label = "gps_last",
+							allowWhenLocationDisabled = true
+						)
+					}.getOrNull()
+					liveGps?.let { add(it) }
+					lastGps?.let { add(it) }
 				}
-				val lastGps = runCatching {
-					lastKnownLocationProvider.getLastKnownLocation(
-						label = "gps_last",
-						allowWhenLocationDisabled = true
-					)
-				}.getOrNull()
-				liveGps?.let { add(it) }
-				lastGps?.let { add(it) }
-				lastEffectiveLocation?.let { add(it) }
 				add(manual)
 				add(defaultCity)
 			}.distinctBy { candidate ->
@@ -484,10 +490,11 @@ class HomeViewModel(
 	}
 
 	private fun resolveDefaultCity(): SunLocation {
+		val localizedDefault = AppSettingsDefaults.defaultCity(languageTag)
 		return SunLocation(
-			label = DEFAULT_CITY.label,
-			latitude = DEFAULT_CITY.latitude,
-			longitude = DEFAULT_CITY.longitude
+			label = localizedDefault.name,
+			latitude = localizedDefault.latitude,
+			longitude = localizedDefault.longitude
 		)
 	}
 
@@ -505,9 +512,14 @@ class HomeViewModel(
 		mainHandler.postDelayed(backupCityRefreshRunnable, BACKUP_CITY_REFRESH_INTERVAL_MS)
 	}
 
+	private fun scheduleStartupBackupPrefetch() {
+		mainHandler.removeCallbacks(startupBackupPrefetchRunnable)
+		mainHandler.postDelayed(startupBackupPrefetchRunnable, BACKUP_PREFETCH_STARTUP_DELAY_MS)
+	}
+
 	private fun prefetchBackupCityCache() {
 		val defaultCity = resolveDefaultCity()
-		val supportedCities = AppSettingsDefaults.SUPPORTED_CITIES.map { city ->
+		val supportedCities = AppSettingsDefaults.supportedCities(languageTag).map { city ->
 			SunLocation(
 				label = city.name,
 				latitude = city.latitude,
@@ -541,15 +553,11 @@ class HomeViewModel(
 	private fun Double.toDisplay(): String = String.format(Locale.US, "%.2f", this)
 
 	companion object {
-		private val DEFAULT_CITY = SunLocation(
-			label = "default_city",
-			latitude = 41.0082,
-			longitude = 28.9784
-		)
 		private const val SUN_TIMES_REFRESH_INTERVAL_MS = 3L * 60L * 60L * 1000L
 		private const val CATEGORY_PRIORITIZE_LIMIT = 24
 		private const val GPS_REQUEST_THROTTLE_MS = 1_500L
 		private const val FOREGROUND_LOCATION_REFRESH_STALE_MS = 1_500L
 		private const val BACKUP_CITY_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
+		private const val BACKUP_PREFETCH_STARTUP_DELAY_MS = 2_000L
 	}
 }

@@ -78,20 +78,31 @@ class AppSettingsRepository(
 	}
 
 	fun getManualCity(): ManualCity {
-		val defaults = AppSettingsDefaults.DEFAULT_CITY
-		val name = prefs.getString(KEY_MANUAL_CITY_NAME, defaults.name) ?: defaults.name
-		val latitude = readDouble(KEY_MANUAL_CITY_LAT, defaults.latitude)
-		val longitude = readDouble(KEY_MANUAL_CITY_LNG, defaults.longitude)
-		return ManualCity(
-			name = name,
+		val languageTag = getLanguageTag()
+		val defaultCity = AppSettingsDefaults.defaultCity(languageTag)
+		val storedId = prefs.getString(KEY_MANUAL_CITY_ID, null)
+		if (!storedId.isNullOrBlank()) {
+			return AppSettingsDefaults.resolveCityById(storedId, languageTag)
+		}
+
+		val legacyName = prefs.getString(KEY_MANUAL_CITY_NAME, defaultCity.name)
+		val latitude = readDouble(KEY_MANUAL_CITY_LAT, defaultCity.latitude)
+		val longitude = readDouble(KEY_MANUAL_CITY_LNG, defaultCity.longitude)
+		val migrated = AppSettingsDefaults.resolveCityByLegacy(
+			legacyName = legacyName,
 			latitude = latitude,
-			longitude = longitude
+			longitude = longitude,
+			languageTag = languageTag
 		)
+		setManualCity(migrated)
+		return migrated
 	}
 
 	fun setManualCity(city: ManualCity) {
 		prefs.edit()
+			.putString(KEY_MANUAL_CITY_ID, city.id)
 			.putString(KEY_MANUAL_CITY_NAME, city.name)
+			.putString(KEY_MANUAL_CITY_COUNTRY, city.countryCode)
 			.putLong(KEY_MANUAL_CITY_LAT, city.latitude.toRawBits())
 			.putLong(KEY_MANUAL_CITY_LNG, city.longitude.toRawBits())
 			.apply()
@@ -111,7 +122,9 @@ class AppSettingsRepository(
 		private const val KEY_HIGH_REFRESH_ENABLED = "high_refresh_enabled"
 		private const val KEY_PERFORMANCE_MODE = "performance_mode"
 		private const val KEY_LOCATION_MODE = "location_mode"
+		private const val KEY_MANUAL_CITY_ID = "manual_city_id"
 		private const val KEY_MANUAL_CITY_NAME = "manual_city_name"
+		private const val KEY_MANUAL_CITY_COUNTRY = "manual_city_country"
 		private const val KEY_MANUAL_CITY_LAT = "manual_city_lat"
 		private const val KEY_MANUAL_CITY_LNG = "manual_city_lng"
 

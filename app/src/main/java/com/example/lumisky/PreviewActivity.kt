@@ -154,16 +154,12 @@ class PreviewActivity : AppCompatActivity() {
 				)
 
 				val candidates = buildList {
-					if (settings.locationMode == LocationMode.GPS) {
-						val liveGps = if (lastKnownLocationProvider.isLocationEnabled()) {
-							lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
-						} else {
-							null
-						}
-						val lastGps = lastKnownLocationProvider.getLastKnownLocation(
-							label = "gps_last",
-							allowWhenLocationDisabled = true
-						)
+					val systemLocationEnabled = runCatching {
+						lastKnownLocationProvider.isLocationEnabled()
+					}.getOrDefault(false)
+					if (settings.locationMode == LocationMode.GPS && systemLocationEnabled) {
+						val liveGps = lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
+						val lastGps = lastKnownLocationProvider.getLastKnownLocation(label = "gps_last")
 						liveGps?.let { add(it) }
 						lastGps?.let { add(it) }
 					}

@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppThemeMode
+import com.example.core.settings.CityGroup
 import com.example.core.settings.LocationMode
 import com.example.core.settings.ManualCity
 import com.example.core.settings.PerformanceMode
@@ -257,17 +258,13 @@ fun SettingsScreen(
 	}
 
 	if (showCityDialog) {
-		ChoiceDialog(
+		CountryCityDialog(
 			title = stringResource(R.string.location_select_city),
-			options = cityOptions().associate { city ->
-				city.name to city.name
-			},
-			selectedValue = manualCity.name,
+			groups = cityGroups(languageTag),
+			selectedCityId = manualCity.id,
 			onDismiss = { showCityDialog = false },
-			onSelect = { selected ->
-				cityOptions().firstOrNull { it.name == selected }?.let { city ->
-					onManualCitySelected(city)
-				}
+			onSelect = { city ->
+				onManualCitySelected(city)
 				showCityDialog = false
 			}
 		)
@@ -444,6 +441,69 @@ private fun ChoiceDialog(
 }
 
 @Composable
+private fun CountryCityDialog(
+	title: String,
+	groups: List<CityGroup>,
+	selectedCityId: String,
+	onDismiss: () -> Unit,
+	onSelect: (ManualCity) -> Unit
+) {
+	AlertDialog(
+		onDismissRequest = onDismiss,
+		title = {
+			Text(
+				text = title,
+				style = MaterialTheme.typography.titleMedium
+			)
+		},
+		text = {
+			Column(
+				modifier = Modifier.verticalScroll(rememberScrollState()),
+				verticalArrangement = Arrangement.spacedBy(6.dp)
+			) {
+				groups.forEach { group ->
+					Text(
+						text = group.countryName,
+						style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+						color = MaterialTheme.colorScheme.primary,
+						modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+					)
+					group.cities.forEach { city ->
+						Row(
+							modifier = Modifier
+								.fillMaxWidth()
+								.clickable { onSelect(city) }
+								.padding(vertical = 8.dp),
+							verticalAlignment = Alignment.CenterVertically,
+							horizontalArrangement = Arrangement.SpaceBetween
+						) {
+							Text(
+								text = city.name,
+								style = MaterialTheme.typography.bodyLarge,
+								modifier = Modifier.padding(start = 10.dp)
+							)
+							if (selectedCityId == city.id) {
+								Text(
+									text = "•",
+									style = MaterialTheme.typography.titleMedium,
+									color = MaterialTheme.colorScheme.primary
+								)
+							}
+						}
+					}
+					HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+				}
+			}
+		},
+		confirmButton = {
+			TextButton(onClick = onDismiss) {
+				Text(stringResource(R.string.btn_cancel))
+			}
+		}
+	)
+}
+
+@Composable
 private fun themeLabel(mode: AppThemeMode): String {
 	return when (mode) {
 		AppThemeMode.SYSTEM -> stringResource(R.string.theme_system)
@@ -509,6 +569,10 @@ private fun languageOptions(): Map<String, String> {
 
 private fun cityOptions(): List<ManualCity> {
 	return AppSettingsDefaults.SUPPORTED_CITIES
+}
+
+private fun cityGroups(languageTag: String): List<CityGroup> {
+	return AppSettingsDefaults.supportedCityGroups(languageTag)
 }
 
 private fun resolveAppVersionName(context: android.content.Context): String {

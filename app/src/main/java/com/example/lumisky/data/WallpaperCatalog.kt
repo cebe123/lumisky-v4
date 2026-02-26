@@ -1,6 +1,7 @@
 package com.example.lumisky.data
 
 import com.example.core.api.SunDaylight
+import com.example.core.settings.AppSettingsDefaults
 import com.example.engine.config.CelestialConfig
 import com.example.engine.config.DaylightConfig
 import com.example.engine.config.HorizonConfig
@@ -14,7 +15,8 @@ object WallpaperCatalog {
 
 	fun buildConfigs(
 		count: Int = DEFAULT_COUNT,
-		daylight: SunDaylight = SunDaylight.fallback()
+		daylight: SunDaylight = SunDaylight.fallback(),
+		languageTag: String = AppSettingsDefaults.LANGUAGE_SYSTEM
 	): List<WallpaperConfig> {
 		if (count <= 0) return emptyList()
 
@@ -29,9 +31,14 @@ object WallpaperCatalog {
 
 	fun configById(
 		id: String,
-		daylight: SunDaylight = SunDaylight.fallback()
+		daylight: SunDaylight = SunDaylight.fallback(),
+		languageTag: String = AppSettingsDefaults.LANGUAGE_SYSTEM
 	): WallpaperConfig {
-		val all = buildConfigs(count = DEFAULT_COUNT, daylight = daylight)
+		val all = buildConfigs(
+			count = DEFAULT_COUNT,
+			daylight = daylight,
+			languageTag = languageTag
+		)
 		return all.firstOrNull { it.id == id }
 			?: all.first().copy(id = id)
 	}
@@ -84,13 +91,13 @@ object WallpaperCatalog {
 	// ThemeRepository order from D:\LiveWallpaper-v4
 	private val ORDERED_PRESETS = listOf(
 		ThemePreset(
-				id = "pixel_forest",
-				displayName = "Pixel Forest",
-				fragmentAssetPath = "shaders/pixelforest/fragment.glsl",
-				horizonOffset = 0.45f,
-				sunPath = PathType.VERTICAL,
-				moonPath = PathType.VERTICAL,
-				features = SkyFeatureFlags(
+			id = "pixel_forest",
+			displayName = "Pixel Forest",
+			fragmentAssetPath = "shaders/pixelforest/fragment.glsl",
+			horizonOffset = 0.45f,
+			sunPath = PathType.VERTICAL,
+			moonPath = PathType.VERTICAL,
+			features = SkyFeatureFlags(
 				atmosphereEnabled = true,
 				lensFlareEnabled = false,
 				starsEnabled = true
@@ -102,13 +109,13 @@ object WallpaperCatalog {
 			)
 		),
 		ThemePreset(
-				id = "classic_sun",
-				displayName = "Lighthouse",
-				fragmentAssetPath = "shaders/lighthouse/fragment.glsl",
-				horizonOffset = 0.25f,
-				textures = WallpaperTextures(
-					backgroundTexture = "lighthouse/lighthouse.webp",
-					sunTexture = "common/sun_only.webp",
+			id = "classic_sun",
+			displayName = "Lighthouse",
+			fragmentAssetPath = "shaders/lighthouse/fragment.glsl",
+			horizonOffset = 0.25f,
+			textures = WallpaperTextures(
+				backgroundTexture = "lighthouse/lighthouse.webp",
+				sunTexture = "common/sun_only.webp",
 				moonTexture = "common/moon_only.webp"
 			)
 		),
@@ -120,7 +127,7 @@ object WallpaperCatalog {
 		),
 		ThemePreset(
 			id = "optical_sunset",
-			displayName = "Çöl",
+			displayName = "Optical Sunset",
 			fragmentAssetPath = "shaders/opticalsunset/fragment.glsl",
 			horizonOffset = 0.54f,
 			textures = WallpaperTextures(
@@ -129,7 +136,7 @@ object WallpaperCatalog {
 		),
 		ThemePreset(
 			id = "mars",
-			displayName = "Kızıl Gezegen",
+			displayName = "Red Planet",
 			fragmentAssetPath = "shaders/mars/fragment.glsl",
 			horizonOffset = 0.50f,
 			sunPath = PathType.VERTICAL,
@@ -143,29 +150,45 @@ object WallpaperCatalog {
 				backgroundTexture = "mars/mars.webp"
 			)
 		),
-			ThemePreset(
-				id = "warrior",
-				displayName = "Savaşçı",
-				fragmentAssetPath = "shaders/warrior/fragment.glsl",
-				horizonOffset = 0.42f,
+		ThemePreset(
+			id = "warrior",
+			displayName = "Warrior",
+			fragmentAssetPath = "shaders/warrior/fragment.glsl",
+			horizonOffset = 0.42f,
 			features = SkyFeatureFlags(
 				atmosphereEnabled = true,
 				lensFlareEnabled = true,
 				starsEnabled = false
 			),
-				textures = WallpaperTextures(
-					backgroundTexture = "warrior/warrior1.webp",
-					flareTexture = "warrior/warrior2.webp"
-				)
-			),
+			textures = WallpaperTextures(
+				backgroundTexture = "warrior/warrior1.webp",
+				flareTexture = "warrior/warrior2.webp"
+			)
+		),
 		ThemePreset(
-				id = "tablo",
-				displayName = "Tablo",
-				fragmentAssetPath = "shaders/tablo/fragment.glsl",
-				horizonOffset = 0.25f,
-				features = SkyFeatureFlags(
-					atmosphereEnabled = true,
-					lensFlareEnabled = false,
+			id = "game_teemo",
+			displayName = "Teemo",
+			fragmentAssetPath = "shaders/game_teemo/fragment.glsl",
+			horizonOffset = 0.34f,
+			sunPath = PathType.VERTICAL,
+			moonPath = PathType.VERTICAL,
+			features = SkyFeatureFlags(
+				atmosphereEnabled = true,
+				lensFlareEnabled = false,
+				starsEnabled = true
+			),
+			textures = WallpaperTextures(
+				backgroundTexture = "backgrounds/teemo.png"
+			)
+		),
+		ThemePreset(
+			id = "tablo",
+			displayName = "Canvas",
+			fragmentAssetPath = "shaders/tablo/fragment.glsl",
+			horizonOffset = 0.25f,
+			features = SkyFeatureFlags(
+				atmosphereEnabled = true,
+				lensFlareEnabled = false,
 				starsEnabled = false
 			),
 			textures = WallpaperTextures(
@@ -176,7 +199,7 @@ object WallpaperCatalog {
 		),
 		ThemePreset(
 			id = "city_istanbul",
-			displayName = "İstanbul",
+			displayName = "Istanbul",
 			fragmentAssetPath = "shaders/city/fragment_shader.glsl",
 			horizonOffset = 0.48f,
 			textures = WallpaperTextures(
@@ -211,12 +234,12 @@ object WallpaperCatalog {
 			)
 		),
 		ThemePreset(
-				id = "anime_sakura",
-				displayName = "Cherry Blossom",
-				fragmentAssetPath = "shaders/tablo/fragment.glsl",
-				horizonOffset = 0.25f,
-				sunPath = PathType.VERTICAL,
-				moonPath = PathType.VERTICAL,
+			id = "anime_sakura",
+			displayName = "Cherry Blossom",
+			fragmentAssetPath = "shaders/anime_sakura/fragment.glsl",
+			horizonOffset = 0.25f,
+			sunPath = PathType.VERTICAL,
+			moonPath = PathType.VERTICAL,
 			features = SkyFeatureFlags(
 				atmosphereEnabled = true,
 				lensFlareEnabled = false,

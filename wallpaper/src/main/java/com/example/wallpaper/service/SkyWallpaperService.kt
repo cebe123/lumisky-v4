@@ -26,6 +26,7 @@ open class SkyWallpaperService : WallpaperService() {
 			hasher = SceneStateHasher()
 		)
 		private var configRefreshReceiverRegistered: Boolean = false
+		private var lastAppliedConfigSignature: String? = null
 		private val configRefreshReceiver = object : BroadcastReceiver() {
 			override fun onReceive(context: Context?, intent: Intent?) {
 				if (intent?.action != ACTION_APPLY_STORED_WALLPAPER_CONFIG) return
@@ -72,6 +73,17 @@ open class SkyWallpaperService : WallpaperService() {
 
 		private fun applyStoredConfig() {
 			configStore.loadSelected()?.let { config ->
+				val signature = buildConfigSignature(
+					id = config.id,
+					isPreview = isPreview,
+					sunrise = config.daylight.sunriseMinute,
+					sunset = config.daylight.sunsetMinute
+				)
+				if (lastAppliedConfigSignature == signature) {
+					Logger.d("SkyWallpaperService", "apply_stored_config dedupe skip signature=$signature")
+					return
+				}
+				lastAppliedConfigSignature = signature
 				Logger.event(
 					"SkyWallpaperService",
 					"apply_stored_config",
@@ -84,6 +96,15 @@ open class SkyWallpaperService : WallpaperService() {
 			} ?: run {
 				Logger.w("SkyWallpaperService", "apply_stored_config skipped: no saved config")
 			}
+		}
+
+		private fun buildConfigSignature(
+			id: String,
+			isPreview: Boolean,
+			sunrise: Int,
+			sunset: Int
+		): String {
+			return "$id|$isPreview|$sunrise|$sunset"
 		}
 
 		private fun registerConfigRefreshReceiver() {

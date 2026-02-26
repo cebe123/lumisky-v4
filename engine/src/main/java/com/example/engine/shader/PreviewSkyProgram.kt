@@ -371,7 +371,11 @@ class PreviewSkyProgram {
 		val bytes = runCatching { loader(resolvedPath) }.getOrNull() ?: return 0
 		if (bytes.isEmpty()) return 0
 
-		val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return 0
+		val decodedBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return 0
+		val bitmap = preprocessTextureBitmap(
+			assetPath = resolvedPath,
+			bitmap = decodedBitmap
+		)
 		return try {
 			val handles = IntArray(1)
 			GLES20.glGenTextures(1, handles, 0)
@@ -399,8 +403,66 @@ class PreviewSkyProgram {
 			}
 			handle
 		} finally {
-			bitmap.recycle()
+			if (bitmap !== decodedBitmap) {
+				bitmap.recycle()
+			}
+			decodedBitmap.recycle()
 		}
+	}
+
+	private fun preprocessTextureBitmap(
+		assetPath: String,
+		bitmap: Bitmap
+	): Bitmap {
+		if (!shouldTrimTransparentTop(assetPath)) return bitmap
+		val trimmed = trimTransparentTop(
+			bitmap = bitmap,
+			minAlpha = ALPHA_TRIM_MIN_VISIBLE_ALPHA
+		)
+		return trimmed ?: bitmap
+	}
+
+	private fun shouldTrimTransparentTop(assetPath: String): Boolean {
+		val normalized = assetPath.lowercase()
+		return normalized == ANIME_SAKURA_TEXTURE_PATH
+	}
+
+	private fun trimTransparentTop(
+		bitmap: Bitmap,
+		minAlpha: Int
+	): Bitmap? {
+		val width = bitmap.width
+		val height = bitmap.height
+		if (width <= 0 || height <= 1) return null
+
+		val rowPixels = IntArray(width)
+		var firstVisibleRow = 0
+		while (firstVisibleRow < height - 1) {
+			bitmap.getPixels(rowPixels, 0, width, 0, firstVisibleRow, width, 1)
+			var hasVisiblePixel = false
+			for (pixel in rowPixels) {
+				val alpha = (pixel ushr 24) and 0xFF
+				if (alpha >= minAlpha) {
+					hasVisiblePixel = true
+					break
+				}
+			}
+			if (hasVisiblePixel) break
+			firstVisibleRow++
+		}
+
+		if (firstVisibleRow < ALPHA_TRIM_MIN_TOP_PIXELS) return null
+		val maxAllowedTrim = (height * ALPHA_TRIM_MAX_RATIO).toInt().coerceAtLeast(ALPHA_TRIM_MIN_TOP_PIXELS)
+		if (firstVisibleRow > maxAllowedTrim) return null
+		if (firstVisibleRow >= height - 1) return null
+
+		return Bitmap.createBitmap(
+			bitmap,
+			0,
+			firstVisibleRow,
+			width,
+			height - firstVisibleRow
+		)
 	}
 
 	private fun resolvePreferredTexturePath(
@@ -829,6 +891,10 @@ class PreviewSkyProgram {
 		private const val MIN_CELESTIAL_ALPHA = 0.02f
 		private const val SUN_SPRITE_SIZE = 0.065f
 		private const val MOON_SPRITE_SIZE = 0.058f
+		private const val ANIME_SAKURA_TEXTURE_PATH = "anime/anime_sakura.webp"
+		private const val ALPHA_TRIM_MIN_VISIBLE_ALPHA = 8
+		private const val ALPHA_TRIM_MIN_TOP_PIXELS = 24
+		private const val ALPHA_TRIM_MAX_RATIO = 0.45f
 
 		private val FULLSCREEN_VERTICES = floatArrayOf(
 			-1f, -1f,

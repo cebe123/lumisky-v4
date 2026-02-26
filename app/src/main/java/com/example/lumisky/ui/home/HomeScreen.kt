@@ -70,6 +70,7 @@ import com.example.lumisky.shader.RenderAssetCache
 import com.example.lumisky.ui.components.BottomNavBar
 import com.example.lumisky.viewmodel.HomeWallpaperItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
@@ -171,6 +172,17 @@ fun HomeScreen(
 	var lastDispatchedFocusId by remember { mutableStateOf<String?>(null) }
 	var lastCategoryDispatchKey by remember { mutableStateOf<String?>(null) }
 
+	LaunchedEffect(groupedWallpapers, selectedWallpaperId, liveWallpaperId) {
+		if (focusCandidateId != null) return@LaunchedEffect
+		val allIds = groupedWallpapers.flatMap { (_, list) -> list.map { it.id } }
+		if (allIds.isEmpty()) return@LaunchedEffect
+		focusCandidateId = when {
+			selectedWallpaperId != null && allIds.contains(selectedWallpaperId) -> selectedWallpaperId
+			liveWallpaperId != null && allIds.contains(liveWallpaperId) -> liveWallpaperId
+			else -> allIds.first()
+		}
+	}
+
 	LaunchedEffect(activeCategoryIds, verticalState.isScrollInProgress) {
 		if (activeCategoryIds.isEmpty()) {
 			focusCandidateId = null
@@ -198,6 +210,8 @@ fun HomeScreen(
 			return@LaunchedEffect
 		}
 		if (candidate == lastDispatchedFocusId) return@LaunchedEffect
+		delay(FOCUS_INIT_DELAY_MS)
+		if (candidate != focusCandidateId) return@LaunchedEffect
 		lastDispatchedFocusId = candidate
 		onFocusReady(candidate)
 	}
@@ -273,7 +287,6 @@ fun HomeScreen(
 						CategorySection(
 							categoryName = entry.first,
 							wallpapers = entry.second,
-							selectedWallpaperId = selectedWallpaperId,
 							liveWallpaperId = liveWallpaperId,
 							isCategoryActive = isCategoryActive,
 							parentScrollInProgress = verticalState.isScrollInProgress,
@@ -303,7 +316,6 @@ fun HomeScreen(
 private fun CategorySection(
 	categoryName: String,
 	wallpapers: List<StoreWallpaperModel>,
-	selectedWallpaperId: String?,
 	liveWallpaperId: String?,
 	isCategoryActive: Boolean,
 	parentScrollInProgress: Boolean,
@@ -316,9 +328,7 @@ private fun CategorySection(
 ) {
 	val context = LocalContext.current.applicationContext
 	val rowState = rememberLazyListState()
-	var centeredWallpaperId by remember(wallpapers) {
-		mutableStateOf(wallpapers.firstOrNull()?.id)
-	}
+	var centeredWallpaperId by remember(wallpapers) { mutableStateOf<String?>(null) }
 	var lastPrewarmIds by remember { mutableStateOf("") }
 
 	LaunchedEffect(rowState, wallpapers) {
@@ -328,6 +338,7 @@ private fun CategorySection(
 			.distinctUntilChanged()
 			.collectLatest { centered ->
 				if (centered in wallpapers.indices) {
+					delay(FOCUS_INIT_DELAY_MS)
 					centeredWallpaperId = wallpapers[centered].id
 				}
 			}
@@ -335,6 +346,7 @@ private fun CategorySection(
 
 	LaunchedEffect(wallpapers) {
 		if (centeredWallpaperId == null || wallpapers.none { it.id == centeredWallpaperId }) {
+			delay(FOCUS_INIT_DELAY_MS)
 			centeredWallpaperId = wallpapers.firstOrNull()?.id
 		}
 	}
@@ -395,11 +407,9 @@ private fun CategorySection(
 				val isPreparedNeighbor = isCategoryActive &&
 					liveIndex >= 0 &&
 					abs(index - liveIndex) == 1
-				val isSelected = model.id == selectedWallpaperId
 				WallpaperCard(
 					title = model.name,
 					item = model.item,
-					isSelected = isSelected,
 					isLive = isFocusedLive,
 					isPrepared = isPreparedNeighbor,
 					highRefreshEnabled = highRefreshEnabled,
@@ -416,7 +426,6 @@ private fun CategorySection(
 private fun WallpaperCard(
 	title: String,
 	item: HomeWallpaperItem,
-	isSelected: Boolean,
 	isLive: Boolean,
 	isPrepared: Boolean,
 	highRefreshEnabled: Boolean,
@@ -471,12 +480,6 @@ private fun WallpaperCard(
 						color = Color.White
 					)
 				)
-				if (isSelected) {
-					Text(
-						text = "SELECTED",
-						style = MaterialTheme.typography.labelMedium.copy(color = Color.White.copy(alpha = 0.85f))
-					)
-				}
 			}
 		}
 	}
@@ -792,3 +795,4 @@ private const val DEFAULT_REFRESH_RATE = 60
 private const val MAX_REFRESH_RATE = 120
 private const val HOME_FOCUS_CATCHUP_SECONDS = 4f
 private const val CATEGORY_FOCUS_MAX_ITEMS = 24
+private const val FOCUS_INIT_DELAY_MS = 100L

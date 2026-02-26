@@ -25,6 +25,16 @@ private data class CachedDaylightEntry(
 	val updatedAtWallClockMs: Long
 )
 
+private data class CacheHit(
+	val entry: CachedDaylightEntry,
+	val layer: CacheLayer
+)
+
+private enum class CacheLayer {
+	ACTIVE,
+	BACKUP
+}
+
 class SunTimesRepository(
 	private val apiClient: SunTimesApiClient = SunTimesApiClient()
 ) {
@@ -93,17 +103,20 @@ class SunTimesRepository(
 		val orderedCandidates = buildCandidates(candidates)
 		if (!forceRefresh) {
 			val dayKey = currentDayKey()
-			val dailyHit = findDailyHit(orderedCandidates, dayKey)
-			if (dailyHit != null) {
-				cached.set(dailyHit.daylight)
+			val cacheHit = findDailyHitByCandidatePriority(orderedCandidates, dayKey)
+			if (cacheHit != null) {
+				if (cacheHit.layer == CacheLayer.ACTIVE) {
+					cached.set(cacheHit.entry.daylight)
+				}
+				val decision = if (cacheHit.layer == CacheLayer.ACTIVE) "HIT" else "HIT_BACKUP"
 				Logger.d(
 					TAG,
-					"Sun times decision=HIT at=${toHourMinuteLabel(System.currentTimeMillis())} " +
-						"day=$dayKey source=${dailyHit.sourceLabel} " +
-						"sunrise=${dailyHit.daylight.sunriseMinute}(${toClockLabel(dailyHit.daylight.sunriseMinute)}) " +
-						"sunset=${dailyHit.daylight.sunsetMinute}(${toClockLabel(dailyHit.daylight.sunsetMinute)})"
+					"Sun times decision=$decision at=${toHourMinuteLabel(System.currentTimeMillis())} " +
+						"day=$dayKey layer=${cacheHit.layer} source=${cacheHit.entry.sourceLabel} " +
+						"sunrise=${cacheHit.entry.daylight.sunriseMinute}(${toClockLabel(cacheHit.entry.daylight.sunriseMinute)}) " +
+						"sunset=${cacheHit.entry.daylight.sunsetMinute}(${toClockLabel(cacheHit.entry.daylight.sunsetMinute)})"
 				)
-				onUpdated(dailyHit.daylight)
+				onUpdated(cacheHit.entry.daylight)
 				return
 			}
 		}
@@ -115,17 +128,24 @@ class SunTimesRepository(
 			val latestCandidates = buildCandidates(candidates)
 			if (!forceRefresh) {
 				val dayKey = currentDayKey()
-				val dailyHit = findDailyHit(latestCandidates, dayKey)
-				if (dailyHit != null) {
-					cached.set(dailyHit.daylight)
+				val cacheHit = findDailyHitByCandidatePriority(latestCandidates, dayKey)
+				if (cacheHit != null) {
+					if (cacheHit.layer == CacheLayer.ACTIVE) {
+						cached.set(cacheHit.entry.daylight)
+					}
+					val decision = if (cacheHit.layer == CacheLayer.ACTIVE) {
+						"HIT_POST_QUEUE"
+					} else {
+						"HIT_BACKUP_POST_QUEUE"
+					}
 					Logger.d(
 						TAG,
-						"Sun times decision=HIT_POST_QUEUE at=${toHourMinuteLabel(System.currentTimeMillis())} " +
-							"day=$dayKey source=${dailyHit.sourceLabel} " +
-							"sunrise=${dailyHit.daylight.sunriseMinute}(${toClockLabel(dailyHit.daylight.sunriseMinute)}) " +
-							"sunset=${dailyHit.daylight.sunsetMinute}(${toClockLabel(dailyHit.daylight.sunsetMinute)})"
+						"Sun times decision=$decision at=${toHourMinuteLabel(System.currentTimeMillis())} " +
+							"day=$dayKey layer=${cacheHit.layer} source=${cacheHit.entry.sourceLabel} " +
+							"sunrise=${cacheHit.entry.daylight.sunriseMinute}(${toClockLabel(cacheHit.entry.daylight.sunriseMinute)}) " +
+							"sunset=${cacheHit.entry.daylight.sunsetMinute}(${toClockLabel(cacheHit.entry.daylight.sunsetMinute)})"
 					)
-					onUpdated(dailyHit.daylight)
+					onUpdated(cacheHit.entry.daylight)
 					return@execute
 				}
 			}
@@ -152,7 +172,7 @@ class SunTimesRepository(
 					continue
 				}
 
-				val entry = storeSuccessfulFetch(candidate, fetched)
+				val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.ACTIVE)
 				Logger.d(
 					TAG,
 					"Sun times decision=FETCH_SUCCESS at=${toHourMinuteLabel(entry.updatedAtWallClockMs)} " +
@@ -221,7 +241,7 @@ class SunTimesRepository(
 					)
 					return@forEach
 				}
-				val entry = storeSuccessfulFetch(candidate, fetched)
+				val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.BACKUP)
 				markBackupRefresh(candidate, entry.updatedAtWallClockMs)
 				Logger.d(
 					TAG,
@@ -240,15 +260,16 @@ class SunTimesRepository(
 		backupPrefetchExecutor.shutdownNow()
 	}
 
-	private fun findDailyHit(
+	private fun findDailyHitByCandidatePriority(
 		candidates: List<SunLocation>,
 		dayKey: String
-	): CachedDaylightEntry? {
+	): CacheHit? {
 		synchronized(cacheLock) {
 			for (candidate in candidates) {
 				val locationKey = toLocationKey(candidate)
 				val key = toDailyCacheKey(locationKey, dayKey)
-				sharedDailyCache[key]?.let { return it }
+				sharedDailyCache[key]?.let { return CacheHit(it, CacheLayer.ACTIVE) }
+				sharedBackupDailyCache[key]?.let { return CacheHit(it, CacheLayer.BACKUP) }
 			}
 		}
 		return null
@@ -256,7 +277,8 @@ class SunTimesRepository(
 
 	private fun storeSuccessfulFetch(
 		candidate: SunLocation,
-		daylight: SunDaylight
+		daylight: SunDaylight,
+		layer: CacheLayer
 	): CachedDaylightEntry {
 		val nowMs = System.currentTimeMillis()
 		val locationKey = toLocationKey(candidate)
@@ -269,37 +291,60 @@ class SunTimesRepository(
 			updatedAtWallClockMs = nowMs
 		)
 		synchronized(cacheLock) {
-			sharedDailyCache[toDailyCacheKey(locationKey, dayKey)] = entry
-			sharedLocationCache[locationKey] = entry
+			when (layer) {
+				CacheLayer.ACTIVE -> {
+					sharedDailyCache[toDailyCacheKey(locationKey, dayKey)] = entry
+					sharedLocationCache[locationKey] = entry
+				}
+				CacheLayer.BACKUP -> {
+					sharedBackupDailyCache[toDailyCacheKey(locationKey, dayKey)] = entry
+					sharedBackupLocationCache[locationKey] = entry
+				}
+			}
 			trimCacheLocked()
 		}
-		sharedLatestEntry.set(entry)
-		cached.set(daylight)
-		lastSuccessfulLocation.set(candidate)
+		if (layer == CacheLayer.ACTIVE) {
+			cached.set(daylight)
+			lastSuccessfulLocation.set(candidate)
+		}
 		return entry
 	}
 
 	private fun resolveFallback(
 		preferredCandidates: List<SunLocation> = emptyList()
 	): Pair<SunDaylight, String> {
-		cached.get()?.let { return it to "instance_cache" }
+		val preferredLocationKeys = preferredCandidates
+			.map { candidate -> toLocationKey(candidate) }
+			.toSet()
+		cached.get()?.let { daylight ->
+			val location = lastSuccessfulLocation.get()
+			if (location == null) {
+				if (preferredLocationKeys.isEmpty()) return daylight to "instance_cache"
+			} else {
+				val cachedLocationKey = toLocationKey(location)
+				if (preferredLocationKeys.isEmpty() || preferredLocationKeys.contains(cachedLocationKey)) {
+					return daylight to "instance_cache:${location.label}"
+				}
+			}
+		}
 		synchronized(cacheLock) {
 			for (candidate in preferredCandidates) {
 				val locationKey = toLocationKey(candidate)
-				sharedLocationCache[locationKey]?.let { return it.daylight to "location_cache:${candidate.label}" }
+				sharedLocationCache[locationKey]?.let {
+					return it.daylight to "location_cache:${candidate.label}"
+				}
+				sharedBackupLocationCache[locationKey]?.let {
+					return it.daylight to "backup_location_cache:${candidate.label}"
+				}
 			}
 		}
-		sharedLatestEntry.get()?.let { return it.daylight to "process_cache:${it.sourceLabel}" }
 		return SunDaylight.fallback() to "default_fallback"
 	}
 
 	private fun buildCandidates(
 		inputCandidates: List<SunLocation>
 	): List<SunLocation> {
-		return buildList {
-			lastSuccessfulLocation.get()?.let { add(it) }
-			addAll(inputCandidates)
-		}.distinctBy { candidate ->
+		return inputCandidates.distinctBy { candidate ->
 			"${candidate.latitude}|${candidate.longitude}"
 		}
 	}
@@ -313,6 +358,18 @@ class SunTimesRepository(
 		}
 		while (sharedLocationCache.size > MAX_LOCATION_CACHE_ENTRIES) {
 			val iterator = sharedLocationCache.entries.iterator()
+			if (!iterator.hasNext()) break
+			iterator.next()
+			iterator.remove()
+		}
+		while (sharedBackupDailyCache.size > MAX_DAILY_CACHE_ENTRIES) {
+			val iterator = sharedBackupDailyCache.entries.iterator()
+			if (!iterator.hasNext()) break
+			iterator.next()
+			iterator.remove()
+		}
+		while (sharedBackupLocationCache.size > MAX_LOCATION_CACHE_ENTRIES) {
+			val iterator = sharedBackupLocationCache.entries.iterator()
 			if (!iterator.hasNext()) break
 			iterator.next()
 			iterator.remove()
@@ -377,7 +434,7 @@ class SunTimesRepository(
 
 	companion object {
 		private const val TAG = "SunTimesRepository"
-		private const val LOCATION_BUCKET_SCALE = 100.0
+		private const val LOCATION_BUCKET_SCALE = 1000.0
 		private const val MAX_DAILY_CACHE_ENTRIES = 96
 		private const val MAX_LOCATION_CACHE_ENTRIES = 48
 		private const val MAX_BACKUP_REFRESH_ENTRIES = 96
@@ -385,7 +442,8 @@ class SunTimesRepository(
 		private val cacheLock = Any()
 		private val sharedDailyCache = LinkedHashMap<String, CachedDaylightEntry>(64, 0.75f, true)
 		private val sharedLocationCache = LinkedHashMap<String, CachedDaylightEntry>(32, 0.75f, true)
+		private val sharedBackupDailyCache = LinkedHashMap<String, CachedDaylightEntry>(64, 0.75f, true)
+		private val sharedBackupLocationCache = LinkedHashMap<String, CachedDaylightEntry>(32, 0.75f, true)
 		private val sharedBackupRefreshCache = LinkedHashMap<String, Long>(64, 0.75f, true)
-		private val sharedLatestEntry = AtomicReference<CachedDaylightEntry?>(null)
 	}
 }
