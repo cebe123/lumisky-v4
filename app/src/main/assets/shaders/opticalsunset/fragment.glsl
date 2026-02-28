@@ -164,7 +164,7 @@ void main() {
         }
     }
 
-    float terrainMaxHeight = 0.9;
+    float terrainMaxHeight = 1.02;
     float v = 1.0 - (uv.y / terrainMaxHeight);
 
     if (v >= 0.0 && v <= 1.0) {

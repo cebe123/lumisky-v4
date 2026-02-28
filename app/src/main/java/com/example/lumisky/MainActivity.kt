@@ -13,6 +13,15 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.SideEffect
@@ -95,12 +104,17 @@ class MainActivity : AppCompatActivity() {
 				darkTheme = darkTheme,
 				dynamicColor = false
 			) {
-				var currentScreen by rememberSaveable { mutableStateOf("home") }
-				val systemBarColor = if (currentScreen == "home") {
+				var currentScreen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
+				val targetSystemBarColor = if (currentScreen == SCREEN_HOME) {
 					HomeScreenBackgroundColor
 				} else {
 					MaterialTheme.colorScheme.background
 				}
+				val systemBarColor by animateColorAsState(
+					targetValue = targetSystemBarColor,
+					animationSpec = tween(durationMillis = 320),
+					label = "main_system_bar_color"
+				)
 				SideEffect {
 					window.statusBarColor = systemBarColor.toArgb()
 					WindowCompat
@@ -108,65 +122,100 @@ class MainActivity : AppCompatActivity() {
 						.isAppearanceLightStatusBars = systemBarColor.luminance() > 0.5f
 				}
 
-				when (currentScreen) {
-					"home" -> HomeScreen(
-						items = homeViewModel.items,
-						selectedWallpaperId = homeViewModel.selectedWallpaperId,
-						liveWallpaperId = homeViewModel.liveWallpaperId,
-						highRefreshEnabled = homeViewModel.highRefreshEnabled,
-						performanceMode = homeViewModel.performanceMode,
-						onWallpaperSelected = { id ->
-							Logger.event(TAG, "wallpaper_selected", "id" to id)
-							homeViewModel.onWallpaperSelected(id)
-						},
-						onCategoryFocused = { ids ->
-							Logger.event(TAG, "category_focused", "count" to ids.size)
-							homeViewModel.onCategoryFocused(ids)
-						},
-						onFocusReady = { id ->
-							Logger.event(TAG, "focus_ready", "id" to id)
-							homeViewModel.activateLivePreview(id)
-						},
-						onFocusCleared = {
-							Logger.d(TAG, "focus_cleared")
-							homeViewModel.clearLivePreview()
-						},
-						onOpenPreview = { id ->
-							Logger.event(TAG, "open_set_screen", "id" to id)
-							openWallpaperSetScreen(id)
-						},
-						onNavigateSettings = {
-							Logger.d(TAG, "navigate_settings")
-							currentScreen = "settings"
+				AnimatedContent(
+					targetState = currentScreen,
+					transitionSpec = {
+						val direction = if (targetState == SCREEN_SETTINGS) {
+							AnimatedContentTransitionScope.SlideDirection.Left
+						} else {
+							AnimatedContentTransitionScope.SlideDirection.Right
 						}
-					)
+						(
+							slideIntoContainer(
+								towards = direction,
+								animationSpec = tween(
+									durationMillis = 360,
+									easing = FastOutSlowInEasing
+								),
+								initialOffset = { offset -> offset / 3 }
+							) + fadeIn(
+								animationSpec = tween(durationMillis = 220, delayMillis = 60)
+							)
+						).togetherWith(
+							slideOutOfContainer(
+								towards = direction,
+								animationSpec = tween(
+									durationMillis = 280,
+									easing = FastOutSlowInEasing
+								),
+								targetOffset = { offset -> offset / 4 }
+							) + fadeOut(
+								animationSpec = tween(durationMillis = 180)
+							)
+						).using(SizeTransform(clip = false))
+					},
+					label = "main_screen_transition"
+				) { screen ->
+					when (screen) {
+						SCREEN_HOME -> HomeScreen(
+							items = homeViewModel.items,
+							selectedWallpaperId = homeViewModel.selectedWallpaperId,
+							liveWallpaperId = homeViewModel.liveWallpaperId,
+							highRefreshEnabled = homeViewModel.highRefreshEnabled,
+							performanceMode = homeViewModel.performanceMode,
+							onWallpaperSelected = { id ->
+								Logger.event(TAG, "wallpaper_selected", "id" to id)
+								homeViewModel.onWallpaperSelected(id)
+							},
+							onCategoryFocused = { ids ->
+								Logger.event(TAG, "category_focused", "count" to ids.size)
+								homeViewModel.onCategoryFocused(ids)
+							},
+							onFocusReady = { id ->
+								Logger.event(TAG, "focus_ready", "id" to id)
+								homeViewModel.activateLivePreview(id)
+							},
+							onFocusCleared = {
+								Logger.d(TAG, "focus_cleared")
+								homeViewModel.clearLivePreview()
+							},
+							onOpenPreview = { id ->
+								Logger.event(TAG, "open_set_screen", "id" to id)
+								openWallpaperSetScreen(id)
+							},
+							onNavigateSettings = {
+								Logger.d(TAG, "navigate_settings")
+								currentScreen = SCREEN_SETTINGS
+							}
+						)
 
-					"settings" -> SettingsScreen(
-						appThemeMode = homeViewModel.appThemeMode,
-						onCycleTheme = { homeViewModel.cycleAppThemeMode() },
-						highRefreshEnabled = homeViewModel.highRefreshEnabled,
-						onHighRefreshChanged = { enabled -> homeViewModel.updateHighRefreshEnabled(enabled) },
-						performanceMode = homeViewModel.performanceMode,
-						onPerformanceModeChanged = { mode -> homeViewModel.updatePerformanceMode(mode) },
-						locationMode = homeViewModel.locationMode,
-						locationLabel = homeViewModel.locationLabel,
-						daylight = homeViewModel.daylight,
-						gpsLocationAvailable = homeViewModel.gpsLocationAvailable,
-						systemLocationEnabled = homeViewModel.systemLocationEnabled,
-						onLocationModeChanged = { mode -> homeViewModel.updateLocationMode(mode) },
-						onRequestEnableSystemLocation = { openSystemLocationPanel() },
-						manualCity = homeViewModel.manualCity,
-						onManualCitySelected = { city -> homeViewModel.updateManualCity(city) },
-						languageTag = homeViewModel.languageTag,
-						onLanguageSelected = { tag ->
-							homeViewModel.updateLanguageTag(tag)
-							applyLanguage(tag)
-						},
-						onNavigateHome = {
-							Logger.d(TAG, "navigate_home")
-							currentScreen = "home"
-						}
-					)
+						SCREEN_SETTINGS -> SettingsScreen(
+							appThemeMode = homeViewModel.appThemeMode,
+							onCycleTheme = { homeViewModel.cycleAppThemeMode() },
+							highRefreshEnabled = homeViewModel.highRefreshEnabled,
+							onHighRefreshChanged = { enabled -> homeViewModel.updateHighRefreshEnabled(enabled) },
+							performanceMode = homeViewModel.performanceMode,
+							onPerformanceModeChanged = { mode -> homeViewModel.updatePerformanceMode(mode) },
+							locationMode = homeViewModel.locationMode,
+							locationLabel = homeViewModel.locationLabel,
+							daylight = homeViewModel.daylight,
+							gpsLocationAvailable = homeViewModel.gpsLocationAvailable,
+							systemLocationEnabled = homeViewModel.systemLocationEnabled,
+							onLocationModeChanged = { mode -> homeViewModel.updateLocationMode(mode) },
+							onRequestEnableSystemLocation = { openSystemLocationPanel() },
+							manualCity = homeViewModel.manualCity,
+							onManualCitySelected = { city -> homeViewModel.updateManualCity(city) },
+							languageTag = homeViewModel.languageTag,
+							onLanguageSelected = { tag ->
+								homeViewModel.updateLanguageTag(tag)
+								applyLanguage(tag)
+							},
+							onNavigateHome = {
+								Logger.d(TAG, "navigate_home")
+								currentScreen = SCREEN_HOME
+							}
+						)
+					}
 				}
 			}
 		}
@@ -412,6 +461,8 @@ class MainActivity : AppCompatActivity() {
 
 	companion object {
 		private const val TAG = "MainActivity"
+		private const val SCREEN_HOME = "home"
+		private const val SCREEN_SETTINGS = "settings"
 		private const val SET_WALLPAPER_REFRESH_TIMEOUT_MS = 1_800L
 	}
 }

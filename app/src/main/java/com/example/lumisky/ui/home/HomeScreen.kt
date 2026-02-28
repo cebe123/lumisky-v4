@@ -241,14 +241,6 @@ fun HomeScreen(
 					titleContentColor = Color.White
 				)
 			)
-		},
-		bottomBar = {
-			BottomNavBar(
-				selectedItem = 0,
-				onItemSelected = { index ->
-					if (index == 1) onNavigateSettings()
-				}
-			)
 		}
 	) { innerPadding ->
 		Box(
@@ -261,7 +253,7 @@ fun HomeScreen(
 				modifier = Modifier
 					.fillMaxSize()
 					.padding(innerPadding),
-				contentPadding = PaddingValues(bottom = 80.dp),
+				contentPadding = PaddingValues(bottom = 112.dp),
 				verticalArrangement = Arrangement.spacedBy(24.dp)
 			) {
 				itemsIndexed(groupedWallpapers) { index, entry ->
@@ -287,6 +279,19 @@ fun HomeScreen(
 						}
 					)
 				}
+			}
+
+			Box(
+				modifier = Modifier
+					.align(Alignment.BottomCenter)
+					.fillMaxWidth()
+			) {
+				BottomNavBar(
+					selectedItem = 0,
+					onItemSelected = { index ->
+						if (index == 1) onNavigateSettings()
+					}
+				)
 			}
 		}
 	}

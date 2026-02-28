@@ -145,127 +145,136 @@ fun SettingsScreen(
 					scrolledContainerColor = MaterialTheme.colorScheme.background
 				)
 			)
-		},
-		bottomBar = {
-			BottomNavBar(
-				selectedItem = 1,
-				onItemSelected = { item ->
-					if (item == 0) onNavigateHome()
-				}
-			)
 		}
 	) { innerPadding ->
-		LazyColumn(
+		Box(
 			modifier = Modifier
 				.fillMaxSize()
 				.padding(innerPadding),
-			contentPadding = PaddingValues(16.dp),
-			verticalArrangement = Arrangement.spacedBy(16.dp)
 		) {
-				items(sectionOrder) { section ->
-					when (section) {
-						sectionAppearance -> {
-						SectionCard(title = section) {
-							SettingActionRow(
-								icon = Icons.Filled.Palette,
-								title = stringResource(R.string.theme_title),
-								value = themeLabel(appThemeMode),
-								onClick = onCycleTheme
-							)
-							HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-							SettingActionRow(
-								icon = Icons.Filled.Language,
-								title = stringResource(R.string.language_title),
-								value = languageLabel(languageTag),
-								onClick = { showLanguageDialog = true }
-							)
+			LazyColumn(
+				modifier = Modifier.fillMaxSize(),
+				contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 112.dp),
+				verticalArrangement = Arrangement.spacedBy(16.dp)
+			) {
+					items(sectionOrder) { section ->
+						when (section) {
+							sectionAppearance -> {
+							SectionCard(title = section) {
+								SettingActionRow(
+									icon = Icons.Filled.Palette,
+									title = stringResource(R.string.theme_title),
+									value = themeLabel(appThemeMode),
+									onClick = onCycleTheme
+								)
+								HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+								SettingActionRow(
+									icon = Icons.Filled.Language,
+									title = stringResource(R.string.language_title),
+									value = languageLabel(languageTag),
+									onClick = { showLanguageDialog = true }
+								)
+							}
 						}
-					}
 
-						sectionLocationTime -> {
-						SectionCard(title = section) {
-							SettingSwitchRow(
-								icon = Icons.Filled.LocationOn,
-								title = stringResource(R.string.location_enable),
-								checked = locationMode == LocationMode.GPS,
-								onCheckedChange = { enabled ->
-									if (!enabled) {
-										onLocationModeChanged(LocationMode.MANUAL)
-										return@SettingSwitchRow
+							sectionLocationTime -> {
+							SectionCard(title = section) {
+								SettingSwitchRow(
+									icon = Icons.Filled.LocationOn,
+									title = stringResource(R.string.location_enable),
+									checked = locationMode == LocationMode.GPS,
+									onCheckedChange = { enabled ->
+										if (!enabled) {
+											onLocationModeChanged(LocationMode.MANUAL)
+											return@SettingSwitchRow
+										}
+
+										val hasPermission = ContextCompat.checkSelfPermission(
+											context,
+											Manifest.permission.ACCESS_FINE_LOCATION
+										) == PackageManager.PERMISSION_GRANTED
+										if (hasPermission) {
+											onLocationModeChanged(LocationMode.GPS)
+											if (!systemLocationEnabled) {
+												onRequestEnableSystemLocation()
+											}
+										} else {
+											permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+										}
 									}
-
-									val hasPermission = ContextCompat.checkSelfPermission(
-										context,
-										Manifest.permission.ACCESS_FINE_LOCATION
-									) == PackageManager.PERMISSION_GRANTED
-									if (hasPermission) {
-										onLocationModeChanged(LocationMode.GPS)
-										if (!systemLocationEnabled) {
-											onRequestEnableSystemLocation()
+								)
+								HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+								SettingActionRow(
+									icon = Icons.Filled.LocationCity,
+									title = stringResource(R.string.location_select_city),
+									value = if (locationMode == LocationMode.GPS) {
+										if (gpsLocationAvailable && systemLocationEnabled) {
+											locationLabel
+										} else {
+											"$locationLabel / GPS unavailable"
 										}
 									} else {
-										permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-									}
-								}
-							)
-							HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-							SettingActionRow(
-								icon = Icons.Filled.LocationCity,
-								title = stringResource(R.string.location_select_city),
-								value = if (locationMode == LocationMode.GPS) {
-									if (gpsLocationAvailable && systemLocationEnabled) {
 										locationLabel
-									} else {
-										"$locationLabel / GPS unavailable"
-									}
-								} else {
-									locationLabel
-								},
-								onClick = {
-									showCityDialog = true
-								},
-								enabled = citySelectionEnabled
-							)
-							HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-							SettingInfoRow(
-								icon = Icons.Filled.LocationOn,
-								title = currentSunTimesTitle,
-								valueLines = listOf(
-									"${currentSunriseLabel} ${formatMinuteLabel(daylight.sunriseMinute)}",
-									"${currentSolarNoonLabel} ${formatMinuteLabel(daylight.solarNoonMinute)}",
-									"${currentSunsetLabel} ${formatMinuteLabel(daylight.sunsetMinute)}",
-									"${currentMoonZenithLabel} ${formatMinuteLabel(moonZenithMinute)}"
+									},
+									onClick = {
+										showCityDialog = true
+									},
+									enabled = citySelectionEnabled
 								)
-							)
-						}
-					}
-
-						sectionWallpaper -> {
-						SectionCard(title = section) {
-							SettingActionRow(
-								icon = Icons.Filled.Tune,
-								title = stringResource(R.string.performance_mode_title),
-								value = performanceModeLabel(performanceMode),
-								onClick = { onPerformanceModeChanged(nextPerformanceMode(performanceMode)) }
-							)
-						}
-					}
-
-						else -> {
-							SectionCard(title = section) {
-									SettingActionRow(
-										icon = Icons.Filled.Tune,
-										title = stringResource(R.string.app_version),
-										value = appVersionName,
-										onClick = {},
-										enabled = false
+								HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+								SettingInfoRow(
+									icon = Icons.Filled.LocationOn,
+									title = currentSunTimesTitle,
+									valueLines = listOf(
+										"${currentSunriseLabel} ${formatMinuteLabel(daylight.sunriseMinute)}",
+										"${currentSolarNoonLabel} ${formatMinuteLabel(daylight.solarNoonMinute)}",
+										"${currentSunsetLabel} ${formatMinuteLabel(daylight.sunsetMinute)}",
+										"${currentMoonZenithLabel} ${formatMinuteLabel(moonZenithMinute)}"
 									)
+								)
+							}
+						}
+
+							sectionWallpaper -> {
+							SectionCard(title = section) {
+								SettingActionRow(
+									icon = Icons.Filled.Tune,
+									title = stringResource(R.string.performance_mode_title),
+									value = performanceModeLabel(performanceMode),
+									onClick = { onPerformanceModeChanged(nextPerformanceMode(performanceMode)) }
+								)
+							}
+						}
+
+							else -> {
+								SectionCard(title = section) {
+										SettingActionRow(
+											icon = Icons.Filled.Tune,
+											title = stringResource(R.string.app_version),
+											value = appVersionName,
+											onClick = {},
+											enabled = false
+										)
+								}
 							}
 						}
 					}
 				}
+
+			Box(
+				modifier = Modifier
+					.align(Alignment.BottomCenter)
+					.fillMaxWidth()
+			) {
+				BottomNavBar(
+					selectedItem = 1,
+					onItemSelected = { item ->
+						if (item == 0) onNavigateHome()
+					}
+				)
 			}
 		}
+	}
 
 	if (showLanguageDialog) {
 		ChoiceDialog(
