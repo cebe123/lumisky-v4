@@ -19,6 +19,7 @@ uniform float u_CloudAlpha;
 uniform float u_Sunset;
 uniform float u_Sunrise;
 uniform float u_NightAmount;
+uniform float u_SolarNoon;
 
 varying vec2 v_TexCoord;
 
@@ -86,6 +87,9 @@ void main() {
     if (effectiveSunPos.y < horizonY) {
         effectiveSunPos.y += (horizonY - effectiveSunPos.y) * 0.20;
     }
+    float sunZenithDelta = abs(u_Minute - u_SolarNoon);
+    float sunZenithLock = 1.0 - smoothstep(0.0, 45.0, sunZenithDelta);
+    effectiveSunPos.y = mix(effectiveSunPos.y, u_SunPos.y, sunZenithLock);
 
     vec2 effectiveMoonPos = u_MoonPos;
     effectiveMoonPos.x -= 0.18;

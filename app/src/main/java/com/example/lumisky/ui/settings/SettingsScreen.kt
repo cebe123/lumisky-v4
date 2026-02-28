@@ -58,6 +58,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.example.core.api.SunDaylight
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppThemeMode
 import com.example.core.settings.CityGroup
@@ -66,6 +67,7 @@ import com.example.core.settings.ManualCity
 import com.example.core.settings.PerformanceMode
 import com.example.lumisky.R
 import com.example.lumisky.ui.components.BottomNavBar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +81,7 @@ fun SettingsScreen(
 	onPerformanceModeChanged: (PerformanceMode) -> Unit,
 	locationMode: LocationMode,
 	locationLabel: String,
+	daylight: SunDaylight,
 	gpsLocationAvailable: Boolean,
 	systemLocationEnabled: Boolean,
 	onLocationModeChanged: (LocationMode) -> Unit,
@@ -95,10 +98,18 @@ fun SettingsScreen(
 	val sectionLocationTime = stringResource(R.string.section_location_time)
 	val sectionWallpaper = stringResource(R.string.section_wallpaper_settings)
 	val sectionAbout = stringResource(R.string.section_about)
+	val currentSunTimesTitle = stringResource(R.string.location_current_sun_times)
+	val currentSunriseLabel = stringResource(R.string.location_current_sunrise)
+	val currentSolarNoonLabel = stringResource(R.string.location_current_solar_noon)
+	val currentSunsetLabel = stringResource(R.string.location_current_sunset)
+	val currentMoonZenithLabel = stringResource(R.string.location_current_moon_zenith)
 	val sectionOrder = remember(sectionAppearance, sectionLocationTime, sectionWallpaper, sectionAbout) {
 		listOf(sectionAppearance, sectionLocationTime, sectionWallpaper, sectionAbout)
 	}
 	val appVersionName = remember(context) { resolveAppVersionName(context) }
+	val moonZenithMinute = remember(daylight.solarNoonMinute) {
+		(daylight.solarNoonMinute + (12 * 60)) % (24 * 60)
+	}
 
 	val permissionLauncher = rememberLauncherForActivityResult(
 		contract = ActivityResultContracts.RequestPermission()
@@ -213,6 +224,17 @@ fun SettingsScreen(
 									showCityDialog = true
 								},
 								enabled = true
+							)
+							HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+							SettingInfoRow(
+								icon = Icons.Filled.LocationOn,
+								title = currentSunTimesTitle,
+								valueLines = listOf(
+									"${currentSunriseLabel} ${formatMinuteLabel(daylight.sunriseMinute)}",
+									"${currentSolarNoonLabel} ${formatMinuteLabel(daylight.solarNoonMinute)}",
+									"${currentSunsetLabel} ${formatMinuteLabel(daylight.sunsetMinute)}",
+									"${currentMoonZenithLabel} ${formatMinuteLabel(moonZenithMinute)}"
+								)
 							)
 						}
 					}
@@ -339,6 +361,48 @@ private fun SettingActionRow(
 				contentDescription = null,
 				tint = if (enabled) MaterialTheme.colorScheme.outline else Color.Transparent
 			)
+		}
+	}
+}
+
+@Composable
+private fun SettingInfoRow(
+	icon: ImageVector,
+	title: String,
+	valueLines: List<String>
+) {
+	Row(
+		modifier = Modifier
+			.fillMaxWidth()
+			.padding(horizontal = 16.dp, vertical = 14.dp),
+		verticalAlignment = Alignment.Top,
+		horizontalArrangement = Arrangement.SpaceBetween
+	) {
+		Row(verticalAlignment = Alignment.CenterVertically) {
+			Icon(
+				imageVector = icon,
+				contentDescription = null,
+				tint = MaterialTheme.colorScheme.primary
+			)
+			Spacer(modifier = Modifier.width(12.dp))
+			Text(
+				text = title,
+				style = MaterialTheme.typography.bodyLarge,
+				color = MaterialTheme.colorScheme.onSurface
+			)
+		}
+		Column(
+			horizontalAlignment = Alignment.End,
+			verticalArrangement = Arrangement.spacedBy(2.dp)
+		)
+		{
+			valueLines.forEach { line ->
+				Text(
+					text = line,
+					style = MaterialTheme.typography.bodyMedium,
+					color = MaterialTheme.colorScheme.onSurfaceVariant
+				)
+			}
 		}
 	}
 }
@@ -580,4 +644,14 @@ private fun resolveAppVersionName(context: android.content.Context): String {
 		val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
 		packageInfo.versionName ?: "1.0"
 	}.getOrDefault("1.0")
+}
+
+private fun formatMinuteLabel(minute: Int): String {
+	val normalized = minute.coerceIn(0, (24 * 60) - 1)
+	return String.format(
+		Locale.US,
+		"%02d:%02d",
+		normalized / 60,
+		normalized % 60
+	)
 }

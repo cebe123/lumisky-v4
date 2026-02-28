@@ -56,7 +56,9 @@ object WallpaperCatalog {
 			textures = textures,
 			daylight = DaylightConfig(
 				sunriseMinute = daylight.sunriseMinute,
-				sunsetMinute = daylight.sunsetMinute
+				sunsetMinute = daylight.sunsetMinute,
+				solarNoonMinute = daylight.solarNoonMinute,
+				timeZoneId = daylight.timeZoneId
 			),
 			previewLoopDurationSeconds = previewLoopDurationSec,
 			focusCatchUpDurationSeconds = focusCatchUpDurationSec,

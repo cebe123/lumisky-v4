@@ -17,6 +17,11 @@
     <string name="location_enable">Enable Location</string>
     <string name="location_current_gps">Current Location (GPS)</string>
     <string name="location_select_city">Select City</string>
+    <string name="location_current_sun_times">Current Sun Times</string>
+    <string name="location_current_sunrise">Sunrise</string>
+    <string name="location_current_solar_noon">Solar Noon (Sun Zenith)</string>
+    <string name="location_current_sunset">Sunset</string>
+    <string name="location_current_moon_zenith">Moon Zenith</string>
     <string name="section_wallpaper_settings">WALLPAPER SETTINGS</string>
     <string name="quality_title">Quality</string>
     <string name="quality_low">Low (Performance)</string>

@@ -31,7 +31,8 @@ class SkyRenderer(
 		val dayCycle = timeManager.resolveDayCycle(
 			atMillis = frameTimeMillis,
 			sunriseMinute = config.daylight.sunriseMinute,
-			sunsetMinute = config.daylight.sunsetMinute
+			sunsetMinute = config.daylight.sunsetMinute,
+			timeZoneId = config.daylight.timeZoneId
 		)
 		val progress = dayCycle.progressDay
 		val sun = sunController.resolve(progress, config)

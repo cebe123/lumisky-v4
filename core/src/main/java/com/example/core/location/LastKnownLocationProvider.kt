@@ -12,6 +12,7 @@ import androidx.core.location.LocationManagerCompat
 import androidx.core.util.Consumer
 import com.example.core.Logger
 import com.example.core.api.SunLocation
+import java.time.ZoneId
 import java.util.Locale
 
 class LastKnownLocationProvider(
@@ -67,7 +68,8 @@ class LastKnownLocationProvider(
 		val resolved = SunLocation(
 			label = label,
 			latitude = best.latitude,
-			longitude = best.longitude
+			longitude = best.longitude,
+			timeZoneId = ZoneId.systemDefault().id
 		)
 		Logger.event(
 			"LocationProvider",
@@ -122,7 +124,8 @@ class LastKnownLocationProvider(
 					val resolved = SunLocation(
 						label = label,
 						latitude = location.latitude,
-						longitude = location.longitude
+						longitude = location.longitude,
+						timeZoneId = ZoneId.systemDefault().id
 					)
 					Logger.event(
 						"LocationProvider",

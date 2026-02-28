@@ -79,7 +79,10 @@ class SkyEngine(
 		if (!initialized) return null
 		val previousMode = modeController.mode
 		modeController.switchTo(mode)
-		val atMillis = timeManager.millisFromDayProgress(dayProgress)
+		val atMillis = timeManager.millisFromDayProgress(
+			progress = dayProgress,
+			timeZoneId = activeConfig.daylight.timeZoneId
+		)
 		val state = renderNow(atMillis = atMillis, force = force)
 		modeController.switchTo(previousMode)
 		return state

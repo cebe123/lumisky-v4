@@ -117,6 +117,8 @@ internal object WallpaperConfigJsonCodec {
 	private const val KEY_DAYLIGHT = "daylight"
 	private const val KEY_SUNRISE_MINUTE = "sunriseMinute"
 	private const val KEY_SUNSET_MINUTE = "sunsetMinute"
+	private const val KEY_SOLAR_NOON_MINUTE = "solarNoonMinute"
+	private const val KEY_TIME_ZONE_ID = "timeZoneId"
 	private const val KEY_PEAK_Y = "peakY"
 	private const val KEY_BELOW_HORIZON_OFFSET = "belowHorizonOffset"
 	private const val KEY_SHADER = "shader"
@@ -162,6 +164,8 @@ internal object WallpaperConfigJsonCodec {
 			put(KEY_DAYLIGHT, JSONObject().apply {
 				put(KEY_SUNRISE_MINUTE, config.daylight.sunriseMinute)
 				put(KEY_SUNSET_MINUTE, config.daylight.sunsetMinute)
+				put(KEY_SOLAR_NOON_MINUTE, config.daylight.solarNoonMinute)
+				put(KEY_TIME_ZONE_ID, config.daylight.timeZoneId ?: JSONObject.NULL)
 			})
 			put(KEY_PEAK_Y, config.peakY.toDouble())
 			put(KEY_BELOW_HORIZON_OFFSET, config.belowHorizonOffset.toDouble())
@@ -251,6 +255,15 @@ internal object WallpaperConfigJsonCodec {
 				KEY_SUNSET_MINUTE,
 				defaults.daylight.sunsetMinute
 			) ?: defaults.daylight.sunsetMinute
+			val solarNoonMinute = if (daylight?.has(KEY_SOLAR_NOON_MINUTE) == true) {
+				daylight.optInt(KEY_SOLAR_NOON_MINUTE, defaults.daylight.solarNoonMinute)
+			} else {
+				deriveSolarNoonMinute(
+					sunriseMinute = sunriseMinute,
+					sunsetMinute = sunsetMinute
+				)
+			}
+			val timeZoneId = daylight?.optNullableString(KEY_TIME_ZONE_ID)
 
 			val peakY = root.optDouble(KEY_PEAK_Y, defaults.peakY.toDouble()).toFloat()
 			val belowHorizonOffset = root.optDouble(
@@ -292,7 +305,9 @@ internal object WallpaperConfigJsonCodec {
 				focusCatchUpDurationSeconds = focusCatchUpDurationSeconds,
 				daylight = DaylightConfig(
 					sunriseMinute = sunriseMinute,
-					sunsetMinute = sunsetMinute
+					sunsetMinute = sunsetMinute,
+					solarNoonMinute = solarNoonMinute,
+					timeZoneId = timeZoneId
 				),
 				peakY = peakY,
 				belowHorizonOffset = belowHorizonOffset,
@@ -358,5 +373,15 @@ internal object WallpaperConfigJsonCodec {
 	private fun JSONObject.optNullableString(key: String): String? {
 		if (isNull(key)) return null
 		return optString(key, "").takeIf { it.isNotBlank() }
+	}
+
+	private fun deriveSolarNoonMinute(
+		sunriseMinute: Int,
+		sunsetMinute: Int
+	): Int {
+		val sunrise = sunriseMinute.coerceIn(0, 24 * 60)
+		val sunset = sunsetMinute.coerceIn(0, 24 * 60)
+		val duration = (sunset - sunrise).coerceAtLeast(1)
+		return (sunrise + (duration / 2)).coerceIn(0, 24 * 60)
 	}
 }

@@ -77,7 +77,9 @@ open class SkyWallpaperService : WallpaperService() {
 					id = config.id,
 					isPreview = isPreview,
 					sunrise = config.daylight.sunriseMinute,
-					sunset = config.daylight.sunsetMinute
+					sunset = config.daylight.sunsetMinute,
+					solarNoon = config.daylight.solarNoonMinute,
+					timeZoneId = config.daylight.timeZoneId
 				)
 				if (lastAppliedConfigSignature == signature) {
 					Logger.d("SkyWallpaperService", "apply_stored_config dedupe skip signature=$signature")
@@ -90,7 +92,9 @@ open class SkyWallpaperService : WallpaperService() {
 					"id" to config.id,
 					"isPreview" to isPreview,
 					"sunrise" to config.daylight.sunriseMinute,
-					"sunset" to config.daylight.sunsetMinute
+					"sunset" to config.daylight.sunsetMinute,
+					"solarNoon" to config.daylight.solarNoonMinute,
+					"timeZoneId" to config.daylight.timeZoneId
 				)
 				renderController.setConfig(config)
 			} ?: run {
@@ -102,9 +106,11 @@ open class SkyWallpaperService : WallpaperService() {
 			id: String,
 			isPreview: Boolean,
 			sunrise: Int,
-			sunset: Int
+			sunset: Int,
+			solarNoon: Int,
+			timeZoneId: String?
 		): String {
-			return "$id|$isPreview|$sunrise|$sunset"
+			return "$id|$isPreview|$sunrise|$sunset|$solarNoon|${timeZoneId.orEmpty()}"
 		}
 
 		private fun registerConfigRefreshReceiver() {

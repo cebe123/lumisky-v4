@@ -41,7 +41,9 @@ data class ShaderProfile(
 
 data class DaylightConfig(
 	val sunriseMinute: Int = 6 * 60,
-	val sunsetMinute: Int = 18 * 60
+	val sunsetMinute: Int = 18 * 60,
+	val solarNoonMinute: Int = 12 * 60,
+	val timeZoneId: String? = null
 )
 
 enum class RenderPolicy {

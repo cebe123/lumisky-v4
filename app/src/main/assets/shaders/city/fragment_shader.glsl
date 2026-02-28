@@ -5,6 +5,7 @@ uniform vec2 u_Resolution;
 uniform float u_Minute;
 uniform float u_Sunrise;
 uniform float u_Sunset;
+uniform float u_SolarNoon;
 uniform sampler2D u_Texture; // City Mask Texture
 
 uniform vec2 u_TouchPosition;
@@ -59,6 +60,25 @@ float fbm(vec2 x) {
         a *= 0.5;
     }
     return v;
+}
+
+float resolvePeakAlignedProgress(float minute, float startMinute, float peakMinute, float endMinute) {
+    if (endMinute <= startMinute) {
+        return 0.5;
+    }
+
+    float safePeak = clamp(peakMinute, startMinute, endMinute);
+    if (safePeak <= startMinute || safePeak >= endMinute) {
+        return clamp((minute - startMinute) / (endMinute - startMinute), 0.0, 1.0);
+    }
+
+    if (minute <= safePeak) {
+        float firstHalf = max(safePeak - startMinute, 1.0);
+        return clamp(((minute - startMinute) / firstHalf) * 0.5, 0.0, 0.5);
+    }
+
+    float secondHalf = max(endMinute - safePeak, 1.0);
+    return clamp(0.5 + ((minute - safePeak) / secondHalf) * 0.5, 0.5, 1.0);
 }
 // --- Yıldız Oluşturma Fonksiyonu ---
 // Gürültü ve zaman tabanlı parlama kullanarak prosedürel yıldızlar oluşturur
@@ -129,8 +149,7 @@ void main() {
     float celestialX = 0.5;
 
     if (u_Minute >= u_Sunrise && u_Minute <= u_Sunset) {
-        float dayDuration = u_Sunset - u_Sunrise;
-        float progress = (u_Minute - u_Sunrise) / dayDuration;
+        float progress = resolvePeakAlignedProgress(u_Minute, u_Sunrise, u_SolarNoon, u_Sunset);
         float amplitude = CELESTIAL_PEAK - CELESTIAL_HORIZON;
         celestialY = CELESTIAL_HORIZON + sin(progress * 3.14159) * amplitude;
         celestialX = 0.5;

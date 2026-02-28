@@ -14,7 +14,8 @@ import kotlin.math.roundToInt
 data class SunLocation(
 	val label: String,
 	val latitude: Double,
-	val longitude: Double
+	val longitude: Double,
+	val timeZoneId: String? = null
 )
 
 private data class CachedDaylightEntry(
@@ -59,7 +60,8 @@ class SunTimesRepository(
 			defaultCity = SunLocation(
 				label = "direct",
 				latitude = latitude,
-				longitude = longitude
+				longitude = longitude,
+				timeZoneId = ZoneId.systemDefault().id
 			),
 			forceRefresh = forceRefresh,
 			onUpdated = onUpdated
@@ -161,9 +163,13 @@ class SunTimesRepository(
 				Logger.d(
 					TAG,
 					"Sun times fetch attempt source=${candidate.label} " +
-						"lat=${candidate.latitude} lon=${candidate.longitude}"
+						"lat=${candidate.latitude} lon=${candidate.longitude} tz=${candidate.timeZoneId}"
 				)
-				val fetched = apiClient.fetchDaylight(candidate.latitude, candidate.longitude)
+				val fetched = apiClient.fetchDaylight(
+					latitude = candidate.latitude,
+					longitude = candidate.longitude,
+					timeZoneId = candidate.timeZoneId
+				)
 				if (fetched == null) {
 					Logger.w(
 						TAG,
@@ -231,9 +237,13 @@ class SunTimesRepository(
 				Logger.d(
 					TAG,
 					"Sun times backup fetch attempt source=${candidate.label} " +
-						"lat=${candidate.latitude} lon=${candidate.longitude}"
+						"lat=${candidate.latitude} lon=${candidate.longitude} tz=${candidate.timeZoneId}"
 				)
-				val fetched = apiClient.fetchDaylight(candidate.latitude, candidate.longitude)
+				val fetched = apiClient.fetchDaylight(
+					latitude = candidate.latitude,
+					longitude = candidate.longitude,
+					timeZoneId = candidate.timeZoneId
+				)
 				if (fetched == null) {
 					Logger.w(
 						TAG,
@@ -345,7 +355,7 @@ class SunTimesRepository(
 		inputCandidates: List<SunLocation>
 	): List<SunLocation> {
 		return inputCandidates.distinctBy { candidate ->
-			"${candidate.latitude}|${candidate.longitude}"
+			"${candidate.latitude}|${candidate.longitude}|${candidate.timeZoneId.orEmpty()}"
 		}
 	}
 
@@ -416,7 +426,8 @@ class SunTimesRepository(
 	private fun toLocationKey(location: SunLocation): String {
 		val latitudeBucket = (location.latitude * LOCATION_BUCKET_SCALE).roundToInt()
 		val longitudeBucket = (location.longitude * LOCATION_BUCKET_SCALE).roundToInt()
-		return "$latitudeBucket|$longitudeBucket"
+		val normalizedTimeZone = location.timeZoneId?.trim().orEmpty()
+		return "$latitudeBucket|$longitudeBucket|$normalizedTimeZone"
 	}
 
 	private fun toClockLabel(minute: Int): String {

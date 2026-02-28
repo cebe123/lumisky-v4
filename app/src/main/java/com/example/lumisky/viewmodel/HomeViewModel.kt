@@ -441,7 +441,8 @@ class HomeViewModel(
 		val manual = SunLocation(
 			label = manualCity.name,
 			latitude = manualCity.latitude,
-			longitude = manualCity.longitude
+			longitude = manualCity.longitude,
+			timeZoneId = manualCity.timeZoneId
 		)
 		val defaultCity = resolveDefaultCity()
 		val now = SystemClock.elapsedRealtime()
@@ -461,7 +462,7 @@ class HomeViewModel(
 				add(manual)
 				add(defaultCity)
 			}.distinctBy { candidate ->
-				"${candidate.latitude}|${candidate.longitude}"
+				"${candidate.latitude}|${candidate.longitude}|${candidate.timeZoneId.orEmpty()}"
 			}
 			LocationMode.GPS -> buildList {
 				if (systemLocationEnabled) {
@@ -474,7 +475,7 @@ class HomeViewModel(
 				add(manual)
 				add(defaultCity)
 			}.distinctBy { candidate ->
-				"${candidate.latitude}|${candidate.longitude}"
+				"${candidate.latitude}|${candidate.longitude}|${candidate.timeZoneId.orEmpty()}"
 			}
 		}
 		locationCandidatesCacheKey = cachedKey
@@ -571,7 +572,8 @@ class HomeViewModel(
 		return SunLocation(
 			label = localizedDefault.name,
 			latitude = localizedDefault.latitude,
-			longitude = localizedDefault.longitude
+			longitude = localizedDefault.longitude,
+			timeZoneId = localizedDefault.timeZoneId
 		)
 	}
 
@@ -643,17 +645,25 @@ class HomeViewModel(
 			append('|')
 			append(manual.longitude)
 			append('|')
+			append(manual.timeZoneId)
+			append('|')
 			append(defaultCity.latitude)
 			append('|')
 			append(defaultCity.longitude)
+			append('|')
+			append(defaultCity.timeZoneId)
 			append('|')
 			append(liveGps?.latitude ?: "null")
 			append('|')
 			append(liveGps?.longitude ?: "null")
 			append('|')
+			append(liveGps?.timeZoneId ?: "null")
+			append('|')
 			append(lastGps?.latitude ?: "null")
 			append('|')
 			append(lastGps?.longitude ?: "null")
+			append('|')
+			append(lastGps?.timeZoneId ?: "null")
 		}
 	}
 
@@ -671,20 +681,22 @@ class HomeViewModel(
 			SunLocation(
 				label = city.name,
 				latitude = city.latitude,
-				longitude = city.longitude
+				longitude = city.longitude,
+				timeZoneId = city.timeZoneId
 			)
 		}
 		val manual = SunLocation(
 			label = manualCity.name,
 			latitude = manualCity.latitude,
-			longitude = manualCity.longitude
+			longitude = manualCity.longitude,
+			timeZoneId = manualCity.timeZoneId
 		)
 		val candidates = buildList {
 			add(defaultCity)
 			add(manual)
 			addAll(supportedCities)
 		}.distinctBy { candidate ->
-			"${candidate.latitude}|${candidate.longitude}"
+			"${candidate.latitude}|${candidate.longitude}|${candidate.timeZoneId.orEmpty()}"
 		}
 		val boundedCandidates = if (maxCandidateCount > 0) {
 			candidates.take(maxCandidateCount)

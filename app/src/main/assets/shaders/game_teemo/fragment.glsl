@@ -6,6 +6,8 @@ uniform float u_DrawSun;
 uniform float u_IsNight;
 uniform float u_NightAmount;
 uniform float u_Time;
+uniform float u_Minute;
+uniform float u_SolarNoon;
 uniform float u_AspectRatio;
 
 uniform sampler2D u_ForegroundTexture;
@@ -77,7 +79,11 @@ void main() {
     vec3 nightSky = mix(nightBottom, nightTop, horizon);
     vec3 sky = mix(daySky, nightSky, nightFactor);
 
-    vec2 sunPos = vec2(0.33, clamp(u_SunPos.y * 0.86 + 0.08, 0.10, 0.90));
+    float sunZenithDelta = abs(u_Minute - u_SolarNoon);
+    float sunZenithLock = 1.0 - smoothstep(0.0, 45.0, sunZenithDelta);
+    float sunY = clamp(u_SunPos.y * 0.86 + 0.08, 0.10, 0.90);
+    sunY = mix(sunY, clamp(u_SunPos.y, 0.10, 0.90), sunZenithLock);
+    vec2 sunPos = vec2(0.33, sunY);
     vec2 moonPos = vec2(0.33, clamp(u_MoonPos.y * 0.86 + 0.08, 0.10, 0.90));
 
     float sunDisk = softCircle(uv, sunPos, 0.125, 0.010);

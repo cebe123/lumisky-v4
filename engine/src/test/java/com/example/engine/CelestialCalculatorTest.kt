@@ -3,6 +3,7 @@ package com.example.engine
 import com.example.engine.atmosphere.AtmosphereController
 import com.example.engine.celestial.CelestialCalculator
 import com.example.engine.config.CelestialConfig
+import com.example.engine.config.DaylightConfig
 import com.example.engine.config.HorizonConfig
 import com.example.engine.config.PathType
 import com.example.engine.config.WallpaperConfig
@@ -52,6 +53,43 @@ class CelestialCalculatorTest {
 		val night = controller.resolveSkyColor(progress = 0.0f, sunY = 0.1f, config = config)
 
 		assertTrue(luminance(noon) > luminance(night))
+	}
+
+	@Test
+	fun sun_reaches_peak_at_configured_solar_noon() {
+		val config = WallpaperConfig.default().copy(
+			horizon = HorizonConfig(offset = 0.25f),
+			peakY = 0.88f,
+			daylight = DaylightConfig(
+				sunriseMinute = 7 * 60,
+				sunsetMinute = 19 * 60,
+				solarNoonMinute = 13 * 60 + 12
+			)
+		)
+
+		val solarNoonProgress = (config.daylight.solarNoonMinute / (24f * 60f)).coerceIn(0f, 1f)
+		val solarNoon = calculator.computeSunPosition(progress = solarNoonProgress, config = config)
+
+		assertEquals(config.peakY, solarNoon.y, 0.0001f)
+	}
+
+	@Test
+	fun moon_reaches_peak_opposite_configured_solar_noon() {
+		val config = WallpaperConfig.default().copy(
+			horizon = HorizonConfig(offset = 0.22f),
+			peakY = 0.91f,
+			daylight = DaylightConfig(
+				sunriseMinute = 7 * 60,
+				sunsetMinute = 19 * 60,
+				solarNoonMinute = 13 * 60 + 12
+			)
+		)
+
+		val moonZenithMinute = (config.daylight.solarNoonMinute + (12 * 60)) % (24 * 60)
+		val moonZenithProgress = (moonZenithMinute / (24f * 60f)).coerceIn(0f, 1f)
+		val moonZenith = calculator.computeMoonPosition(progress = moonZenithProgress, config = config)
+
+		assertEquals(config.peakY, moonZenith.y, 0.0001f)
 	}
 
 	private fun luminance(color: Int): Int {

@@ -60,6 +60,7 @@ class PreviewSkyProgram {
 	private var uCloudAlphaHandle: Int = -1
 	private var uSunsetHandle: Int = -1
 	private var uSunriseHandle: Int = -1
+	private var uSolarNoonHandle: Int = -1
 	private var uNightAmountHandle: Int = -1
 	private var uHasAtmosphereHandle: Int = -1
 	private var uHasFlareHandle: Int = -1
@@ -137,6 +138,7 @@ class PreviewSkyProgram {
 		uCloudAlphaHandle = GLES20.glGetUniformLocation(programHandle, "u_CloudAlpha")
 		uSunsetHandle = GLES20.glGetUniformLocation(programHandle, "u_Sunset")
 		uSunriseHandle = GLES20.glGetUniformLocation(programHandle, "u_Sunrise")
+		uSolarNoonHandle = GLES20.glGetUniformLocation(programHandle, "u_SolarNoon")
 		uNightAmountHandle = GLES20.glGetUniformLocation(programHandle, "u_NightAmount")
 		uHasAtmosphereHandle = GLES20.glGetUniformLocation(programHandle, "u_HasAtmosphere")
 		uHasFlareHandle = GLES20.glGetUniformLocation(programHandle, "u_HasFlare")
@@ -197,6 +199,10 @@ class PreviewSkyProgram {
 		val shaderMoonY = mapToLegacyShaderY(state.moon.y)
 		val sunColor = resolveLegacySunColor(state)
 		val drawSun = if (minute >= state.sunriseMinute && minute <= state.sunsetMinute) 1f else 0f
+		val solarNoonMinute = resolveLegacySunZenithMinute(
+			sunrise = state.sunriseMinute,
+			sunset = state.sunsetMinute
+		).toFloat()
 		val legacyTimeOfDay = resolveLegacyTimeOfDay(state)
 		val windSpeed = 1.0f + kotlin.math.sin(seconds * 0.1f) * 0.5f
 		val legacyNightAmount = calculateLegacyNightAmount(
@@ -231,6 +237,7 @@ class PreviewSkyProgram {
 		setFloat(uCloudAlphaHandle, 0f)
 		setFloat(uSunriseHandle, state.sunriseMinute.toFloat())
 		setFloat(uSunsetHandle, state.sunsetMinute.toFloat())
+		setFloat(uSolarNoonHandle, solarNoonMinute)
 		setFloat(uNightAmountHandle, legacyNightAmount)
 		setFloat(uHasAtmosphereHandle, if (effectiveAtmosphere) 1f else 0f)
 		setFloat(uHasFlareHandle, if (effectiveFlare) 1f else 0f)
@@ -697,21 +704,26 @@ class PreviewSkyProgram {
 		}
 	}
 
+	private fun resolveLegacySunZenithMinute(sunrise: Int, sunset: Int): Int {
+		val fallback = sunrise + ((sunset - sunrise) / 2)
+		val configured = config.daylight.solarNoonMinute
+		return if (configured in sunrise..sunset) configured else fallback
+	}
+
 	private fun resolveMarsWarriorTimeOfDay(state: RenderFrameState): Float {
 		val sunrise = state.sunriseMinute
 		val sunset = state.sunsetMinute
 		if (sunset <= sunrise) return state.dayProgress.coerceIn(0f, 1f)
 		val minute = ((state.dayProgress * MINUTES_PER_DAY).toInt() % MINUTES_PER_DAY + MINUTES_PER_DAY) % MINUTES_PER_DAY
-		var noon = (sunrise + sunset) / 2
-		if (noon < sunrise) noon += 720
+		val zenithMinute = resolveLegacySunZenithMinute(sunrise = sunrise, sunset = sunset)
 		val horizon = 0.40f
 		val result = when {
-			minute in sunrise..noon && noon > sunrise -> {
-				val progress = (minute - sunrise).toFloat() / (noon - sunrise).toFloat()
+			minute in sunrise..zenithMinute && zenithMinute > sunrise -> {
+				val progress = (minute - sunrise).toFloat() / (zenithMinute - sunrise).toFloat()
 				horizon * (1.0f - progress)
 			}
-			minute in noon..sunset && sunset > noon -> {
-				val progress = (minute - noon).toFloat() / (sunset - noon).toFloat()
+			minute in zenithMinute..sunset && sunset > zenithMinute -> {
+				val progress = (minute - zenithMinute).toFloat() / (sunset - zenithMinute).toFloat()
 				horizon * progress
 			}
 			else -> {
@@ -730,16 +742,15 @@ class PreviewSkyProgram {
 		val sunset = state.sunsetMinute
 		if (sunset <= sunrise) return state.dayProgress.coerceIn(0f, 1f)
 		val minute = ((state.dayProgress * MINUTES_PER_DAY).toInt() % MINUTES_PER_DAY + MINUTES_PER_DAY) % MINUTES_PER_DAY
-		var noon = (sunrise + sunset) / 2
-		if (noon < sunrise) noon += 720
+		val zenithMinute = resolveLegacySunZenithMinute(sunrise = sunrise, sunset = sunset)
 		val horizon = 0.2666f
 		val result = when {
-			minute in sunrise..noon && noon > sunrise -> {
-				val progress = (minute - sunrise).toFloat() / (noon - sunrise).toFloat()
+			minute in sunrise..zenithMinute && zenithMinute > sunrise -> {
+				val progress = (minute - sunrise).toFloat() / (zenithMinute - sunrise).toFloat()
 				horizon * (1.0f - progress)
 			}
-			minute in noon..sunset && sunset > noon -> {
-				val progress = (minute - noon).toFloat() / (sunset - noon).toFloat()
+			minute in zenithMinute..sunset && sunset > zenithMinute -> {
+				val progress = (minute - zenithMinute).toFloat() / (sunset - zenithMinute).toFloat()
 				horizon * progress
 			}
 			else -> {

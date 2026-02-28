@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
@@ -217,6 +218,7 @@ fun HomeScreen(
 	}
 
 	Scaffold(
+		containerColor = HomeScreenBackgroundColor,
 		topBar = {
 			TopAppBar(
 				title = {
@@ -229,13 +231,14 @@ fun HomeScreen(
 							imageVector = Icons.Filled.FilterHdr,
 							contentDescription = "App Logo",
 							modifier = Modifier.size(32.dp),
-							tint = MaterialTheme.colorScheme.primary
+							tint = Color.White.copy(alpha = 0.92f)
 						)
 					}
 				},
 				colors = TopAppBarDefaults.topAppBarColors(
-					containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
-					titleContentColor = MaterialTheme.colorScheme.onBackground
+					containerColor = HomeScreenBackgroundColor,
+					scrolledContainerColor = HomeScreenBackgroundColor,
+					titleContentColor = Color.White
 				)
 			)
 		},
@@ -248,7 +251,11 @@ fun HomeScreen(
 			)
 		}
 	) { innerPadding ->
-		Box(modifier = Modifier.fillMaxSize()) {
+		Box(
+			modifier = Modifier
+				.fillMaxSize()
+				.background(HomeScreenBackgroundColor)
+		) {
 			LazyColumn(
 				state = verticalState,
 				modifier = Modifier
@@ -363,7 +370,10 @@ private fun CategorySection(
 	Column {
 		Text(
 			text = categoryName,
-			style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+			style = MaterialTheme.typography.titleLarge.copy(
+				fontWeight = FontWeight.Bold,
+				color = Color.White.copy(alpha = 0.96f)
+			),
 			modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
 		)
 
@@ -472,54 +482,66 @@ private fun FocusedWallpaperPreview(
 	playbackEnabled: Boolean,
 	modifier: Modifier = Modifier
 ) {
-	AndroidView(
-		modifier = modifier,
-		factory = { context ->
-			val fragmentOverride = RenderAssetCache.loadFragment(
-				context = context,
-				assetPath = config.shader.fragmentAssetPath
-			)
-			val renderer = PreviewGlRenderer(
-				config = if (playbackEnabled) {
-					config.copy(focusCatchUpDurationSeconds = HOME_FOCUS_CATCHUP_SECONDS)
-				} else {
-					config
-				},
-				mode = RenderMode.FOCUS,
-				animateFullDayLoop = false,
-				initialFocusCatchUpEnabled = playbackEnabled,
-				highRefreshEnabled = highRefreshEnabled,
-				performanceMode = performanceMode,
-				deviceRefreshRateProvider = { resolveDisplayRefreshRate(context) },
-				isPowerSaveModeProvider = {
-					context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
-				},
-				qualityScale = 0.7f,
-				fragmentShaderOverride = fragmentOverride,
-				textureBytesLoader = { assetPath ->
-					RenderAssetCache.loadTextureBytes(context, assetPath)
+	val rendererConfig = if (playbackEnabled) {
+		config.copy(focusCatchUpDurationSeconds = HOME_FOCUS_CATCHUP_SECONDS)
+	} else {
+		config
+	}
+	key(
+		rendererConfig.id,
+		rendererConfig.daylight.sunriseMinute,
+		rendererConfig.daylight.sunsetMinute,
+		rendererConfig.daylight.solarNoonMinute,
+		rendererConfig.daylight.timeZoneId,
+		playbackEnabled,
+		highRefreshEnabled,
+		performanceMode
+	) {
+		AndroidView(
+			modifier = modifier,
+			factory = { context ->
+				val fragmentOverride = RenderAssetCache.loadFragment(
+					context = context,
+					assetPath = rendererConfig.shader.fragmentAssetPath
+				)
+				val renderer = PreviewGlRenderer(
+					config = rendererConfig,
+					mode = RenderMode.FOCUS,
+					animateFullDayLoop = false,
+					initialFocusCatchUpEnabled = playbackEnabled,
+					highRefreshEnabled = highRefreshEnabled,
+					performanceMode = performanceMode,
+					deviceRefreshRateProvider = { resolveDisplayRefreshRate(context) },
+					isPowerSaveModeProvider = {
+						context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
+					},
+					qualityScale = 0.7f,
+					fragmentShaderOverride = fragmentOverride,
+					textureBytesLoader = { assetPath ->
+						RenderAssetCache.loadTextureBytes(context, assetPath)
+					}
+				)
+				PreviewRendererSurfaceView(
+					context = context,
+					previewRenderer = renderer,
+					initialPlaybackEnabled = playbackEnabled,
+					warmupFramesOnEnable = HOME_PREVIEW_ENABLE_WARMUP_FRAMES,
+					requestRenderOnAttach = true,
+					onPlaybackStateChanged = { enabled, enteringEnabled ->
+						renderer.setFocusPlaybackEnabled(
+							enabled = enabled,
+							restartOnEnable = enteringEnabled
+						)
+					}
+				).apply {
+					setPlaybackEnabled(playbackEnabled)
 				}
-			)
-			PreviewRendererSurfaceView(
-				context = context,
-				previewRenderer = renderer,
-				initialPlaybackEnabled = playbackEnabled,
-				warmupFramesOnEnable = HOME_PREVIEW_ENABLE_WARMUP_FRAMES,
-				requestRenderOnAttach = true,
-				onPlaybackStateChanged = { enabled, enteringEnabled ->
-					renderer.setFocusPlaybackEnabled(
-						enabled = enabled,
-						restartOnEnable = enteringEnabled
-					)
-				}
-			).apply {
-				setPlaybackEnabled(playbackEnabled)
+			},
+			update = { view ->
+				view.setPlaybackEnabled(playbackEnabled)
 			}
-		},
-		update = { view ->
-			view.setPlaybackEnabled(playbackEnabled)
-		}
-	)
+		)
+	}
 }
 
 @Composable
@@ -649,6 +671,8 @@ private fun resolveCategory(
 		else -> specialCategory
 	}
 }
+
+internal val HomeScreenBackgroundColor = Color(0xFF07121F)
 
 private fun findCenteredIndex(listState: LazyListState): Int {
 	val layoutInfo = listState.layoutInfo

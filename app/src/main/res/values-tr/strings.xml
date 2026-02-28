@@ -18,6 +18,11 @@
     <string name="location_enable">Konum Aç</string>
     <string name="location_current_gps">Şu Anki Konum (GPS)</string>
     <string name="location_select_city">Şehir Seç</string>
+    <string name="location_current_sun_times">Gün Saatleri</string>
+    <string name="location_current_sunrise">Gündoğumu</string>
+    <string name="location_current_solar_noon">Gün Ortası (Güneş Zeniti)</string>
+    <string name="location_current_sunset">Günbatımı</string>
+    <string name="location_current_moon_zenith">Ay Zeniti</string>
     <string name="section_wallpaper_settings">DUVAR KAĞIDI AYARLARI</string>
     <string name="quality_title">Kalite</string>
     <string name="quality_low">Düşük (Performans)</string>
@@ -35,7 +40,8 @@
     <string name="cat_landscapes">Landscapes</string>
     <string name="cat_cities">Cities</string>
     <string name="cat_space">Space &amp; 4K</string>
-    <string name="cat_abstract">Anime</string>
+    <string name="cat_abstract">Anime</string>
+
     <string name="cat_games">Oyun</string>
     <string name="cat_nature">Nature</string>
     <string name="coming_soon">COMING SOON</string>

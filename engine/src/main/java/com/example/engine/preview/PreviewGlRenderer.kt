@@ -9,6 +9,8 @@ import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
 import com.example.engine.renderer.RenderMode
 import com.example.engine.shader.PreviewSkyProgram
+import java.time.Instant
+import java.time.ZoneId
 import kotlin.math.abs
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -300,8 +302,17 @@ class PreviewGlRenderer(
 	}
 
 	private fun currentDayProgress(): Float {
-		val dayMillis = nowProvider().floorMod(MILLIS_PER_DAY)
-		return dayMillis.toFloat() / MILLIS_PER_DAY.toFloat()
+		val zone = config.daylight.timeZoneId
+			?.trim()
+			?.takeIf { it.isNotBlank() }
+			?.let { runCatching { ZoneId.of(it) }.getOrNull() }
+			?: ZoneId.systemDefault()
+		val localTime = Instant.ofEpochMilli(nowProvider())
+			.atZone(zone)
+			.toLocalTime()
+		return localTime.toNanoOfDay().toDouble()
+			.div(NANOS_PER_DAY.toDouble())
+			.toFloat()
 	}
 
 	private fun wrapDayProgress(value: Float): Float {
@@ -319,8 +330,8 @@ class PreviewGlRenderer(
 	}
 
 	companion object {
-		private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
 		private const val MINUTES_PER_DAY = 24 * 60
+		private const val NANOS_PER_DAY = 24L * 60L * 60L * 1_000_000_000L
 		private const val MIN_LOOP_DURATION_MS = 1_000L
 		private const val MIN_FOCUS_DURATION_MS = 300L
 		private const val MIN_TARGET_FPS = 30

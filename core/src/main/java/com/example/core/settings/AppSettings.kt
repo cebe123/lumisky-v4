@@ -25,7 +25,8 @@ data class ManualCity(
 	val name: String,
 	val countryCode: String,
 	val latitude: Double,
-	val longitude: Double
+	val longitude: Double,
+	val timeZoneId: String
 )
 
 data class CityGroup(
@@ -48,6 +49,7 @@ private data class CityDefinition(
 	val countryCode: String,
 	val latitude: Double,
 	val longitude: Double,
+	val timeZoneId: String,
 	val names: Map<String, String>
 ) {
 	fun toManualCity(languageTag: String): ManualCity {
@@ -56,7 +58,8 @@ private data class CityDefinition(
 			name = resolveLocalizedName(names, languageTag),
 			countryCode = countryCode,
 			latitude = latitude,
-			longitude = longitude
+			longitude = longitude,
+			timeZoneId = timeZoneId
 		)
 	}
 }
@@ -150,6 +153,7 @@ object AppSettingsDefaults {
 			countryCode = "TR",
 			latitude = 41.0082,
 			longitude = 28.9784,
+			timeZoneId = "Europe/Istanbul",
 			names = mapOf("en" to "Istanbul", "tr" to "Istanbul")
 		),
 		CityDefinition(
@@ -157,6 +161,7 @@ object AppSettingsDefaults {
 			countryCode = "TR",
 			latitude = 39.9334,
 			longitude = 32.8597,
+			timeZoneId = "Europe/Istanbul",
 			names = mapOf("en" to "Ankara", "tr" to "Ankara")
 		),
 		CityDefinition(
@@ -164,6 +169,7 @@ object AppSettingsDefaults {
 			countryCode = "TR",
 			latitude = 38.4192,
 			longitude = 27.1287,
+			timeZoneId = "Europe/Istanbul",
 			names = mapOf("en" to "Izmir", "tr" to "Izmir")
 		),
 		CityDefinition(
@@ -171,6 +177,7 @@ object AppSettingsDefaults {
 			countryCode = "TR",
 			latitude = 40.1885,
 			longitude = 29.0610,
+			timeZoneId = "Europe/Istanbul",
 			names = mapOf("en" to "Bursa", "tr" to "Bursa")
 		),
 		CityDefinition(
@@ -178,6 +185,7 @@ object AppSettingsDefaults {
 			countryCode = "TR",
 			latitude = 36.8969,
 			longitude = 30.7133,
+			timeZoneId = "Europe/Istanbul",
 			names = mapOf("en" to "Antalya", "tr" to "Antalya")
 		),
 		CityDefinition(
@@ -185,6 +193,7 @@ object AppSettingsDefaults {
 			countryCode = "TR",
 			latitude = 37.0000,
 			longitude = 35.3213,
+			timeZoneId = "Europe/Istanbul",
 			names = mapOf("en" to "Adana", "tr" to "Adana")
 		),
 		CityDefinition(
@@ -192,6 +201,7 @@ object AppSettingsDefaults {
 			countryCode = "US",
 			latitude = 40.7128,
 			longitude = -74.0060,
+			timeZoneId = "America/New_York",
 			names = mapOf("en" to "New York", "tr" to "New York")
 		),
 		CityDefinition(
@@ -199,6 +209,7 @@ object AppSettingsDefaults {
 			countryCode = "US",
 			latitude = 34.0522,
 			longitude = -118.2437,
+			timeZoneId = "America/Los_Angeles",
 			names = mapOf("en" to "Los Angeles", "tr" to "Los Angeles")
 		),
 		CityDefinition(
@@ -206,6 +217,7 @@ object AppSettingsDefaults {
 			countryCode = "US",
 			latitude = 41.8781,
 			longitude = -87.6298,
+			timeZoneId = "America/Chicago",
 			names = mapOf("en" to "Chicago", "tr" to "Chicago")
 		),
 		CityDefinition(
@@ -213,6 +225,7 @@ object AppSettingsDefaults {
 			countryCode = "US",
 			latitude = 37.7749,
 			longitude = -122.4194,
+			timeZoneId = "America/Los_Angeles",
 			names = mapOf("en" to "San Francisco", "tr" to "San Francisco")
 		),
 		CityDefinition(
@@ -220,6 +233,7 @@ object AppSettingsDefaults {
 			countryCode = "GB",
 			latitude = 51.5074,
 			longitude = -0.1278,
+			timeZoneId = "Europe/London",
 			names = mapOf("en" to "London", "tr" to "Londra")
 		),
 		CityDefinition(
@@ -227,6 +241,7 @@ object AppSettingsDefaults {
 			countryCode = "GB",
 			latitude = 53.4808,
 			longitude = -2.2426,
+			timeZoneId = "Europe/London",
 			names = mapOf("en" to "Manchester", "tr" to "Manchester")
 		),
 		CityDefinition(
@@ -234,6 +249,7 @@ object AppSettingsDefaults {
 			countryCode = "FR",
 			latitude = 48.8566,
 			longitude = 2.3522,
+			timeZoneId = "Europe/Paris",
 			names = mapOf("en" to "Paris", "tr" to "Paris")
 		),
 		CityDefinition(
@@ -241,6 +257,7 @@ object AppSettingsDefaults {
 			countryCode = "FR",
 			latitude = 45.7640,
 			longitude = 4.8357,
+			timeZoneId = "Europe/Paris",
 			names = mapOf("en" to "Lyon", "tr" to "Lyon")
 		),
 		CityDefinition(
@@ -248,6 +265,7 @@ object AppSettingsDefaults {
 			countryCode = "FR",
 			latitude = 43.2965,
 			longitude = 5.3698,
+			timeZoneId = "Europe/Paris",
 			names = mapOf("en" to "Marseille", "tr" to "Marsilya")
 		),
 		CityDefinition(
@@ -255,6 +273,7 @@ object AppSettingsDefaults {
 			countryCode = "DE",
 			latitude = 52.5200,
 			longitude = 13.4050,
+			timeZoneId = "Europe/Berlin",
 			names = mapOf("en" to "Berlin", "tr" to "Berlin")
 		),
 		CityDefinition(
@@ -262,6 +281,7 @@ object AppSettingsDefaults {
 			countryCode = "DE",
 			latitude = 48.1351,
 			longitude = 11.5820,
+			timeZoneId = "Europe/Berlin",
 			names = mapOf("en" to "Munich", "tr" to "Munih")
 		),
 		CityDefinition(
@@ -269,6 +289,7 @@ object AppSettingsDefaults {
 			countryCode = "DE",
 			latitude = 53.5511,
 			longitude = 9.9937,
+			timeZoneId = "Europe/Berlin",
 			names = mapOf("en" to "Hamburg", "tr" to "Hamburg")
 		),
 		CityDefinition(
@@ -276,6 +297,7 @@ object AppSettingsDefaults {
 			countryCode = "JP",
 			latitude = 35.6762,
 			longitude = 139.6503,
+			timeZoneId = "Asia/Tokyo",
 			names = mapOf("en" to "Tokyo", "tr" to "Tokyo")
 		),
 		CityDefinition(
@@ -283,6 +305,7 @@ object AppSettingsDefaults {
 			countryCode = "JP",
 			latitude = 34.6937,
 			longitude = 135.5023,
+			timeZoneId = "Asia/Tokyo",
 			names = mapOf("en" to "Osaka", "tr" to "Osaka")
 		),
 		CityDefinition(
@@ -290,6 +313,7 @@ object AppSettingsDefaults {
 			countryCode = "JP",
 			latitude = 35.0116,
 			longitude = 135.7681,
+			timeZoneId = "Asia/Tokyo",
 			names = mapOf("en" to "Kyoto", "tr" to "Kyoto")
 		),
 		CityDefinition(
@@ -297,6 +321,7 @@ object AppSettingsDefaults {
 			countryCode = "ES",
 			latitude = 40.4168,
 			longitude = -3.7038,
+			timeZoneId = "Europe/Madrid",
 			names = mapOf("en" to "Madrid", "tr" to "Madrid")
 		),
 		CityDefinition(
@@ -304,6 +329,7 @@ object AppSettingsDefaults {
 			countryCode = "ES",
 			latitude = 41.3874,
 			longitude = 2.1686,
+			timeZoneId = "Europe/Madrid",
 			names = mapOf("en" to "Barcelona", "tr" to "Barselona")
 		),
 		CityDefinition(
@@ -311,6 +337,7 @@ object AppSettingsDefaults {
 			countryCode = "IT",
 			latitude = 41.9028,
 			longitude = 12.4964,
+			timeZoneId = "Europe/Rome",
 			names = mapOf("en" to "Rome", "tr" to "Roma")
 		),
 		CityDefinition(
@@ -318,6 +345,7 @@ object AppSettingsDefaults {
 			countryCode = "IT",
 			latitude = 45.4642,
 			longitude = 9.1900,
+			timeZoneId = "Europe/Rome",
 			names = mapOf("en" to "Milan", "tr" to "Milano")
 		)
 	)

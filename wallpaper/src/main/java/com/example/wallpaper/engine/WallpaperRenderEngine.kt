@@ -61,7 +61,9 @@ class WallpaperRenderEngine(
 			"set_config",
 			"id" to value.id,
 			"sunrise" to value.daylight.sunriseMinute,
-			"sunset" to value.daylight.sunsetMinute
+			"sunset" to value.daylight.sunsetMinute,
+			"solarNoon" to value.daylight.solarNoonMinute,
+			"timeZoneId" to value.daylight.timeZoneId
 		)
 		config = value
 		sceneFingerprintCache = buildSceneFingerprint(value)
@@ -219,6 +221,10 @@ class WallpaperRenderEngine(
 			append(config.daylight.sunriseMinute)
 			append('|')
 			append(config.daylight.sunsetMinute)
+			append('|')
+			append(config.daylight.solarNoonMinute)
+			append('|')
+			append(config.daylight.timeZoneId ?: "")
 			append('|')
 			append(config.previewLoopDurationSeconds)
 			append('|')

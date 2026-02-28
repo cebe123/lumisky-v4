@@ -51,13 +51,17 @@ class PreviewActivity : AppCompatActivity() {
 		val wallpaperId = intent.getStringExtra(EXTRA_WALLPAPER_ID) ?: "preview_default"
 		val daylight = DaylightConfig(
 			sunriseMinute = intent.getIntExtra(EXTRA_SUNRISE_MINUTE, SunDaylight.fallback().sunriseMinute),
-			sunsetMinute = intent.getIntExtra(EXTRA_SUNSET_MINUTE, SunDaylight.fallback().sunsetMinute)
+			sunsetMinute = intent.getIntExtra(EXTRA_SUNSET_MINUTE, SunDaylight.fallback().sunsetMinute),
+			solarNoonMinute = intent.getIntExtra(EXTRA_SOLAR_NOON_MINUTE, SunDaylight.fallback().solarNoonMinute),
+			timeZoneId = intent.getStringExtra(EXTRA_TIME_ZONE_ID)
 		)
 		val config = WallpaperCatalog.configById(
 			id = wallpaperId,
 			daylight = SunDaylight(
 				sunriseMinute = daylight.sunriseMinute,
-				sunsetMinute = daylight.sunsetMinute
+				sunsetMinute = daylight.sunsetMinute,
+				solarNoonMinute = daylight.solarNoonMinute,
+				timeZoneId = daylight.timeZoneId
 			)
 		).copy(daylight = daylight)
 		autoApplyMode = intent.getBooleanExtra(EXTRA_AUTO_APPLY, false)
@@ -145,12 +149,14 @@ class PreviewActivity : AppCompatActivity() {
 				val manualLocation = SunLocation(
 					label = settings.manualCity.name,
 					latitude = settings.manualCity.latitude,
-					longitude = settings.manualCity.longitude
+					longitude = settings.manualCity.longitude,
+					timeZoneId = settings.manualCity.timeZoneId
 				)
 				val defaultLocation = SunLocation(
 					label = "default_city",
 					latitude = AppSettingsDefaults.DEFAULT_CITY.latitude,
-					longitude = AppSettingsDefaults.DEFAULT_CITY.longitude
+					longitude = AppSettingsDefaults.DEFAULT_CITY.longitude,
+					timeZoneId = AppSettingsDefaults.DEFAULT_CITY.timeZoneId
 				)
 
 				val candidates = buildList {
@@ -165,7 +171,7 @@ class PreviewActivity : AppCompatActivity() {
 					}
 					add(manualLocation)
 					add(defaultLocation)
-				}.distinctBy { "${it.latitude}|${it.longitude}" }
+				}.distinctBy { "${it.latitude}|${it.longitude}|${it.timeZoneId.orEmpty()}" }
 					Logger.event(
 						TAG,
 						"sunTimes_candidates",
@@ -176,7 +182,9 @@ class PreviewActivity : AppCompatActivity() {
 					val latch = CountDownLatch(1)
 					var resolvedDaylight = SunDaylight(
 						sunriseMinute = baseConfig.daylight.sunriseMinute,
-						sunsetMinute = baseConfig.daylight.sunsetMinute
+						sunsetMinute = baseConfig.daylight.sunsetMinute,
+						solarNoonMinute = baseConfig.daylight.solarNoonMinute,
+						timeZoneId = baseConfig.daylight.timeZoneId
 					)
 					Logger.event(TAG, "sunTimes_fetch_request", "policy" to "daily_location_swr")
 					sunTimesRepository.refreshAsyncWithCandidates(
@@ -199,7 +207,9 @@ class PreviewActivity : AppCompatActivity() {
 				val finalConfig = baseConfig.copy(
 					daylight = DaylightConfig(
 						sunriseMinute = resolvedDaylight.sunriseMinute,
-						sunsetMinute = resolvedDaylight.sunsetMinute
+						sunsetMinute = resolvedDaylight.sunsetMinute,
+						solarNoonMinute = resolvedDaylight.solarNoonMinute,
+						timeZoneId = resolvedDaylight.timeZoneId
 					)
 				)
 				wallpaperConfigStore.saveSelected(finalConfig)
@@ -261,6 +271,8 @@ class PreviewActivity : AppCompatActivity() {
 		const val EXTRA_WALLPAPER_ID = "extra_wallpaper_id"
 		const val EXTRA_SUNRISE_MINUTE = "extra_sunrise_minute"
 		const val EXTRA_SUNSET_MINUTE = "extra_sunset_minute"
+		const val EXTRA_SOLAR_NOON_MINUTE = "extra_solar_noon_minute"
+		const val EXTRA_TIME_ZONE_ID = "extra_time_zone_id"
 		const val EXTRA_AUTO_APPLY = "extra_auto_apply"
 		private const val SET_WALLPAPER_REFRESH_TIMEOUT_MS = 1_800L
 	}

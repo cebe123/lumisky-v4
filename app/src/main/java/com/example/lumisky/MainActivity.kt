@@ -14,13 +14,18 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import androidx.core.view.WindowCompat
 import com.example.core.Logger
 import com.example.core.api.SunDaylight
 import com.example.core.api.SunLocation
@@ -34,6 +39,7 @@ import com.example.engine.config.DaylightConfig
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.ui.home.HomeScreen
+import com.example.lumisky.ui.home.HomeScreenBackgroundColor
 import com.example.lumisky.ui.settings.SettingsScreen
 import com.example.lumisky.ui.debug.FrameJankTelemetry
 import com.example.lumisky.ui.theme.LumiskyTheme
@@ -90,6 +96,17 @@ class MainActivity : AppCompatActivity() {
 				dynamicColor = false
 			) {
 				var currentScreen by rememberSaveable { mutableStateOf("home") }
+				val systemBarColor = if (currentScreen == "home") {
+					HomeScreenBackgroundColor
+				} else {
+					MaterialTheme.colorScheme.background
+				}
+				SideEffect {
+					window.statusBarColor = systemBarColor.toArgb()
+					WindowCompat
+						.getInsetsController(window, window.decorView)
+						.isAppearanceLightStatusBars = systemBarColor.luminance() > 0.5f
+				}
 
 				when (currentScreen) {
 					"home" -> HomeScreen(
@@ -133,6 +150,7 @@ class MainActivity : AppCompatActivity() {
 						onPerformanceModeChanged = { mode -> homeViewModel.updatePerformanceMode(mode) },
 						locationMode = homeViewModel.locationMode,
 						locationLabel = homeViewModel.locationLabel,
+						daylight = homeViewModel.daylight,
 						gpsLocationAvailable = homeViewModel.gpsLocationAvailable,
 						systemLocationEnabled = homeViewModel.systemLocationEnabled,
 						onLocationModeChanged = { mode -> homeViewModel.updateLocationMode(mode) },
@@ -241,7 +259,9 @@ class MainActivity : AppCompatActivity() {
 				val latch = CountDownLatch(1)
 				var resolvedDaylight = SunDaylight(
 					sunriseMinute = baseConfig.daylight.sunriseMinute,
-					sunsetMinute = baseConfig.daylight.sunsetMinute
+					sunsetMinute = baseConfig.daylight.sunsetMinute,
+					solarNoonMinute = baseConfig.daylight.solarNoonMinute,
+					timeZoneId = baseConfig.daylight.timeZoneId
 				)
 				Logger.event(TAG, "sunTimes_fetch_request", "policy" to "daily_location_swr")
 				sunTimesRepository.refreshAsyncWithCandidates(
@@ -264,7 +284,9 @@ class MainActivity : AppCompatActivity() {
 				val finalConfig = baseConfig.copy(
 					daylight = DaylightConfig(
 						sunriseMinute = resolvedDaylight.sunriseMinute,
-						sunsetMinute = resolvedDaylight.sunsetMinute
+						sunsetMinute = resolvedDaylight.sunsetMinute,
+						solarNoonMinute = resolvedDaylight.solarNoonMinute,
+						timeZoneId = resolvedDaylight.timeZoneId
 					)
 				)
 				wallpaperConfigStore.saveSelected(finalConfig)
@@ -295,12 +317,14 @@ class MainActivity : AppCompatActivity() {
 		val manualLocation = SunLocation(
 			label = settings.manualCity.name,
 			latitude = settings.manualCity.latitude,
-			longitude = settings.manualCity.longitude
+			longitude = settings.manualCity.longitude,
+			timeZoneId = settings.manualCity.timeZoneId
 		)
 		val defaultLocation = SunLocation(
 			label = "default_city",
 			latitude = AppSettingsDefaults.DEFAULT_CITY.latitude,
-			longitude = AppSettingsDefaults.DEFAULT_CITY.longitude
+			longitude = AppSettingsDefaults.DEFAULT_CITY.longitude,
+			timeZoneId = AppSettingsDefaults.DEFAULT_CITY.timeZoneId
 		)
 
 		return buildList {
@@ -315,7 +339,7 @@ class MainActivity : AppCompatActivity() {
 			}
 			add(manualLocation)
 			add(defaultLocation)
-		}.distinctBy { "${it.latitude}|${it.longitude}" }
+		}.distinctBy { "${it.latitude}|${it.longitude}|${it.timeZoneId.orEmpty()}" }
 	}
 
 	private fun launchSystemWallpaperSetFlow() {
