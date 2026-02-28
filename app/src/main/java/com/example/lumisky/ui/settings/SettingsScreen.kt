@@ -110,6 +110,7 @@ fun SettingsScreen(
 	val moonZenithMinute = remember(daylight.solarNoonMinute) {
 		(daylight.solarNoonMinute + (12 * 60)) % (24 * 60)
 	}
+	val citySelectionEnabled = locationMode != LocationMode.GPS
 
 	val permissionLauncher = rememberLauncherForActivityResult(
 		contract = ActivityResultContracts.RequestPermission()
@@ -223,7 +224,7 @@ fun SettingsScreen(
 								onClick = {
 									showCityDialog = true
 								},
-								enabled = true
+								enabled = citySelectionEnabled
 							)
 							HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 							SettingInfoRow(
@@ -279,7 +280,7 @@ fun SettingsScreen(
 		)
 	}
 
-	if (showCityDialog) {
+	if (showCityDialog && citySelectionEnabled) {
 		CountryCityDialog(
 			title = stringResource(R.string.location_select_city),
 			groups = cityGroups(languageTag),

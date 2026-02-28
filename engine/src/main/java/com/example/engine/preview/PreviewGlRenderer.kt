@@ -239,10 +239,23 @@ class PreviewGlRenderer(
 			return
 		}
 
-		val sunrise = (config.daylight.sunriseMinute / MINUTES_PER_DAY.toFloat()).coerceIn(0f, 1f)
 		val now = currentDayProgress()
-		focusStartProgress = sunrise
-		focusTargetProgress = if (now >= sunrise) now else now + 1f
+		val sunriseMinute = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
+		val sunsetMinute = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
+		val sunrise = (sunriseMinute / MINUTES_PER_DAY.toFloat()).coerceIn(0f, 1f)
+		val nowMinute = (now * MINUTES_PER_DAY).toInt().coerceIn(0, MINUTES_PER_DAY)
+		val isDaytime = if (sunsetMinute >= sunriseMinute) {
+			nowMinute in sunriseMinute..sunsetMinute
+		} else {
+			nowMinute >= sunriseMinute || nowMinute <= sunsetMinute
+		}
+		if (isDaytime) {
+			focusStartProgress = sunrise
+			focusTargetProgress = 1f + now
+		} else {
+			focusStartProgress = sunrise
+			focusTargetProgress = if (now >= sunrise) now else now + 1f
+		}
 		focusAnimationCompleted = false
 		focusFinalState = null
 	}
