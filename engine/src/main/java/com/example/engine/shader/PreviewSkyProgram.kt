@@ -274,6 +274,9 @@ class PreviewSkyProgram {
 
 		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_COUNT)
 		GLES20.glDisableVertexAttribArray(positionHandle)
+		if (HORIZON_GUIDE_ENABLED) {
+			drawHorizonGuide()
+		}
 	}
 
 	fun release() {
@@ -310,6 +313,34 @@ class PreviewSkyProgram {
 	private fun hasCurrentGlContext(): Boolean {
 		val context = EGL14.eglGetCurrentContext()
 		return context != null && context != EGL14.EGL_NO_CONTEXT
+	}
+
+	private fun drawHorizonGuide() {
+		if (viewportWidth <= 0 || viewportHeight <= 0) return
+		val thicknessPx = HORIZON_GUIDE_THICKNESS_PX.coerceAtLeast(1).coerceAtMost(viewportHeight)
+		val centerY = (resolveHorizonGuideOffset() * viewportHeight.toFloat()).toInt()
+		val maxBottom = (viewportHeight - thicknessPx).coerceAtLeast(0)
+		val bottom = (centerY - (thicknessPx / 2)).coerceIn(0, maxBottom)
+
+		// Temporary guide for aligning each wallpaper's visible horizon.
+		GLES20.glEnable(GLES20.GL_SCISSOR_TEST)
+		GLES20.glScissor(0, bottom, viewportWidth, thicknessPx)
+		GLES20.glClearColor(1f, 0f, 0f, 1f)
+		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+		GLES20.glDisable(GLES20.GL_SCISSOR_TEST)
+		GLES20.glClearColor(0f, 0f, 0f, 1f)
+	}
+
+	private fun resolveHorizonGuideOffset(): Float {
+		val id = config.id.lowercase()
+		val override = when {
+			id.contains("anime_sakura") -> GUIDE_HORIZON_ANIME_SAKURA
+			id.contains("tablo") -> GUIDE_HORIZON_TABLO
+			id.contains("warrior") -> GUIDE_HORIZON_WARRIOR
+			id.contains("optical_sunset") -> GUIDE_HORIZON_OPTICAL_SUNSET
+			else -> null
+		}
+		return (override ?: config.horizon.offset).coerceIn(0f, 1f)
 	}
 
 	private fun ensureFallbackTextures() {
@@ -918,6 +949,12 @@ class PreviewSkyProgram {
 		private const val ALPHA_TRIM_MIN_VISIBLE_ALPHA = 8
 		private const val ALPHA_TRIM_MIN_TOP_PIXELS = 24
 		private const val ALPHA_TRIM_MAX_RATIO = 0.45f
+		private const val HORIZON_GUIDE_ENABLED = true
+		private const val HORIZON_GUIDE_THICKNESS_PX = 3
+		private const val GUIDE_HORIZON_ANIME_SAKURA = 0.61f
+		private const val GUIDE_HORIZON_TABLO = 0.61f
+		private const val GUIDE_HORIZON_WARRIOR = 0.28f
+		private const val GUIDE_HORIZON_OPTICAL_SUNSET = 0.5f
 
 		private val FULLSCREEN_VERTICES = floatArrayOf(
 			-1f, -1f,
