@@ -487,18 +487,11 @@ private fun FocusedWallpaperPreview(
 	playbackEnabled: Boolean,
 	modifier: Modifier = Modifier
 ) {
-	val rendererConfig = if (playbackEnabled) {
+	val previewConfig = remember(config) {
 		config.copy(focusCatchUpDurationSeconds = HOME_FOCUS_CATCHUP_SECONDS)
-	} else {
-		config
 	}
 	key(
-		rendererConfig.id,
-		rendererConfig.daylight.sunriseMinute,
-		rendererConfig.daylight.sunsetMinute,
-		rendererConfig.daylight.solarNoonMinute,
-		rendererConfig.daylight.timeZoneId,
-		playbackEnabled,
+		previewConfig,
 		highRefreshEnabled,
 		performanceMode
 	) {
@@ -507,10 +500,10 @@ private fun FocusedWallpaperPreview(
 			factory = { context ->
 				val fragmentOverride = RenderAssetCache.loadFragment(
 					context = context,
-					assetPath = rendererConfig.shader.fragmentAssetPath
+					assetPath = previewConfig.shader.fragmentAssetPath
 				)
 				val renderer = PreviewGlRenderer(
-					config = rendererConfig,
+					config = previewConfig,
 					mode = RenderMode.FOCUS,
 					animateFullDayLoop = false,
 					initialFocusCatchUpEnabled = playbackEnabled,
