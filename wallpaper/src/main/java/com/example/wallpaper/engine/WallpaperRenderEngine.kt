@@ -56,15 +56,6 @@ class WallpaperRenderEngine(
 	}
 
 	fun setConfig(value: WallpaperConfig) {
-		Logger.event(
-			TAG,
-			"set_config",
-			"id" to value.id,
-			"sunrise" to value.daylight.sunriseMinute,
-			"sunset" to value.daylight.sunsetMinute,
-			"solarNoon" to value.daylight.solarNoonMinute,
-			"timeZoneId" to value.daylight.timeZoneId
-		)
 		config = value
 		sceneFingerprintCache = buildSceneFingerprint(value)
 		skyEngine.setConfig(value)
@@ -140,7 +131,6 @@ class WallpaperRenderEngine(
 			skyEngine.renderNow(force = force)
 		}
 		if (state == null) {
-			Logger.d(TAG, "renderFrame skipped")
 			stats.onSkip("engine_state_skip")
 			return
 		}
@@ -151,11 +141,6 @@ class WallpaperRenderEngine(
 			return
 		}
 		stats.onDraw(System.nanoTime() - frameStartNs)
-
-		Logger.d(
-			TAG,
-			"renderFrame color=${state.skyColor.toUInt().toString(16)} sun=(${state.sun.x}, ${state.sun.y})"
-		)
 	}
 
 	fun snapshotSceneStateInput(

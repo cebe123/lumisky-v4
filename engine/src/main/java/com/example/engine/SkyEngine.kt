@@ -1,6 +1,4 @@
 package com.example.engine
-
-import com.example.core.Logger
 import com.example.engine.atmosphere.AtmosphereController
 import com.example.engine.celestial.CelestialCalculator
 import com.example.engine.config.WallpaperConfig
@@ -32,7 +30,6 @@ class SkyEngine(
 		if (initialized) return
 		initialized = true
 		setConfig(config)
-		Logger.d(TAG, "init(config=${config.id})")
 	}
 
 	fun setConfig(config: WallpaperConfig) {
@@ -90,12 +87,7 @@ class SkyEngine(
 
 	fun release() {
 		if (!initialized) return
-		Logger.d(TAG, "release(config=${activeConfig.id})")
 		initialized = false
 		lastRenderedHash = null
-	}
-
-	companion object {
-		private const val TAG = "SkyEngine"
 	}
 }

@@ -27,21 +27,8 @@ class PreviewSkyProgram {
 				position(0)
 			}
 
-	private val spriteBuffer: FloatBuffer =
-		ByteBuffer.allocateDirect(SPRITE_VERTEX_CAPACITY * FLOAT_SIZE_BYTES)
-			.order(ByteOrder.nativeOrder())
-			.asFloatBuffer()
-
-	private val spriteVertices = FloatArray(SPRITE_VERTEX_CAPACITY)
-
 	private var programHandle: Int = 0
 	private var positionHandle: Int = -1
-	private var spriteProgramHandle: Int = 0
-	private var spritePositionHandle: Int = -1
-	private var spriteTexCoordHandle: Int = -1
-	private var spriteTextureHandle: Int = -1
-	private var spriteAlphaHandle: Int = -1
-	private var spriteTintHandle: Int = -1
 
 	private var skyColorHandle: Int = -1
 	private var sunHandle: Int = -1
@@ -274,15 +261,11 @@ class PreviewSkyProgram {
 
 		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_COUNT)
 		GLES20.glDisableVertexAttribArray(positionHandle)
-		if (HORIZON_GUIDE_ENABLED) {
-			drawHorizonGuide()
-		}
 	}
 
 	fun release() {
 		if (!hasCurrentGlContext()) {
 			programHandle = 0
-			spriteProgramHandle = 0
 			fallbackSolidTextureHandle = 0
 			fallbackTransparentTextureHandle = 0
 			backgroundTextureHandle = 0
@@ -294,10 +277,6 @@ class PreviewSkyProgram {
 		if (programHandle != 0) {
 			GLES20.glDeleteProgram(programHandle)
 			programHandle = 0
-		}
-		if (spriteProgramHandle != 0) {
-			GLES20.glDeleteProgram(spriteProgramHandle)
-			spriteProgramHandle = 0
 		}
 		if (fallbackSolidTextureHandle != 0) {
 			GLES20.glDeleteTextures(1, intArrayOf(fallbackSolidTextureHandle), 0)
@@ -313,34 +292,6 @@ class PreviewSkyProgram {
 	private fun hasCurrentGlContext(): Boolean {
 		val context = EGL14.eglGetCurrentContext()
 		return context != null && context != EGL14.EGL_NO_CONTEXT
-	}
-
-	private fun drawHorizonGuide() {
-		if (viewportWidth <= 0 || viewportHeight <= 0) return
-		val thicknessPx = HORIZON_GUIDE_THICKNESS_PX.coerceAtLeast(1).coerceAtMost(viewportHeight)
-		val centerY = (resolveHorizonGuideOffset() * viewportHeight.toFloat()).toInt()
-		val maxBottom = (viewportHeight - thicknessPx).coerceAtLeast(0)
-		val bottom = (centerY - (thicknessPx / 2)).coerceIn(0, maxBottom)
-
-		// Temporary guide for aligning each wallpaper's visible horizon.
-		GLES20.glEnable(GLES20.GL_SCISSOR_TEST)
-		GLES20.glScissor(0, bottom, viewportWidth, thicknessPx)
-		GLES20.glClearColor(1f, 0f, 0f, 1f)
-		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-		GLES20.glDisable(GLES20.GL_SCISSOR_TEST)
-		GLES20.glClearColor(0f, 0f, 0f, 1f)
-	}
-
-	private fun resolveHorizonGuideOffset(): Float {
-		val id = config.id.lowercase()
-		val override = when {
-			id.contains("anime_sakura") -> GUIDE_HORIZON_ANIME_SAKURA
-			id.contains("tablo") -> GUIDE_HORIZON_TABLO
-			id.contains("warrior") -> GUIDE_HORIZON_WARRIOR
-			id.contains("optical_sunset") -> GUIDE_HORIZON_OPTICAL_SUNSET
-			else -> null
-		}
-		return (override ?: config.horizon.offset).coerceIn(0f, 1f)
 	}
 
 	private fun ensureFallbackTextures() {
@@ -526,146 +477,6 @@ class PreviewSkyProgram {
 			?.takeIf { it.isNotEmpty() }
 			?: return null
 		return ResolvedTexture(path = originalPath, bytes = originalBytes)
-	}
-
-	private fun initSpriteProgram() {
-		if (spriteProgramHandle != 0) return
-		spriteProgramHandle = buildProgram(SPRITE_VERTEX_SHADER, SPRITE_FRAGMENT_SHADER)
-		if (spriteProgramHandle == 0) return
-		spritePositionHandle = GLES20.glGetAttribLocation(spriteProgramHandle, "aPosition")
-		spriteTexCoordHandle = GLES20.glGetAttribLocation(spriteProgramHandle, "aTexCoord")
-		spriteTextureHandle = GLES20.glGetUniformLocation(spriteProgramHandle, "uTexture")
-		spriteAlphaHandle = GLES20.glGetUniformLocation(spriteProgramHandle, "uAlpha")
-		spriteTintHandle = GLES20.glGetUniformLocation(spriteProgramHandle, "uTint")
-	}
-
-	private fun drawCelestialOverlays(
-		state: RenderFrameState,
-		sunTexture: Int,
-		moonTexture: Int
-	) {
-		if (spriteProgramHandle == 0) return
-		val sunAlpha = (state.sunAltitude * 1.4f).coerceIn(0f, 1f)
-		val moonAlpha = (state.moonAltitude * (0.35f + (0.65f * state.nightBlend))).coerceIn(0f, 1f)
-		if (sunAlpha <= MIN_CELESTIAL_ALPHA && moonAlpha <= MIN_CELESTIAL_ALPHA) return
-
-		GLES20.glEnable(GLES20.GL_BLEND)
-		GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
-		if (sunAlpha > MIN_CELESTIAL_ALPHA) {
-			drawSprite(
-				textureHandle = sunTexture,
-				x = state.sun.x,
-				y = state.sun.y,
-				size = SUN_SPRITE_SIZE,
-				alpha = sunAlpha,
-				tintR = 1.0f,
-				tintG = 0.95f,
-				tintB = 0.82f
-			)
-		}
-		if (moonAlpha > MIN_CELESTIAL_ALPHA) {
-			drawSprite(
-				textureHandle = moonTexture,
-				x = state.moon.x,
-				y = state.moon.y,
-				size = MOON_SPRITE_SIZE,
-				alpha = moonAlpha,
-				tintR = 0.90f,
-				tintG = 0.94f,
-				tintB = 1.0f
-			)
-		}
-		GLES20.glDisable(GLES20.GL_BLEND)
-	}
-
-	private fun drawSprite(
-		textureHandle: Int,
-		x: Float,
-		y: Float,
-		size: Float,
-		alpha: Float,
-		tintR: Float,
-		tintG: Float,
-		tintB: Float
-	) {
-		if (textureHandle == 0 || alpha <= 0f) return
-		val xClamped = x.coerceIn(0f, 1f)
-		val yClamped = y.coerceIn(0f, 1f)
-		val aspect = viewportWidth.toFloat() / viewportHeight.toFloat()
-		val halfHeightNdc = (size * 2f).coerceAtLeast(0.001f)
-		val halfWidthNdc = (halfHeightNdc / aspect).coerceAtLeast(0.001f)
-		val centerX = (xClamped * 2f) - 1f
-		val centerY = (yClamped * 2f) - 1f
-
-		// Triangle strip vertices: pos(x,y) + uv(u,v)
-		writeSpriteVertices(
-			left = centerX - halfWidthNdc,
-			right = centerX + halfWidthNdc,
-			bottom = centerY - halfHeightNdc,
-			top = centerY + halfHeightNdc
-		)
-
-		GLES20.glUseProgram(spriteProgramHandle)
-		spriteBuffer.position(0)
-		GLES20.glEnableVertexAttribArray(spritePositionHandle)
-		GLES20.glVertexAttribPointer(
-			spritePositionHandle,
-			2,
-			GLES20.GL_FLOAT,
-			false,
-			SPRITE_STRIDE_BYTES,
-			spriteBuffer
-		)
-		spriteBuffer.position(2)
-		GLES20.glEnableVertexAttribArray(spriteTexCoordHandle)
-		GLES20.glVertexAttribPointer(
-			spriteTexCoordHandle,
-			2,
-			GLES20.GL_FLOAT,
-			false,
-			SPRITE_STRIDE_BYTES,
-			spriteBuffer
-		)
-		GLES20.glUniform1f(spriteAlphaHandle, alpha.coerceIn(0f, 1f))
-		GLES20.glUniform3f(spriteTintHandle, tintR, tintG, tintB)
-		GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle)
-		GLES20.glUniform1i(spriteTextureHandle, 0)
-		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_COUNT)
-		GLES20.glDisableVertexAttribArray(spritePositionHandle)
-		GLES20.glDisableVertexAttribArray(spriteTexCoordHandle)
-	}
-
-	private fun writeSpriteVertices(
-		left: Float,
-		right: Float,
-		bottom: Float,
-		top: Float
-	) {
-		// Bottom-left.
-		spriteVertices[0] = left
-		spriteVertices[1] = bottom
-		spriteVertices[2] = 0f
-		spriteVertices[3] = 0f
-		// Bottom-right.
-		spriteVertices[4] = right
-		spriteVertices[5] = bottom
-		spriteVertices[6] = 1f
-		spriteVertices[7] = 0f
-		// Top-left.
-		spriteVertices[8] = left
-		spriteVertices[9] = top
-		spriteVertices[10] = 0f
-		spriteVertices[11] = 1f
-		// Top-right.
-		spriteVertices[12] = right
-		spriteVertices[13] = top
-		spriteVertices[14] = 1f
-		spriteVertices[15] = 1f
-
-		spriteBuffer.position(0)
-		spriteBuffer.put(spriteVertices)
-		spriteBuffer.position(0)
 	}
 
 	private fun textureOrFallback(handle: Int, fallback: Int): Int {
@@ -926,9 +737,6 @@ class PreviewSkyProgram {
 	companion object {
 		private const val FLOAT_SIZE_BYTES = 4
 		private const val VERTEX_COUNT = 4
-		private const val SPRITE_STRIDE_FLOATS = 4
-		private const val SPRITE_VERTEX_CAPACITY = VERTEX_COUNT * SPRITE_STRIDE_FLOATS
-		private const val SPRITE_STRIDE_BYTES = SPRITE_STRIDE_FLOATS * FLOAT_SIZE_BYTES
 		private const val MINUTES_PER_DAY = 1440
 		private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
 		private const val LEGACY_TIME_WINDOW_MS = 100_000L
@@ -941,20 +749,10 @@ class PreviewSkyProgram {
 		private const val QUALITY_ATMOSPHERE_THRESHOLD = 0.45f
 		private const val QUALITY_FLARE_THRESHOLD = 0.55f
 		private const val QUALITY_STARS_THRESHOLD = 0.70f
-		private const val SUN_MIN_ALTITUDE = 0.01f
-		private const val MIN_CELESTIAL_ALPHA = 0.02f
-		private const val SUN_SPRITE_SIZE = 0.065f
-		private const val MOON_SPRITE_SIZE = 0.058f
 		private const val ANIME_SAKURA_TEXTURE_PATH = "anime/anime_sakura.webp"
 		private const val ALPHA_TRIM_MIN_VISIBLE_ALPHA = 8
 		private const val ALPHA_TRIM_MIN_TOP_PIXELS = 24
 		private const val ALPHA_TRIM_MAX_RATIO = 0.45f
-		private const val HORIZON_GUIDE_ENABLED = true
-		private const val HORIZON_GUIDE_THICKNESS_PX = 3
-		private const val GUIDE_HORIZON_ANIME_SAKURA = 0.61f
-		private const val GUIDE_HORIZON_TABLO = 0.61f
-		private const val GUIDE_HORIZON_WARRIOR = 0.28f
-		private const val GUIDE_HORIZON_OPTICAL_SUNSET = 0.5f
 
 		private val FULLSCREEN_VERTICES = floatArrayOf(
 			-1f, -1f,
@@ -990,32 +788,6 @@ class PreviewSkyProgram {
 				color += vec3(1.0, 0.85, 0.5) * sunMask * uSunAlpha;
 				color += vec3(0.85, 0.9, 1.0) * moonMask * uMoonAlpha;
 				gl_FragColor = vec4(color, 1.0);
-			}
-		"""
-
-		private const val SPRITE_VERTEX_SHADER = """
-			attribute vec2 aPosition;
-			attribute vec2 aTexCoord;
-			varying vec2 vTexCoord;
-			void main() {
-				vTexCoord = aTexCoord;
-				gl_Position = vec4(aPosition, 0.0, 1.0);
-			}
-		"""
-
-		private const val SPRITE_FRAGMENT_SHADER = """
-			precision mediump float;
-			varying vec2 vTexCoord;
-			uniform sampler2D uTexture;
-			uniform float uAlpha;
-			uniform vec3 uTint;
-			void main() {
-				vec4 sampleColor = texture2D(uTexture, vTexCoord);
-				float alpha = sampleColor.a * uAlpha;
-				if (alpha <= 0.01) {
-					discard;
-				}
-				gl_FragColor = vec4(sampleColor.rgb * uTint, alpha);
 			}
 		"""
 	}

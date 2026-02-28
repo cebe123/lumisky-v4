@@ -141,26 +141,16 @@ class HomeViewModel(
 		refreshSunTimes()
 		schedulePeriodicSunTimesRefresh()
 		schedulePeriodicBackupCityRefresh()
-		Logger.event(
-			tag = tag,
-			name = "init",
-			"items" to _items.size,
-			"locationMode" to locationMode,
-			"manualCity" to manualCity.name,
-			"performanceMode" to performanceMode
-		)
 	}
 
 	fun onWallpaperSelected(id: String) {
 		selectedWallpaperId = id
 		liveWallpaperId = id
-		Logger.event(tag, "wallpaper_selected", "id" to id)
 	}
 
 	fun activateLivePreview(id: String) {
 		if (liveWallpaperId == id) return
 		liveWallpaperId = id
-		Logger.event(tag, "live_preview_activated", "id" to id)
 	}
 
 	fun onCategoryFocused(categoryWallpaperIds: List<String>) {
@@ -171,20 +161,14 @@ class HomeViewModel(
 		val key = normalized.joinToString(separator = "|")
 		if (key == lastFocusedCategoryKey) return
 		lastFocusedCategoryKey = key
-		Logger.event(
-			tag,
-			"category_focus_prioritize",
-			"wallpaperCount" to normalized.size
-		)
 	}
 
 	fun clearLivePreview() {
 		liveWallpaperId = null
-		Logger.d(tag, "live preview cleared")
 	}
 
 	fun onUserInteraction() {
-		scheduleStartupBackupPrefetchIfNeeded(reason = "user_interaction")
+		scheduleStartupBackupPrefetchIfNeeded()
 	}
 
 	fun updateAppThemeMode(mode: AppThemeMode) {
@@ -209,32 +193,26 @@ class HomeViewModel(
 		settingsRepository.setLanguageTag(normalized)
 		manualCity = AppSettingsDefaults.resolveCityById(manualCity.id, normalized)
 		settingsRepository.setManualCity(manualCity)
-		Logger.event(this.tag, "language_updated", "tag" to normalized)
 		refreshLocationState()
-		rebuildCatalog(daylight)
 	}
 
 	fun updateHighRefreshEnabled(enabled: Boolean) {
 		if (highRefreshEnabled == enabled) return
 		highRefreshEnabled = enabled
 		settingsRepository.setHighRefreshEnabled(enabled)
-		Logger.event(tag, "high_refresh_updated", "enabled" to enabled)
 	}
 
 	fun updatePerformanceMode(mode: PerformanceMode) {
 		if (performanceMode == mode) return
 		performanceMode = mode
 		settingsRepository.setPerformanceMode(mode)
-		Logger.event(tag, "performance_mode_updated", "mode" to mode)
 	}
 
 	fun updateLocationMode(mode: LocationMode) {
 		if (locationMode == mode) return
 		locationMode = mode
 		settingsRepository.setLocationMode(mode)
-		Logger.event(tag, "location_mode_updated", "mode" to mode)
 		scheduleCoalescedLocationAndSunTimesRefresh(
-			reason = "location_mode_updated",
 			requestGpsLocation = (mode == LocationMode.GPS)
 		)
 	}
@@ -244,10 +222,7 @@ class HomeViewModel(
 		settingsRepository.setManualCity(city)
 		gpsPlaceLabel = null
 		lastGpsPlaceKey = null
-		Logger.event(tag, "manual_city_updated", "city" to city.name)
-		scheduleCoalescedLocationAndSunTimesRefresh(
-			reason = "manual_city_updated"
-		)
+		scheduleCoalescedLocationAndSunTimesRefresh()
 		prefetchBackupCityCache()
 	}
 
@@ -274,14 +249,6 @@ class HomeViewModel(
 				lastLastGpsProbeAtMs = 0L
 				gpsLocationAvailable = false
 				locationLabel = manualCity.name
-				Logger.event(
-					tag,
-					"location_state",
-					"mode" to locationMode,
-					"systemEnabled" to systemLocationEnabled,
-					"gpsAvailable" to gpsLocationAvailable,
-					"label" to locationLabel
-				)
 				return
 			}
 
@@ -296,14 +263,6 @@ class HomeViewModel(
 			val preferredGps = liveGps ?: lastGps
 			preferredGps?.let { maybeResolveGpsPlaceLabel(it) }
 			updateLocationLabelFromCachedGpsState()
-			Logger.event(
-				tag,
-				"location_state",
-				"mode" to locationMode,
-				"systemEnabled" to systemLocationEnabled,
-				"gpsAvailable" to gpsLocationAvailable,
-				"label" to locationLabel
-			)
 		}.onFailure {
 			liveGpsLocation = null
 			lastKnownGpsLocation = null
@@ -318,30 +277,19 @@ class HomeViewModel(
 		maxStaleMs: Long = FOREGROUND_LOCATION_REFRESH_STALE_MS
 	) {
 		val elapsed = SystemClock.elapsedRealtime() - lastLocationStateRefreshAtMs
-		if (elapsed in 0 until maxStaleMs) {
-			Logger.d(tag, "foreground refresh skipped elapsedMs=$elapsed thresholdMs=$maxStaleMs")
-			return
-		}
+		if (elapsed in 0 until maxStaleMs) return
 		onSystemLocationProviderChanged()
 	}
 
 	fun onSystemLocationProviderChanged() {
 		runCatching {
-			val before = systemLocationEnabled
+			val wasSystemLocationEnabled = systemLocationEnabled
 			refreshLocationState()
-			Logger.event(
-				tag,
-				"system_location_provider_changed",
-				"before" to before,
-				"after" to systemLocationEnabled,
-				"mode" to locationMode
-			)
 			if (locationMode != LocationMode.GPS) return
-			val shouldRequestGps = systemLocationEnabled && (!before || !gpsLocationAvailable)
-			val shouldRefreshSunTimes = before != systemLocationEnabled
+			val shouldRequestGps = systemLocationEnabled && (!wasSystemLocationEnabled || !gpsLocationAvailable)
+			val shouldRefreshSunTimes = wasSystemLocationEnabled != systemLocationEnabled
 			if (shouldRequestGps || shouldRefreshSunTimes) {
 				scheduleCoalescedLocationAndSunTimesRefresh(
-					reason = "system_location_provider_changed",
 					requestGpsLocation = shouldRequestGps,
 					refreshSunTimes = shouldRefreshSunTimes,
 					debounceMs = LOCATION_REFRESH_COALESCE_DELAY_MS
@@ -350,23 +298,13 @@ class HomeViewModel(
 		}
 	}
 
-	fun refreshLocationAndSunTimes() {
-		scheduleCoalescedLocationAndSunTimesRefresh(
-			reason = "refresh_location_and_suntimes",
-			requestGpsLocation = (locationMode == LocationMode.GPS)
-		)
-	}
-
 	fun configFor(id: String): WallpaperConfig {
 		return _items.firstOrNull { it.config.id == id }?.config
 			?: WallpaperCatalog.configById(
 				id = id,
-				daylight = daylight,
-				languageTag = languageTag
+				daylight = daylight
 			)
 	}
-
-	fun allConfigs(): List<WallpaperConfig> = _items.map { it.config }
 
 	fun release() {
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
@@ -381,21 +319,9 @@ class HomeViewModel(
 	private fun refreshSunTimes() {
 		val candidates = resolveLocationCandidates()
 		if (candidates.isEmpty()) return
-		Logger.event(
-			tag,
-			"refresh_suntimes_start",
-			"candidateCount" to candidates.size,
-			"firstLabel" to candidates.firstOrNull()?.label
-		)
 		sunTimesRepository.refreshAsyncWithCandidates(candidates) { fetched ->
 			mainHandler.post {
 				if (fetched == daylight) return@post
-				Logger.event(
-					tag,
-					"refresh_suntimes_applied",
-					"sunrise" to fetched.sunriseMinute,
-					"sunset" to fetched.sunsetMinute
-				)
 				daylight = fetched
 				rebuildCatalog(fetched)
 			}
@@ -404,8 +330,7 @@ class HomeViewModel(
 
 	private fun seedInitialCatalog(currentDaylight: SunDaylight) {
 		val configs = WallpaperCatalog.buildConfigs(
-			daylight = currentDaylight,
-			languageTag = languageTag
+			daylight = currentDaylight
 		)
 		_items.clear()
 		_items.addAll(configs.map { config -> HomeWallpaperItem(config = config) })
@@ -417,8 +342,7 @@ class HomeViewModel(
 	private fun rebuildCatalog(currentDaylight: SunDaylight) {
 		catalogExecutor.execute {
 			val configs = WallpaperCatalog.buildConfigs(
-				daylight = currentDaylight,
-				languageTag = languageTag
+				daylight = currentDaylight
 			)
 			postCatalog(configs)
 		}
@@ -489,20 +413,17 @@ class HomeViewModel(
 		val now = SystemClock.elapsedRealtime()
 		if ((now - lastGpsRequestAtMs) < GPS_REQUEST_THROTTLE_MS) return
 		lastGpsRequestAtMs = now
-		Logger.d(tag, "requestImmediateGpsLocation started")
 		lastKnownLocationProvider.requestCurrentLocation(label = "gps_live") { location ->
 			mainHandler.post {
 				if (locationMode != LocationMode.GPS) return@post
 				if (location != null) {
 					liveGpsLocation = location
 					lastLiveGpsProbeAtMs = SystemClock.elapsedRealtime()
-					Logger.event(tag, "gps_live_result", "lat" to location.latitude, "lon" to location.longitude)
 				} else {
 					lastLiveGpsProbeAtMs = SystemClock.elapsedRealtime()
 					Logger.w(tag, "gps_live_result null")
 				}
 				scheduleCoalescedLocationAndSunTimesRefresh(
-					reason = "gps_live_result",
 					requestGpsLocation = false,
 					refreshSunTimes = (locationMode == LocationMode.GPS),
 					debounceMs = 0L
@@ -512,27 +433,16 @@ class HomeViewModel(
 	}
 
 	private fun scheduleCoalescedLocationAndSunTimesRefresh(
-		reason: String,
 		requestGpsLocation: Boolean = false,
 		refreshSunTimes: Boolean = true,
 		debounceMs: Long = LOCATION_REFRESH_COALESCE_DELAY_MS
 	) {
 		refreshPipelineNeedsGpsRequest = refreshPipelineNeedsGpsRequest || requestGpsLocation
 		refreshPipelineNeedsSunTimes = refreshPipelineNeedsSunTimes || refreshSunTimes
-		if (refreshPipelineScheduled) {
-			Logger.d(
-				tag,
-				"refresh pipeline coalesced reason=$reason gps=$requestGpsLocation sunTimes=$refreshSunTimes"
-			)
-			return
-		}
+		if (refreshPipelineScheduled) return
 		refreshPipelineScheduled = true
 		val delayMs = debounceMs.coerceAtLeast(0L)
 		mainHandler.postDelayed(refreshLocationAndSunTimesRunnable, delayMs)
-		Logger.d(
-			tag,
-			"refresh pipeline scheduled reason=$reason delayMs=$delayMs gps=$requestGpsLocation sunTimes=$refreshSunTimes"
-		)
 	}
 
 	private fun maybeResolveGpsPlaceLabel(location: SunLocation) {
@@ -596,13 +506,12 @@ class HomeViewModel(
 		mainHandler.postDelayed(startupBackupPrefetchRunnable, delayMs)
 	}
 
-	private fun scheduleStartupBackupPrefetchIfNeeded(reason: String) {
+	private fun scheduleStartupBackupPrefetchIfNeeded() {
 		if (startupBackupPrefetchCompleted) return
 		if (startupBackupPrefetchScheduled) return
 		startupBackupPrefetchScheduled = true
 		val delayMs = resolveStartupBackupPrefetchDelayMs()
 		scheduleStartupBackupPrefetch(delayMs)
-		Logger.d(tag, "startup backup prefetch armed reason=$reason delayMs=$delayMs")
 	}
 
 	private fun resolveCachedLiveGpsProbe(nowMs: Long): SunLocation? {
@@ -704,13 +613,6 @@ class HomeViewModel(
 			emptyList()
 		}
 		if (boundedCandidates.isEmpty()) return
-		Logger.event(
-			tag,
-			"backup_suntimes_prefetch_request",
-			"candidateCount" to boundedCandidates.size,
-			"totalCandidates" to candidates.size,
-			"intervalHours" to (BACKUP_CITY_REFRESH_INTERVAL_MS / (60L * 60L * 1000L))
-		)
 		sunTimesRepository.prefetchBackupAsync(
 			candidates = boundedCandidates,
 			minRefreshIntervalMs = BACKUP_CITY_REFRESH_INTERVAL_MS

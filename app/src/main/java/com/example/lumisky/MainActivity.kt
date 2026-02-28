@@ -50,14 +50,12 @@ import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.ui.home.HomeScreen
 import com.example.lumisky.ui.home.HomeScreenBackgroundColor
 import com.example.lumisky.ui.settings.SettingsScreen
-import com.example.lumisky.ui.debug.FrameJankTelemetry
 import com.example.lumisky.ui.theme.LumiskyTheme
 import com.example.lumisky.viewmodel.HomeViewModel
 import com.example.wallpaper.service.ACTION_APPLY_STORED_WALLPAPER_CONFIG
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -78,7 +76,6 @@ class MainActivity : AppCompatActivity() {
 	private val locationModeReceiver = object : BroadcastReceiver() {
 		override fun onReceive(context: Context?, intent: Intent?) {
 			if (intent?.action == LocationManager.MODE_CHANGED_ACTION) {
-				Logger.d(TAG, "LocationManager MODE_CHANGED broadcast received")
 				homeViewModel.onSystemLocationProviderChanged()
 			}
 		}
@@ -86,11 +83,6 @@ class MainActivity : AppCompatActivity() {
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		configureLogging()
-		Logger.event(
-			tag = TAG,
-			name = "onCreate",
-			"savedState" to (savedInstanceState != null)
-		)
 		applyLanguage(appSettingsRepository.getLanguageTag())
 		super.onCreate(savedInstanceState)
 
@@ -101,8 +93,7 @@ class MainActivity : AppCompatActivity() {
 				AppThemeMode.DARK -> true
 			}
 			LumiskyTheme(
-				darkTheme = darkTheme,
-				dynamicColor = false
+				darkTheme = darkTheme
 			) {
 				var currentScreen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
 				val targetSystemBarColor = if (currentScreen == SCREEN_HOME) {
@@ -164,27 +155,21 @@ class MainActivity : AppCompatActivity() {
 							highRefreshEnabled = homeViewModel.highRefreshEnabled,
 							performanceMode = homeViewModel.performanceMode,
 							onWallpaperSelected = { id ->
-								Logger.event(TAG, "wallpaper_selected", "id" to id)
 								homeViewModel.onWallpaperSelected(id)
 							},
 							onCategoryFocused = { ids ->
-								Logger.event(TAG, "category_focused", "count" to ids.size)
 								homeViewModel.onCategoryFocused(ids)
 							},
 							onFocusReady = { id ->
-								Logger.event(TAG, "focus_ready", "id" to id)
 								homeViewModel.activateLivePreview(id)
 							},
 							onFocusCleared = {
-								Logger.d(TAG, "focus_cleared")
 								homeViewModel.clearLivePreview()
 							},
 							onOpenPreview = { id ->
-								Logger.event(TAG, "open_set_screen", "id" to id)
 								openWallpaperSetScreen(id)
 							},
 							onNavigateSettings = {
-								Logger.d(TAG, "navigate_settings")
 								currentScreen = SCREEN_SETTINGS
 							}
 						)
@@ -211,7 +196,6 @@ class MainActivity : AppCompatActivity() {
 								applyLanguage(tag)
 							},
 							onNavigateHome = {
-								Logger.d(TAG, "navigate_home")
 								currentScreen = SCREEN_HOME
 							}
 						)
@@ -223,8 +207,6 @@ class MainActivity : AppCompatActivity() {
 
 	override fun onStart() {
 		super.onStart()
-		Logger.d(TAG, "onStart")
-		FrameJankTelemetry.start(this, "MainActivity")
 		registerLocationModeReceiver()
 		homeViewModel.refreshOnForegroundIfStale()
 	}
@@ -235,15 +217,11 @@ class MainActivity : AppCompatActivity() {
 	}
 
 	override fun onStop() {
-		Logger.d(TAG, "onStop")
-		FrameJankTelemetry.stop("MainActivity")
 		unregisterLocationModeReceiver()
 		super.onStop()
 	}
 
 	override fun onDestroy() {
-		Logger.d(TAG, "onDestroy")
-		FrameJankTelemetry.stop("MainActivity")
 		unregisterLocationModeReceiver()
 		setWallpaperExecutor.shutdownNow()
 		sunTimesRepository.release()
@@ -252,7 +230,6 @@ class MainActivity : AppCompatActivity() {
 	}
 
 	private fun applyLanguage(tag: String) {
-		Logger.event(TAG, "apply_language", "tag" to tag)
 		val locales = if (tag == AppSettingsDefaults.LANGUAGE_SYSTEM) {
 			LocaleListCompat.getEmptyLocaleList()
 		} else {
@@ -274,19 +251,16 @@ class MainActivity : AppCompatActivity() {
 			registerReceiver(locationModeReceiver, filter)
 		}
 		locationReceiverRegistered = true
-		Logger.d(TAG, "location receiver registered")
 	}
 
 	private fun unregisterLocationModeReceiver() {
 		if (!locationReceiverRegistered) return
 		runCatching { unregisterReceiver(locationModeReceiver) }
 		locationReceiverRegistered = false
-		Logger.d(TAG, "location receiver unregistered")
 	}
 
 	private fun openWallpaperSetScreen(wallpaperId: String) {
 		val baseConfig = homeViewModel.configFor(wallpaperId)
-		Logger.event(TAG, "open_wallpaper_set", "id" to wallpaperId, "configName" to baseConfig.name)
 		applyWallpaperWithFreshSunTimes(baseConfig)
 	}
 
@@ -296,15 +270,9 @@ class MainActivity : AppCompatActivity() {
 			return
 		}
 		applyingWallpaper = true
-		Logger.event(TAG, "set_wallpaper_start", "id" to baseConfig.id)
 		setWallpaperExecutor.execute {
 			try {
 				val candidates = buildSunTimesCandidates()
-				Logger.event(
-					TAG,
-					"sunTimes_candidates",
-					"count" to candidates.size
-				)
 				val latch = CountDownLatch(1)
 				var resolvedDaylight = SunDaylight(
 					sunriseMinute = baseConfig.daylight.sunriseMinute,
@@ -312,23 +280,13 @@ class MainActivity : AppCompatActivity() {
 					solarNoonMinute = baseConfig.daylight.solarNoonMinute,
 					timeZoneId = baseConfig.daylight.timeZoneId
 				)
-				Logger.event(TAG, "sunTimes_fetch_request", "policy" to "daily_location_swr")
 				sunTimesRepository.refreshAsyncWithCandidates(
 					candidates = candidates
 				) { fetched ->
 					resolvedDaylight = fetched
 					latch.countDown()
 				}
-				val completedInTime = latch.await(SET_WALLPAPER_REFRESH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-				Logger.event(
-					TAG,
-					"sunTimes_resolved",
-					"completedInTime" to completedInTime,
-					"sunrise" to resolvedDaylight.sunriseMinute,
-					"sunset" to resolvedDaylight.sunsetMinute,
-					"sunriseTime" to toClockLabel(resolvedDaylight.sunriseMinute),
-					"sunsetTime" to toClockLabel(resolvedDaylight.sunsetMinute)
-				)
+				latch.await(SET_WALLPAPER_REFRESH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
 
 				val finalConfig = baseConfig.copy(
 					daylight = DaylightConfig(
@@ -339,15 +297,6 @@ class MainActivity : AppCompatActivity() {
 					)
 				)
 				wallpaperConfigStore.saveSelected(finalConfig)
-				Logger.event(
-					TAG,
-					"wallpaper_config_saved",
-					"id" to finalConfig.id,
-					"sunrise" to finalConfig.daylight.sunriseMinute,
-					"sunset" to finalConfig.daylight.sunsetMinute,
-					"sunriseTime" to toClockLabel(finalConfig.daylight.sunriseMinute),
-					"sunsetTime" to toClockLabel(finalConfig.daylight.sunsetMinute)
-				)
 				notifyWallpaperConfigChanged()
 				runOnUiThread {
 					launchSystemWallpaperSetFlow()
@@ -356,7 +305,6 @@ class MainActivity : AppCompatActivity() {
 				Logger.e(TAG, "applyWallpaperWithFreshSunTimes failed", t)
 			} finally {
 				applyingWallpaper = false
-				Logger.d(TAG, "set wallpaper flow finished")
 			}
 		}
 	}
@@ -404,13 +352,11 @@ class MainActivity : AppCompatActivity() {
 		runCatching {
 			startActivity(directIntent)
 			overridePendingTransition(0, 0)
-			Logger.d(TAG, "opened ACTION_CHANGE_LIVE_WALLPAPER")
 		}.onFailure {
 			Logger.w(TAG, "direct live wallpaper intent failed, falling back chooser", it)
 			runCatching {
 				startActivity(Intent(ACTION_LIVE_WALLPAPER_CHOOSER))
 				overridePendingTransition(0, 0)
-				Logger.d(TAG, "opened ACTION_LIVE_WALLPAPER_CHOOSER")
 			}
 		}
 	}
@@ -421,7 +367,6 @@ class MainActivity : AppCompatActivity() {
 				Intent(ACTION_APPLY_STORED_WALLPAPER_CONFIG)
 					.setPackage(packageName)
 			)
-			Logger.d(TAG, "broadcasted wallpaper config update")
 		}.onFailure {
 			Logger.w(TAG, "failed to broadcast wallpaper config update", it)
 		}
@@ -431,7 +376,6 @@ class MainActivity : AppCompatActivity() {
 		val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
 		runCatching {
 			startActivity(intent)
-			Logger.d(TAG, "opened system location panel")
 		}.onFailure {
 			Logger.w(TAG, "failed to open system location panel", it)
 		}
@@ -449,14 +393,6 @@ class MainActivity : AppCompatActivity() {
 			)
 		)
 		Logger.restartSession()
-		Logger.event(TAG, "logger_configured", "debuggable" to debuggable)
-	}
-
-	private fun toClockLabel(minute: Int): String {
-		val normalized = minute.coerceIn(0, (24 * 60) - 1)
-		val hours = normalized / 60
-		val minutes = normalized % 60
-		return String.format(Locale.US, "%02d:%02d", hours, minutes)
 	}
 
 	companion object {

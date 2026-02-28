@@ -110,14 +110,6 @@ class SunTimesRepository(
 				if (cacheHit.layer == CacheLayer.ACTIVE) {
 					cached.set(cacheHit.entry.daylight)
 				}
-				val decision = if (cacheHit.layer == CacheLayer.ACTIVE) "HIT" else "HIT_BACKUP"
-				Logger.d(
-					TAG,
-					"Sun times decision=$decision at=${toHourMinuteLabel(System.currentTimeMillis())} " +
-						"day=$dayKey layer=${cacheHit.layer} source=${cacheHit.entry.sourceLabel} " +
-						"sunrise=${cacheHit.entry.daylight.sunriseMinute}(${toClockLabel(cacheHit.entry.daylight.sunriseMinute)}) " +
-						"sunset=${cacheHit.entry.daylight.sunsetMinute}(${toClockLabel(cacheHit.entry.daylight.sunsetMinute)})"
-				)
 				onUpdated(cacheHit.entry.daylight)
 				return
 			}
@@ -135,36 +127,13 @@ class SunTimesRepository(
 					if (cacheHit.layer == CacheLayer.ACTIVE) {
 						cached.set(cacheHit.entry.daylight)
 					}
-					val decision = if (cacheHit.layer == CacheLayer.ACTIVE) {
-						"HIT_POST_QUEUE"
-					} else {
-						"HIT_BACKUP_POST_QUEUE"
-					}
-					Logger.d(
-						TAG,
-						"Sun times decision=$decision at=${toHourMinuteLabel(System.currentTimeMillis())} " +
-							"day=$dayKey layer=${cacheHit.layer} source=${cacheHit.entry.sourceLabel} " +
-							"sunrise=${cacheHit.entry.daylight.sunriseMinute}(${toClockLabel(cacheHit.entry.daylight.sunriseMinute)}) " +
-							"sunset=${cacheHit.entry.daylight.sunsetMinute}(${toClockLabel(cacheHit.entry.daylight.sunsetMinute)})"
-					)
 					onUpdated(cacheHit.entry.daylight)
 					return@execute
 				}
 			}
 
-			Logger.d(
-				TAG,
-				"Sun times decision=FETCH_START at=${toHourMinuteLabel(System.currentTimeMillis())} " +
-					"forceRefresh=$forceRefresh candidates=${latestCandidates.size} day=${currentDayKey()}"
-			)
-
 			for (candidate in latestCandidates) {
 				if (requestId != requestVersion.get()) return@execute
-				Logger.d(
-					TAG,
-					"Sun times fetch attempt source=${candidate.label} " +
-						"lat=${candidate.latitude} lon=${candidate.longitude} tz=${candidate.timeZoneId}"
-				)
 				val fetched = apiClient.fetchDaylight(
 					latitude = candidate.latitude,
 					longitude = candidate.longitude,
@@ -179,13 +148,6 @@ class SunTimesRepository(
 				}
 
 				val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.ACTIVE)
-				Logger.d(
-					TAG,
-					"Sun times decision=FETCH_SUCCESS at=${toHourMinuteLabel(entry.updatedAtWallClockMs)} " +
-						"day=${entry.dayKey} source=${entry.sourceLabel} " +
-						"sunrise=${fetched.sunriseMinute}(${toClockLabel(fetched.sunriseMinute)}) " +
-						"sunset=${fetched.sunsetMinute}(${toClockLabel(fetched.sunsetMinute)})"
-				)
 				onUpdated(fetched)
 				return@execute
 			}
@@ -214,31 +176,13 @@ class SunTimesRepository(
 		val dueCandidates = uniqueCandidates.filter { candidate ->
 			shouldRefreshBackup(candidate, nowMs, minRefreshIntervalMs)
 		}
-		if (dueCandidates.isEmpty()) {
-			Logger.d(
-				TAG,
-				"Sun times decision=BACKUP_PREFETCH_SKIP at=${toHourMinuteLabel(nowMs)} " +
-					"reason=all_fresh candidates=${uniqueCandidates.size} intervalMs=$minRefreshIntervalMs"
-			)
-			return
-		}
-
-		Logger.d(
-			TAG,
-			"Sun times decision=BACKUP_PREFETCH_START at=${toHourMinuteLabel(nowMs)} " +
-				"candidates=${uniqueCandidates.size} due=${dueCandidates.size} intervalMs=$minRefreshIntervalMs"
-		)
+		if (dueCandidates.isEmpty()) return
 		backupPrefetchExecutor.execute {
 			dueCandidates.forEach { candidate ->
 				val attemptAt = System.currentTimeMillis()
 				if (!shouldRefreshBackup(candidate, attemptAt, minRefreshIntervalMs)) {
 					return@forEach
 				}
-				Logger.d(
-					TAG,
-					"Sun times backup fetch attempt source=${candidate.label} " +
-						"lat=${candidate.latitude} lon=${candidate.longitude} tz=${candidate.timeZoneId}"
-				)
 				val fetched = apiClient.fetchDaylight(
 					latitude = candidate.latitude,
 					longitude = candidate.longitude,
@@ -253,13 +197,6 @@ class SunTimesRepository(
 				}
 				val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.BACKUP)
 				markBackupRefresh(candidate, entry.updatedAtWallClockMs)
-				Logger.d(
-					TAG,
-					"Sun times decision=BACKUP_PREFETCH_SUCCESS at=${toHourMinuteLabel(entry.updatedAtWallClockMs)} " +
-						"day=${entry.dayKey} source=${entry.sourceLabel} " +
-						"sunrise=${fetched.sunriseMinute}(${toClockLabel(fetched.sunriseMinute)}) " +
-						"sunset=${fetched.sunsetMinute}(${toClockLabel(fetched.sunsetMinute)})"
-				)
 			}
 		}
 	}

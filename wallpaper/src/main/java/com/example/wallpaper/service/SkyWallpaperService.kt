@@ -30,14 +30,12 @@ open class SkyWallpaperService : WallpaperService() {
 		private val configRefreshReceiver = object : BroadcastReceiver() {
 			override fun onReceive(context: Context?, intent: Intent?) {
 				if (intent?.action != ACTION_APPLY_STORED_WALLPAPER_CONFIG) return
-				Logger.d("SkyWallpaperService", "applyStoredConfig broadcast received")
 				applyStoredConfig()
 			}
 		}
 
 		override fun onCreate(surfaceHolder: SurfaceHolder) {
 			super.onCreate(surfaceHolder)
-			Logger.d("SkyWallpaperService", "Engine.onCreate")
 			registerConfigRefreshReceiver()
 			renderController.setPreviewMode(isPreview)
 			applyStoredConfig()
@@ -82,20 +80,9 @@ open class SkyWallpaperService : WallpaperService() {
 					timeZoneId = config.daylight.timeZoneId
 				)
 				if (lastAppliedConfigSignature == signature) {
-					Logger.d("SkyWallpaperService", "apply_stored_config dedupe skip signature=$signature")
 					return
 				}
 				lastAppliedConfigSignature = signature
-				Logger.event(
-					"SkyWallpaperService",
-					"apply_stored_config",
-					"id" to config.id,
-					"isPreview" to isPreview,
-					"sunrise" to config.daylight.sunriseMinute,
-					"sunset" to config.daylight.sunsetMinute,
-					"solarNoon" to config.daylight.solarNoonMinute,
-					"timeZoneId" to config.daylight.timeZoneId
-				)
 				renderController.setConfig(config)
 			} ?: run {
 				Logger.w("SkyWallpaperService", "apply_stored_config skipped: no saved config")

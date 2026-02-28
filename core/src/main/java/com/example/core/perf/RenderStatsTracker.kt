@@ -1,112 +1,12 @@
 package com.example.core.perf
 
-import android.os.SystemClock
-import com.example.core.Logger
-import java.util.Locale
-import kotlin.math.max
-
 class RenderStatsTracker(
-	private val tag: String,
-	private val logEvery: Int
+	tag: String,
+	logEvery: Int
 ) {
-	private var attempts: Long = 0
-	private var draws: Long = 0
-	private var skips: Long = 0
+	fun onDraw(drawDurationNanos: Long) = Unit
 
-	private var windowStartMs: Long = SystemClock.elapsedRealtime()
-	private var windowDraws: Long = 0
-	private var windowDrawNanos: Long = 0
-	private var windowMaxDrawNanos: Long = 0
-	private var lastSkipReason: String = "-"
+	fun onSkip(reason: String) = Unit
 
-	@Synchronized
-	fun onDraw(drawDurationNanos: Long) {
-		attempts += 1
-		draws += 1
-		windowDraws += 1
-		windowDrawNanos += drawDurationNanos
-		if (drawDurationNanos > windowMaxDrawNanos) {
-			windowMaxDrawNanos = drawDurationNanos
-		}
-		maybeLog()
-	}
-
-	@Synchronized
-	fun onSkip(reason: String) {
-		attempts += 1
-		skips += 1
-		lastSkipReason = reason
-		if (attempts % logEvery == 0L) {
-			Logger.d(tag, "skip reason=$reason")
-		}
-		maybeLog()
-	}
-
-	@Synchronized
-	fun reset() {
-		attempts = 0
-		draws = 0
-		skips = 0
-		windowStartMs = SystemClock.elapsedRealtime()
-		windowDraws = 0
-		windowDrawNanos = 0
-		windowMaxDrawNanos = 0
-		lastSkipReason = "-"
-	}
-
-	@Synchronized
-	private fun maybeLog() {
-		if (attempts == 0L || attempts % logEvery != 0L) return
-
-		val nowMs = SystemClock.elapsedRealtime()
-		val windowElapsedMs = max(1L, nowMs - windowStartMs)
-		val fps = (windowDraws * 1000f) / windowElapsedMs.toFloat()
-		val avgDrawMs = if (windowDraws > 0) {
-			(windowDrawNanos.toDouble() / windowDraws.toDouble()) / 1_000_000.0
-		} else {
-			0.0
-		}
-		val maxDrawMs = windowMaxDrawNanos.toDouble() / 1_000_000.0
-		val windowDrawRatio = if (windowDraws > 0) {
-			(windowDraws.toDouble() / max(1L, attempts.coerceAtMost(logEvery.toLong())).toDouble()) * 100.0
-		} else {
-			0.0
-		}
-		val drawRatio = if (attempts > 0) {
-			(draws.toDouble() / attempts.toDouble()) * 100.0
-		} else {
-			0.0
-		}
-
-		Logger.d(
-			tag,
-			"stats attempts=$attempts draws=$draws skips=$skips drawRatio=${
-				format(drawRatio)
-			}% windowFps=${format(fps.toDouble())} avgDrawMs=${format(avgDrawMs)}"
-		)
-		Logger.event(
-			tag = tag,
-			name = "render_window",
-			"attempts" to attempts,
-			"draws" to draws,
-			"skips" to skips,
-			"drawRatioPct" to format(drawRatio),
-			"windowDrawRatioPct" to format(windowDrawRatio),
-			"fps" to format(fps.toDouble()),
-			"avgDrawMs" to format(avgDrawMs),
-			"maxDrawMs" to format(maxDrawMs),
-			"windowMs" to windowElapsedMs,
-			"lastSkip" to lastSkipReason,
-			"timestampMs" to nowMs
-		)
-
-		windowStartMs = nowMs
-		windowDraws = 0
-		windowDrawNanos = 0
-		windowMaxDrawNanos = 0
-	}
-
-	private fun format(value: Double): String {
-		return String.format(Locale.US, "%.2f", value)
-	}
+	fun reset() = Unit
 }

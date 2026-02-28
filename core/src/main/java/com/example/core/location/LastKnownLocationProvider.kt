@@ -71,13 +71,6 @@ class LastKnownLocationProvider(
 			longitude = best.longitude,
 			timeZoneId = ZoneId.systemDefault().id
 		)
-		Logger.event(
-			"LocationProvider",
-			"last_known_location",
-			"label" to label,
-			"lat" to resolved.latitude,
-			"lon" to resolved.longitude
-		)
 		return resolved
 	}
 
@@ -127,14 +120,6 @@ class LastKnownLocationProvider(
 						longitude = location.longitude,
 						timeZoneId = ZoneId.systemDefault().id
 					)
-					Logger.event(
-						"LocationProvider",
-						"current_location",
-						"label" to label,
-						"provider" to provider,
-						"lat" to resolved.latitude,
-						"lon" to resolved.longitude
-					)
 					onResult(resolved)
 				}
 			)
@@ -166,7 +151,6 @@ class LastKnownLocationProvider(
 			localityCache[key] = label
 			trimCacheLocked()
 		}
-		Logger.event("LocationProvider", "reverse_geocode", "label" to label)
 		return label
 	}
 

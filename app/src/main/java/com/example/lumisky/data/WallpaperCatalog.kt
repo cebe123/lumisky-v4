@@ -1,7 +1,6 @@
 package com.example.lumisky.data
 
 import com.example.core.api.SunDaylight
-import com.example.core.settings.AppSettingsDefaults
 import com.example.engine.config.CelestialConfig
 import com.example.engine.config.DaylightConfig
 import com.example.engine.config.HorizonConfig
@@ -16,25 +15,16 @@ import com.example.engine.config.WallpaperTextures
 object WallpaperCatalog {
 
 	fun buildConfigs(
-		count: Int = DEFAULT_COUNT,
-		daylight: SunDaylight = SunDaylight.fallback(),
-		languageTag: String = AppSettingsDefaults.LANGUAGE_SYSTEM
+		daylight: SunDaylight = SunDaylight.fallback()
 	): List<WallpaperConfig> {
-		if (count <= 0) return emptyList()
-
-		val ordered = ORDERED_PRESETS.map { preset ->
+		return ORDERED_PRESETS.map { preset ->
 			preset.toConfig(daylight = daylight)
 		}
-		if (count <= ordered.size) {
-			return ordered.take(count)
-		}
-		return ordered
 	}
 
 	fun configById(
 		id: String,
-		daylight: SunDaylight = SunDaylight.fallback(),
-		languageTag: String = AppSettingsDefaults.LANGUAGE_SYSTEM
+		daylight: SunDaylight = SunDaylight.fallback()
 	): WallpaperConfig {
 		val preset = PRESET_BY_ID[id]
 		if (preset != null) {
@@ -264,6 +254,4 @@ object WallpaperCatalog {
 		)
 	)
 	private val PRESET_BY_ID = ORDERED_PRESETS.associateBy { it.id }
-
-	private const val DEFAULT_COUNT = 120
 }

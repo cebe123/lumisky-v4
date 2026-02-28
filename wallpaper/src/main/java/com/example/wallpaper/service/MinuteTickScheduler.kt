@@ -2,7 +2,6 @@ package com.example.wallpaper.service
 
 import android.os.Handler
 import android.os.Looper
-import com.example.core.Logger
 import kotlin.math.max
 
 class MinuteTickScheduler(
@@ -43,7 +42,6 @@ class MinuteTickScheduler(
 		val msIntoMinute = now % ONE_MINUTE_MS
 		val delay = max(1L, ONE_MINUTE_MS - msIntoMinute)
 		handler.postDelayed(runnable, delay)
-		Logger.d("MinuteTickScheduler", "nextTickInMs=$delay")
 	}
 
 	companion object {
