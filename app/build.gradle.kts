@@ -25,6 +25,7 @@ val lintIncludeTestSources = providers.gradleProperty("lumisky.lint.includeTestS
 
 android {
 	namespace = "com.example.lumisky"
+	testBuildType = "benchmark"
 	compileSdk {
 		version = release(36)
 	}
@@ -40,6 +41,12 @@ android {
 	buildTypes {
 		release {
 			isMinifyEnabled = false
+		}
+		create("benchmark") {
+			initWith(getByName("release"))
+			signingConfig = signingConfigs.getByName("debug")
+			isDebuggable = false
+			matchingFallbacks += listOf("release")
 		}
 	}
 	compileOptions {
@@ -195,6 +202,20 @@ android.sourceSets.getByName("main").assets.setSrcDirs(listOf(filteredAssetsDir)
 
 tasks.matching { task ->
 	task.name.startsWith("merge") && task.name.endsWith("Assets")
+}.configureEach {
+	dependsOn(prepareFilteredAssets)
+}
+
+tasks.matching { task ->
+	task.name.startsWith("generate") &&
+		task.name.contains("Lint") &&
+		task.name.endsWith("Model")
+}.configureEach {
+	dependsOn(prepareFilteredAssets)
+}
+
+tasks.matching { task ->
+	task.name.startsWith("lint")
 }.configureEach {
 	dependsOn(prepareFilteredAssets)
 }

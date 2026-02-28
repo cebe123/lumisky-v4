@@ -15,12 +15,14 @@ import com.example.core.api.SunTimesRepository
 import com.example.core.location.LastKnownLocationProvider
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
+import com.example.core.settings.AppSettingsSnapshot
 import com.example.core.settings.AppThemeMode
 import com.example.core.settings.LocationMode
 import com.example.core.settings.ManualCity
 import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
 import com.example.lumisky.data.WallpaperCatalog
+import com.example.lumisky.perf.StartupPerformanceMonitor
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -34,7 +36,8 @@ class HomeViewModel(
 	context: Context,
 	private val sunTimesRepository: SunTimesRepository = SunTimesRepository(),
 	private val settingsRepository: AppSettingsRepository = AppSettingsRepository(context),
-	private val lastKnownLocationProvider: LastKnownLocationProvider = LastKnownLocationProvider(context)
+	private val lastKnownLocationProvider: LastKnownLocationProvider = LastKnownLocationProvider(context),
+	private val initialSettings: AppSettingsSnapshot = settingsRepository.snapshot()
 ) {
 	private val tag = "HomeViewModel"
 	private val mainHandler = Handler(Looper.getMainLooper())
@@ -67,22 +70,22 @@ class HomeViewModel(
 	var daylight by mutableStateOf(sunTimesRepository.currentOrFallback())
 		private set
 
-	var appThemeMode by mutableStateOf(settingsRepository.getAppThemeMode())
+	var appThemeMode by mutableStateOf(initialSettings.appThemeMode)
 		private set
 
-	var languageTag by mutableStateOf(settingsRepository.getLanguageTag())
+	var languageTag by mutableStateOf(initialSettings.languageTag)
 		private set
 
-	var highRefreshEnabled by mutableStateOf(settingsRepository.isHighRefreshEnabled())
+	var highRefreshEnabled by mutableStateOf(initialSettings.highRefreshEnabled)
 		private set
 
-	var performanceMode by mutableStateOf(settingsRepository.getPerformanceMode())
+	var performanceMode by mutableStateOf(initialSettings.performanceMode)
 		private set
 
-	var locationMode by mutableStateOf(settingsRepository.getLocationMode())
+	var locationMode by mutableStateOf(initialSettings.locationMode)
 		private set
 
-	var manualCity by mutableStateOf(settingsRepository.getManualCity())
+	var manualCity by mutableStateOf(initialSettings.manualCity)
 		private set
 
 	var locationLabel by mutableStateOf(manualCity.name)
@@ -91,9 +94,7 @@ class HomeViewModel(
 	var gpsLocationAvailable by mutableStateOf(false)
 		private set
 
-	var systemLocationEnabled by mutableStateOf(
-		runCatching { lastKnownLocationProvider.isLocationEnabled() }.getOrDefault(false)
-	)
+	var systemLocationEnabled by mutableStateOf(false)
 		private set
 
 	private var liveGpsLocation: SunLocation? = null
@@ -134,11 +135,20 @@ class HomeViewModel(
 			refreshSunTimes()
 		}
 	}
+	private val startupRefreshRunnable = Runnable {
+		StartupPerformanceMonitor.traceSection("home_vm.refresh_location_state") {
+			refreshLocationState()
+		}
+		StartupPerformanceMonitor.traceSection("home_vm.refresh_sun_times") {
+			refreshSunTimes()
+		}
+	}
 
 	init {
-		refreshLocationState()
-		seedInitialCatalog(daylight)
-		refreshSunTimes()
+		StartupPerformanceMonitor.traceSection("home_vm.seed_initial_catalog") {
+			seedInitialCatalog(daylight)
+		}
+		mainHandler.post(startupRefreshRunnable)
 		schedulePeriodicSunTimesRefresh()
 		schedulePeriodicBackupCityRefresh()
 	}
@@ -311,6 +321,7 @@ class HomeViewModel(
 		mainHandler.removeCallbacks(startupBackupPrefetchRunnable)
 		mainHandler.removeCallbacks(backupCityRefreshRunnable)
 		mainHandler.removeCallbacks(refreshLocationAndSunTimesRunnable)
+		mainHandler.removeCallbacks(startupRefreshRunnable)
 		catalogExecutor.shutdownNow()
 		locationLabelExecutor.shutdownNow()
 		sunTimesRepository.release()

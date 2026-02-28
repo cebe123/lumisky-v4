@@ -315,6 +315,7 @@ private fun CategorySection(
 	val rowState = rememberLazyListState()
 	var centeredWallpaperId by remember(wallpapers) { mutableStateOf<String?>(null) }
 	var lastPrewarmIds by remember { mutableStateOf("") }
+	var readyPreviewIds by remember(wallpapers) { mutableStateOf(emptySet<String>()) }
 	val wallpaperIdSet by remember(wallpapers) {
 		derivedStateOf { wallpapers.asSequence().map { it.id }.toHashSet() }
 	}
@@ -365,11 +366,13 @@ private fun CategorySection(
 		val warmupKey = candidates.joinToString("|") { it.id }
 		if (warmupKey == lastPrewarmIds) return@LaunchedEffect
 		lastPrewarmIds = warmupKey
-		withContext(Dispatchers.IO) {
+		val warmedIds = withContext(Dispatchers.IO) {
 			candidates.forEach { model ->
 				RenderAssetCache.prewarmWallpaper(context, model.item.config)
 			}
+			candidates.map { model -> model.id }.toSet()
 		}
+		readyPreviewIds = readyPreviewIds + warmedIds
 	}
 
 	Column {
@@ -395,12 +398,15 @@ private fun CategorySection(
 			}
 			val liveIndex = activeLiveId?.let { wallpaperIndexById[it] } ?: -1
 			itemsIndexed(wallpapers, key = { _, model -> model.id }) { index, model ->
+				val isPreviewReady = model.id in readyPreviewIds
 				val isFocusedLive = isCategoryActive &&
 					liveIndex >= 0 &&
-					index == liveIndex
+					index == liveIndex &&
+					isPreviewReady
 				val isPreparedNeighbor = isCategoryActive &&
 					liveIndex >= 0 &&
-					abs(index - liveIndex) == 1
+					abs(index - liveIndex) == 1 &&
+					isPreviewReady
 				WallpaperCard(
 					title = model.name,
 					item = model.item,
