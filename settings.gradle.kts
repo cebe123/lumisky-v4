@@ -24,7 +24,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Lumisky"
 include(":app")
-include(":benchmark")
 include(":core")
 include(":engine")
 include(":wallpaper")

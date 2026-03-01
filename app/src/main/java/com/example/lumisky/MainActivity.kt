@@ -11,7 +11,6 @@ import android.content.IntentFilter
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
-import android.os.StrictMode
 import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
@@ -26,11 +25,13 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.appcompat.app.AppCompatActivity
@@ -49,9 +50,6 @@ import com.example.core.settings.LocationMode
 import com.example.engine.config.DaylightConfig
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
-import com.example.lumisky.perf.StartupFirstFrameReporter
-import com.example.lumisky.perf.StartupFullyDrawnReporter
-import com.example.lumisky.perf.StartupPerformanceMonitor
 import com.example.lumisky.ui.home.HomeScreen
 import com.example.lumisky.ui.home.HomeScreenBackgroundColor
 import com.example.lumisky.ui.home.LaunchSkeleton
@@ -85,167 +83,154 @@ class MainActivity : AppCompatActivity() {
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		configureLogging()
-		StartupPerformanceMonitor.beginLaunch()
-		launchThemeMode = StartupPerformanceMonitor.traceSection("load_launch_theme") {
-			appSettingsRepository.getAppThemeMode()
-		}
-		val launchLanguageTag = StartupPerformanceMonitor.traceSection("load_launch_language") {
-			appSettingsRepository.getLanguageTag()
-		}
-		StartupPerformanceMonitor.traceSection("apply_language") {
-			applyLanguage(launchLanguageTag)
-		}
-		configureDebugStartupGuardrails()
+		launchThemeMode = appSettingsRepository.getAppThemeMode()
+		val launchLanguageTag = appSettingsRepository.getLanguageTag()
+		applyLanguage(launchLanguageTag)
 		super.onCreate(savedInstanceState)
 
-		StartupPerformanceMonitor.traceSection("set_content") {
-			setContent {
-				val homeViewModel = homeViewModelState.value
-				val resolvedThemeMode = homeViewModel?.appThemeMode ?: launchThemeMode
-				val darkTheme = when (resolvedThemeMode) {
-					AppThemeMode.SYSTEM -> isSystemInDarkTheme()
-					AppThemeMode.LIGHT -> false
-					AppThemeMode.DARK -> true
+		setContent {
+			val homeViewModel = homeViewModelState.value
+			val resolvedThemeMode = homeViewModel?.appThemeMode ?: launchThemeMode
+			val darkTheme = when (resolvedThemeMode) {
+				AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+				AppThemeMode.LIGHT -> false
+				AppThemeMode.DARK -> true
+			}
+			LumiskyTheme(
+				darkTheme = darkTheme
+			) {
+				var currentScreen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
+				var startupAnimationsEnabled by rememberSaveable { mutableStateOf(false) }
+				val targetSystemBarColor = if (currentScreen == SCREEN_HOME) {
+					HomeScreenBackgroundColor
+				} else {
+					MaterialTheme.colorScheme.background
 				}
-				LumiskyTheme(
-					darkTheme = darkTheme
-				) {
-					var currentScreen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
-					var startupAnimationsEnabled by rememberSaveable { mutableStateOf(false) }
-					val targetSystemBarColor = if (currentScreen == SCREEN_HOME) {
-						HomeScreenBackgroundColor
-					} else {
-						MaterialTheme.colorScheme.background
-					}
-					val systemBarColor = if (startupAnimationsEnabled) {
-						animateColorAsState(
-							targetValue = targetSystemBarColor,
-							animationSpec = tween(durationMillis = 320),
-							label = "main_system_bar_color"
-						).value
-					} else {
-						targetSystemBarColor
-					}
-					SideEffect {
-						window.statusBarColor = systemBarColor.toArgb()
-						WindowCompat
-							.getInsetsController(window, window.decorView)
-							.isAppearanceLightStatusBars = systemBarColor.luminance() > 0.5f
-					}
+				val systemBarColor = if (startupAnimationsEnabled) {
+					animateColorAsState(
+						targetValue = targetSystemBarColor,
+						animationSpec = tween(durationMillis = 320),
+						label = "main_system_bar_color"
+					).value
+				} else {
+					targetSystemBarColor
+				}
+				SideEffect {
+					window.statusBarColor = systemBarColor.toArgb()
+					WindowCompat
+						.getInsetsController(window, window.decorView)
+						.isAppearanceLightStatusBars = systemBarColor.luminance() > 0.5f
+				}
 
-					StartupFirstFrameReporter(
-						onFirstFrame = { ensureHomeViewModelCreated() }
-					)
+				LaunchedEffect(Unit) {
+					withFrameNanos { }
+					ensureHomeViewModelCreated()
+				}
 
-					if (homeViewModel == null) {
-						LaunchSkeleton()
-					} else {
-						val screenContent: @Composable (String) -> Unit = { screen ->
-							when (screen) {
-								SCREEN_HOME -> HomeScreen(
-									items = homeViewModel.items,
-									selectedWallpaperId = homeViewModel.selectedWallpaperId,
-									liveWallpaperId = homeViewModel.liveWallpaperId,
-									highRefreshEnabled = homeViewModel.highRefreshEnabled,
-									performanceMode = homeViewModel.performanceMode,
-									onWallpaperSelected = { id ->
-										homeViewModel.onWallpaperSelected(id)
-									},
-									onCategoryFocused = { ids ->
-										homeViewModel.onCategoryFocused(ids)
-									},
-									onFocusReady = { id ->
-										homeViewModel.activateLivePreview(id)
-									},
-									onFocusCleared = {
-										homeViewModel.clearLivePreview()
-									},
-									onOpenPreview = { id ->
-										openWallpaperSetScreen(id)
-									},
-									onNavigateSettings = {
-										currentScreen = SCREEN_SETTINGS
-									},
-									startupDeferNonCriticalContentOnFirstRender = !startupAnimationsEnabled,
-									startupAnimationsEnabled = startupAnimationsEnabled
-								)
-
-								SCREEN_SETTINGS -> SettingsScreen(
-									appThemeMode = homeViewModel.appThemeMode,
-									onCycleTheme = { homeViewModel.cycleAppThemeMode() },
-									highRefreshEnabled = homeViewModel.highRefreshEnabled,
-									onHighRefreshChanged = { enabled -> homeViewModel.updateHighRefreshEnabled(enabled) },
-									performanceMode = homeViewModel.performanceMode,
-									onPerformanceModeChanged = { mode -> homeViewModel.updatePerformanceMode(mode) },
-									locationMode = homeViewModel.locationMode,
-									locationLabel = homeViewModel.locationLabel,
-									daylight = homeViewModel.daylight,
-									gpsLocationAvailable = homeViewModel.gpsLocationAvailable,
-									systemLocationEnabled = homeViewModel.systemLocationEnabled,
-									onLocationModeChanged = { mode -> homeViewModel.updateLocationMode(mode) },
-									onRequestEnableSystemLocation = { openSystemLocationPanel() },
-									manualCity = homeViewModel.manualCity,
-									onManualCitySelected = { city -> homeViewModel.updateManualCity(city) },
-									languageTag = homeViewModel.languageTag,
-									onLanguageSelected = { tag ->
-										homeViewModel.updateLanguageTag(tag)
-										applyLanguage(tag)
-									},
-									onNavigateHome = {
-										currentScreen = SCREEN_HOME
-									}
-								)
-							}
-						}
-						StartupFullyDrawnReporter(
-							ready = true,
-							onReady = {
-								startupAnimationsEnabled = true
-								if (getString(R.string.runtime_build_type) != "benchmark") {
-									reportFullyDrawn()
-								}
-							}
-						)
-						if (startupAnimationsEnabled) {
-							AnimatedContent(
-								targetState = currentScreen,
-								transitionSpec = {
-									val direction = if (targetState == SCREEN_SETTINGS) {
-										AnimatedContentTransitionScope.SlideDirection.Left
-									} else {
-										AnimatedContentTransitionScope.SlideDirection.Right
-									}
-									(
-										slideIntoContainer(
-											towards = direction,
-											animationSpec = tween(
-												durationMillis = 360,
-												easing = FastOutSlowInEasing
-											),
-											initialOffset = { offset -> offset / 3 }
-										) + fadeIn(
-											animationSpec = tween(durationMillis = 220, delayMillis = 60)
-										)
-									).togetherWith(
-										slideOutOfContainer(
-											towards = direction,
-											animationSpec = tween(
-												durationMillis = 280,
-												easing = FastOutSlowInEasing
-											),
-											targetOffset = { offset -> offset / 4 }
-										) + fadeOut(
-											animationSpec = tween(durationMillis = 180)
-										)
-									).using(SizeTransform(clip = false))
+				if (homeViewModel == null) {
+					LaunchSkeleton()
+				} else {
+					val screenContent: @Composable (String) -> Unit = { screen ->
+						when (screen) {
+							SCREEN_HOME -> HomeScreen(
+								items = homeViewModel.items,
+								selectedWallpaperId = homeViewModel.selectedWallpaperId,
+								liveWallpaperId = homeViewModel.liveWallpaperId,
+								highRefreshEnabled = homeViewModel.highRefreshEnabled,
+								performanceMode = homeViewModel.performanceMode,
+								onWallpaperSelected = { id ->
+									homeViewModel.onWallpaperSelected(id)
 								},
-								label = "main_screen_transition"
-							) { screen ->
-								screenContent(screen)
-							}
-						} else {
-							screenContent(currentScreen)
+								onCategoryFocused = { ids ->
+									homeViewModel.onCategoryFocused(ids)
+								},
+								onFocusReady = { id ->
+									homeViewModel.activateLivePreview(id)
+								},
+								onFocusCleared = {
+									homeViewModel.clearLivePreview()
+								},
+								onOpenPreview = { id ->
+									openWallpaperSetScreen(id)
+								},
+								onNavigateSettings = {
+									currentScreen = SCREEN_SETTINGS
+								},
+								startupDeferNonCriticalContentOnFirstRender = !startupAnimationsEnabled,
+								startupAnimationsEnabled = startupAnimationsEnabled
+							)
+
+							SCREEN_SETTINGS -> SettingsScreen(
+								appThemeMode = homeViewModel.appThemeMode,
+								onCycleTheme = { homeViewModel.cycleAppThemeMode() },
+								highRefreshEnabled = homeViewModel.highRefreshEnabled,
+								onHighRefreshChanged = { enabled -> homeViewModel.updateHighRefreshEnabled(enabled) },
+								performanceMode = homeViewModel.performanceMode,
+								onPerformanceModeChanged = { mode -> homeViewModel.updatePerformanceMode(mode) },
+								locationMode = homeViewModel.locationMode,
+								locationLabel = homeViewModel.locationLabel,
+								daylight = homeViewModel.daylight,
+								gpsLocationAvailable = homeViewModel.gpsLocationAvailable,
+								systemLocationEnabled = homeViewModel.systemLocationEnabled,
+								onLocationModeChanged = { mode -> homeViewModel.updateLocationMode(mode) },
+								onRequestEnableSystemLocation = { openSystemLocationPanel() },
+								manualCity = homeViewModel.manualCity,
+								onManualCitySelected = { city -> homeViewModel.updateManualCity(city) },
+								languageTag = homeViewModel.languageTag,
+								onLanguageSelected = { tag ->
+									homeViewModel.updateLanguageTag(tag)
+									applyLanguage(tag)
+								},
+								onNavigateHome = {
+									currentScreen = SCREEN_HOME
+								}
+							)
 						}
+					}
+					LaunchedEffect(homeViewModel) {
+						withFrameNanos { }
+						startupAnimationsEnabled = true
+						reportFullyDrawn()
+					}
+					if (startupAnimationsEnabled) {
+						AnimatedContent(
+							targetState = currentScreen,
+							transitionSpec = {
+								val direction = if (targetState == SCREEN_SETTINGS) {
+									AnimatedContentTransitionScope.SlideDirection.Left
+								} else {
+									AnimatedContentTransitionScope.SlideDirection.Right
+								}
+								(
+									slideIntoContainer(
+										towards = direction,
+										animationSpec = tween(
+											durationMillis = 360,
+											easing = FastOutSlowInEasing
+										),
+										initialOffset = { offset -> offset / 3 }
+									) + fadeIn(
+										animationSpec = tween(durationMillis = 220, delayMillis = 60)
+									)
+								).togetherWith(
+									slideOutOfContainer(
+										towards = direction,
+										animationSpec = tween(
+											durationMillis = 280,
+											easing = FastOutSlowInEasing
+										),
+										targetOffset = { offset -> offset / 4 }
+									) + fadeOut(
+										animationSpec = tween(durationMillis = 180)
+									)
+								).using(SizeTransform(clip = false))
+							},
+							label = "main_screen_transition"
+						) { screen ->
+							screenContent(screen)
+						}
+					} else {
+						screenContent(currentScreen)
 					}
 				}
 			}
@@ -443,42 +428,17 @@ class MainActivity : AppCompatActivity() {
 		Logger.restartSession()
 	}
 
-	private fun configureDebugStartupGuardrails() {
-		val debuggable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
-		if (!debuggable) return
-
-		StrictMode.setThreadPolicy(
-			StrictMode.ThreadPolicy.Builder()
-				.detectDiskReads()
-				.detectDiskWrites()
-				.detectNetwork()
-				.penaltyLog()
-				.build()
-		)
-		StrictMode.setVmPolicy(
-			StrictMode.VmPolicy.Builder()
-				.detectActivityLeaks()
-				.detectLeakedClosableObjects()
-				.penaltyLog()
-				.build()
-		)
-		Logger.i(TAG, "debug startup guardrails enabled")
-	}
-
 	private fun homeViewModelOrNull(): HomeViewModel? = homeViewModelState.value
 
 	private fun ensureHomeViewModelCreated(): HomeViewModel {
 		homeViewModelOrNull()?.let { return it }
-		return StartupPerformanceMonitor.traceSection("home_view_model_create") {
-			val initialSettings = appSettingsRepository.snapshot()
-			HomeViewModel(
-				context = applicationContext,
-				settingsRepository = appSettingsRepository,
-				initialSettings = initialSettings
-			).also { created ->
-				homeViewModelState.value = created
-				StartupPerformanceMonitor.mark("home_view_model_ready")
-			}
+		val initialSettings = appSettingsRepository.snapshot()
+		return HomeViewModel(
+			context = applicationContext,
+			settingsRepository = appSettingsRepository,
+			initialSettings = initialSettings
+		).also { created ->
+			homeViewModelState.value = created
 		}
 	}
 

@@ -61,7 +61,6 @@ import com.example.engine.config.WallpaperConfig
 import com.example.engine.preview.PreviewGlRenderer
 import com.example.engine.renderer.RenderMode
 import com.example.lumisky.R
-import com.example.lumisky.perf.StartupTraceComposableOnce
 import com.example.lumisky.shader.RenderAssetCache
 import com.example.lumisky.ui.common.PreviewRendererSurfaceView
 import com.example.lumisky.ui.common.resolveDisplayRefreshRate
@@ -83,20 +82,18 @@ private data class StoreWallpaperModel(
 
 @Composable
 fun LaunchSkeleton() {
-	StartupTraceComposableOnce(name = "launch_skeleton.compose") {
-		Box(
-			modifier = Modifier
-				.fillMaxSize()
-				.background(HomeScreenBackgroundColor),
-			contentAlignment = Alignment.Center
-		) {
-			Icon(
-				imageVector = Icons.Filled.FilterHdr,
-				contentDescription = "App Logo",
-				modifier = Modifier.size(42.dp),
-				tint = Color.White.copy(alpha = 0.92f)
-			)
-		}
+	Box(
+		modifier = Modifier
+			.fillMaxSize()
+			.background(HomeScreenBackgroundColor),
+		contentAlignment = Alignment.Center
+	) {
+		Icon(
+			imageVector = Icons.Filled.FilterHdr,
+			contentDescription = "App Logo",
+			modifier = Modifier.size(42.dp),
+			tint = Color.White.copy(alpha = 0.92f)
+		)
 	}
 }
 
@@ -169,11 +166,6 @@ fun HomeScreen(
 	}
 	val cardWidth = 276.dp
 	val cardHeight = (cardWidth.value * wallpaperAspectRatio * 0.9f).dp
-	val startupScreenLabel = if (items.isEmpty()) {
-		"placeholder"
-	} else {
-		"content"
-	}
 	var startupHydrationActive by remember(items) {
 		mutableStateOf(startupDeferNonCriticalContentOnFirstRender && items.isNotEmpty())
 	}
@@ -292,70 +284,66 @@ fun HomeScreen(
 		onFocusReady(candidate)
 	}
 
-	StartupTraceComposableOnce(name = "home_screen.$startupScreenLabel.scaffold_compose") {
-		Scaffold(
-			containerColor = HomeScreenBackgroundColor,
-			topBar = {
-				HomeTopBar(
-					simplified = startupRenderLiteMode
-				)
+	Scaffold(
+		containerColor = HomeScreenBackgroundColor,
+		topBar = {
+			HomeTopBar(
+				simplified = startupRenderLiteMode
+			)
+		}
+	) { innerPadding ->
+		Box(
+			modifier = Modifier
+				.fillMaxSize()
+				.background(HomeScreenBackgroundColor)
+		) {
+			LazyColumn(
+				state = verticalState,
+				modifier = Modifier
+					.fillMaxSize()
+					.padding(innerPadding),
+				contentPadding = PaddingValues(bottom = 112.dp),
+				verticalArrangement = Arrangement.spacedBy(24.dp)
+			) {
+				itemsIndexed(renderedCategoryGroups) { index, entry ->
+					val isCategoryActive = (index == centerCategoryIndex) || (centerCategoryIndex == -1 && index == 0)
+					CategorySection(
+						categoryName = entry.first,
+						wallpapers = entry.second,
+						liveWallpaperId = liveWallpaperId,
+						isCategoryActive = isCategoryActive,
+						parentScrollInProgress = verticalState.isScrollInProgress,
+						highRefreshEnabled = highRefreshEnabled,
+						performanceMode = performanceMode,
+						cardWidth = cardWidth,
+						cardHeight = cardHeight,
+						simplifiedPlaceholderVisuals = startupRenderLiteMode,
+						onFocusCandidate = { candidate ->
+							if (candidate != null) {
+								focusCandidateId = candidate
+							}
+						},
+						onWallpaperClick = { id ->
+							onWallpaperSelected(id)
+							onOpenPreview(id)
+						}
+					)
+				}
 			}
-		) { innerPadding ->
-			StartupTraceComposableOnce(name = "home_screen.$startupScreenLabel.body_compose") {
-				Box(
-					modifier = Modifier
-						.fillMaxSize()
-						.background(HomeScreenBackgroundColor)
-				) {
-					LazyColumn(
-						state = verticalState,
-						modifier = Modifier
-							.fillMaxSize()
-							.padding(innerPadding),
-						contentPadding = PaddingValues(bottom = 112.dp),
-						verticalArrangement = Arrangement.spacedBy(24.dp)
-					) {
-						itemsIndexed(renderedCategoryGroups) { index, entry ->
-							val isCategoryActive = (index == centerCategoryIndex) || (centerCategoryIndex == -1 && index == 0)
-							CategorySection(
-								categoryName = entry.first,
-								wallpapers = entry.second,
-								liveWallpaperId = liveWallpaperId,
-								isCategoryActive = isCategoryActive,
-								parentScrollInProgress = verticalState.isScrollInProgress,
-								highRefreshEnabled = highRefreshEnabled,
-								performanceMode = performanceMode,
-								cardWidth = cardWidth,
-								cardHeight = cardHeight,
-								simplifiedPlaceholderVisuals = startupRenderLiteMode,
-								onFocusCandidate = { candidate ->
-									if (candidate != null) {
-										focusCandidateId = candidate
-									}
-								},
-								onWallpaperClick = { id ->
-									onWallpaperSelected(id)
-									onOpenPreview(id)
-								}
-							)
-						}
-					}
 
-					Box(
-						modifier = Modifier
-							.align(Alignment.BottomCenter)
-							.fillMaxWidth()
-					) {
-						if (showBottomNav) {
-							BottomNavBar(
-								selectedItem = 0,
-								onItemSelected = { index ->
-									if (index == 1) onNavigateSettings()
-								},
-								animationsEnabled = startupAnimationsEnabled && !startupHydrationActive
-							)
-						}
-					}
+			Box(
+				modifier = Modifier
+					.align(Alignment.BottomCenter)
+					.fillMaxWidth()
+			) {
+				if (showBottomNav) {
+					BottomNavBar(
+						selectedItem = 0,
+						onItemSelected = { index ->
+							if (index == 1) onNavigateSettings()
+						},
+						animationsEnabled = startupAnimationsEnabled && !startupHydrationActive
+					)
 				}
 			}
 		}

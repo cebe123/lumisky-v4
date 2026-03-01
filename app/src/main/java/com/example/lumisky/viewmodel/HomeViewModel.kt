@@ -22,7 +22,6 @@ import com.example.core.settings.ManualCity
 import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
 import com.example.lumisky.data.WallpaperCatalog
-import com.example.lumisky.perf.StartupPerformanceMonitor
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -136,18 +135,12 @@ class HomeViewModel(
 		}
 	}
 	private val startupRefreshRunnable = Runnable {
-		StartupPerformanceMonitor.traceSection("home_vm.refresh_location_state") {
-			refreshLocationState()
-		}
-		StartupPerformanceMonitor.traceSection("home_vm.refresh_sun_times") {
-			refreshSunTimes()
-		}
+		refreshLocationState()
+		refreshSunTimes()
 	}
 
 	init {
-		StartupPerformanceMonitor.traceSection("home_vm.seed_initial_catalog") {
-			seedInitialCatalog(daylight)
-		}
+		seedInitialCatalog(daylight)
 		mainHandler.post(startupRefreshRunnable)
 		schedulePeriodicSunTimesRefresh()
 		schedulePeriodicBackupCityRefresh()
