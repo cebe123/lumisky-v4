@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -49,7 +50,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -78,6 +78,13 @@ private data class StoreWallpaperModel(
 	val name: String,
 	val category: String,
 	val item: HomeWallpaperItem
+)
+
+@Immutable
+private data class CategorySectionModel(
+	val key: String,
+	val title: String,
+	val wallpapers: List<StoreWallpaperModel>
 )
 
 @Composable
@@ -155,7 +162,9 @@ fun HomeScreen(
 	val groupedWallpapers = remember(wallpapers, orderedCategories) {
 		val byCategory = wallpapers.groupBy { it.category }
 		orderedCategories.mapNotNull { category ->
-			byCategory[category]?.takeIf { it.isNotEmpty() }?.let { category to it }
+			byCategory[category]
+				?.takeIf { it.isNotEmpty() }
+				?.let { CategorySectionModel(key = category, title = category, wallpapers = it) }
 		}
 	}
 	val configuration = LocalConfiguration.current
@@ -198,13 +207,13 @@ fun HomeScreen(
 		derivedStateOf {
 			if (renderedCategoryGroups.isEmpty()) return@derivedStateOf emptyList<String>()
 			val index = centerCategoryIndex.takeIf { it in renderedCategoryGroups.indices } ?: 0
-			renderedCategoryGroups[index].second.map { it.id }
+			renderedCategoryGroups[index].wallpapers.map { it.id }
 		}
 	}
 	val allWallpaperIds by remember(renderedCategoryGroups) {
 		derivedStateOf {
 			renderedCategoryGroups.asSequence()
-				.flatMap { (_, list) -> list.asSequence().map { it.id } }
+				.flatMap { section -> section.wallpapers.asSequence().map { it.id } }
 				.toList()
 		}
 	}
@@ -237,18 +246,13 @@ fun HomeScreen(
 	}
 
 	LaunchedEffect(renderedCategoryGroups, selectedWallpaperId, liveWallpaperId) {
+		if (focusCandidateId != null) return@LaunchedEffect
 		if (allWallpaperIds.isEmpty()) return@LaunchedEffect
-		val preferredFocusId = when {
+		focusCandidateId = when {
 			selectedWallpaperId != null && selectedWallpaperId in allWallpaperIdSet -> selectedWallpaperId
 			liveWallpaperId != null && liveWallpaperId in allWallpaperIdSet -> liveWallpaperId
-			else -> null
+			else -> allWallpaperIds.first()
 		}
-		if (preferredFocusId != null) {
-			focusCandidateId = preferredFocusId
-			return@LaunchedEffect
-		}
-		if (focusCandidateId != null && focusCandidateId in allWallpaperIdSet) return@LaunchedEffect
-		focusCandidateId = allWallpaperIds.first()
 	}
 
 	LaunchedEffect(activeCategoryIds, verticalState.isScrollInProgress) {
@@ -305,11 +309,15 @@ fun HomeScreen(
 				contentPadding = PaddingValues(bottom = 112.dp),
 				verticalArrangement = Arrangement.spacedBy(24.dp)
 			) {
-				itemsIndexed(renderedCategoryGroups) { index, entry ->
+				itemsIndexed(
+					items = renderedCategoryGroups,
+					key = { _, entry -> entry.key },
+					contentType = { _, _ -> CATEGORY_SECTION_CONTENT_TYPE }
+				) { index, entry ->
 					val isCategoryActive = (index == centerCategoryIndex) || (centerCategoryIndex == -1 && index == 0)
 					CategorySection(
-						categoryName = entry.first,
-						wallpapers = entry.second,
+						categoryName = entry.title,
+						wallpapers = entry.wallpapers,
 						liveWallpaperId = liveWallpaperId,
 						isCategoryActive = isCategoryActive,
 						parentScrollInProgress = verticalState.isScrollInProgress,
@@ -414,7 +422,6 @@ private fun CategorySection(
 	val rowState = rememberLazyListState()
 	var centeredWallpaperId by remember(wallpapers) { mutableStateOf<String?>(null) }
 	var lastPrewarmIds by remember { mutableStateOf("") }
-	var readyPreviewIds by remember(wallpapers) { mutableStateOf(emptySet<String>()) }
 	val wallpaperIdSet by remember(wallpapers) {
 		derivedStateOf { wallpapers.asSequence().map { it.id }.toHashSet() }
 	}
@@ -465,13 +472,11 @@ private fun CategorySection(
 		val warmupKey = candidates.joinToString("|") { it.id }
 		if (warmupKey == lastPrewarmIds) return@LaunchedEffect
 		lastPrewarmIds = warmupKey
-		val warmedIds = withContext(Dispatchers.IO) {
+		withContext(Dispatchers.IO) {
 			candidates.forEach { model ->
 				RenderAssetCache.prewarmWallpaper(context, model.item.config)
 			}
-			candidates.map { model -> model.id }.toSet()
 		}
-		readyPreviewIds = readyPreviewIds + warmedIds
 	}
 
 	Column {
@@ -496,16 +501,17 @@ private fun CategorySection(
 				null
 			}
 			val liveIndex = activeLiveId?.let { wallpaperIndexById[it] } ?: -1
-			itemsIndexed(wallpapers, key = { _, model -> model.id }) { index, model ->
-				val isPreviewReady = model.id in readyPreviewIds
+			itemsIndexed(
+				items = wallpapers,
+				key = { _, model -> model.id },
+				contentType = { _, _ -> WALLPAPER_CARD_CONTENT_TYPE }
+			) { index, model ->
 				val isFocusedLive = isCategoryActive &&
 					liveIndex >= 0 &&
-					index == liveIndex &&
-					isPreviewReady
+					index == liveIndex
 				val isPreparedNeighbor = isCategoryActive &&
 					liveIndex >= 0 &&
-					abs(index - liveIndex) == 1 &&
-					isPreviewReady
+					abs(index - liveIndex) == 1
 				WallpaperCard(
 					title = model.name,
 					item = model.item,
@@ -670,12 +676,12 @@ private fun PreviewPlaceholderFrame(
 	if (simplified) {
 		Box(
 			modifier = modifier
-				.clip(RoundedCornerShape(16.dp))
+				.clip(PlaceholderOuterShape)
 				.background(Color(0xFF10253B))
 				.border(
 					width = 1.dp,
 					color = Color.White.copy(alpha = 0.06f),
-					shape = RoundedCornerShape(16.dp)
+					shape = PlaceholderOuterShape
 				)
 		) {
 			Box(
@@ -692,37 +698,20 @@ private fun PreviewPlaceholderFrame(
 
 	Box(
 		modifier = modifier
-			.clip(RoundedCornerShape(16.dp))
+			.clip(PlaceholderOuterShape)
 			.border(
 				width = 1.dp,
 				color = Color.White.copy(alpha = 0.10f),
-				shape = RoundedCornerShape(16.dp)
+				shape = PlaceholderOuterShape
 			)
-			.background(
-				brush = Brush.linearGradient(
-					colors = listOf(
-						Color(0xFF07121F),
-						Color(0xFF10253B),
-						Color(0xFF153A55)
-					),
-					start = Offset(0f, 0f),
-					end = Offset(1000f, 1100f)
-				)
-			)
+			.background(brush = PlaceholderBaseBrush)
 	) {
 		Box(
 			modifier = Modifier
 				.fillMaxSize()
 				.padding(9.dp)
-				.clip(RoundedCornerShape(13.dp))
-				.background(
-					Brush.verticalGradient(
-						colors = listOf(
-							Color.White.copy(alpha = 0.08f),
-							Color.White.copy(alpha = 0.03f)
-						)
-					)
-				)
+				.clip(PlaceholderInnerShape)
+				.background(brush = PlaceholderInnerBrush)
 		)
 
 		Box(
@@ -766,34 +755,13 @@ private fun PreviewPlaceholderFrame(
 		Box(
 			modifier = Modifier
 				.fillMaxSize()
-				.graphicsLayer(alpha = 0.42f)
-				.background(
-					brush = Brush.radialGradient(
-						colors = listOf(
-							Color(0xFF9FD8FF).copy(alpha = 0.24f),
-							Color.Transparent
-						),
-						center = Offset(260f, 160f),
-						radius = 540f
-					)
-				)
+				.background(brush = PlaceholderGlowBrush)
 		)
 
 		Box(
 			modifier = Modifier
 				.fillMaxSize()
-				.graphicsLayer(alpha = 0.30f)
-				.background(
-					brush = Brush.linearGradient(
-						colors = listOf(
-							Color.Transparent,
-							Color.White.copy(alpha = 0.16f),
-							Color.Transparent
-						),
-						start = Offset(180f, 0f),
-						end = Offset(730f, 900f)
-					)
-				)
+				.background(brush = PlaceholderSheenBrush)
 		)
 	}
 }
@@ -834,3 +802,40 @@ private const val HOME_FOCUS_CATCHUP_SECONDS = 4f
 private const val HOME_PREVIEW_ENABLE_WARMUP_FRAMES = 6
 private const val CATEGORY_FOCUS_MAX_ITEMS = 24
 private const val FOCUS_INIT_DELAY_MS = 100L
+private const val CATEGORY_SECTION_CONTENT_TYPE = "category_section"
+private const val WALLPAPER_CARD_CONTENT_TYPE = "wallpaper_card"
+
+private val PlaceholderOuterShape = RoundedCornerShape(16.dp)
+private val PlaceholderInnerShape = RoundedCornerShape(13.dp)
+private val PlaceholderBaseBrush = Brush.linearGradient(
+	colors = listOf(
+		Color(0xFF07121F),
+		Color(0xFF10253B),
+		Color(0xFF153A55)
+	),
+	start = Offset(0f, 0f),
+	end = Offset(1000f, 1100f)
+)
+private val PlaceholderInnerBrush = Brush.verticalGradient(
+	colors = listOf(
+		Color.White.copy(alpha = 0.08f),
+		Color.White.copy(alpha = 0.03f)
+	)
+)
+private val PlaceholderGlowBrush = Brush.radialGradient(
+	colors = listOf(
+		Color(0xFF9FD8FF).copy(alpha = 0.1008f),
+		Color.Transparent
+	),
+	center = Offset(260f, 160f),
+	radius = 540f
+)
+private val PlaceholderSheenBrush = Brush.linearGradient(
+	colors = listOf(
+		Color.Transparent,
+		Color.White.copy(alpha = 0.048f),
+		Color.Transparent
+	),
+	start = Offset(180f, 0f),
+	end = Offset(730f, 900f)
+)

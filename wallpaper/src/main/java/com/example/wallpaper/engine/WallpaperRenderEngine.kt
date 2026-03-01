@@ -107,10 +107,10 @@ class WallpaperRenderEngine(
 	fun renderFrame(
 		force: Boolean = false,
 		previewLoop: Boolean = false
-	) {
+	): RenderFrameState? {
 		if (holder == null) {
 			stats.onSkip("holder_null")
-			return
+			return null
 		}
 		val frameStartNs = System.nanoTime()
 		val state = if (previewLoop) {
@@ -132,34 +132,36 @@ class WallpaperRenderEngine(
 		}
 		if (state == null) {
 			stats.onSkip("engine_state_skip")
-			return
+			return null
 		}
 		val drawn = eglSession.draw(state)
 		if (!drawn) {
 			Logger.e(TAG, "EGL draw failed")
 			stats.onSkip("egl_draw_failed")
-			return
+			return null
 		}
 		stats.onDraw(System.nanoTime() - frameStartNs)
+		return state
 	}
 
 	fun snapshotSceneStateInput(
 		visible: Boolean,
-		surfaceAttached: Boolean
+		surfaceAttached: Boolean,
+		snapshot: RenderFrameState? = null
 	): SceneStateInput {
-		val snapshot = skyEngine.peekState(mode = renderMode)
+		val resolvedSnapshot = snapshot ?: skyEngine.peekState(mode = renderMode)
 		return SceneStateInput(
 			visible = visible,
 			surfaceAttached = surfaceAttached,
 			configFingerprint = sceneFingerprint(),
 			renderMode = renderMode.name,
-			sunX = quantize(snapshot?.sun?.x),
-			sunY = quantize(snapshot?.sun?.y),
-			moonX = quantize(snapshot?.moon?.x),
-			moonY = quantize(snapshot?.moon?.y),
-			nightBlend = quantize(snapshot?.nightBlend),
-			skyColor = snapshot?.skyColor ?: 0,
-			flareActive = isFlareActive(snapshot)
+			sunX = quantize(resolvedSnapshot?.sun?.x),
+			sunY = quantize(resolvedSnapshot?.sun?.y),
+			moonX = quantize(resolvedSnapshot?.moon?.x),
+			moonY = quantize(resolvedSnapshot?.moon?.y),
+			nightBlend = quantize(resolvedSnapshot?.nightBlend),
+			skyColor = resolvedSnapshot?.skyColor ?: 0,
+			flareActive = isFlareActive(resolvedSnapshot)
 		)
 	}
 

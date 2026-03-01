@@ -2,24 +2,33 @@ package com.example.engine.time
 
 import com.example.core.SystemTimeProvider
 import com.example.core.TimeProvider
-import java.time.Instant
-import java.time.LocalTime
-import java.time.ZoneId
+import java.util.TimeZone
 
 class TimeManager(
 	private val timeProvider: TimeProvider = SystemTimeProvider()
 ) {
+	@Volatile
+	private var cachedTimeZoneKey: String? = null
+	@Volatile
+	private var cachedTimeZone: TimeZone? = null
+	@Volatile
+	private var cachedDefaultTimeZoneId: String? = null
+	@Volatile
+	private var cachedDefaultTimeZone: TimeZone? = null
+
 	fun nowMillis(): Long = timeProvider.nowMillis()
 
 	fun dayProgress(
 		atMillis: Long = nowMillis(),
 		timeZoneId: String? = null
 	): Float {
-		val localTime = Instant.ofEpochMilli(atMillis)
-			.atZone(resolveZone(timeZoneId))
-			.toLocalTime()
-		return localTime.toNanoOfDay().toDouble()
-			.div(NANOS_PER_DAY.toDouble())
+		val timeZone = resolveTimeZone(timeZoneId)
+		val localMillis = localMillisOfDay(
+			atMillis = atMillis,
+			timeZone = timeZone
+		)
+		return localMillis.toDouble()
+			.div(MILLIS_PER_DAY.toDouble())
 			.toFloat()
 	}
 
@@ -27,19 +36,20 @@ class TimeManager(
 		progress: Float,
 		timeZoneId: String? = null
 	): Long {
-		val zone = resolveZone(timeZoneId)
-		val localDate = Instant.ofEpochMilli(nowMillis())
-			.atZone(zone)
-			.toLocalDate()
-		val targetTime = LocalTime.ofNanoOfDay(
-			(progress.coerceIn(0f, 1f) * NANOS_PER_DAY.toDouble()).toLong()
-				.coerceIn(0L, NANOS_PER_DAY - 1L)
+		val timeZone = resolveTimeZone(timeZoneId)
+		val nowMillis = nowMillis()
+		val targetLocalMillis = (progress.coerceIn(0f, 1f) * MILLIS_PER_DAY.toDouble())
+			.toLong()
+			.coerceIn(0L, MILLIS_PER_DAY - 1L)
+		val dayStartLocalMillis = localDayStartMillis(
+			atMillis = nowMillis,
+			timeZone = timeZone
 		)
-		return localDate
-			.atTime(targetTime)
-			.atZone(zone)
-			.toInstant()
-			.toEpochMilli()
+		return resolveUtcMillis(
+			targetLocalMillis = dayStartLocalMillis + targetLocalMillis,
+			timeZone = timeZone,
+			referenceMillis = nowMillis
+		)
 	}
 
 	fun resolveDayCycle(
@@ -92,17 +102,85 @@ class TimeManager(
 		return duration.coerceIn(1, MINUTES_PER_DAY - 1)
 	}
 
-	private fun resolveZone(timeZoneId: String?): ZoneId {
-		val configured = timeZoneId
+	private fun resolveTimeZone(timeZoneId: String?): TimeZone {
+		val normalized = timeZoneId
 			?.trim()
 			?.takeIf { it.isNotBlank() }
-			?.let { runCatching { ZoneId.of(it) }.getOrNull() }
-		return configured ?: ZoneId.systemDefault()
+		if (normalized == null) {
+			val defaultTimeZone = TimeZone.getDefault()
+			if (cachedDefaultTimeZoneId == defaultTimeZone.id) {
+				cachedDefaultTimeZone?.let { return it }
+			}
+			cachedDefaultTimeZoneId = defaultTimeZone.id
+			cachedDefaultTimeZone = defaultTimeZone
+			return defaultTimeZone
+		}
+
+		if (cachedTimeZoneKey == normalized) {
+			cachedTimeZone?.let { return it }
+		}
+
+		val resolved = TimeZone.getTimeZone(normalized)
+		val timeZone = if (resolved.id == "GMT" && !isGmtLikeTimeZoneId(normalized)) {
+			resolveTimeZone(null)
+		} else {
+			resolved
+		}
+		cachedTimeZoneKey = normalized
+		cachedTimeZone = timeZone
+		return timeZone
+	}
+
+	private fun localMillisOfDay(
+		atMillis: Long,
+		timeZone: TimeZone
+	): Long {
+		val localMillis = atMillis + timeZone.getOffset(atMillis).toLong()
+		return floorMod(localMillis, MILLIS_PER_DAY)
+	}
+
+	private fun localDayStartMillis(
+		atMillis: Long,
+		timeZone: TimeZone
+	): Long {
+		val localMillis = atMillis + timeZone.getOffset(atMillis).toLong()
+		return localMillis - floorMod(localMillis, MILLIS_PER_DAY)
+	}
+
+	private fun resolveUtcMillis(
+		targetLocalMillis: Long,
+		timeZone: TimeZone,
+		referenceMillis: Long
+	): Long {
+		var targetUtcMillis = targetLocalMillis - timeZone.getOffset(referenceMillis).toLong()
+		repeat(2) {
+			val offsetMillis = timeZone.getOffset(targetUtcMillis).toLong()
+			val adjustedUtcMillis = targetLocalMillis - offsetMillis
+			if (adjustedUtcMillis == targetUtcMillis) {
+				return targetUtcMillis
+			}
+			targetUtcMillis = adjustedUtcMillis
+		}
+		return targetUtcMillis
+	}
+
+	private fun isGmtLikeTimeZoneId(value: String): Boolean {
+		return value.equals("GMT", ignoreCase = true) ||
+			value.startsWith("GMT", ignoreCase = true) ||
+			value.equals("UTC", ignoreCase = true) ||
+			value.startsWith("UTC", ignoreCase = true)
+	}
+
+	private fun floorMod(
+		value: Long,
+		modulus: Long
+	): Long {
+		val remainder = value % modulus
+		return if (remainder >= 0L) remainder else remainder + modulus
 	}
 
 	companion object {
 		const val MILLIS_PER_DAY: Long = 24L * 60L * 60L * 1000L
-		private const val NANOS_PER_DAY: Long = 24L * 60L * 60L * 1_000_000_000L
 		const val NOON_PROGRESS: Float = 0.5f
 		const val MINUTES_PER_DAY: Int = 24 * 60
 	}

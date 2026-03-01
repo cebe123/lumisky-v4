@@ -5,6 +5,7 @@ import android.os.HandlerThread
 import android.os.SystemClock
 import android.view.SurfaceHolder
 import com.example.engine.config.WallpaperConfig
+import com.example.engine.renderer.RenderFrameState
 import com.example.wallpaper.engine.WallpaperRenderEngine
 import com.example.wallpaper.render.SceneStateHasher
 import java.util.concurrent.CountDownLatch
@@ -164,16 +165,22 @@ class WallpaperRenderController(
 	private fun onMinuteTick() {
 		if (!visible || !surfaceAttached) return
 		if (previewMode || shouldUseContinuousRendering()) return
+		postRenderTask {
+			renderMinuteTickIfNeeded()
+		}
+	}
+
+	private fun renderMinuteTickIfNeeded() {
+		if (!visible || !surfaceAttached) return
+		if (previewMode || shouldUseContinuousRendering()) return
 		val hash = computeSceneHash()
 		if (hash == lastStateHash || hash == pendingStateHash) return
 		pendingStateHash = hash
-		postRenderTask {
-			try {
-				renderCurrentScene(force = false, expectedHash = hash)
-			} finally {
-				if (pendingStateHash == hash) {
-					pendingStateHash = null
-				}
+		try {
+			renderCurrentScene(force = false, expectedHash = hash)
+		} finally {
+			if (pendingStateHash == hash) {
+				pendingStateHash = null
 			}
 		}
 	}
@@ -183,10 +190,13 @@ class WallpaperRenderController(
 		expectedHash: Int? = null
 	) {
 		if (previewMode) {
-			renderEngine.renderFrame(force = true, previewLoop = true)
+			val renderedState = renderEngine.renderFrame(
+				force = true,
+				previewLoop = true
+			) ?: return
 			lastRenderElapsedMs = SystemClock.elapsedRealtime()
 			pendingFullRedraw = false
-			lastStateHash = computeSceneHash()
+			lastStateHash = computeSceneHash(renderedState)
 			if (expectedHash == null) {
 				pendingStateHash = null
 			}
@@ -201,7 +211,7 @@ class WallpaperRenderController(
 			return
 		}
 
-		renderEngine.renderFrame(force = force)
+		renderEngine.renderFrame(force = force) ?: return
 		lastStateHash = targetHash
 		lastRenderElapsedMs = SystemClock.elapsedRealtime()
 		pendingFullRedraw = false
@@ -211,10 +221,10 @@ class WallpaperRenderController(
 	}
 
 	private fun renderContinuousScene() {
-		renderEngine.renderFrame(force = true)
+		val renderedState = renderEngine.renderFrame(force = true) ?: return
 		lastRenderElapsedMs = SystemClock.elapsedRealtime()
 		pendingFullRedraw = false
-		lastStateHash = computeSceneHash()
+		lastStateHash = computeSceneHash(renderedState)
 		pendingStateHash = null
 	}
 
@@ -232,11 +242,12 @@ class WallpaperRenderController(
 		return elapsedSinceLastRenderMs < FORCE_RENDER_DEBOUNCE_MS
 	}
 
-	private fun computeSceneHash(): Int {
+	private fun computeSceneHash(snapshot: RenderFrameState? = null): Int {
 		return hasher.compute(
 			renderEngine.snapshotSceneStateInput(
 				visible = visible,
-				surfaceAttached = surfaceAttached
+				surfaceAttached = surfaceAttached,
+				snapshot = snapshot
 			)
 		)
 	}

@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import com.example.core.Logger
 import com.example.core.api.SunDaylight
 import com.example.core.api.SunLocation
@@ -336,8 +337,7 @@ class HomeViewModel(
 		val configs = WallpaperCatalog.buildConfigs(
 			daylight = currentDaylight
 		)
-		_items.clear()
-		_items.addAll(configs.map { config -> HomeWallpaperItem(config = config) })
+		publishItems(configs.map { config -> HomeWallpaperItem(config = config) })
 		if (selectedWallpaperId == null && _items.isNotEmpty()) {
 			selectedWallpaperId = _items.first().config.id
 		}
@@ -355,14 +355,24 @@ class HomeViewModel(
 	private fun postCatalog(configs: List<WallpaperConfig>) {
 		val mapped = configs.map { config -> HomeWallpaperItem(config = config) }
 		mainHandler.post {
-			_items.clear()
-			_items.addAll(mapped)
+			publishItems(mapped)
 			val selectedStillExists = selectedWallpaperId != null &&
 				_items.any { it.config.id == selectedWallpaperId }
 			if (!selectedStillExists && _items.isNotEmpty()) {
 				selectedWallpaperId = _items.first().config.id
 			}
 		}
+	}
+
+	private fun publishItems(mapped: List<HomeWallpaperItem>): Boolean {
+		if (_items.size == mapped.size && _items.indices.all { index -> _items[index] == mapped[index] }) {
+			return false
+		}
+		Snapshot.withMutableSnapshot {
+			_items.clear()
+			_items.addAll(mapped)
+		}
+		return true
 	}
 
 	private fun resolveLocationCandidates(): List<SunLocation> {
