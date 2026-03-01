@@ -50,7 +50,8 @@ import com.example.lumisky.R
 @Composable
 fun BottomNavBar(
 	selectedItem: Int,
-	onItemSelected: (Int) -> Unit
+	onItemSelected: (Int) -> Unit,
+	animationsEnabled: Boolean = true
 ) {
 	val isHomeBackdrop = selectedItem == HOME_INDEX
 	val frameShape = RoundedCornerShape(999.dp)
@@ -94,6 +95,7 @@ fun BottomNavBar(
 					label = stringResource(R.string.nav_home),
 					selected = selectedItem == HOME_INDEX,
 					isHomeBackdrop = isHomeBackdrop,
+					animationsEnabled = animationsEnabled,
 					onClick = { onItemSelected(HOME_INDEX) }
 				)
 				GlassNavItem(
@@ -101,6 +103,7 @@ fun BottomNavBar(
 					label = stringResource(R.string.nav_settings),
 					selected = selectedItem == SETTINGS_INDEX,
 					isHomeBackdrop = isHomeBackdrop,
+					animationsEnabled = animationsEnabled,
 					onClick = { onItemSelected(SETTINGS_INDEX) }
 				)
 			}
@@ -114,28 +117,39 @@ private fun GlassNavItem(
 	label: String,
 	selected: Boolean,
 	isHomeBackdrop: Boolean,
+	animationsEnabled: Boolean,
 	onClick: () -> Unit
 ) {
-	val contentColor by animateColorAsState(
-		targetValue = when {
-			selected && isHomeBackdrop -> Color.White
-			selected -> MaterialTheme.colorScheme.primary
-			isHomeBackdrop -> Color.White.copy(alpha = 0.82f)
-			else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.88f)
-		},
-		animationSpec = tween(durationMillis = 220),
-		label = "bottom_nav_content_color"
-	)
-	val borderColor by animateColorAsState(
-		targetValue = when {
-			selected && isHomeBackdrop -> Color.White.copy(alpha = 0.16f)
-			selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-			isHomeBackdrop -> Color.White.copy(alpha = 0.08f)
-			else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
-		},
-		animationSpec = tween(durationMillis = 220),
-		label = "bottom_nav_border_color"
-	)
+	val targetContentColor = when {
+		selected && isHomeBackdrop -> Color.White
+		selected -> MaterialTheme.colorScheme.primary
+		isHomeBackdrop -> Color.White.copy(alpha = 0.82f)
+		else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.88f)
+	}
+	val contentColor = if (animationsEnabled) {
+		animateColorAsState(
+			targetValue = targetContentColor,
+			animationSpec = tween(durationMillis = 220),
+			label = "bottom_nav_content_color"
+		).value
+	} else {
+		targetContentColor
+	}
+	val targetBorderColor = when {
+		selected && isHomeBackdrop -> Color.White.copy(alpha = 0.16f)
+		selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+		isHomeBackdrop -> Color.White.copy(alpha = 0.08f)
+		else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+	}
+	val borderColor = if (animationsEnabled) {
+		animateColorAsState(
+			targetValue = targetBorderColor,
+			animationSpec = tween(durationMillis = 220),
+			label = "bottom_nav_border_color"
+		).value
+	} else {
+		targetBorderColor
+	}
 	val glassGradient = if (isHomeBackdrop) {
 		listOf(
 			Color.White.copy(alpha = if (selected) 0.20f else 0.14f),
@@ -157,11 +171,21 @@ private fun GlassNavItem(
 	} else {
 		MaterialTheme.colorScheme.primary.copy(alpha = if (selected) 0.08f else 0.04f)
 	}
-	val pillWidth by animateDpAsState(
-		targetValue = if (selected) 147.dp else 62.dp,
-		animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-		label = "bottom_nav_width"
-	)
+	val targetPillWidth = if (selected) 147.dp else 62.dp
+	val pillWidth = if (animationsEnabled) {
+		animateDpAsState(
+			targetValue = targetPillWidth,
+			animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+			label = "bottom_nav_width"
+		).value
+	} else {
+		targetPillWidth
+	}
+	val contentRowModifier = if (animationsEnabled) {
+		Modifier.animateContentSize()
+	} else {
+		Modifier
+	}
 
 	Box(
 		modifier = Modifier
@@ -185,8 +209,7 @@ private fun GlassNavItem(
 				)
 		)
 		Row(
-			modifier = Modifier
-				.animateContentSize()
+			modifier = contentRowModifier
 				.padding(horizontal = 14.dp, vertical = 9.dp),
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.Center
@@ -197,24 +220,36 @@ private fun GlassNavItem(
 				modifier = Modifier.size(21.dp),
 				tint = contentColor
 			)
-			AnimatedVisibility(
-				visible = selected,
-				enter = expandHorizontally(
-					expandFrom = Alignment.Start,
-					animationSpec = tween(
-						durationMillis = 260,
-						easing = FastOutSlowInEasing
+			if (animationsEnabled) {
+				AnimatedVisibility(
+					visible = selected,
+					enter = expandHorizontally(
+						expandFrom = Alignment.Start,
+						animationSpec = tween(
+							durationMillis = 260,
+							easing = FastOutSlowInEasing
+						)
+					) + fadeIn(
+						animationSpec = tween(durationMillis = 180, delayMillis = 50)
+					),
+					exit = shrinkHorizontally(
+						shrinkTowards = Alignment.Start,
+						animationSpec = tween(durationMillis = 180)
+					) + fadeOut(
+						animationSpec = tween(durationMillis = 120)
 					)
-				) + fadeIn(
-					animationSpec = tween(durationMillis = 180, delayMillis = 50)
-				),
-				exit = shrinkHorizontally(
-					shrinkTowards = Alignment.Start,
-					animationSpec = tween(durationMillis = 180)
-				) + fadeOut(
-					animationSpec = tween(durationMillis = 120)
-				)
-			) {
+				) {
+					Text(
+						text = label,
+						modifier = Modifier.padding(start = 7.dp),
+						style = MaterialTheme.typography.labelMedium.copy(
+							fontWeight = FontWeight.SemiBold
+						),
+						color = contentColor,
+						maxLines = 1
+					)
+				}
+			} else if (selected) {
 				Text(
 					text = label,
 					modifier = Modifier.padding(start = 7.dp),

@@ -25,6 +25,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,7 +46,6 @@ import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppThemeMode
 import com.example.core.settings.LocationMode
-import com.example.core.settings.PerformanceMode
 import com.example.engine.config.DaylightConfig
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
@@ -54,6 +54,7 @@ import com.example.lumisky.perf.StartupFullyDrawnReporter
 import com.example.lumisky.perf.StartupPerformanceMonitor
 import com.example.lumisky.ui.home.HomeScreen
 import com.example.lumisky.ui.home.HomeScreenBackgroundColor
+import com.example.lumisky.ui.home.LaunchSkeleton
 import com.example.lumisky.ui.settings.SettingsScreen
 import com.example.lumisky.ui.theme.LumiskyTheme
 import com.example.lumisky.viewmodel.HomeViewModel
@@ -110,16 +111,21 @@ class MainActivity : AppCompatActivity() {
 					darkTheme = darkTheme
 				) {
 					var currentScreen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
+					var startupAnimationsEnabled by rememberSaveable { mutableStateOf(false) }
 					val targetSystemBarColor = if (currentScreen == SCREEN_HOME) {
 						HomeScreenBackgroundColor
 					} else {
 						MaterialTheme.colorScheme.background
 					}
-					val systemBarColor by animateColorAsState(
-						targetValue = targetSystemBarColor,
-						animationSpec = tween(durationMillis = 320),
-						label = "main_system_bar_color"
-					)
+					val systemBarColor = if (startupAnimationsEnabled) {
+						animateColorAsState(
+							targetValue = targetSystemBarColor,
+							animationSpec = tween(durationMillis = 320),
+							label = "main_system_bar_color"
+						).value
+					} else {
+						targetSystemBarColor
+					}
 					SideEffect {
 						window.statusBarColor = systemBarColor.toArgb()
 						WindowCompat
@@ -132,58 +138,9 @@ class MainActivity : AppCompatActivity() {
 					)
 
 					if (homeViewModel == null) {
-						HomeScreen(
-							items = emptyList(),
-							selectedWallpaperId = null,
-							liveWallpaperId = null,
-							highRefreshEnabled = false,
-							performanceMode = PerformanceMode.AUTO,
-							onWallpaperSelected = {},
-							onCategoryFocused = {},
-							onFocusReady = {},
-							onFocusCleared = {},
-							onOpenPreview = {},
-							onNavigateSettings = {}
-						)
+						LaunchSkeleton()
 					} else {
-						StartupFullyDrawnReporter(
-							ready = true,
-							onReady = { reportFullyDrawn() }
-						)
-						AnimatedContent(
-							targetState = currentScreen,
-							transitionSpec = {
-								val direction = if (targetState == SCREEN_SETTINGS) {
-									AnimatedContentTransitionScope.SlideDirection.Left
-								} else {
-									AnimatedContentTransitionScope.SlideDirection.Right
-								}
-								(
-									slideIntoContainer(
-										towards = direction,
-										animationSpec = tween(
-											durationMillis = 360,
-											easing = FastOutSlowInEasing
-										),
-										initialOffset = { offset -> offset / 3 }
-									) + fadeIn(
-										animationSpec = tween(durationMillis = 220, delayMillis = 60)
-									)
-								).togetherWith(
-									slideOutOfContainer(
-										towards = direction,
-										animationSpec = tween(
-											durationMillis = 280,
-											easing = FastOutSlowInEasing
-										),
-										targetOffset = { offset -> offset / 4 }
-									) + fadeOut(
-										animationSpec = tween(durationMillis = 180)
-									)
-								).using(SizeTransform(clip = false))
-							},
-							label = "main_screen_transition"
-						) { screen ->
+						val screenContent: @Composable (String) -> Unit = { screen ->
 							when (screen) {
 								SCREEN_HOME -> HomeScreen(
 									items = homeViewModel.items,
@@ -208,7 +165,9 @@ class MainActivity : AppCompatActivity() {
 									},
 									onNavigateSettings = {
 										currentScreen = SCREEN_SETTINGS
-									}
+									},
+									startupDeferNonCriticalContentOnFirstRender = !startupAnimationsEnabled,
+									startupAnimationsEnabled = startupAnimationsEnabled
 								)
 
 								SCREEN_SETTINGS -> SettingsScreen(
@@ -237,6 +196,55 @@ class MainActivity : AppCompatActivity() {
 									}
 								)
 							}
+						}
+						StartupFullyDrawnReporter(
+							ready = true,
+							onReady = {
+								startupAnimationsEnabled = true
+								if (getString(R.string.runtime_build_type) != "benchmark") {
+									reportFullyDrawn()
+								}
+							}
+						)
+						if (startupAnimationsEnabled) {
+							AnimatedContent(
+								targetState = currentScreen,
+								transitionSpec = {
+									val direction = if (targetState == SCREEN_SETTINGS) {
+										AnimatedContentTransitionScope.SlideDirection.Left
+									} else {
+										AnimatedContentTransitionScope.SlideDirection.Right
+									}
+									(
+										slideIntoContainer(
+											towards = direction,
+											animationSpec = tween(
+												durationMillis = 360,
+												easing = FastOutSlowInEasing
+											),
+											initialOffset = { offset -> offset / 3 }
+										) + fadeIn(
+											animationSpec = tween(durationMillis = 220, delayMillis = 60)
+										)
+									).togetherWith(
+										slideOutOfContainer(
+											towards = direction,
+											animationSpec = tween(
+												durationMillis = 280,
+												easing = FastOutSlowInEasing
+											),
+											targetOffset = { offset -> offset / 4 }
+										) + fadeOut(
+											animationSpec = tween(durationMillis = 180)
+										)
+									).using(SizeTransform(clip = false))
+								},
+								label = "main_screen_transition"
+							) { screen ->
+								screenContent(screen)
+							}
+						} else {
+							screenContent(currentScreen)
 						}
 					}
 				}

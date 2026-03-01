@@ -4,6 +4,7 @@ import android.os.SystemClock
 import android.os.Trace
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import com.example.core.Logger
 
@@ -29,13 +30,11 @@ object StartupPerformanceMonitor {
 		block: () -> T
 	): T {
 		val startMs = SystemClock.uptimeMillis()
-		Trace.beginSection(sectionLabel(name))
+		beginTraceSection(name)
 		return try {
 			block()
 		} finally {
-			Trace.endSection()
-			val durationMs = (SystemClock.uptimeMillis() - startMs).coerceAtLeast(0L)
-			Logger.d(TAG, "$name duration=${durationMs}ms sinceLaunch=${sinceLaunchLabel()}")
+			endTraceSection(name, startMs)
 		}
 	}
 
@@ -64,7 +63,42 @@ object StartupPerformanceMonitor {
 		return "${(SystemClock.uptimeMillis() - launchStartUptimeMs).coerceAtLeast(0L)}ms"
 	}
 
+	internal fun beginTraceSection(name: String) {
+		Trace.beginSection(sectionLabel(name))
+	}
+
+	internal fun endTraceSection(
+		name: String,
+		startMs: Long
+	) {
+		Trace.endSection()
+		val durationMs = (SystemClock.uptimeMillis() - startMs).coerceAtLeast(0L)
+		Logger.d(TAG, "$name duration=${durationMs}ms sinceLaunch=${sinceLaunchLabel()}")
+	}
+
 	private const val MAX_TRACE_SECTION_LENGTH = 127
+}
+
+private class StartupCompositionTraceGate(
+	var armed: Boolean = true
+)
+
+@Composable
+fun StartupTraceComposableOnce(
+	name: String,
+	content: @Composable () -> Unit
+) {
+	val gate = remember(name) { StartupCompositionTraceGate() }
+	if (!gate.armed) {
+		content()
+		return
+	}
+
+	val startMs = SystemClock.uptimeMillis()
+	StartupPerformanceMonitor.beginTraceSection(name)
+	content()
+	gate.armed = false
+	StartupPerformanceMonitor.endTraceSection(name, startMs)
 }
 
 @Composable
@@ -86,7 +120,7 @@ fun StartupFullyDrawnReporter(
 	LaunchedEffect(ready) {
 		if (!ready) return@LaunchedEffect
 		withFrameNanos { }
-		StartupPerformanceMonitor.markFullyDrawn()
 		onReady()
+		StartupPerformanceMonitor.markFullyDrawn()
 	}
 }

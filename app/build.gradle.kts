@@ -36,16 +36,19 @@ android {
 		targetSdk = 36
 		versionCode = 1
 		versionName = "1.0"
+		resValue("string", "runtime_build_type", "debug")
 	}
 
 	buildTypes {
 		release {
 			isMinifyEnabled = false
+			resValue("string", "runtime_build_type", "release")
 		}
 		create("benchmark") {
 			initWith(getByName("release"))
 			signingConfig = signingConfigs.getByName("debug")
 			isDebuggable = false
+			resValue("string", "runtime_build_type", "benchmark")
 			matchingFallbacks += listOf("release")
 		}
 	}
@@ -55,6 +58,7 @@ android {
 	}
 	buildFeatures {
 		compose = true
+		resValues = true
 	}
 	lint {
 		// Fast local lint by default; enable test-source lint in CI/full runs with:

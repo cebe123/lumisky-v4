@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -41,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +61,7 @@ import com.example.engine.config.WallpaperConfig
 import com.example.engine.preview.PreviewGlRenderer
 import com.example.engine.renderer.RenderMode
 import com.example.lumisky.R
+import com.example.lumisky.perf.StartupTraceComposableOnce
 import com.example.lumisky.shader.RenderAssetCache
 import com.example.lumisky.ui.common.PreviewRendererSurfaceView
 import com.example.lumisky.ui.common.resolveDisplayRefreshRate
@@ -78,6 +81,25 @@ private data class StoreWallpaperModel(
 	val item: HomeWallpaperItem
 )
 
+@Composable
+fun LaunchSkeleton() {
+	StartupTraceComposableOnce(name = "launch_skeleton.compose") {
+		Box(
+			modifier = Modifier
+				.fillMaxSize()
+				.background(HomeScreenBackgroundColor),
+			contentAlignment = Alignment.Center
+		) {
+			Icon(
+				imageVector = Icons.Filled.FilterHdr,
+				contentDescription = "App Logo",
+				modifier = Modifier.size(42.dp),
+				tint = Color.White.copy(alpha = 0.92f)
+			)
+		}
+	}
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -91,7 +113,9 @@ fun HomeScreen(
 	onFocusReady: (String) -> Unit,
 	onFocusCleared: () -> Unit,
 	onOpenPreview: (String) -> Unit,
-	onNavigateSettings: () -> Unit
+	onNavigateSettings: () -> Unit,
+	startupDeferNonCriticalContentOnFirstRender: Boolean = false,
+	startupAnimationsEnabled: Boolean = true
 ) {
 	val specialCategory = androidx.compose.ui.res.stringResource(R.string.cat_special)
 	val landscapesCategory = androidx.compose.ui.res.stringResource(R.string.cat_landscapes)
@@ -137,16 +161,6 @@ fun HomeScreen(
 			byCategory[category]?.takeIf { it.isNotEmpty() }?.let { category to it }
 		}
 	}
-	val allWallpaperIds by remember(groupedWallpapers) {
-		derivedStateOf {
-			groupedWallpapers.asSequence()
-				.flatMap { (_, list) -> list.asSequence().map { it.id } }
-				.toList()
-		}
-	}
-	val allWallpaperIdSet by remember(allWallpaperIds) {
-		derivedStateOf { allWallpaperIds.toHashSet() }
-	}
 	val configuration = LocalConfiguration.current
 	val wallpaperAspectRatio = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
 		val shortEdge = minOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1)
@@ -155,6 +169,32 @@ fun HomeScreen(
 	}
 	val cardWidth = 276.dp
 	val cardHeight = (cardWidth.value * wallpaperAspectRatio * 0.9f).dp
+	val startupScreenLabel = if (items.isEmpty()) {
+		"placeholder"
+	} else {
+		"content"
+	}
+	var startupHydrationActive by remember(items) {
+		mutableStateOf(startupDeferNonCriticalContentOnFirstRender && items.isNotEmpty())
+	}
+	var visibleCategoryCount by remember(groupedWallpapers, startupHydrationActive) {
+		mutableStateOf(
+			if (startupHydrationActive && groupedWallpapers.isNotEmpty()) {
+				1
+			} else {
+				groupedWallpapers.size
+			}
+		)
+	}
+	var showBottomNav by remember(groupedWallpapers, startupHydrationActive) {
+		mutableStateOf(!startupHydrationActive)
+	}
+	val startupRenderLiteMode = startupHydrationActive || !startupAnimationsEnabled
+	val renderedCategoryGroups by remember(groupedWallpapers, visibleCategoryCount) {
+		derivedStateOf {
+			groupedWallpapers.take(visibleCategoryCount.coerceAtLeast(0))
+		}
+	}
 
 	val verticalState = rememberLazyListState()
 	val centerCategoryIndex by remember {
@@ -162,26 +202,61 @@ fun HomeScreen(
 			findCenteredIndex(verticalState)
 		}
 	}
-	val activeCategoryIds by remember(groupedWallpapers, centerCategoryIndex) {
+	val activeCategoryIds by remember(renderedCategoryGroups, centerCategoryIndex) {
 		derivedStateOf {
-			if (groupedWallpapers.isEmpty()) return@derivedStateOf emptyList<String>()
-			val index = centerCategoryIndex.takeIf { it in groupedWallpapers.indices } ?: 0
-			groupedWallpapers[index].second.map { it.id }
+			if (renderedCategoryGroups.isEmpty()) return@derivedStateOf emptyList<String>()
+			val index = centerCategoryIndex.takeIf { it in renderedCategoryGroups.indices } ?: 0
+			renderedCategoryGroups[index].second.map { it.id }
 		}
+	}
+	val allWallpaperIds by remember(renderedCategoryGroups) {
+		derivedStateOf {
+			renderedCategoryGroups.asSequence()
+				.flatMap { (_, list) -> list.asSequence().map { it.id } }
+				.toList()
+		}
+	}
+	val allWallpaperIdSet by remember(allWallpaperIds) {
+		derivedStateOf { allWallpaperIds.toHashSet() }
 	}
 
 	var focusCandidateId by remember { mutableStateOf<String?>(null) }
 	var lastDispatchedFocusId by remember { mutableStateOf<String?>(null) }
 	var lastCategoryDispatchKey by remember { mutableStateOf<String?>(null) }
 
-	LaunchedEffect(groupedWallpapers, selectedWallpaperId, liveWallpaperId) {
-		if (focusCandidateId != null) return@LaunchedEffect
+	LaunchedEffect(groupedWallpapers, startupHydrationActive) {
+		if (!startupHydrationActive) {
+			visibleCategoryCount = groupedWallpapers.size
+			showBottomNav = true
+			return@LaunchedEffect
+		}
+		if (groupedWallpapers.isEmpty()) {
+			showBottomNav = false
+			startupHydrationActive = false
+			return@LaunchedEffect
+		}
+		withFrameNanos { }
+		showBottomNav = true
+		if (groupedWallpapers.size > 1) {
+			withFrameNanos { }
+		}
+		visibleCategoryCount = groupedWallpapers.size
+		startupHydrationActive = false
+	}
+
+	LaunchedEffect(renderedCategoryGroups, selectedWallpaperId, liveWallpaperId) {
 		if (allWallpaperIds.isEmpty()) return@LaunchedEffect
-		focusCandidateId = when {
+		val preferredFocusId = when {
 			selectedWallpaperId != null && selectedWallpaperId in allWallpaperIdSet -> selectedWallpaperId
 			liveWallpaperId != null && liveWallpaperId in allWallpaperIdSet -> liveWallpaperId
-			else -> allWallpaperIds.first()
+			else -> null
 		}
+		if (preferredFocusId != null) {
+			focusCandidateId = preferredFocusId
+			return@LaunchedEffect
+		}
+		if (focusCandidateId != null && focusCandidateId in allWallpaperIdSet) return@LaunchedEffect
+		focusCandidateId = allWallpaperIds.first()
 	}
 
 	LaunchedEffect(activeCategoryIds, verticalState.isScrollInProgress) {
@@ -217,84 +292,119 @@ fun HomeScreen(
 		onFocusReady(candidate)
 	}
 
-	Scaffold(
-		containerColor = HomeScreenBackgroundColor,
-		topBar = {
-			TopAppBar(
-				title = {
-					Row(
-						modifier = Modifier.fillMaxWidth(),
-						horizontalArrangement = Arrangement.Center,
-						verticalAlignment = Alignment.CenterVertically
-					) {
-						Icon(
-							imageVector = Icons.Filled.FilterHdr,
-							contentDescription = "App Logo",
-							modifier = Modifier.size(32.dp),
-							tint = Color.White.copy(alpha = 0.92f)
-						)
-					}
-				},
-				colors = TopAppBarDefaults.topAppBarColors(
-					containerColor = HomeScreenBackgroundColor,
-					scrolledContainerColor = HomeScreenBackgroundColor,
-					titleContentColor = Color.White
+	StartupTraceComposableOnce(name = "home_screen.$startupScreenLabel.scaffold_compose") {
+		Scaffold(
+			containerColor = HomeScreenBackgroundColor,
+			topBar = {
+				HomeTopBar(
+					simplified = startupRenderLiteMode
 				)
-			)
-		}
-	) { innerPadding ->
-		Box(
-			modifier = Modifier
-				.fillMaxSize()
-				.background(HomeScreenBackgroundColor)
-		) {
-			LazyColumn(
-				state = verticalState,
-				modifier = Modifier
-					.fillMaxSize()
-					.padding(innerPadding),
-				contentPadding = PaddingValues(bottom = 112.dp),
-				verticalArrangement = Arrangement.spacedBy(24.dp)
-			) {
-				itemsIndexed(groupedWallpapers) { index, entry ->
-					val isCategoryActive = (index == centerCategoryIndex) || (centerCategoryIndex == -1 && index == 0)
-					CategorySection(
-						categoryName = entry.first,
-						wallpapers = entry.second,
-						liveWallpaperId = liveWallpaperId,
-						isCategoryActive = isCategoryActive,
-						parentScrollInProgress = verticalState.isScrollInProgress,
-						highRefreshEnabled = highRefreshEnabled,
-						performanceMode = performanceMode,
-						cardWidth = cardWidth,
-						cardHeight = cardHeight,
-						onFocusCandidate = { candidate ->
-							if (candidate != null) {
-								focusCandidateId = candidate
-							}
-						},
-						onWallpaperClick = { id ->
-							onWallpaperSelected(id)
-							onOpenPreview(id)
-						}
-					)
-				}
 			}
-
-			Box(
-				modifier = Modifier
-					.align(Alignment.BottomCenter)
-					.fillMaxWidth()
-			) {
-				BottomNavBar(
-					selectedItem = 0,
-					onItemSelected = { index ->
-						if (index == 1) onNavigateSettings()
+		) { innerPadding ->
+			StartupTraceComposableOnce(name = "home_screen.$startupScreenLabel.body_compose") {
+				Box(
+					modifier = Modifier
+						.fillMaxSize()
+						.background(HomeScreenBackgroundColor)
+				) {
+					LazyColumn(
+						state = verticalState,
+						modifier = Modifier
+							.fillMaxSize()
+							.padding(innerPadding),
+						contentPadding = PaddingValues(bottom = 112.dp),
+						verticalArrangement = Arrangement.spacedBy(24.dp)
+					) {
+						itemsIndexed(renderedCategoryGroups) { index, entry ->
+							val isCategoryActive = (index == centerCategoryIndex) || (centerCategoryIndex == -1 && index == 0)
+							CategorySection(
+								categoryName = entry.first,
+								wallpapers = entry.second,
+								liveWallpaperId = liveWallpaperId,
+								isCategoryActive = isCategoryActive,
+								parentScrollInProgress = verticalState.isScrollInProgress,
+								highRefreshEnabled = highRefreshEnabled,
+								performanceMode = performanceMode,
+								cardWidth = cardWidth,
+								cardHeight = cardHeight,
+								simplifiedPlaceholderVisuals = startupRenderLiteMode,
+								onFocusCandidate = { candidate ->
+									if (candidate != null) {
+										focusCandidateId = candidate
+									}
+								},
+								onWallpaperClick = { id ->
+									onWallpaperSelected(id)
+									onOpenPreview(id)
+								}
+							)
+						}
 					}
-				)
+
+					Box(
+						modifier = Modifier
+							.align(Alignment.BottomCenter)
+							.fillMaxWidth()
+					) {
+						if (showBottomNav) {
+							BottomNavBar(
+								selectedItem = 0,
+								onItemSelected = { index ->
+									if (index == 1) onNavigateSettings()
+								},
+								animationsEnabled = startupAnimationsEnabled && !startupHydrationActive
+							)
+						}
+					}
+				}
 			}
 		}
 	}
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeTopBar(simplified: Boolean) {
+	if (simplified) {
+		Box(
+			modifier = Modifier
+				.fillMaxWidth()
+				.background(HomeScreenBackgroundColor)
+				.statusBarsPadding()
+				.padding(top = 12.dp, bottom = 10.dp),
+			contentAlignment = Alignment.Center
+		) {
+			Icon(
+				imageVector = Icons.Filled.FilterHdr,
+				contentDescription = "App Logo",
+				modifier = Modifier.size(28.dp),
+				tint = Color.White.copy(alpha = 0.90f)
+			)
+		}
+		return
+	}
+
+	TopAppBar(
+		title = {
+			Row(
+				modifier = Modifier.fillMaxWidth(),
+				horizontalArrangement = Arrangement.Center,
+				verticalAlignment = Alignment.CenterVertically
+			) {
+				Icon(
+					imageVector = Icons.Filled.FilterHdr,
+					contentDescription = "App Logo",
+					modifier = Modifier.size(32.dp),
+					tint = Color.White.copy(alpha = 0.92f)
+				)
+			}
+		},
+		colors = TopAppBarDefaults.topAppBarColors(
+			containerColor = HomeScreenBackgroundColor,
+			scrolledContainerColor = HomeScreenBackgroundColor,
+			titleContentColor = Color.White
+		)
+	)
 }
 
 @Composable
@@ -308,6 +418,7 @@ private fun CategorySection(
 	performanceMode: PerformanceMode,
 	cardWidth: Dp,
 	cardHeight: Dp,
+	simplifiedPlaceholderVisuals: Boolean,
 	onFocusCandidate: (String?) -> Unit,
 	onWallpaperClick: (String) -> Unit
 ) {
@@ -414,6 +525,7 @@ private fun CategorySection(
 					isPrepared = isPreparedNeighbor,
 					highRefreshEnabled = highRefreshEnabled,
 					performanceMode = performanceMode,
+					simplifiedPlaceholderVisuals = simplifiedPlaceholderVisuals,
 					modifier = Modifier.size(width = cardWidth, height = cardHeight),
 					onClick = { onWallpaperClick(model.id) }
 				)
@@ -430,6 +542,7 @@ private fun WallpaperCard(
 	isPrepared: Boolean,
 	highRefreshEnabled: Boolean,
 	performanceMode: PerformanceMode,
+	simplifiedPlaceholderVisuals: Boolean,
 	modifier: Modifier = Modifier,
 	onClick: () -> Unit
 ) {
@@ -438,11 +551,16 @@ private fun WallpaperCard(
 			.padding(vertical = 3.dp)
 			.clickable(onClick = onClick),
 		shape = RoundedCornerShape(16.dp),
-		elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+		elevation = CardDefaults.cardElevation(
+			defaultElevation = if (simplifiedPlaceholderVisuals) 2.dp else 8.dp
+		),
 		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
 	) {
 		Box(modifier = Modifier.fillMaxSize()) {
-			PreviewPlaceholderFrame(modifier = Modifier.fillMaxSize())
+			PreviewPlaceholderFrame(
+				modifier = Modifier.fillMaxSize(),
+				simplified = simplifiedPlaceholderVisuals
+			)
 			if (isLive || isPrepared) {
 				FocusedWallpaperPreview(
 					config = item.config,
@@ -453,18 +571,26 @@ private fun WallpaperCard(
 				)
 			}
 
-			Box(
-				modifier = Modifier
-					.fillMaxSize()
-					.background(
-						brush = Brush.verticalGradient(
-							colors = listOf(
-								Color.Transparent,
-								Color.Black.copy(alpha = 0.7f)
+			if (simplifiedPlaceholderVisuals) {
+				Box(
+					modifier = Modifier
+						.fillMaxSize()
+						.background(Color.Black.copy(alpha = 0.22f))
+				)
+			} else {
+				Box(
+					modifier = Modifier
+						.fillMaxSize()
+						.background(
+							brush = Brush.verticalGradient(
+								colors = listOf(
+									Color.Transparent,
+									Color.Black.copy(alpha = 0.7f)
+								)
 							)
 						)
-					)
-			)
+				)
+			}
 
 			Column(
 				modifier = Modifier
@@ -549,7 +675,33 @@ private fun FocusedWallpaperPreview(
 }
 
 @Composable
-private fun PreviewPlaceholderFrame(modifier: Modifier = Modifier) {
+private fun PreviewPlaceholderFrame(
+	modifier: Modifier = Modifier,
+	simplified: Boolean = false
+) {
+	if (simplified) {
+		Box(
+			modifier = modifier
+				.clip(RoundedCornerShape(16.dp))
+				.background(Color(0xFF10253B))
+				.border(
+					width = 1.dp,
+					color = Color.White.copy(alpha = 0.06f),
+					shape = RoundedCornerShape(16.dp)
+				)
+		) {
+			Box(
+				modifier = Modifier
+					.align(Alignment.BottomStart)
+					.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+					.size(width = 144.dp, height = 12.dp)
+					.clip(RoundedCornerShape(8.dp))
+					.background(Color.White.copy(alpha = 0.14f))
+			)
+		}
+		return
+	}
+
 	Box(
 		modifier = modifier
 			.clip(RoundedCornerShape(16.dp))
