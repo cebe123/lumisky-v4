@@ -86,6 +86,142 @@ tasks.register("lintDebugFull") {
 	dependsOn("lintDebug")
 }
 
+val syncZenithPreviewAssets by tasks.registering {
+	group = "assets"
+	description = "Normalizes local zenith snapshot PNGs and converts them to WebP preview assets."
+
+	val rawSnapshotsDir = rootProject.layout.projectDirectory.dir("snapshot-output/zenith-snapshots").asFile
+	val normalizedPngDir = rootProject.layout.projectDirectory.dir("snapshot-output/zenith-png").asFile
+	val previewAssetsDir = layout.projectDirectory.dir("src/main/assets/previews/zenith").asFile
+	val sourceTree = fileTree(rawSnapshotsDir) {
+		include("**/*.png")
+	}
+
+	inputs.files(sourceTree)
+	outputs.dir(normalizedPngDir)
+	outputs.dir(previewAssetsDir)
+
+	doLast {
+		if (!rawSnapshotsDir.exists()) {
+			throw GradleException(
+				"Zenith snapshot source not found at ${rawSnapshotsDir.path}. Run GenerateWallpaperZenithSnapshots.cmd first."
+			)
+		}
+
+		val files = sourceTree.files.sortedBy { it.absolutePath.lowercase() }
+		if (files.isEmpty()) {
+			throw GradleException(
+				"No zenith snapshot PNG files found at ${rawSnapshotsDir.path}."
+			)
+		}
+
+		if (normalizedPngDir.exists() && !normalizedPngDir.deleteRecursively()) {
+			throw GradleException("Failed to clear ${normalizedPngDir.path}.")
+		}
+		if (!normalizedPngDir.exists() && !normalizedPngDir.mkdirs()) {
+			throw GradleException("Failed to create ${normalizedPngDir.path}.")
+		}
+
+		if (previewAssetsDir.exists() && !previewAssetsDir.deleteRecursively()) {
+			throw GradleException("Failed to clear ${previewAssetsDir.path}.")
+		}
+		if (!previewAssetsDir.exists() && !previewAssetsDir.mkdirs()) {
+			throw GradleException("Failed to create ${previewAssetsDir.path}.")
+		}
+
+		val normalizedIds = HashSet<String>(files.size)
+		var converted = 0
+		var failed = 0
+
+		files.forEach { source ->
+			val normalizedId = source.nameWithoutExtension
+				.replace(Regex("^\\d+-"), "")
+				.replace(Regex("-zenith$"), "")
+				.trim()
+			if (normalizedId.isBlank()) {
+				logger.warn("syncZenithPreviewAssets: could not normalize ${source.name}")
+				failed += 1
+				return@forEach
+			}
+			if (!normalizedIds.add(normalizedId)) {
+				logger.warn("syncZenithPreviewAssets: duplicate normalized id $normalizedId")
+				failed += 1
+				return@forEach
+			}
+
+			val normalizedPng = File(normalizedPngDir, "$normalizedId.png")
+			runCatching {
+				if (normalizedPng.exists() && !normalizedPng.delete()) {
+					throw GradleException("Failed to replace ${normalizedPng.path}.")
+				}
+				source.copyTo(normalizedPng, overwrite = true)
+				normalizedPng.setLastModified(source.lastModified())
+			}.onFailure { error ->
+				logger.warn("syncZenithPreviewAssets: failed to copy ${source.path}", error)
+				failed += 1
+				return@forEach
+			}
+
+			val target = File(previewAssetsDir, "$normalizedId.webp")
+			if (target.exists() && !target.delete()) {
+				logger.warn("syncZenithPreviewAssets: failed to replace ${target.path}")
+				failed += 1
+				return@forEach
+			}
+			val image = runCatching { ImageIO.read(source) }.getOrNull()
+			if (image == null) {
+				logger.warn("syncZenithPreviewAssets: failed to read ${source.path}")
+				failed += 1
+				return@forEach
+			}
+
+			val writer = ImageIO.getImageWritersByMIMEType("image/webp").asSequence().firstOrNull()
+				?: ImageIO.getImageWritersBySuffix("webp").asSequence().firstOrNull()
+			if (writer == null) {
+				throw GradleException(
+					"WebP writer not found. Ensure org.sejda.imageio:webp-imageio is available."
+				)
+			}
+
+			runCatching {
+				ImageIO.createImageOutputStream(target).use { output ->
+					writer.output = output
+					val params = writer.defaultWriteParam.apply {
+						if (canWriteCompressed()) {
+							compressionMode = javax.imageio.ImageWriteParam.MODE_EXPLICIT
+							compressionTypes?.firstOrNull()?.let { type ->
+								compressionType = type
+							}
+							compressionQuality = 0.92f
+						}
+					}
+					writer.write(null, IIOImage(image, null, null), params)
+					output.flush()
+				}
+				target.setLastModified(source.lastModified())
+			}.onSuccess {
+				if (target.length() <= 0L) {
+					target.delete()
+					logger.warn("syncZenithPreviewAssets: empty output ${target.path}")
+					failed += 1
+				} else {
+					converted += 1
+				}
+			}.onFailure { error ->
+				logger.warn("syncZenithPreviewAssets: failed ${source.path} -> ${target.path}", error)
+				failed += 1
+			}.also {
+				writer.dispose()
+			}
+		}
+
+		logger.lifecycle("syncZenithPreviewAssets: converted=$converted failed=$failed")
+		if (failed > 0) {
+			throw GradleException("Zenith snapshot sync failed for $failed file(s).")
+		}
+	}
+}
+
 val convertWallpaperTexturesToWebp by tasks.registering {
 	group = "assets"
 	description = "Converts added wallpaper textures in assets to WebP."

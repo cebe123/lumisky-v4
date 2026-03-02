@@ -3,7 +3,9 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 set "SCRIPT_DIR=%~dp0"
 set "HOST_OUTPUT_DIR=%SCRIPT_DIR%snapshot-output"
-set "HOST_OUTPUT_SUBDIR=%HOST_OUTPUT_DIR%\zenith-snapshots"
+set "HOST_RAW_SUBDIR=%HOST_OUTPUT_DIR%\zenith-snapshots"
+set "HOST_PNG_SUBDIR=%HOST_OUTPUT_DIR%\zenith-png"
+set "APP_WEBP_ASSET_DIR=%SCRIPT_DIR%app\src\main\assets\previews\zenith"
 set "APK_FILE=%SCRIPT_DIR%app\build\outputs\apk\debug\app-debug.apk"
 set "DEVICE_OUTPUT_DIR=/sdcard/Android/data/com.example.lumisky/files/Pictures/zenith-snapshots"
 set "DEVICE_MARKER_FILE=%DEVICE_OUTPUT_DIR%/completed.txt"
@@ -20,6 +22,12 @@ if exist "C:\Program Files\Git\bin\bash.exe" (
 	set "GIT_BASH_EXE=C:\Program Files\Git\bin\bash.exe"
 )
 
+if not defined GIT_BASH_EXE (
+	echo Git Bash bulunamadi. Bu script gradle ve WebP donusumu icin Git Bash gerektirir.
+	pause
+	exit /b 1
+)
+
 if not defined ADB_EXE (
 	where adb >nul 2>nul
 	if errorlevel 1 (
@@ -30,19 +38,15 @@ if not defined ADB_EXE (
 	set "ADB_EXE=adb"
 )
 
-if defined GIT_BASH_EXE (
-	pushd "%SCRIPT_DIR%"
-	echo Guncel debug build hazirlaniyor...
-	"%GIT_BASH_EXE%" -lc "./gradlew :app:assembleDebug --console=plain"
-	set "BUILD_EXIT=%ERRORLEVEL%"
-	popd
-	if not "!BUILD_EXIT!"=="0" (
-		echo Gradle build basarisiz.
-		pause
-		exit /b 1
-	)
-) else (
-	echo Git Bash bulunamadi. Var olan APK kullanilacak.
+pushd "%SCRIPT_DIR%"
+echo Guncel debug build hazirlaniyor...
+"%GIT_BASH_EXE%" -lc "./gradlew :app:assembleDebug --console=plain"
+set "BUILD_EXIT=%ERRORLEVEL%"
+popd
+if not "!BUILD_EXIT!"=="0" (
+	echo Gradle build basarisiz.
+	pause
+	exit /b 1
 )
 
 if not exist "%APK_FILE%" (
@@ -63,8 +67,12 @@ if /i not "%ADB_STATE%"=="device" (
 	exit /b 1
 )
 
-if exist "%HOST_OUTPUT_SUBDIR%" (
-	rmdir /s /q "%HOST_OUTPUT_SUBDIR%" >nul 2>nul
+if exist "%HOST_RAW_SUBDIR%" (
+	rmdir /s /q "%HOST_RAW_SUBDIR%" >nul 2>nul
+)
+
+if exist "%HOST_PNG_SUBDIR%" (
+	rmdir /s /q "%HOST_PNG_SUBDIR%" >nul 2>nul
 )
 
 if not exist "%HOST_OUTPUT_DIR%" (
@@ -107,14 +115,38 @@ if errorlevel 1 (
 	exit /b 1
 )
 
-if not exist "%HOST_OUTPUT_SUBDIR%" (
+if not exist "%HOST_RAW_SUBDIR%" (
 	echo Snapshot klasoru kopyalandi ama beklenen klasor bulunamadi.
 	pause
 	exit /b 1
 )
 
-echo Snapshotlar olusturuldu:
-echo %HOST_OUTPUT_SUBDIR%
+pushd "%SCRIPT_DIR%"
+echo PNG snapshotlar local WebP assetlerine donusturuluyor...
+"%GIT_BASH_EXE%" -lc "./gradlew :app:syncZenithPreviewAssets --console=plain"
+set "SYNC_EXIT=%ERRORLEVEL%"
+popd
+if not "!SYNC_EXIT!"=="0" (
+	echo Snapshot WebP senkronizasyonu basarisiz.
+	pause
+	exit /b 1
+)
+
+if exist "%HOST_RAW_SUBDIR%" (
+	rmdir /s /q "%HOST_RAW_SUBDIR%" >nul 2>nul
+)
+
+dir /b "%APP_WEBP_ASSET_DIR%\*.webp" >nul 2>nul
+if errorlevel 1 (
+	echo WebP snapshot assetleri olusturulamadi.
+	pause
+	exit /b 1
+)
+
+echo Local PNG snapshotlar:
+echo %HOST_PNG_SUBDIR%
+echo WebP assetleri:
+echo %APP_WEBP_ASSET_DIR%
 pause
 exit /b 0
 
