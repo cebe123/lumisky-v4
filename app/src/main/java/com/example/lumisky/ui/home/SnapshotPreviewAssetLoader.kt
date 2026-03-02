@@ -16,6 +16,7 @@ class SnapshotPreviewAssetLoader(context: Context) {
 	private val assetManager = context.applicationContext.assets
 	private val missingAssetPaths = HashSet<String>()
 	private val failedAssetPaths = HashSet<String>()
+	private val decodeLocks = HashMap<String, Any>()
 	private val bitmapCache = object : LruCache<String, Bitmap>(MAX_CACHE_BYTES) {
 		override fun sizeOf(
 			key: String,
@@ -53,63 +54,90 @@ class SnapshotPreviewAssetLoader(context: Context) {
 		}?.let { cached ->
 			return cached
 		}
-
-		val assetPath = assetPathFor(configId)
-		val bounds = BitmapFactory.Options().apply {
-			inJustDecodeBounds = true
-		}
-
-		try {
-			assetManager.open(assetPath).use { input ->
-				BitmapFactory.decodeStream(input, null, bounds)
+		return withDecodeLock(cacheKey) {
+			synchronized(bitmapCache) {
+				bitmapCache.get(cacheKey)
+			}?.let { cached ->
+				return@withDecodeLock cached
 			}
-		} catch (_: FileNotFoundException) {
-			logMissingAssetOnce(assetPath)
-			return null
-		} catch (error: IOException) {
-			logDecodeFailureOnce(assetPath, "bounds_decode", error)
-			return null
-		}
 
-		if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-			logDecodeFailureOnce(assetPath, "invalid_bounds", null)
-			return null
-		}
+			val assetPath = assetPathFor(configId)
+			val bounds = BitmapFactory.Options().apply {
+				inJustDecodeBounds = true
+			}
 
-		val bitmap = try {
-			assetManager.open(assetPath).use { input ->
-				BitmapFactory.decodeStream(
-					input,
-					null,
-					BitmapFactory.Options().apply {
-						inPreferredConfig = Bitmap.Config.ARGB_8888
-						inDither = true
-						inSampleSize = calculateInSampleSize(
-							sourceWidth = bounds.outWidth,
-							sourceHeight = bounds.outHeight,
-							targetWidthPx = targetWidthPx,
-							targetHeightPx = targetHeightPx
-						)
+			try {
+				assetManager.open(assetPath).use { input ->
+					BitmapFactory.decodeStream(input, null, bounds)
+				}
+			} catch (_: FileNotFoundException) {
+				logMissingAssetOnce(assetPath)
+				return@withDecodeLock null
+			} catch (error: IOException) {
+				logDecodeFailureOnce(assetPath, "bounds_decode", error)
+				return@withDecodeLock null
+			}
+
+			if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+				logDecodeFailureOnce(assetPath, "invalid_bounds", null)
+				return@withDecodeLock null
+			}
+
+			val bitmap = try {
+				assetManager.open(assetPath).use { input ->
+					BitmapFactory.decodeStream(
+						input,
+						null,
+						BitmapFactory.Options().apply {
+							inPreferredConfig = Bitmap.Config.ARGB_8888
+							inDither = true
+							inSampleSize = calculateInSampleSize(
+								sourceWidth = bounds.outWidth,
+								sourceHeight = bounds.outHeight,
+								targetWidthPx = targetWidthPx,
+								targetHeightPx = targetHeightPx
+							)
+						}
+					)
+				}
+			} catch (_: FileNotFoundException) {
+				logMissingAssetOnce(assetPath)
+				null
+			} catch (error: IOException) {
+				logDecodeFailureOnce(assetPath, "bitmap_decode", error)
+				null
+			}
+
+			if (bitmap == null) {
+				logDecodeFailureOnce(assetPath, "bitmap_decode_null", null)
+				return@withDecodeLock null
+			}
+
+			synchronized(bitmapCache) {
+				bitmapCache.put(cacheKey, bitmap)
+			}
+			return@withDecodeLock bitmap
+		}
+	}
+
+	private fun <T> withDecodeLock(
+		cacheKey: String,
+		block: () -> T
+	): T {
+		val lock = synchronized(decodeLocks) {
+			decodeLocks.getOrPut(cacheKey) { Any() }
+		}
+		return synchronized(lock) {
+			try {
+				block()
+			} finally {
+				synchronized(decodeLocks) {
+					if (decodeLocks[cacheKey] === lock) {
+						decodeLocks.remove(cacheKey)
 					}
-				)
+				}
 			}
-		} catch (_: FileNotFoundException) {
-			logMissingAssetOnce(assetPath)
-			null
-		} catch (error: IOException) {
-			logDecodeFailureOnce(assetPath, "bitmap_decode", error)
-			null
 		}
-
-		if (bitmap == null) {
-			logDecodeFailureOnce(assetPath, "bitmap_decode_null", null)
-			return null
-		}
-
-		synchronized(bitmapCache) {
-			bitmapCache.put(cacheKey, bitmap)
-		}
-		return bitmap
 	}
 
 	private fun assetPathFor(configId: String): String {

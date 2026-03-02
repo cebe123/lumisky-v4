@@ -896,7 +896,7 @@ private fun findCenteredIndex(listState: LazyListState): Int {
 }
 
 private const val HOME_FOCUS_CATCHUP_SECONDS = 4f
-private const val HOME_PREVIEW_ENABLE_WARMUP_FRAMES = 6
+private const val HOME_PREVIEW_ENABLE_WARMUP_FRAMES = 2
 private const val SNAPSHOT_OVERLAY_FADE_DURATION_MS = 160
 private const val LIVE_PREVIEW_READY_FRAME_COUNT = 3
 private const val CATEGORY_FOCUS_MAX_ITEMS = 1

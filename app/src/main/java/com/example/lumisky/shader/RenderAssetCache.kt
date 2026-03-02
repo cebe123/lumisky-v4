@@ -6,6 +6,8 @@ import com.example.core.assets.AssetTextLoader
 import com.example.engine.config.WallpaperConfig
 
 object RenderAssetCache {
+	private val fragmentLoadLocks = HashMap<String, Any>()
+	private val textureLoadLocks = HashMap<String, Any>()
 	private val fragmentCache = object : LruCache<String, String>(MAX_FRAGMENT_ENTRIES) {}
 	private val resolvedTexturePathCache = object : LruCache<String, String>(MAX_RESOLVED_TEXTURE_PATH_ENTRIES) {}
 	private val textureCache = object : LruCache<String, ByteArray>(MAX_TEXTURE_CACHE_BYTES) {
@@ -20,11 +22,19 @@ object RenderAssetCache {
 		synchronized(fragmentCache) {
 			fragmentCache.get(normalized)?.let { return it }
 		}
-		val loaded = AssetTextLoader.load(context, normalized) ?: return null
-		synchronized(fragmentCache) {
-			fragmentCache.put(normalized, loaded)
+		return withLoadLock(
+			lockStore = fragmentLoadLocks,
+			key = normalized
+		) {
+			synchronized(fragmentCache) {
+				fragmentCache.get(normalized)?.let { return@withLoadLock it }
+			}
+			val loaded = AssetTextLoader.load(context, normalized) ?: return@withLoadLock null
+			synchronized(fragmentCache) {
+				fragmentCache.put(normalized, loaded)
+			}
+			return@withLoadLock loaded
 		}
-		return loaded
 	}
 
 	fun loadTextureBytes(
@@ -86,13 +96,21 @@ object RenderAssetCache {
 		synchronized(textureCache) {
 			textureCache.get(assetPath)?.let { return it }
 		}
-		val loaded = runCatching {
-			context.assets.open(assetPath).use { it.readBytes() }
-		}.getOrNull() ?: return null
-		synchronized(textureCache) {
-			textureCache.put(assetPath, loaded)
+		return withLoadLock(
+			lockStore = textureLoadLocks,
+			key = assetPath
+		) {
+			synchronized(textureCache) {
+				textureCache.get(assetPath)?.let { return@withLoadLock it }
+			}
+			val loaded = runCatching {
+				context.assets.open(assetPath).use { it.readBytes() }
+			}.getOrNull() ?: return@withLoadLock null
+			synchronized(textureCache) {
+				textureCache.put(assetPath, loaded)
+			}
+			return@withLoadLock loaded
 		}
-		return loaded
 	}
 
 	private fun getCachedResolvedTexturePath(originalPath: String): String? {
@@ -112,6 +130,27 @@ object RenderAssetCache {
 			synchronized(resolvedTexturePathCache) {
 				if (resolvedTexturePathCache.get(resolvedPath) == null) {
 					resolvedTexturePathCache.put(resolvedPath, resolvedPath)
+				}
+			}
+		}
+	}
+
+	private fun <T> withLoadLock(
+		lockStore: HashMap<String, Any>,
+		key: String,
+		block: () -> T
+	): T {
+		val lock = synchronized(lockStore) {
+			lockStore.getOrPut(key) { Any() }
+		}
+		return synchronized(lock) {
+			try {
+				block()
+			} finally {
+				synchronized(lockStore) {
+					if (lockStore[key] === lock) {
+						lockStore.remove(key)
+					}
 				}
 			}
 		}

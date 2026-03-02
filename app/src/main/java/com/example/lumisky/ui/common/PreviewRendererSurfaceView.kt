@@ -2,6 +2,7 @@ package com.example.lumisky.ui.common
 
 import android.content.Context
 import android.opengl.GLSurfaceView
+import android.os.Build
 import android.view.View
 import com.example.engine.preview.PreviewGlRenderer
 
@@ -32,6 +33,9 @@ class PreviewRendererSurfaceView(
 	)
 
 	init {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+			setSurfaceLifecycle(SURFACE_LIFECYCLE_FOLLOWS_ATTACHMENT)
+		}
 		setEGLContextClientVersion(2)
 		setRenderer(previewRenderer)
 		renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
