@@ -32,6 +32,7 @@ import com.example.engine.renderer.RenderMode
 import com.example.lumisky.data.WallpaperCatalog
 import com.example.lumisky.shader.RenderAssetCache
 import com.example.lumisky.ui.common.PreviewRendererSurfaceView
+import com.example.lumisky.ui.home.resolveHomePreviewFrameAspectRatio
 import java.io.File
 import java.io.FileOutputStream
 import java.time.ZonedDateTime
@@ -466,13 +467,27 @@ class ZenithSnapshotActivity : AppCompatActivity() {
 		val displayMetrics = resources.displayMetrics
 		val screenWidth = displayMetrics.widthPixels.coerceAtLeast(1)
 		val screenHeight = displayMetrics.heightPixels.coerceAtLeast(screenWidth)
-		val aspectRatio = screenHeight.toFloat() / screenWidth.toFloat()
-		val maxPreviewWidth = minOf(dp(EXPORT_TARGET_WIDTH_DP), screenWidth - dp(8))
-		previewWidthPx = maxOf(dp(EXPORT_MIN_WIDTH_DP), maxPreviewWidth)
-		previewHeightPx = (previewWidthPx * aspectRatio)
+		val frameAspectRatio = resolveHomePreviewFrameAspectRatio(
+			primaryEdge = screenWidth,
+			secondaryEdge = screenHeight
+		)
+		val maxAllowedWidth = (screenWidth - dp(8)).coerceAtLeast(1)
+		val maxAllowedHeight = (screenHeight - dp(16)).coerceAtLeast(1)
+		val targetWidth = minOf(dp(EXPORT_TARGET_WIDTH_DP), maxAllowedWidth)
+		val heightBoundWidth = (maxAllowedHeight / frameAspectRatio)
 			.roundToInt()
-			.coerceAtMost(screenHeight - dp(16))
-			.coerceAtLeast(dp(EXPORT_MIN_HEIGHT_DP))
+			.coerceAtLeast(1)
+		val preferredMinWidth = maxOf(
+			dp(EXPORT_MIN_WIDTH_DP),
+			(dp(EXPORT_MIN_HEIGHT_DP) / frameAspectRatio).roundToInt()
+		).coerceAtMost(maxAllowedWidth)
+		previewWidthPx = minOf(
+			targetWidth.coerceAtLeast(preferredMinWidth),
+			heightBoundWidth
+		).coerceAtLeast(1)
+		previewHeightPx = (previewWidthPx * frameAspectRatio)
+			.roundToInt()
+			.coerceAtLeast(1)
 	}
 
 	private fun buildUi() {

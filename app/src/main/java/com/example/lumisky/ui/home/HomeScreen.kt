@@ -1,6 +1,11 @@
 package com.example.lumisky.ui.home
 
+import android.graphics.Bitmap
+import android.os.Handler
 import android.os.PowerManager
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,22 +45,27 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.preview.PreviewGlRenderer
@@ -66,11 +76,11 @@ import com.example.lumisky.ui.common.PreviewRendererSurfaceView
 import com.example.lumisky.ui.common.resolveDisplayRefreshRate
 import com.example.lumisky.ui.components.BottomNavBar
 import com.example.lumisky.viewmodel.HomeWallpaperItem
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
 private data class StoreWallpaperModel(
@@ -168,13 +178,25 @@ fun HomeScreen(
 		}
 	}
 	val configuration = LocalConfiguration.current
-	val wallpaperAspectRatio = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
-		val shortEdge = minOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1)
-		val longEdge = maxOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(shortEdge)
-		(longEdge.toFloat() / shortEdge.toFloat()).coerceIn(1.65f, 2.25f)
+	val previewFrameAspectRatio = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
+		resolveHomePreviewFrameAspectRatio(
+			primaryEdge = configuration.screenWidthDp,
+			secondaryEdge = configuration.screenHeightDp
+		)
 	}
+	val appContext = LocalContext.current.applicationContext
+	val density = LocalDensity.current
 	val cardWidth = 276.dp
-	val cardHeight = (cardWidth.value * wallpaperAspectRatio * 0.9f).dp
+	val cardHeight = (cardWidth.value * previewFrameAspectRatio).dp
+	val snapshotPreviewAssetLoader = remember(appContext) {
+		SnapshotPreviewAssetLoader(appContext)
+	}
+	val previewWidthPx = remember(cardWidth, density) {
+		with(density) { cardWidth.roundToPx() }
+	}
+	val previewHeightPx = remember(cardHeight, density) {
+		with(density) { cardHeight.roundToPx() }
+	}
 	var startupHydrationActive by remember(items) {
 		mutableStateOf(startupDeferNonCriticalContentOnFirstRender && items.isNotEmpty())
 	}
@@ -325,6 +347,9 @@ fun HomeScreen(
 						performanceMode = performanceMode,
 						cardWidth = cardWidth,
 						cardHeight = cardHeight,
+						snapshotPreviewAssetLoader = snapshotPreviewAssetLoader,
+						previewWidthPx = previewWidthPx,
+						previewHeightPx = previewHeightPx,
 						simplifiedPlaceholderVisuals = startupRenderLiteMode,
 						onFocusCandidate = { candidate ->
 							if (candidate != null) {
@@ -414,19 +439,17 @@ private fun CategorySection(
 	performanceMode: PerformanceMode,
 	cardWidth: Dp,
 	cardHeight: Dp,
+	snapshotPreviewAssetLoader: SnapshotPreviewAssetLoader,
+	previewWidthPx: Int,
+	previewHeightPx: Int,
 	simplifiedPlaceholderVisuals: Boolean,
 	onFocusCandidate: (String?) -> Unit,
 	onWallpaperClick: (String) -> Unit
 ) {
-	val context = LocalContext.current.applicationContext
 	val rowState = rememberLazyListState()
 	var centeredWallpaperId by remember(wallpapers) { mutableStateOf<String?>(null) }
-	var lastPrewarmIds by remember { mutableStateOf("") }
 	val wallpaperIdSet by remember(wallpapers) {
 		derivedStateOf { wallpapers.asSequence().map { it.id }.toHashSet() }
-	}
-	val wallpaperIndexById by remember(wallpapers) {
-		derivedStateOf { wallpapers.mapIndexed { index, model -> model.id to index }.toMap() }
 	}
 
 	LaunchedEffect(rowState, wallpapers) {
@@ -463,20 +486,6 @@ private fun CategorySection(
 		if (rowState.isScrollInProgress) return@LaunchedEffect
 		val focused = centeredWallpaperId ?: wallpapers.firstOrNull()?.id ?: return@LaunchedEffect
 		onFocusCandidate(focused)
-		val focusedIndex = wallpaperIndexById[focused] ?: -1
-		if (focusedIndex < 0) return@LaunchedEffect
-		val candidates = (-2..2)
-			.map { offset -> focusedIndex + offset }
-			.filter { it in wallpapers.indices }
-			.map { wallpapers[it] }
-		val warmupKey = candidates.joinToString("|") { it.id }
-		if (warmupKey == lastPrewarmIds) return@LaunchedEffect
-		lastPrewarmIds = warmupKey
-		withContext(Dispatchers.IO) {
-			candidates.forEach { model ->
-				RenderAssetCache.prewarmWallpaper(context, model.item.config)
-			}
-		}
 	}
 
 	Column {
@@ -500,25 +509,21 @@ private fun CategorySection(
 			} else {
 				null
 			}
-			val liveIndex = activeLiveId?.let { wallpaperIndexById[it] } ?: -1
 			itemsIndexed(
 				items = wallpapers,
 				key = { _, model -> model.id },
 				contentType = { _, _ -> WALLPAPER_CARD_CONTENT_TYPE }
-			) { index, model ->
-				val isFocusedLive = isCategoryActive &&
-					liveIndex >= 0 &&
-					index == liveIndex
-				val isPreparedNeighbor = isCategoryActive &&
-					liveIndex >= 0 &&
-					abs(index - liveIndex) == 1
+			) { _, model ->
+				val isFocusedLive = isCategoryActive && model.id == activeLiveId
 				WallpaperCard(
 					title = model.name,
 					item = model.item,
 					isLive = isFocusedLive,
-					isPrepared = isPreparedNeighbor,
 					highRefreshEnabled = highRefreshEnabled,
 					performanceMode = performanceMode,
+					snapshotPreviewAssetLoader = snapshotPreviewAssetLoader,
+					previewWidthPx = previewWidthPx,
+					previewHeightPx = previewHeightPx,
 					simplifiedPlaceholderVisuals = simplifiedPlaceholderVisuals,
 					modifier = Modifier.size(width = cardWidth, height = cardHeight),
 					onClick = { onWallpaperClick(model.id) }
@@ -533,13 +538,44 @@ private fun WallpaperCard(
 	title: String,
 	item: HomeWallpaperItem,
 	isLive: Boolean,
-	isPrepared: Boolean,
 	highRefreshEnabled: Boolean,
 	performanceMode: PerformanceMode,
+	snapshotPreviewAssetLoader: SnapshotPreviewAssetLoader,
+	previewWidthPx: Int,
+	previewHeightPx: Int,
 	simplifiedPlaceholderVisuals: Boolean,
 	modifier: Modifier = Modifier,
 	onClick: () -> Unit
 ) {
+	val showLivePreview = isLive
+	val snapshotBitmap = rememberSnapshotPreviewBitmap(
+		configId = item.config.id,
+		snapshotPreviewAssetLoader = snapshotPreviewAssetLoader,
+		targetWidthPx = previewWidthPx,
+		targetHeightPx = previewHeightPx
+	)
+	var livePreviewReady by remember(item.config.id, highRefreshEnabled, performanceMode) {
+		mutableStateOf(false)
+	}
+	var hasActivePreviewSession by remember(item.config.id, highRefreshEnabled, performanceMode) {
+		mutableStateOf(false)
+	}
+	LaunchedEffect(showLivePreview) {
+		if (showLivePreview) {
+			if (!hasActivePreviewSession) {
+				livePreviewReady = false
+				hasActivePreviewSession = true
+			}
+		} else {
+			hasActivePreviewSession = false
+			livePreviewReady = false
+		}
+	}
+	val snapshotOverlayAlpha by animateFloatAsState(
+		targetValue = if (showLivePreview && livePreviewReady) 0f else 1f,
+		animationSpec = tween(durationMillis = SNAPSHOT_OVERLAY_FADE_DURATION_MS),
+		label = "wallpaper_snapshot_overlay_alpha"
+	)
 	Card(
 		modifier = modifier
 			.padding(vertical = 3.dp)
@@ -551,17 +587,31 @@ private fun WallpaperCard(
 		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
 	) {
 		Box(modifier = Modifier.fillMaxSize()) {
-			PreviewPlaceholderFrame(
-				modifier = Modifier.fillMaxSize(),
-				simplified = simplifiedPlaceholderVisuals
-			)
-			if (isLive || isPrepared) {
+			if (showLivePreview) {
 				FocusedWallpaperPreview(
 					config = item.config,
 					highRefreshEnabled = highRefreshEnabled,
 					performanceMode = performanceMode,
 					playbackEnabled = isLive,
-					modifier = Modifier.fillMaxSize()
+					modifier = Modifier.fillMaxSize(),
+					onFirstFrameRendered = {
+						livePreviewReady = true
+					}
+				)
+			}
+			if (snapshotBitmap != null) {
+				Image(
+					bitmap = snapshotBitmap.asImageBitmap(),
+					contentDescription = null,
+					contentScale = ContentScale.FillBounds,
+					modifier = Modifier
+						.fillMaxSize()
+						.alpha(snapshotOverlayAlpha)
+				)
+			} else if (!showLivePreview || !livePreviewReady) {
+				PreviewPlaceholderFrame(
+					modifier = Modifier.fillMaxSize(),
+					simplified = simplifiedPlaceholderVisuals
 				)
 			}
 
@@ -606,12 +656,44 @@ private fun WallpaperCard(
 }
 
 @Composable
+private fun rememberSnapshotPreviewBitmap(
+	configId: String,
+	snapshotPreviewAssetLoader: SnapshotPreviewAssetLoader,
+	targetWidthPx: Int,
+	targetHeightPx: Int
+): Bitmap? {
+	val bitmap by produceState<Bitmap?>(
+		snapshotPreviewAssetLoader.cachedBitmap(
+			configId = configId,
+			targetWidthPx = targetWidthPx,
+			targetHeightPx = targetHeightPx
+		),
+		configId,
+		snapshotPreviewAssetLoader,
+		targetWidthPx,
+		targetHeightPx
+	) {
+		if (targetWidthPx <= 0 || targetHeightPx <= 0) {
+			value = null
+			return@produceState
+		}
+		value = snapshotPreviewAssetLoader.loadBitmap(
+			configId = configId,
+			targetWidthPx = targetWidthPx,
+			targetHeightPx = targetHeightPx
+		)
+	}
+	return bitmap
+}
+
+@Composable
 private fun FocusedWallpaperPreview(
 	config: WallpaperConfig,
 	highRefreshEnabled: Boolean,
 	performanceMode: PerformanceMode,
 	playbackEnabled: Boolean,
-	modifier: Modifier = Modifier
+	modifier: Modifier = Modifier,
+	onFirstFrameRendered: () -> Unit
 ) {
 	val previewConfig = remember(config) {
 		config.copy(focusCatchUpDurationSeconds = HOME_FOCUS_CATCHUP_SECONDS)
@@ -624,6 +706,9 @@ private fun FocusedWallpaperPreview(
 		AndroidView(
 			modifier = modifier,
 			factory = { context ->
+				val readyFrameCount = AtomicInteger(0)
+				val firstFrameDispatched = AtomicBoolean(false)
+				val mainHandler = Handler(context.mainLooper)
 				val fragmentOverride = RenderAssetCache.loadFragment(
 					context = context,
 					assetPath = previewConfig.shader.fragmentAssetPath
@@ -643,6 +728,18 @@ private fun FocusedWallpaperPreview(
 					fragmentShaderOverride = fragmentOverride,
 					textureBytesLoader = { assetPath ->
 						RenderAssetCache.loadTextureBytes(context, assetPath)
+					},
+					onFrameDrawn = {
+						if (
+							readyFrameCount.incrementAndGet() >= LIVE_PREVIEW_READY_FRAME_COUNT &&
+							firstFrameDispatched.compareAndSet(false, true)
+						) {
+							mainHandler.post {
+								mainHandler.post {
+									onFirstFrameRendered()
+								}
+							}
+						}
 					}
 				)
 				PreviewRendererSurfaceView(
@@ -800,7 +897,9 @@ private fun findCenteredIndex(listState: LazyListState): Int {
 
 private const val HOME_FOCUS_CATCHUP_SECONDS = 4f
 private const val HOME_PREVIEW_ENABLE_WARMUP_FRAMES = 6
-private const val CATEGORY_FOCUS_MAX_ITEMS = 24
+private const val SNAPSHOT_OVERLAY_FADE_DURATION_MS = 160
+private const val LIVE_PREVIEW_READY_FRAME_COUNT = 3
+private const val CATEGORY_FOCUS_MAX_ITEMS = 1
 private const val FOCUS_INIT_DELAY_MS = 100L
 private const val CATEGORY_SECTION_CONTENT_TYPE = "category_section"
 private const val WALLPAPER_CARD_CONTENT_TYPE = "wallpaper_card"
