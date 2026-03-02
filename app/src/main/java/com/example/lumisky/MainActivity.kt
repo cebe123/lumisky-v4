@@ -13,6 +13,8 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.SizeTransform
@@ -34,8 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import com.example.core.Logger
@@ -69,6 +69,7 @@ class MainActivity : AppCompatActivity() {
 	private val lastKnownLocationProvider by lazy { LastKnownLocationProvider(applicationContext) }
 	private val setWallpaperExecutor by lazy { Executors.newSingleThreadExecutor() }
 	private val homeViewModelState = mutableStateOf<HomeViewModel?>(null)
+
 	@Volatile
 	private var applyingWallpaper: Boolean = false
 	private var locationReceiverRegistered: Boolean = false
@@ -164,15 +165,27 @@ class MainActivity : AppCompatActivity() {
 								appThemeMode = homeViewModel.appThemeMode,
 								onCycleTheme = { homeViewModel.cycleAppThemeMode() },
 								highRefreshEnabled = homeViewModel.highRefreshEnabled,
-								onHighRefreshChanged = { enabled -> homeViewModel.updateHighRefreshEnabled(enabled) },
+								onHighRefreshChanged = { enabled ->
+									homeViewModel.updateHighRefreshEnabled(
+										enabled
+									)
+								},
 								performanceMode = homeViewModel.performanceMode,
-								onPerformanceModeChanged = { mode -> homeViewModel.updatePerformanceMode(mode) },
+								onPerformanceModeChanged = { mode ->
+									homeViewModel.updatePerformanceMode(
+										mode
+									)
+								},
 								locationMode = homeViewModel.locationMode,
 								locationLabel = homeViewModel.locationLabel,
 								daylight = homeViewModel.daylight,
 								gpsLocationAvailable = homeViewModel.gpsLocationAvailable,
 								systemLocationEnabled = homeViewModel.systemLocationEnabled,
-								onLocationModeChanged = { mode -> homeViewModel.updateLocationMode(mode) },
+								onLocationModeChanged = { mode ->
+									homeViewModel.updateLocationMode(
+										mode
+									)
+								},
 								onRequestEnableSystemLocation = { openSystemLocationPanel() },
 								manualCity = homeViewModel.manualCity,
 								onManualCitySelected = { city -> homeViewModel.updateManualCity(city) },
@@ -202,28 +215,31 @@ class MainActivity : AppCompatActivity() {
 									AnimatedContentTransitionScope.SlideDirection.Right
 								}
 								(
-									slideIntoContainer(
-										towards = direction,
-										animationSpec = tween(
-											durationMillis = 360,
-											easing = FastOutSlowInEasing
-										),
-										initialOffset = { offset -> offset / 3 }
-									) + fadeIn(
-										animationSpec = tween(durationMillis = 220, delayMillis = 60)
-									)
-								).togetherWith(
-									slideOutOfContainer(
-										towards = direction,
-										animationSpec = tween(
-											durationMillis = 280,
-											easing = FastOutSlowInEasing
-										),
-										targetOffset = { offset -> offset / 4 }
-									) + fadeOut(
-										animationSpec = tween(durationMillis = 180)
-									)
-								).using(SizeTransform(clip = false))
+										slideIntoContainer(
+											towards = direction,
+											animationSpec = tween(
+												durationMillis = 360,
+												easing = FastOutSlowInEasing
+											),
+											initialOffset = { offset -> offset / 3 }
+										) + fadeIn(
+											animationSpec = tween(
+												durationMillis = 220,
+												delayMillis = 60
+											)
+										)
+										).togetherWith(
+										slideOutOfContainer(
+											towards = direction,
+											animationSpec = tween(
+												durationMillis = 280,
+												easing = FastOutSlowInEasing
+											),
+											targetOffset = { offset -> offset / 4 }
+										) + fadeOut(
+											animationSpec = tween(durationMillis = 180)
+										)
+									).using(SizeTransform(clip = false))
 							},
 							label = "main_screen_transition"
 						) { screen ->
@@ -267,7 +283,9 @@ class MainActivity : AppCompatActivity() {
 		} else {
 			LocaleListCompat.forLanguageTags(tag)
 		}
-		if (AppCompatDelegate.getApplicationLocales().toLanguageTags() == locales.toLanguageTags()) {
+		if (AppCompatDelegate.getApplicationLocales()
+				.toLanguageTags() == locales.toLanguageTags()
+		) {
 			return
 		}
 		AppCompatDelegate.setApplicationLocales(locales)
@@ -277,7 +295,7 @@ class MainActivity : AppCompatActivity() {
 		if (locationReceiverRegistered) return
 		val filter = IntentFilter(LocationManager.MODE_CHANGED_ACTION)
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-			registerReceiver(locationModeReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+			registerReceiver(locationModeReceiver, filter, RECEIVER_NOT_EXPORTED)
 		} else {
 			@Suppress("DEPRECATION")
 			registerReceiver(locationModeReceiver, filter)
@@ -415,20 +433,17 @@ class MainActivity : AppCompatActivity() {
 	}
 
 	private fun configureLogging() {
-		val debuggable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+		val debuggable =
+			(applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
 		Logger.configure(
 			Logger.Config(
-				enabled = true,
-				minLevel = if (debuggable) Logger.Level.VERBOSE else Logger.Level.DEBUG,
-				tagPrefix = "Lumisky",
-				includeThread = true,
-				includeUptimeMs = true
+				minLevel = if (debuggable) Logger.Level.VERBOSE else Logger.Level.DEBUG
 			)
 		)
 		Logger.restartSession()
 	}
 
-	private fun homeViewModelOrNull(): HomeViewModel? = homeViewModelState.value
+	internal fun homeViewModelOrNull(): HomeViewModel? = homeViewModelState.value
 
 	private fun ensureHomeViewModelCreated(): HomeViewModel {
 		homeViewModelOrNull()?.let { return it }
