@@ -76,6 +76,7 @@ import com.example.lumisky.ui.common.PreviewRendererSurfaceView
 import com.example.lumisky.ui.common.resolveDisplayRefreshRate
 import com.example.lumisky.ui.components.BottomNavBar
 import com.example.lumisky.viewmodel.HomeWallpaperItem
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -95,6 +96,11 @@ private data class CategorySectionModel(
 	val key: String,
 	val title: String,
 	val wallpapers: List<StoreWallpaperModel>
+)
+
+private data class FragmentShaderLoadState(
+	val isReady: Boolean,
+	val fragmentOverride: String?
 )
 
 @Composable
@@ -695,13 +701,48 @@ private fun FocusedWallpaperPreview(
 	modifier: Modifier = Modifier,
 	onFirstFrameRendered: () -> Unit
 ) {
+	val appContext = LocalContext.current.applicationContext
 	val previewConfig = remember(config) {
 		config.copy(focusCatchUpDurationSeconds = HOME_FOCUS_CATCHUP_SECONDS)
+	}
+	val fragmentAssetPath = previewConfig.shader.fragmentAssetPath?.takeIf { it.isNotBlank() }
+	val cachedFragmentOverride = remember(fragmentAssetPath) {
+		RenderAssetCache.cachedFragment(fragmentAssetPath)
+	}
+	val fragmentShaderState by produceState(
+		initialValue = FragmentShaderLoadState(
+			isReady = fragmentAssetPath == null || cachedFragmentOverride != null,
+			fragmentOverride = cachedFragmentOverride
+		),
+		appContext,
+		fragmentAssetPath
+	) {
+		if (fragmentAssetPath == null) {
+			value = FragmentShaderLoadState(
+				isReady = true,
+				fragmentOverride = null
+			)
+			return@produceState
+		}
+		val loadedOverride = withContext(kotlinx.coroutines.Dispatchers.IO) {
+			RenderAssetCache.loadFragment(
+				context = appContext,
+				assetPath = fragmentAssetPath
+			)
+		}
+		value = FragmentShaderLoadState(
+			isReady = true,
+			fragmentOverride = loadedOverride
+		)
+	}
+	if (!fragmentShaderState.isReady) {
+		return
 	}
 	key(
 		previewConfig,
 		highRefreshEnabled,
-		performanceMode
+		performanceMode,
+		fragmentShaderState.fragmentOverride
 	) {
 		AndroidView(
 			modifier = modifier,
@@ -709,10 +750,6 @@ private fun FocusedWallpaperPreview(
 				val readyFrameCount = AtomicInteger(0)
 				val firstFrameDispatched = AtomicBoolean(false)
 				val mainHandler = Handler(context.mainLooper)
-				val fragmentOverride = RenderAssetCache.loadFragment(
-					context = context,
-					assetPath = previewConfig.shader.fragmentAssetPath
-				)
 				val renderer = PreviewGlRenderer(
 					config = previewConfig,
 					mode = RenderMode.FOCUS,
@@ -725,7 +762,7 @@ private fun FocusedWallpaperPreview(
 						context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
 					},
 					qualityScale = 0.7f,
-					fragmentShaderOverride = fragmentOverride,
+					fragmentShaderOverride = fragmentShaderState.fragmentOverride,
 					textureBytesLoader = { assetPath ->
 						RenderAssetCache.loadTextureBytes(context, assetPath)
 					},

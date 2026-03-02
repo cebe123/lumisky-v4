@@ -37,6 +37,13 @@ object RenderAssetCache {
 		}
 	}
 
+	fun cachedFragment(assetPath: String?): String? {
+		val normalized = assetPath?.takeIf { it.isNotBlank() } ?: return null
+		synchronized(fragmentCache) {
+			return fragmentCache.get(normalized)
+		}
+	}
+
 	fun loadTextureBytes(
 		context: Context,
 		assetPath: String?
