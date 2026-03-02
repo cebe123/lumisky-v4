@@ -1,0 +1,17 @@
+status=ok
+generated_at=2026-03-02 20:13:13 GMT+03:00
+solar_noon=13:16
+count=13
+file=01-pixel_forest-zenith.png id=pixel_forest fallback=false
+file=02-classic_sun-zenith.png id=classic_sun fallback=false
+file=03-solar_horizon-zenith.png id=solar_horizon fallback=false
+file=04-optical_sunset-zenith.png id=optical_sunset fallback=false
+file=05-mars-zenith.png id=mars fallback=false
+file=06-warrior-zenith.png id=warrior fallback=false
+file=07-game_teemo-zenith.png id=game_teemo fallback=false
+file=08-tablo-zenith.png id=tablo fallback=false
+file=09-city_istanbul-zenith.png id=city_istanbul fallback=false
+file=10-city_newyork-zenith.png id=city_newyork fallback=false
+file=11-city_tokyo-zenith.png id=city_tokyo fallback=false
+file=12-city_paris-zenith.png id=city_paris fallback=false
+file=13-anime_sakura-zenith.png id=anime_sakura fallback=false

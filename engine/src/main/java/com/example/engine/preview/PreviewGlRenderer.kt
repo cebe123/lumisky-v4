@@ -20,6 +20,7 @@ class PreviewGlRenderer(
 	private val config: WallpaperConfig = WallpaperConfig.default(id = "preview_default"),
 	private val mode: RenderMode = RenderMode.PREVIEW,
 	private val animateFullDayLoop: Boolean = true,
+	private val fixedDayProgress: Float? = null,
 	private val initialFocusCatchUpEnabled: Boolean = false,
 	private val highRefreshEnabled: Boolean = true,
 	private val performanceMode: PerformanceMode = PerformanceMode.AUTO,
@@ -29,7 +30,8 @@ class PreviewGlRenderer(
 	private val thermalStatusProvider: () -> Int? = { null },
 	private val isPowerSaveModeProvider: () -> Boolean = { false },
 	private val fragmentShaderOverride: String? = null,
-	private val textureBytesLoader: ((String) -> ByteArray?)? = null
+	private val textureBytesLoader: ((String) -> ByteArray?)? = null,
+	private val onFrameDrawn: (() -> Unit)? = null
 ) : GLSurfaceView.Renderer {
 
 	private var previewStartMillis: Long = 0L
@@ -83,6 +85,7 @@ class PreviewGlRenderer(
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 		if (state != null) {
 			skyProgram.draw(state)
+			onFrameDrawn?.invoke()
 			val drawDurationNs = System.nanoTime() - frameStartNs
 			val drawDurationMs = drawDurationNs / 1_000_000f
 			movingAvgDrawMillis = (movingAvgDrawMillis * 0.9f) + (drawDurationMs * 0.1f)
@@ -102,6 +105,7 @@ class PreviewGlRenderer(
 
 	fun shouldContinueRendering(): Boolean {
 		if (released) return false
+		if (fixedDayProgress != null) return false
 		return when {
 			animateFullDayLoop -> true
 			focusCatchUpEnabled -> !focusAnimationCompleted
@@ -113,7 +117,7 @@ class PreviewGlRenderer(
 		enabled: Boolean,
 		restartOnEnable: Boolean = false
 	) {
-		if (released || animateFullDayLoop) return
+		if (released || animateFullDayLoop || fixedDayProgress != null) return
 		val shouldRestart = enabled && (!focusCatchUpEnabled || restartOnEnable)
 		focusCatchUpEnabled = enabled
 		if (shouldRestart) {
@@ -130,6 +134,14 @@ class PreviewGlRenderer(
 	}
 
 	private fun resolveFrameState(nowMillis: Long): RenderFrameState? {
+		fixedDayProgress?.let { fixedProgress ->
+			return skyEngine.sampleAtDayProgress(
+				dayProgress = fixedProgress,
+				mode = mode,
+				force = true
+			)
+		}
+
 		if (animateFullDayLoop) {
 			val loopDurationMs = (config.previewLoopDurationSeconds * 1000f)
 				.toLong()
