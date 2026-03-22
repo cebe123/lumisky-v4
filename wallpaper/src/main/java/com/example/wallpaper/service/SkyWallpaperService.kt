@@ -20,6 +20,9 @@ open class SkyWallpaperService : WallpaperService() {
 
 	private inner class SkyWallpaperEngine : Engine() {
 		private val configStore = WallpaperConfigStore(this@SkyWallpaperService.applicationContext)
+		private val daylightSyncCoordinator = WallpaperDaylightSyncCoordinator(
+			context = this@SkyWallpaperService.applicationContext
+		)
 		private val renderController = WallpaperRenderController(
 			renderEngine = WallpaperRenderEngine(this@SkyWallpaperService.applicationContext),
 			scheduler = MinuteTickScheduler(),
@@ -38,6 +41,8 @@ open class SkyWallpaperService : WallpaperService() {
 			super.onCreate(surfaceHolder)
 			registerConfigRefreshReceiver()
 			renderController.setPreviewMode(isPreview)
+			daylightSyncCoordinator.setPreviewMode(isPreview)
+			daylightSyncCoordinator.onCreate()
 			applyStoredConfig()
 			renderController.onCreate()
 		}
@@ -45,15 +50,18 @@ open class SkyWallpaperService : WallpaperService() {
 		override fun onVisibilityChanged(visible: Boolean) {
 			super.onVisibilityChanged(visible)
 			renderController.setPreviewMode(isPreview)
+			daylightSyncCoordinator.setPreviewMode(isPreview)
 			if (visible) {
 				applyStoredConfig()
 			}
+			daylightSyncCoordinator.onVisibilityChanged(visible)
 			renderController.onVisibilityChanged(visible)
 		}
 
 		override fun onSurfaceCreated(holder: SurfaceHolder) {
 			super.onSurfaceCreated(holder)
 			renderController.setPreviewMode(isPreview)
+			daylightSyncCoordinator.setPreviewMode(isPreview)
 			applyStoredConfig()
 			renderController.onSurfaceCreated(holder)
 		}
@@ -64,6 +72,7 @@ open class SkyWallpaperService : WallpaperService() {
 		}
 
 		override fun onDestroy() {
+			daylightSyncCoordinator.onDestroy()
 			unregisterConfigRefreshReceiver()
 			renderController.onDestroy()
 			super.onDestroy()
