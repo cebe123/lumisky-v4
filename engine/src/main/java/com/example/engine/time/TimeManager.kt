@@ -3,6 +3,7 @@ package com.example.engine.time
 import com.example.core.SystemTimeProvider
 import com.example.core.TimeProvider
 import java.util.TimeZone
+import kotlin.math.roundToLong
 
 class TimeManager(
 	private val timeProvider: TimeProvider = SystemTimeProvider()
@@ -38,8 +39,9 @@ class TimeManager(
 	): Long {
 		val timeZone = resolveTimeZone(timeZoneId)
 		val nowMillis = nowMillis()
-		val targetLocalMillis = (progress.coerceIn(0f, 1f) * MILLIS_PER_DAY.toDouble())
-			.toLong()
+		val targetLocalMillis = (progress.coerceIn(0f, 1f) * SECONDS_PER_DAY.toDouble())
+			.roundToLong()
+			.times(1_000L)
 			.coerceIn(0L, MILLIS_PER_DAY - 1L)
 		val dayStartLocalMillis = localDayStartMillis(
 			atMillis = nowMillis,
@@ -181,6 +183,7 @@ class TimeManager(
 
 	companion object {
 		const val MILLIS_PER_DAY: Long = 24L * 60L * 60L * 1000L
+		private const val SECONDS_PER_DAY: Int = 24 * 60 * 60
 		const val NOON_PROGRESS: Float = 0.5f
 		const val MINUTES_PER_DAY: Int = 24 * 60
 	}

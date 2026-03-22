@@ -37,10 +37,10 @@ private enum class CacheLayer {
 }
 
 class SunTimesRepository(
-	private val apiClient: SunTimesApiClient = SunTimesApiClient()
+	private val apiClient: SunTimesApiClient = SunTimesApiClient(),
+	private val nowProvider: () -> Long = System::currentTimeMillis
 ) {
-	private val cached = AtomicReference<SunDaylight?>(null)
-	private val lastSuccessfulLocation = AtomicReference<SunLocation?>(null)
+	private val cachedEntry = AtomicReference<CachedDaylightEntry?>(null)
 	private val refreshExecutor = Executors.newSingleThreadExecutor()
 	private val backupPrefetchExecutor = Executors.newSingleThreadExecutor()
 	private val requestVersion = AtomicInteger(0)
@@ -104,12 +104,12 @@ class SunTimesRepository(
 
 		val orderedCandidates = buildCandidates(candidates)
 		if (!forceRefresh) {
-			val dayKey = currentDayKey()
-			val cacheHit = findDailyHitByCandidatePriority(orderedCandidates, dayKey)
+			val cacheHit = findDailyHitByCandidatePriority(
+				candidates = orderedCandidates,
+				epochMillis = nowProvider()
+			)
 			if (cacheHit != null) {
-				if (cacheHit.layer == CacheLayer.ACTIVE) {
-					cached.set(cacheHit.entry.daylight)
-				}
+				cacheResolvedEntry(cacheHit.entry)
 				onUpdated(cacheHit.entry.daylight)
 				return
 			}
@@ -121,12 +121,12 @@ class SunTimesRepository(
 
 			val latestCandidates = buildCandidates(candidates)
 			if (!forceRefresh) {
-				val dayKey = currentDayKey()
-				val cacheHit = findDailyHitByCandidatePriority(latestCandidates, dayKey)
+				val cacheHit = findDailyHitByCandidatePriority(
+					candidates = latestCandidates,
+					epochMillis = nowProvider()
+				)
 				if (cacheHit != null) {
-					if (cacheHit.layer == CacheLayer.ACTIVE) {
-						cached.set(cacheHit.entry.daylight)
-					}
+					cacheResolvedEntry(cacheHit.entry)
 					onUpdated(cacheHit.entry.daylight)
 					return@execute
 				}
@@ -209,11 +209,15 @@ class SunTimesRepository(
 
 	private fun findDailyHitByCandidatePriority(
 		candidates: List<SunLocation>,
-		dayKey: String
+		epochMillis: Long
 	): CacheHit? {
 		synchronized(cacheLock) {
 			for (candidate in candidates) {
 				val locationKey = toLocationKey(candidate)
+				val dayKey = currentDayKey(
+					timeZoneId = candidate.timeZoneId,
+					epochMillis = epochMillis
+				)
 				val key = toDailyCacheKey(locationKey, dayKey)
 				sharedDailyCache[key]?.let { return CacheHit(it, CacheLayer.ACTIVE) }
 				sharedBackupDailyCache[key]?.let { return CacheHit(it, CacheLayer.BACKUP) }
@@ -227,9 +231,14 @@ class SunTimesRepository(
 		daylight: SunDaylight,
 		layer: CacheLayer
 	): CachedDaylightEntry {
-		val nowMs = System.currentTimeMillis()
-		val locationKey = toLocationKey(candidate)
-		val dayKey = currentDayKey(nowMs)
+		val nowMs = nowProvider()
+		val effectiveTimeZoneId = daylight.timeZoneId ?: candidate.timeZoneId
+		val effectiveLocation = candidate.copy(timeZoneId = effectiveTimeZoneId)
+		val locationKey = toLocationKey(effectiveLocation)
+		val dayKey = currentDayKey(
+			timeZoneId = effectiveTimeZoneId,
+			epochMillis = nowMs
+		)
 		val entry = CachedDaylightEntry(
 			daylight = daylight,
 			locationKey = locationKey,
@@ -251,8 +260,7 @@ class SunTimesRepository(
 			trimCacheLocked()
 		}
 		if (layer == CacheLayer.ACTIVE) {
-			cached.set(daylight)
-			lastSuccessfulLocation.set(candidate)
+			cachedEntry.set(entry)
 		}
 		return entry
 	}
@@ -260,28 +268,41 @@ class SunTimesRepository(
 	private fun resolveFallback(
 		preferredCandidates: List<SunLocation> = emptyList()
 	): Pair<SunDaylight, String> {
+		val nowMs = nowProvider()
 		val preferredLocationKeys = preferredCandidates
 			.map { candidate -> toLocationKey(candidate) }
 			.toSet()
-		cached.get()?.let { daylight ->
-			val location = lastSuccessfulLocation.get()
-			if (location == null) {
-				if (preferredLocationKeys.isEmpty()) return daylight to "instance_cache"
-			} else {
-				val cachedLocationKey = toLocationKey(location)
-				if (preferredLocationKeys.isEmpty() || preferredLocationKeys.contains(cachedLocationKey)) {
-					return daylight to "instance_cache:${location.label}"
-				}
+		cachedEntry.get()?.let { entry ->
+			val matchesPreferred = preferredLocationKeys.isEmpty() ||
+				preferredLocationKeys.contains(entry.locationKey)
+			if (matchesPreferred && isEntryCurrent(entry, nowMs)) {
+				return entry.daylight to "instance_cache:${entry.sourceLabel}"
 			}
 		}
 		synchronized(cacheLock) {
 			for (candidate in preferredCandidates) {
 				val locationKey = toLocationKey(candidate)
-				sharedLocationCache[locationKey]?.let {
+				sharedLocationCache[locationKey]?.takeIf { entry ->
+					isEntryCurrentForCandidate(entry, candidate, nowMs)
+				}?.let {
 					return it.daylight to "location_cache:${candidate.label}"
 				}
-				sharedBackupLocationCache[locationKey]?.let {
+				sharedBackupLocationCache[locationKey]?.takeIf { entry ->
+					isEntryCurrentForCandidate(entry, candidate, nowMs)
+				}?.let {
 					return it.daylight to "backup_location_cache:${candidate.label}"
+				}
+			}
+			if (preferredCandidates.isEmpty()) {
+				sharedLocationCache.values.firstOrNull { entry ->
+					isEntryCurrent(entry, nowMs)
+				}?.let { entry ->
+					return entry.daylight to "location_cache:${entry.sourceLabel}"
+				}
+				sharedBackupLocationCache.values.firstOrNull { entry ->
+					isEntryCurrent(entry, nowMs)
+				}?.let { entry ->
+					return entry.daylight to "backup_location_cache:${entry.sourceLabel}"
 				}
 			}
 		}
@@ -352,8 +373,39 @@ class SunTimesRepository(
 		}
 	}
 
-	private fun currentDayKey(epochMillis: Long = System.currentTimeMillis()): String {
-		return LocalDate.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.systemDefault()).toString()
+	private fun cacheResolvedEntry(entry: CachedDaylightEntry) {
+		cachedEntry.set(entry)
+	}
+
+	private fun isEntryCurrent(
+		entry: CachedDaylightEntry,
+		epochMillis: Long
+	): Boolean {
+		return entry.dayKey == currentDayKey(
+			timeZoneId = entry.daylight.timeZoneId,
+			epochMillis = epochMillis
+		)
+	}
+
+	private fun isEntryCurrentForCandidate(
+		entry: CachedDaylightEntry,
+		candidate: SunLocation,
+		epochMillis: Long
+	): Boolean {
+		return entry.dayKey == currentDayKey(
+			timeZoneId = candidate.timeZoneId ?: entry.daylight.timeZoneId,
+			epochMillis = epochMillis
+		)
+	}
+
+	private fun currentDayKey(
+		timeZoneId: String?,
+		epochMillis: Long = nowProvider()
+	): String {
+		return LocalDate.ofInstant(
+			Instant.ofEpochMilli(epochMillis),
+			resolveZoneId(timeZoneId)
+		).toString()
 	}
 
 	private fun toDailyCacheKey(locationKey: String, dayKey: String): String {
@@ -363,8 +415,21 @@ class SunTimesRepository(
 	private fun toLocationKey(location: SunLocation): String {
 		val latitudeBucket = (location.latitude * LOCATION_BUCKET_SCALE).roundToInt()
 		val longitudeBucket = (location.longitude * LOCATION_BUCKET_SCALE).roundToInt()
-		val normalizedTimeZone = location.timeZoneId?.trim().orEmpty()
+		val normalizedTimeZone = normalizeTimeZoneId(location.timeZoneId)
 		return "$latitudeBucket|$longitudeBucket|$normalizedTimeZone"
+	}
+
+	private fun resolveZoneId(timeZoneId: String?): ZoneId {
+		return normalizeTimeZoneId(timeZoneId)
+			.takeIf { it.isNotBlank() }
+			?.let { normalized -> runCatching { ZoneId.of(normalized) }.getOrNull() }
+			?: ZoneId.systemDefault()
+	}
+
+	private fun normalizeTimeZoneId(timeZoneId: String?): String {
+		val normalized = timeZoneId?.trim().orEmpty()
+		if (normalized.isBlank()) return ""
+		return runCatching { ZoneId.of(normalized).id }.getOrDefault(normalized)
 	}
 
 	private fun toClockLabel(minute: Int): String {

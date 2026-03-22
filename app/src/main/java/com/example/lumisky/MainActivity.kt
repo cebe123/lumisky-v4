@@ -207,6 +207,9 @@ class MainActivity : AppCompatActivity() {
 						startupAnimationsEnabled = true
 						reportFullyDrawn()
 					}
+					LaunchedEffect(homeViewModel.daylight) {
+						syncStoredWallpaperDaylightIfNeeded(homeViewModel.daylight)
+					}
 					if (startupAnimationsEnabled) {
 						AnimatedContent(
 							targetState = currentScreen,
@@ -387,6 +390,28 @@ class MainActivity : AppCompatActivity() {
 			add(manualLocation)
 			add(defaultLocation)
 		}.distinctBy { "${it.latitude}|${it.longitude}|${it.timeZoneId.orEmpty()}" }
+	}
+
+	private fun syncStoredWallpaperDaylightIfNeeded(daylight: SunDaylight) {
+		if (daylight.timeZoneId.isNullOrBlank()) return
+		setWallpaperExecutor.execute {
+			runCatching {
+				val storedConfig = wallpaperConfigStore.loadSelected() ?: return@runCatching
+				val updatedDaylight = DaylightConfig(
+					sunriseMinute = daylight.sunriseMinute,
+					sunsetMinute = daylight.sunsetMinute,
+					solarNoonMinute = daylight.solarNoonMinute,
+					timeZoneId = daylight.timeZoneId
+				)
+				if (storedConfig.daylight == updatedDaylight) return@runCatching
+				wallpaperConfigStore.saveSelected(
+					storedConfig.copy(daylight = updatedDaylight)
+				)
+				notifyWallpaperConfigChanged()
+			}.onFailure { throwable ->
+				Logger.w(TAG, "syncStoredWallpaperDaylightIfNeeded failed", throwable)
+			}
+		}
 	}
 
 	private fun launchSystemWallpaperSetFlow() {

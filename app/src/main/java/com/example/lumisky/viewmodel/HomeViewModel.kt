@@ -1,7 +1,6 @@
 package com.example.lumisky.viewmodel
 
 import android.content.Context
-import android.location.Location
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -30,6 +29,7 @@ import com.example.lumisky.data.WallpaperCatalog
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 data class HomeWallpaperItem(
@@ -331,6 +331,7 @@ class HomeViewModel(
 	) {
 		val elapsed = SystemClock.elapsedRealtime() - lastLocationStateRefreshAtMs
 		refreshLocationState()
+		refreshSunTimes()
 		if (locationMode != LocationMode.GPS) return
 		if (elapsed in 0 until maxStaleMs &&
 			automaticLocationSnapshot?.isFreshWithin(FOREGROUND_AUTOMATIC_LOCATION_MAX_AGE_MS) == true
@@ -497,7 +498,13 @@ class HomeViewModel(
 					locationRefreshInProgress = false
 					return@post
 				}
-				val applied = location?.let { applyAutomaticLocationSample(it, refreshSunTimes = true) } ?: false
+				val shouldRequestCurrent = shouldRequestCurrentLocation(location)
+				val applied = location?.let { snapshot ->
+					applyAutomaticLocationSample(
+						location = snapshot,
+						refreshSunTimes = !shouldRequestCurrent
+					)
+				} ?: false
 				if (!systemLocationEnabled) {
 					if (applied) {
 						refreshLocationState()
@@ -505,7 +512,7 @@ class HomeViewModel(
 					locationRefreshInProgress = false
 					return@post
 				}
-				if (shouldRequestCurrentLocation(location)) {
+				if (shouldRequestCurrent) {
 					requestCurrentGpsLocation()
 				} else if (applied) {
 					refreshLocationState()
@@ -690,7 +697,7 @@ class HomeViewModel(
 	): Boolean {
 		if (previous == null) return true
 		if (previous.timeZoneId != current.timeZoneId) return true
-		return distanceMeters(previous, current) >= SIGNIFICANT_LOCATION_CHANGE_METERS
+		return sunTimesLocationKey(previous) != sunTimesLocationKey(current)
 	}
 
 	private fun maybeStartPassiveLocationUpdates() {
@@ -712,19 +719,10 @@ class HomeViewModel(
 		lastKnownLocationProvider.stopPassiveLocationUpdates()
 	}
 
-	private fun distanceMeters(
-		from: LocationSnapshot,
-		to: LocationSnapshot
-	): Float {
-		val result = FloatArray(1)
-		Location.distanceBetween(
-			from.latitude,
-			from.longitude,
-			to.latitude,
-			to.longitude,
-			result
-		)
-		return result.firstOrNull() ?: 0f
+	private fun sunTimesLocationKey(location: LocationSnapshot): String {
+		val latitudeBucket = (location.latitude * SUN_TIMES_REFRESH_LOCATION_BUCKET_SCALE).roundToInt()
+		val longitudeBucket = (location.longitude * SUN_TIMES_REFRESH_LOCATION_BUCKET_SCALE).roundToInt()
+		return "$latitudeBucket|$longitudeBucket|${location.timeZoneId}"
 	}
 
 	private fun buildLocationCandidatesCacheKey(
@@ -826,6 +824,6 @@ class HomeViewModel(
 		private const val CURRENT_LOCATION_MAX_AGE_MS = 10L * 60L * 1000L
 		private const val CURRENT_LOCATION_TIMEOUT_MS = 6_000L
 		private const val MAX_ACCEPTABLE_LAST_LOCATION_ACCURACY_METERS = 15_000f
-		private const val SIGNIFICANT_LOCATION_CHANGE_METERS = 25_000f
+		private const val SUN_TIMES_REFRESH_LOCATION_BUCKET_SCALE = 100.0
 	}
 }

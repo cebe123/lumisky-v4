@@ -28,9 +28,9 @@ data class SunDaylight(
 	}
 }
 
-class SunTimesApiClient {
+open class SunTimesApiClient {
 
-	fun fetchDaylight(
+	open fun fetchDaylight(
 		latitude: Double,
 		longitude: Double,
 		timeZoneId: String? = null
