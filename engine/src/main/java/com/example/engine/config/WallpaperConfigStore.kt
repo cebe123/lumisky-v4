@@ -22,60 +22,164 @@ class WallpaperConfigStore(
 
 	fun saveSelected(config: WallpaperConfig) {
 		val encoded = WallpaperConfigJsonCodec.encode(config)
-		writeEncoded(credentialPreferences, encoded)
-		writeEncoded(deviceProtectedPreferences, encoded)
+		writeEncoded(
+			preferences = credentialPreferences,
+			key = KEY_SELECTED_CONFIG_JSON,
+			encoded = encoded
+		)
+		writeEncoded(
+			preferences = deviceProtectedPreferences,
+			key = KEY_SELECTED_CONFIG_JSON,
+			encoded = encoded
+		)
 	}
 
 	fun loadSelected(): WallpaperConfig? {
-		val deviceEncoded = readEncoded(deviceProtectedPreferences)
+		val deviceEncoded = readEncoded(
+			preferences = deviceProtectedPreferences,
+			key = KEY_SELECTED_CONFIG_JSON
+		)
 		if (deviceEncoded != null) {
 			WallpaperConfigJsonCodec.decode(deviceEncoded)?.let { return it }
-			removeEncoded(deviceProtectedPreferences)
+			removeEncoded(
+				preferences = deviceProtectedPreferences,
+				key = KEY_SELECTED_CONFIG_JSON
+			)
 		}
 
-		val credentialEncoded = readEncoded(credentialPreferences)
+		val credentialEncoded = readEncoded(
+			preferences = credentialPreferences,
+			key = KEY_SELECTED_CONFIG_JSON
+		)
 		if (credentialEncoded != null) {
 			val decoded = WallpaperConfigJsonCodec.decode(credentialEncoded)
 			if (decoded != null) {
-				writeEncoded(deviceProtectedPreferences, credentialEncoded)
+				writeEncoded(
+					preferences = deviceProtectedPreferences,
+					key = KEY_SELECTED_CONFIG_JSON,
+					encoded = credentialEncoded
+				)
 				return decoded
 			}
-			removeEncoded(credentialPreferences)
+			removeEncoded(
+				preferences = credentialPreferences,
+				key = KEY_SELECTED_CONFIG_JSON
+			)
 		}
 		return null
 	}
 
 	fun clearSelected() {
-		removeEncoded(credentialPreferences)
-		removeEncoded(deviceProtectedPreferences)
+		removeEncoded(
+			preferences = credentialPreferences,
+			key = KEY_SELECTED_CONFIG_JSON
+		)
+		removeEncoded(
+			preferences = deviceProtectedPreferences,
+			key = KEY_SELECTED_CONFIG_JSON
+		)
 	}
 
-	private fun readEncoded(preferences: SharedPreferences?): String? {
+	fun savePreview(config: WallpaperConfig) {
+		val encoded = WallpaperConfigJsonCodec.encode(config)
+		writeEncoded(
+			preferences = credentialPreferences,
+			key = KEY_PREVIEW_CONFIG_JSON,
+			encoded = encoded
+		)
+		writeEncoded(
+			preferences = deviceProtectedPreferences,
+			key = KEY_PREVIEW_CONFIG_JSON,
+			encoded = encoded
+		)
+	}
+
+	fun loadPreview(): WallpaperConfig? {
+		val deviceEncoded = readEncoded(
+			preferences = deviceProtectedPreferences,
+			key = KEY_PREVIEW_CONFIG_JSON
+		)
+		if (deviceEncoded != null) {
+			WallpaperConfigJsonCodec.decode(deviceEncoded)?.let { return it }
+			removeEncoded(
+				preferences = deviceProtectedPreferences,
+				key = KEY_PREVIEW_CONFIG_JSON
+			)
+		}
+
+		val credentialEncoded = readEncoded(
+			preferences = credentialPreferences,
+			key = KEY_PREVIEW_CONFIG_JSON
+		)
+		if (credentialEncoded != null) {
+			val decoded = WallpaperConfigJsonCodec.decode(credentialEncoded)
+			if (decoded != null) {
+				writeEncoded(
+					preferences = deviceProtectedPreferences,
+					key = KEY_PREVIEW_CONFIG_JSON,
+					encoded = credentialEncoded
+				)
+				return decoded
+			}
+			removeEncoded(
+				preferences = credentialPreferences,
+				key = KEY_PREVIEW_CONFIG_JSON
+			)
+		}
+		return null
+	}
+
+	fun clearPreview() {
+		removeEncoded(
+			preferences = credentialPreferences,
+			key = KEY_PREVIEW_CONFIG_JSON
+		)
+		removeEncoded(
+			preferences = deviceProtectedPreferences,
+			key = KEY_PREVIEW_CONFIG_JSON
+		)
+	}
+
+	fun promotePreviewToSelected(): WallpaperConfig? {
+		val preview = loadPreview() ?: return null
+		saveSelected(preview)
+		clearPreview()
+		return preview
+	}
+
+	private fun readEncoded(
+		preferences: SharedPreferences?,
+		key: String
+	): String? {
 		if (preferences == null) return null
 		return runCatching {
-			preferences.getString(KEY_SELECTED_CONFIG_JSON, null)
+			preferences.getString(key, null)
 		}.getOrNull()
 	}
 
 	private fun writeEncoded(
 		preferences: SharedPreferences?,
+		key: String,
 		encoded: String
 	) {
 		if (preferences == null) return
 		runCatching {
 			val editor = preferences.edit()
-				.putString(KEY_SELECTED_CONFIG_JSON, encoded)
+				.putString(key, encoded)
 			if (!editor.commit()) {
 				editor.apply()
 			}
 		}
 	}
 
-	private fun removeEncoded(preferences: SharedPreferences?) {
+	private fun removeEncoded(
+		preferences: SharedPreferences?,
+		key: String
+	) {
 		if (preferences == null) return
 		runCatching {
 			val editor = preferences.edit()
-				.remove(KEY_SELECTED_CONFIG_JSON)
+				.remove(key)
 			if (!editor.commit()) {
 				editor.apply()
 			}
@@ -85,6 +189,7 @@ class WallpaperConfigStore(
 	companion object {
 		private const val PREFERENCES_NAME = "lumisky_wallpaper_config_store"
 		private const val KEY_SELECTED_CONFIG_JSON = "selected_config_json"
+		private const val KEY_PREVIEW_CONFIG_JSON = "preview_config_json"
 	}
 }
 

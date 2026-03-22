@@ -1,6 +1,6 @@
 package com.example.lumisky
 
-import android.app.WallpaperManager
+import android.app.Activity
 import android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER
 import android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER
 import android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT
@@ -13,6 +13,7 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -72,6 +73,11 @@ class MainActivity : AppCompatActivity() {
 	private val sunTimesRepository by lazy { SunTimesRepository() }
 	private val setWallpaperExecutor by lazy { Executors.newSingleThreadExecutor() }
 	private val homeViewModelState = mutableStateOf<HomeViewModel?>(null)
+	private val liveWallpaperPreviewLauncher = registerForActivityResult(
+		ActivityResultContracts.StartActivityForResult()
+	) { result ->
+		handleLiveWallpaperPreviewResult(result.resultCode)
+	}
 
 	@Volatile
 	private var applyingWallpaper: Boolean = false
@@ -323,16 +329,10 @@ class MainActivity : AppCompatActivity() {
 	private fun requestWallpaperApply(wallpaperId: String) {
 		val homeViewModel = homeViewModelOrNull() ?: return
 		val baseConfig = homeViewModel.configFor(wallpaperId)
-		applyWallpaperWithFreshSunTimes(
-			baseConfig = baseConfig,
-			launchSystemSetFlow = !isLumiskyWallpaperActive()
-		)
+		applyWallpaperWithFreshSunTimes(baseConfig = baseConfig)
 	}
 
-	private fun applyWallpaperWithFreshSunTimes(
-		baseConfig: WallpaperConfig,
-		launchSystemSetFlow: Boolean
-	) {
+	private fun applyWallpaperWithFreshSunTimes(baseConfig: WallpaperConfig) {
 		if (applyingWallpaper) {
 			Logger.w(TAG, "set wallpaper ignored, apply already in progress")
 			return
@@ -367,15 +367,12 @@ class MainActivity : AppCompatActivity() {
 						timeZoneId = resolvedDaylight.timeZoneId
 					)
 				)
-				wallpaperConfigStore.saveSelected(finalConfig)
+				wallpaperConfigStore.savePreview(finalConfig)
 				runOnUiThread {
-					if (launchSystemSetFlow) {
-						launchSystemWallpaperSetFlow()
-					} else {
-						notifyWallpaperConfigChanged()
-					}
+					launchSystemWallpaperSetFlow()
 				}
 			} catch (t: Throwable) {
+				wallpaperConfigStore.clearPreview()
 				Logger.e(TAG, "applyWallpaperWithFreshSunTimes failed", t)
 			} finally {
 				applyingWallpaper = false
@@ -423,12 +420,16 @@ class MainActivity : AppCompatActivity() {
 		appSettingsRepository.setAutomaticLocation(updated)
 	}
 
-	private fun isLumiskyWallpaperActive(): Boolean {
-		return runCatching {
-			val info = WallpaperManager.getInstance(applicationContext).wallpaperInfo ?: return false
-			info.packageName == packageName &&
-				info.serviceName == com.example.wallpaper.SkyWallpaperService::class.java.name
-		}.getOrDefault(false)
+	private fun handleLiveWallpaperPreviewResult(resultCode: Int) {
+		when (resultCode) {
+			Activity.RESULT_OK -> {
+				val promoted = wallpaperConfigStore.promotePreviewToSelected()
+				if (promoted != null) {
+					notifyWallpaperConfigChanged()
+				}
+			}
+			else -> wallpaperConfigStore.clearPreview()
+		}
 	}
 
 	private fun syncStoredWallpaperDaylightIfNeeded(daylight: SunDaylight) {
@@ -464,9 +465,9 @@ class MainActivity : AppCompatActivity() {
 			)
 		}
 		runCatching {
-			startActivity(directIntent)
-			overridePendingTransition(0, 0)
+			liveWallpaperPreviewLauncher.launch(directIntent)
 		}.onFailure {
+			wallpaperConfigStore.clearPreview()
 			Logger.w(TAG, "direct live wallpaper intent failed, falling back chooser", it)
 			runCatching {
 				startActivity(Intent(ACTION_LIVE_WALLPAPER_CHOOSER))

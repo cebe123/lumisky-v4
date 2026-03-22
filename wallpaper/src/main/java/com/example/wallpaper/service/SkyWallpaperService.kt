@@ -79,24 +79,31 @@ open class SkyWallpaperService : WallpaperService() {
 		}
 
 		private fun applyStoredConfig() {
-			configStore.loadSelected()?.let { config ->
+			val config = resolveConfigForCurrentEngine()
+			config?.let {
 				val signature = buildConfigSignature(
-					id = config.id,
+					id = it.id,
 					isPreview = isPreview,
-					sunrise = config.daylight.sunriseMinute,
-					sunset = config.daylight.sunsetMinute,
-					solarNoon = config.daylight.solarNoonMinute,
-					timeZoneId = config.daylight.timeZoneId
+					sunrise = it.daylight.sunriseMinute,
+					sunset = it.daylight.sunsetMinute,
+					solarNoon = it.daylight.solarNoonMinute,
+					timeZoneId = it.daylight.timeZoneId
 				)
 				if (lastAppliedConfigSignature == signature) {
 					return
 				}
 				lastAppliedConfigSignature = signature
-				renderController.setConfig(config)
+				renderController.setConfig(it)
 			} ?: run {
 				Logger.w("SkyWallpaperService", "apply_stored_config skipped: no saved config")
 			}
 		}
+
+		private fun resolveConfigForCurrentEngine() =
+			when {
+				isPreview -> configStore.loadPreview() ?: configStore.loadSelected()
+				else -> configStore.loadSelected()
+			}
 
 		private fun buildConfigSignature(
 			id: String,
