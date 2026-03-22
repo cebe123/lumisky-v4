@@ -22,6 +22,7 @@ import com.example.core.Logger
 import com.example.core.api.SunDaylight
 import com.example.core.api.SunLocation
 import com.example.core.api.SunTimesRepository
+import com.example.core.location.asGpsApiCandidate
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.LocationMode
@@ -443,6 +444,7 @@ class ZenithSnapshotActivity : AppCompatActivity() {
 			if (settings.locationMode == LocationMode.GPS) {
 				settings.automaticLocation
 					?.toSunLocation(labelFallback = "snapshot_gps_cached")
+					?.asGpsApiCandidate()
 					?.let { add(it) }
 			}
 			add(manualLocation)

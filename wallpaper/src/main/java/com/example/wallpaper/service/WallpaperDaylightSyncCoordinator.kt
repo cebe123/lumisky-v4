@@ -11,12 +11,16 @@ import android.os.Looper
 import android.os.SystemClock
 import com.example.core.Logger
 import com.example.core.api.SunDaylight
+import com.example.core.api.SunDaylightResolution
 import com.example.core.api.SunLocation
 import com.example.core.api.SunTimesRepository
 import com.example.core.location.LastKnownLocationProvider
 import com.example.core.location.LocationAccessLevel
 import com.example.core.location.LocationSnapshot
 import com.example.core.location.LocationSource
+import com.example.core.location.asGpsApiCandidate
+import com.example.core.location.matchesCoordinates
+import com.example.core.location.withResolvedTimeZone
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.LocationMode
@@ -204,9 +208,13 @@ class WallpaperDaylightSyncCoordinator(
 		val currentConfig = configStore.loadSelected() ?: return
 		val candidates = buildSunTimesCandidates(settings)
 		if (candidates.isEmpty()) return
-		sunTimesRepository.refreshAsyncWithCandidates(candidates = candidates) { daylight ->
+		sunTimesRepository.refreshResolvedAsyncWithCandidates(candidates = candidates) { resolution ->
 			mainHandler.post {
-				updateStoredWallpaperDaylightIfNeeded(daylight = daylight, currentConfigId = currentConfig.id)
+				syncAutomaticLocationTimeZoneIfNeeded(resolution)
+				updateStoredWallpaperDaylightIfNeeded(
+					daylight = resolution.daylight,
+					currentConfigId = currentConfig.id
+				)
 			}
 		}
 	}
@@ -251,9 +259,10 @@ class WallpaperDaylightSyncCoordinator(
 		)
 		return buildList {
 			if (settings.locationMode == LocationMode.GPS && lastKnownLocationProvider.hasLocationPermission()) {
-				liveGpsLocation?.let { add(it) }
+				liveGpsLocation?.let { add(it.asGpsApiCandidate()) }
 				automaticLocationSnapshot
 					?.toSunLocation(labelFallback = "wallpaper_gps_cached")
+					?.asGpsApiCandidate()
 					?.let { add(it) }
 			}
 			add(manualLocation)
@@ -289,6 +298,23 @@ class WallpaperDaylightSyncCoordinator(
 			resolveAndStoreDaylight(settingsRepository.snapshot())
 		}
 		return true
+	}
+
+	private fun syncAutomaticLocationTimeZoneIfNeeded(
+		resolution: SunDaylightResolution
+	) {
+		if (settingsRepository.getLocationMode() != LocationMode.GPS) return
+		val sourceLocation = resolution.sourceLocation ?: return
+		val resolvedTimeZoneId = resolution.daylight.timeZoneId ?: return
+		val snapshot = automaticLocationSnapshot ?: return
+		if (!snapshot.matchesCoordinates(sourceLocation)) return
+		val updated = snapshot.withResolvedTimeZone(resolvedTimeZoneId)
+		if (updated == snapshot) return
+		automaticLocationSnapshot = updated
+		settingsRepository.setAutomaticLocation(updated)
+		if (updated.source == LocationSource.CURRENT || updated.source == LocationSource.PASSIVE) {
+			liveGpsLocation = updated.toSunLocation(labelFallback = "wallpaper_gps_live")
+		}
 	}
 
 	private fun shouldRequestCurrentLocation(lastKnown: LocationSnapshot?): Boolean {

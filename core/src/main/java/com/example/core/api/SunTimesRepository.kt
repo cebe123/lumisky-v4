@@ -18,6 +18,11 @@ data class SunLocation(
 	val timeZoneId: String? = null
 )
 
+data class SunDaylightResolution(
+	val daylight: SunDaylight,
+	val sourceLocation: SunLocation?
+)
+
 private data class CachedDaylightEntry(
 	val daylight: SunDaylight,
 	val locationKey: String,
@@ -28,7 +33,7 @@ private data class CachedDaylightEntry(
 
 private data class CacheHit(
 	val entry: CachedDaylightEntry,
-	val layer: CacheLayer
+	val candidate: SunLocation
 )
 
 private enum class CacheLayer {
@@ -90,6 +95,19 @@ class SunTimesRepository(
 		forceRefresh: Boolean = false,
 		onUpdated: (SunDaylight) -> Unit = {}
 	) {
+		refreshResolvedAsyncWithCandidates(
+			candidates = candidates,
+			forceRefresh = forceRefresh
+		) { resolution ->
+			onUpdated(resolution.daylight)
+		}
+	}
+
+	fun refreshResolvedAsyncWithCandidates(
+		candidates: List<SunLocation>,
+		forceRefresh: Boolean = false,
+		onUpdated: (SunDaylightResolution) -> Unit = {}
+	) {
 		if (candidates.isEmpty()) {
 			val (fallback, source) = resolveFallback()
 			Logger.w(
@@ -98,7 +116,7 @@ class SunTimesRepository(
 					"sunrise=${fallback.sunriseMinute}(${toClockLabel(fallback.sunriseMinute)}) " +
 					"sunset=${fallback.sunsetMinute}(${toClockLabel(fallback.sunsetMinute)})"
 			)
-			onUpdated(fallback)
+			onUpdated(SunDaylightResolution(daylight = fallback, sourceLocation = null))
 			return
 		}
 
@@ -110,7 +128,12 @@ class SunTimesRepository(
 			)
 			if (cacheHit != null) {
 				cacheResolvedEntry(cacheHit.entry)
-				onUpdated(cacheHit.entry.daylight)
+				onUpdated(
+					SunDaylightResolution(
+						daylight = cacheHit.entry.daylight,
+						sourceLocation = cacheHit.candidate
+					)
+				)
 				return
 			}
 		}
@@ -127,7 +150,12 @@ class SunTimesRepository(
 				)
 				if (cacheHit != null) {
 					cacheResolvedEntry(cacheHit.entry)
-					onUpdated(cacheHit.entry.daylight)
+					onUpdated(
+						SunDaylightResolution(
+							daylight = cacheHit.entry.daylight,
+							sourceLocation = cacheHit.candidate
+						)
+					)
 					return@execute
 				}
 			}
@@ -148,7 +176,13 @@ class SunTimesRepository(
 				}
 
 				val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.ACTIVE)
-				onUpdated(fetched)
+				cacheResolvedEntry(entry)
+				onUpdated(
+					SunDaylightResolution(
+						daylight = fetched,
+						sourceLocation = candidate
+					)
+				)
 				return@execute
 			}
 
@@ -156,11 +190,11 @@ class SunTimesRepository(
 			val (fallback, source) = resolveFallback(latestCandidates)
 			Logger.w(
 				TAG,
-				"Sun times decision=FAILBACK at=${toHourMinuteLabel(System.currentTimeMillis())} source=$source " +
-					"sunrise=${fallback.sunriseMinute}(${toClockLabel(fallback.sunriseMinute)}) " +
-					"sunset=${fallback.sunsetMinute}(${toClockLabel(fallback.sunsetMinute)})"
+					"Sun times decision=FAILBACK at=${toHourMinuteLabel(System.currentTimeMillis())} source=$source " +
+						"sunrise=${fallback.sunriseMinute}(${toClockLabel(fallback.sunriseMinute)}) " +
+						"sunset=${fallback.sunsetMinute}(${toClockLabel(fallback.sunsetMinute)})"
 			)
-			onUpdated(fallback)
+			onUpdated(SunDaylightResolution(daylight = fallback, sourceLocation = null))
 		}
 	}
 
@@ -219,8 +253,8 @@ class SunTimesRepository(
 					epochMillis = epochMillis
 				)
 				val key = toDailyCacheKey(locationKey, dayKey)
-				sharedDailyCache[key]?.let { return CacheHit(it, CacheLayer.ACTIVE) }
-				sharedBackupDailyCache[key]?.let { return CacheHit(it, CacheLayer.BACKUP) }
+				sharedDailyCache[key]?.let { return CacheHit(it, candidate) }
+				sharedBackupDailyCache[key]?.let { return CacheHit(it, candidate) }
 			}
 		}
 		return null

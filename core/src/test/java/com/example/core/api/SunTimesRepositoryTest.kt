@@ -85,6 +85,34 @@ class SunTimesRepositoryTest {
 		}
 	}
 
+	@Test
+	fun resolvedRefreshReportsSourceCandidate() {
+		val daylight = SunDaylight(
+			sunriseMinute = 6 * 60 + 18,
+			sunsetMinute = 18 * 60 + 44,
+			solarNoonMinute = 12 * 60 + 31,
+			timeZoneId = "Europe/Istanbul"
+		)
+		val apiClient = FakeSunTimesApiClient(
+			responses = listOf(daylight)
+		)
+		val repository = SunTimesRepository(apiClient = apiClient)
+		val candidate = SunLocation(
+			label = "gps_istanbul",
+			latitude = 41.0082,
+			longitude = 28.9784,
+			timeZoneId = null
+		)
+
+		try {
+			val resolution = awaitResolvedRefresh(repository, candidate)
+			assertEquals(daylight, resolution.daylight)
+			assertEquals(candidate, resolution.sourceLocation)
+		} finally {
+			repository.release()
+		}
+	}
+
 	private fun awaitRefresh(
 		repository: SunTimesRepository,
 		candidate: SunLocation
@@ -97,6 +125,23 @@ class SunTimesRepositoryTest {
 		}
 		assertTrue("refreshAsyncWithCandidates timed out", latch.await(2, TimeUnit.SECONDS))
 		return resolved ?: error("refreshAsyncWithCandidates completed without daylight result")
+	}
+
+	private fun awaitResolvedRefresh(
+		repository: SunTimesRepository,
+		candidate: SunLocation
+	): SunDaylightResolution {
+		val latch = CountDownLatch(1)
+		var resolved: SunDaylightResolution? = null
+		repository.refreshResolvedAsyncWithCandidates(listOf(candidate)) { resolution ->
+			resolved = resolution
+			latch.countDown()
+		}
+		assertTrue(
+			"refreshResolvedAsyncWithCandidates timed out",
+			latch.await(2, TimeUnit.SECONDS)
+		)
+		return resolved ?: error("refreshResolvedAsyncWithCandidates completed without result")
 	}
 
 	private class FakeSunTimesApiClient(

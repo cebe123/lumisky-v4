@@ -1,5 +1,6 @@
 package com.example.lumisky
 
+import android.app.WallpaperManager
 import android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER
 import android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER
 import android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT
@@ -40,8 +41,12 @@ import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import com.example.core.Logger
 import com.example.core.api.SunDaylight
+import com.example.core.api.SunDaylightResolution
 import com.example.core.api.SunLocation
 import com.example.core.api.SunTimesRepository
+import com.example.core.location.asGpsApiCandidate
+import com.example.core.location.matchesCoordinates
+import com.example.core.location.withResolvedTimeZone
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppThemeMode
@@ -318,10 +323,16 @@ class MainActivity : AppCompatActivity() {
 	private fun requestWallpaperApply(wallpaperId: String) {
 		val homeViewModel = homeViewModelOrNull() ?: return
 		val baseConfig = homeViewModel.configFor(wallpaperId)
-		applyWallpaperWithFreshSunTimes(baseConfig)
+		applyWallpaperWithFreshSunTimes(
+			baseConfig = baseConfig,
+			launchSystemSetFlow = !isLumiskyWallpaperActive()
+		)
 	}
 
-	private fun applyWallpaperWithFreshSunTimes(baseConfig: WallpaperConfig) {
+	private fun applyWallpaperWithFreshSunTimes(
+		baseConfig: WallpaperConfig,
+		launchSystemSetFlow: Boolean
+	) {
 		if (applyingWallpaper) {
 			Logger.w(TAG, "set wallpaper ignored, apply already in progress")
 			return
@@ -331,19 +342,22 @@ class MainActivity : AppCompatActivity() {
 			try {
 				val candidates = buildSunTimesCandidates()
 				val latch = CountDownLatch(1)
+				var resolvedDaylightResolution: SunDaylightResolution? = null
 				var resolvedDaylight = SunDaylight(
 					sunriseMinute = baseConfig.daylight.sunriseMinute,
 					sunsetMinute = baseConfig.daylight.sunsetMinute,
 					solarNoonMinute = baseConfig.daylight.solarNoonMinute,
 					timeZoneId = baseConfig.daylight.timeZoneId
 				)
-				sunTimesRepository.refreshAsyncWithCandidates(
+				sunTimesRepository.refreshResolvedAsyncWithCandidates(
 					candidates = candidates
-				) { fetched ->
-					resolvedDaylight = fetched
+				) { resolution ->
+					resolvedDaylightResolution = resolution
+					resolvedDaylight = resolution.daylight
 					latch.countDown()
 				}
 				latch.await(SET_WALLPAPER_REFRESH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+				resolvedDaylightResolution?.let(::syncAutomaticLocationTimeZoneIfNeeded)
 
 				val finalConfig = baseConfig.copy(
 					daylight = DaylightConfig(
@@ -354,9 +368,12 @@ class MainActivity : AppCompatActivity() {
 					)
 				)
 				wallpaperConfigStore.saveSelected(finalConfig)
-				notifyWallpaperConfigChanged()
 				runOnUiThread {
-					launchSystemWallpaperSetFlow()
+					if (launchSystemSetFlow) {
+						launchSystemWallpaperSetFlow()
+					} else {
+						notifyWallpaperConfigChanged()
+					}
 				}
 			} catch (t: Throwable) {
 				Logger.e(TAG, "applyWallpaperWithFreshSunTimes failed", t)
@@ -385,11 +402,33 @@ class MainActivity : AppCompatActivity() {
 			if (settings.locationMode == LocationMode.GPS) {
 				settings.automaticLocation
 					?.toSunLocation(labelFallback = "gps_cached")
+					?.asGpsApiCandidate()
 					?.let { add(it) }
 			}
 			add(manualLocation)
 			add(defaultLocation)
 		}.distinctBy { "${it.latitude}|${it.longitude}|${it.timeZoneId.orEmpty()}" }
+	}
+
+	private fun syncAutomaticLocationTimeZoneIfNeeded(
+		resolution: SunDaylightResolution
+	) {
+		val sourceLocation = resolution.sourceLocation ?: return
+		val resolvedTimeZoneId = resolution.daylight.timeZoneId ?: return
+		if (appSettingsRepository.getLocationMode() != LocationMode.GPS) return
+		val automaticLocation = appSettingsRepository.getAutomaticLocation() ?: return
+		if (!automaticLocation.matchesCoordinates(sourceLocation)) return
+		val updated = automaticLocation.withResolvedTimeZone(resolvedTimeZoneId)
+		if (updated == automaticLocation) return
+		appSettingsRepository.setAutomaticLocation(updated)
+	}
+
+	private fun isLumiskyWallpaperActive(): Boolean {
+		return runCatching {
+			val info = WallpaperManager.getInstance(applicationContext).wallpaperInfo ?: return false
+			info.packageName == packageName &&
+				info.serviceName == com.example.wallpaper.SkyWallpaperService::class.java.name
+		}.getOrDefault(false)
 	}
 
 	private fun syncStoredWallpaperDaylightIfNeeded(daylight: SunDaylight) {

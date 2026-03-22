@@ -11,12 +11,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import com.example.core.Logger
 import com.example.core.api.SunDaylight
+import com.example.core.api.SunDaylightResolution
 import com.example.core.api.SunLocation
 import com.example.core.api.SunTimesRepository
 import com.example.core.location.LastKnownLocationProvider
 import com.example.core.location.LocationAccessLevel
 import com.example.core.location.LocationSnapshot
 import com.example.core.location.LocationSource
+import com.example.core.location.asGpsApiCandidate
+import com.example.core.location.matchesCoordinates
+import com.example.core.location.withResolvedTimeZone
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppSettingsSnapshot
@@ -388,8 +392,10 @@ class HomeViewModel(
 	private fun refreshSunTimes() {
 		val candidates = resolveLocationCandidates()
 		if (candidates.isEmpty()) return
-		sunTimesRepository.refreshAsyncWithCandidates(candidates) { fetched ->
+		sunTimesRepository.refreshResolvedAsyncWithCandidates(candidates) { resolution ->
 			mainHandler.post {
+				syncAutomaticLocationTimeZoneIfNeeded(resolution)
+				val fetched = resolution.daylight
 				if (fetched == daylight) return@post
 				daylight = fetched
 				rebuildCatalog(fetched)
@@ -472,8 +478,8 @@ class HomeViewModel(
 			}
 			LocationMode.GPS -> buildList {
 				if (lastKnownLocationProvider.hasLocationPermission()) {
-					liveGpsLocation?.let { add(it) }
-					lastKnownGpsLocation?.let { add(it) }
+					liveGpsLocation?.let { add(it.asGpsApiCandidate()) }
+					lastKnownGpsLocation?.let { add(it.asGpsApiCandidate()) }
 				}
 				add(manual)
 				add(defaultCity)
@@ -638,6 +644,25 @@ class HomeViewModel(
 			)
 		}
 		return true
+	}
+
+	private fun syncAutomaticLocationTimeZoneIfNeeded(
+		resolution: SunDaylightResolution
+	) {
+		if (locationMode != LocationMode.GPS) return
+		val sourceLocation = resolution.sourceLocation ?: return
+		val resolvedTimeZoneId = resolution.daylight.timeZoneId ?: return
+		val snapshot = automaticLocationSnapshot ?: return
+		if (!snapshot.matchesCoordinates(sourceLocation)) return
+		val updated = snapshot.withResolvedTimeZone(resolvedTimeZoneId)
+		if (updated == snapshot) return
+		automaticLocationSnapshot = updated
+		settingsRepository.setAutomaticLocation(updated)
+		lastKnownGpsLocation = updated.toSunLocation(labelFallback = "gps_last")
+		if (updated.source == LocationSource.CURRENT || updated.source == LocationSource.PASSIVE) {
+			liveGpsLocation = updated.toSunLocation(labelFallback = "gps_live")
+		}
+		updateLocationLabelFromCachedGpsState()
 	}
 
 	private fun gpsLocationKey(location: SunLocation): String {
