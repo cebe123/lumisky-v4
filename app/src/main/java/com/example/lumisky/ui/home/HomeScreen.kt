@@ -5,7 +5,6 @@ import android.os.Handler
 import android.os.PowerManager
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,8 +30,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterHdr
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -133,7 +130,6 @@ fun HomeScreen(
 	liveWallpaperId: String?,
 	highRefreshEnabled: Boolean,
 	performanceMode: PerformanceMode,
-	onWallpaperSelected: (String) -> Unit,
 	onCategoryFocused: (List<String>) -> Unit,
 	onFocusReady: (String) -> Unit,
 	onFocusCleared: () -> Unit,
@@ -368,9 +364,6 @@ fun HomeScreen(
 								focusCandidateId = candidate
 							}
 						},
-						onWallpaperClick = { id ->
-							onWallpaperSelected(id)
-						},
 						onSetWallpaper = { id ->
 							onSetWallpaper(id)
 						}
@@ -459,7 +452,6 @@ private fun CategorySection(
 	previewHeightPx: Int,
 	simplifiedPlaceholderVisuals: Boolean,
 	onFocusCandidate: (String?) -> Unit,
-	onWallpaperClick: (String) -> Unit,
 	onSetWallpaper: (String) -> Unit
 ) {
 	val rowState = rememberLazyListState()
@@ -550,26 +542,8 @@ private fun CategorySection(
 						modifier = Modifier
 							.fillMaxWidth()
 							.height(cardHeight),
-						onClick = { onWallpaperClick(model.id) }
+						onClick = { onSetWallpaper(model.id) }
 					)
-					if (isSelected) {
-						Button(
-							modifier = Modifier.fillMaxWidth(),
-							onClick = { onSetWallpaper(model.id) },
-							shape = RoundedCornerShape(18.dp),
-							colors = ButtonDefaults.buttonColors(
-								containerColor = SelectedWallpaperBorderColor,
-								contentColor = Color(0xFF07121F)
-							)
-						) {
-							Text(
-								text = stringResource(R.string.home_set_wallpaper),
-								style = MaterialTheme.typography.labelLarge.copy(
-									fontWeight = FontWeight.Bold
-								)
-							)
-						}
-					}
 				}
 			}
 		}
@@ -625,11 +599,6 @@ private fun WallpaperCard(
 			.padding(vertical = 3.dp)
 			.clickable(onClick = onClick),
 		shape = RoundedCornerShape(16.dp),
-		border = if (isSelected) {
-			BorderStroke(2.dp, SelectedWallpaperBorderColor)
-		} else {
-			null
-		},
 		elevation = CardDefaults.cardElevation(
 			defaultElevation = if (simplifiedPlaceholderVisuals) 2.dp else 8.dp
 		),
@@ -987,7 +956,6 @@ private val HOME_CONTENT_BOTTOM_PADDING = 112.dp
 
 private val PlaceholderOuterShape = RoundedCornerShape(16.dp)
 private val PlaceholderInnerShape = RoundedCornerShape(13.dp)
-private val SelectedWallpaperBorderColor = Color(0xFF9FD8FF)
 private val PlaceholderBaseBrush = Brush.linearGradient(
 	colors = listOf(
 		Color(0xFF07121F),

@@ -148,9 +148,6 @@ class MainActivity : AppCompatActivity() {
 								liveWallpaperId = homeViewModel.liveWallpaperId,
 								highRefreshEnabled = homeViewModel.highRefreshEnabled,
 								performanceMode = homeViewModel.performanceMode,
-								onWallpaperSelected = { id ->
-									homeViewModel.onWallpaperSelected(id)
-								},
 								onCategoryFocused = { ids ->
 									homeViewModel.onCategoryFocused(ids)
 								},

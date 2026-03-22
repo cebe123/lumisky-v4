@@ -174,11 +174,6 @@ class HomeViewModel(
 		schedulePeriodicBackupCityRefresh()
 	}
 
-	fun onWallpaperSelected(id: String) {
-		selectedWallpaperId = id
-		liveWallpaperId = id
-	}
-
 	fun activateLivePreview(id: String) {
 		if (liveWallpaperId == id) return
 		liveWallpaperId = id
