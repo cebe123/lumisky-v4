@@ -42,7 +42,6 @@ import com.example.core.Logger
 import com.example.core.api.SunDaylight
 import com.example.core.api.SunLocation
 import com.example.core.api.SunTimesRepository
-import com.example.core.location.LastKnownLocationProvider
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppThemeMode
@@ -66,7 +65,6 @@ class MainActivity : AppCompatActivity() {
 	private val appSettingsRepository by lazy { AppSettingsRepository(applicationContext) }
 	private val wallpaperConfigStore by lazy { WallpaperConfigStore(applicationContext) }
 	private val sunTimesRepository by lazy { SunTimesRepository() }
-	private val lastKnownLocationProvider by lazy { LastKnownLocationProvider(applicationContext) }
 	private val setWallpaperExecutor by lazy { Executors.newSingleThreadExecutor() }
 	private val homeViewModelState = mutableStateOf<HomeViewModel?>(null)
 
@@ -181,10 +179,14 @@ class MainActivity : AppCompatActivity() {
 								daylight = homeViewModel.daylight,
 								gpsLocationAvailable = homeViewModel.gpsLocationAvailable,
 								systemLocationEnabled = homeViewModel.systemLocationEnabled,
+								locationRefreshInProgress = homeViewModel.locationRefreshInProgress,
 								onLocationModeChanged = { mode ->
 									homeViewModel.updateLocationMode(
 										mode
 									)
+								},
+								onRefreshLocation = {
+									homeViewModel.refreshLocationNow()
 								},
 								onRequestEnableSystemLocation = { openSystemLocationPanel() },
 								manualCity = homeViewModel.manualCity,
@@ -256,7 +258,7 @@ class MainActivity : AppCompatActivity() {
 	override fun onStart() {
 		super.onStart()
 		registerLocationModeReceiver()
-		homeViewModelOrNull()?.refreshOnForegroundIfStale()
+		homeViewModelOrNull()?.onForegroundStarted()
 	}
 
 	override fun onUserInteraction() {
@@ -265,6 +267,7 @@ class MainActivity : AppCompatActivity() {
 	}
 
 	override fun onStop() {
+		homeViewModelOrNull()?.onForegroundStopped()
 		unregisterLocationModeReceiver()
 		super.onStop()
 	}
@@ -376,14 +379,10 @@ class MainActivity : AppCompatActivity() {
 		)
 
 		return buildList {
-			val systemLocationEnabled = runCatching {
-				lastKnownLocationProvider.isLocationEnabled()
-			}.getOrDefault(false)
-			if (settings.locationMode == LocationMode.GPS && systemLocationEnabled) {
-				val liveGps = lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
-				val lastGps = lastKnownLocationProvider.getLastKnownLocation(label = "gps_last")
-				liveGps?.let { add(it) }
-				lastGps?.let { add(it) }
+			if (settings.locationMode == LocationMode.GPS) {
+				settings.automaticLocation
+					?.toSunLocation(labelFallback = "gps_cached")
+					?.let { add(it) }
 			}
 			add(manualLocation)
 			add(defaultLocation)

@@ -1,0 +1,5796 @@
+
+D:\Lumisky>if "Windows_NT" == "Windows_NT" setlocal
+
+D:\Lumisky>set DIRNAME=C:\Users\adnan\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\ 
+
+D:\Lumisky>if "C:\Users\adnan\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\" == "" set DIRNAME=. 
+
+D:\Lumisky>set APP_BASE_NAME=apkanalyzer 
+
+D:\Lumisky>set APP_HOME=C:\Users\adnan\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\.. 
+
+D:\Lumisky>set DEFAULT_JVM_OPTS=-Dcom.android.sdklib.toolsdir=C:\Users\adnan\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\\.. 
+
+D:\Lumisky>if defined JAVA_HOME goto findJavaFromJavaHome 
+
+D:\Lumisky>set JAVA_HOME=C:\Program Files\OpenLogic\jdk-21.0.8.9-hotspot 
+
+D:\Lumisky>set JAVA_EXE=C:\Program Files\OpenLogic\jdk-21.0.8.9-hotspot/bin/java.exe 
+
+D:\Lumisky>if exist "C:\Program Files\OpenLogic\jdk-21.0.8.9-hotspot/bin/java.exe" goto init 
+
+D:\Lumisky>if not "Windows_NT" == "Windows_NT" goto win9xME_args 
+
+D:\Lumisky>set CMD_LINE_ARGS= 
+
+D:\Lumisky>set _SKIP=2 
+
+D:\Lumisky>if "xdex" == "x" goto execute 
+
+D:\Lumisky>set CMD_LINE_ARGS=dex code --class com.example.lumisky.MainActivity app\build\outputs\apk\debug\app-debug.apk 
+
+D:\Lumisky>setlocal enabledelayedexpansion 
+
+D:\Lumisky>for /F "tokens=3" %a in ('""C:\Program Files\OpenLogic\jdk-21.0.8.9-hotspot/bin/java.exe" -version 2>&1 |findstr "version""') do (for /F "tokens=1,2 delims=." %b in ('echo %a') do (set versionWithQ=%b%c ) ) 
+
+D:\Lumisky>(for /F "tokens=1,2 delims=." %b in ('echo "21.0.8"') do (set versionWithQ=%b%c ) ) 
+
+D:\Lumisky>(set versionWithQ="210 ) 
+
+D:\Lumisky>set version=!versionWithQ:"=! 
+
+D:\Lumisky>if !version! LSS 170 if "" == "" (
+echo Java version 17 or higher is required.  
+ echo To override this check set SKIP_JDK_VERSION_CHECK  
+ goto :eof 
+) 
+
+D:\Lumisky>set CLASSPATH=C:\Users\adnan\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\..\lib\apkanalyzer-classpath.jar 
+
+D:\Lumisky>"C:\Program Files\OpenLogic\jdk-21.0.8.9-hotspot/bin/java.exe" -Dcom.android.sdklib.toolsdir=C:\Users\adnan\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\\..    -classpath "C:\Users\adnan\AppData\Local\Android\Sdk\cmdline-tools\latest\bin\..\lib\apkanalyzer-classpath.jar" com.android.tools.apk.analyzer.ApkAnalyzerCli dex code --class com.example.lumisky.MainActivity app\build\outputs\apk\debug\app-debug.apk 
+.class public final Lcom/example/lumisky/MainActivity;
+.super Landroidx/appcompat/app/AppCompatActivity;
+.source "MainActivity.kt"
+
+
+# annotations
+.annotation system Ldalvik/annotation/MemberClasses;
+    value = {
+        Lcom/example/lumisky/MainActivity$Companion;,
+        Lcom/example/lumisky/MainActivity$WhenMappings;
+    }
+.end annotation
+
+.annotation system Ldalvik/annotation/SourceDebugExtension;
+    value = "SMAP\nMainActivity.kt\nKotlin\n*S Kotlin\n*F\n+ 1 MainActivity.kt\ncom/example/lumisky/MainActivity\n+ 2 fake.kt\nkotlin/jvm/internal/FakeKt\n+ 3 _Collections.kt\nkotlin/collections/CollectionsKt___CollectionsKt\n+ 4 SnapshotState.kt\nandroidx/compose/runtime/SnapshotStateKt__SnapshotStateKt\n+ 5 Composer.kt\nandroidx/compose/runtime/ComposerKt\n*L\n1#1,466:1\n1#2:467\n1669#3,8:468\n85#4:476\n117#4,2:477\n85#4:479\n117#4,2:480\n1282#5,6:482\n1282#5,6:488\n1282#5,6:494\n1282#5,6:500\n1282#5,6:506\n1282#5,6:512\n1282#5,6:518\n1282#5,6:524\n1282#5,6:530\n1282#5,6:536\n1282#5,6:542\n1282#5,6:548\n1282#5,6:554\n1282#5,6:560\n1282#5,6:566\n1282#5,6:572\n1282#5,6:578\n1282#5,6:584\n1282#5,6:590\n1282#5,6:596\n1282#5,6:602\n*S KotlinDebug\n*F\n+ 1 MainActivity.kt\ncom/example/lumisky/MainActivity\n*L\n389#1:468,8\n101#1:476\n101#1:477,2\n102#1:479\n102#1:480,2\n140#1:482,6\n143#1:488,6\n146#1:494,6\n149#1:500,6\n152#1:506,6\n155#1:512,6\n199#1:518,6\n164#1:524,6\n166#1:530,6\n172#1:536,6\n183#1:542,6\n188#1:548,6\n191#1:554,6\n193#1:560,6\n195#1:566,6\n101#1:572,6\n102#1:578,6\n117#1:584,6\n124#1:590,6\n205#1:596,6\n213#1:602,6\n*E\n"
+.end annotation
+
+.annotation runtime Lkotlin/Metadata;
+    d1 = {
+        "\u0000s\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0002\u0008\u0003\n\u0002\u0018\u0002\n\u0002\u0008\u0005\n\u0002\u0018\u0002\n\u0002\u0008\u0004\n\u0002\u0018\u0002\n\u0002\u0008\u0004\n\u0002\u0018\u0002\n\u0002\u0008\u0005\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0010\u000b\n\u0002\u0008\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0008\u0003\n\u0002\u0010\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\u0008\u0006\n\u0002\u0010\u000e\n\u0002\u0008\u0006\n\u0002\u0018\u0002\n\u0000\n\u0002\u0010 \n\u0002\u0018\u0002\n\u0002\u0008\u000b*\u0001#\u0008\u0007\u0018\u0000 A2\u00020\u0001:\u0001AB\u0007\u00a2\u0006\u0004\u0008\u0002\u0010\u0003J\u0012\u0010%\u001a\u00020&2\u0008\u0010\'\u001a\u0004\u0018\u00010(H\u0014J\u0008\u0010)\u001a\u00020&H\u0014J\u0008\u0010*\u001a\u00020&H\u0016J\u0008\u0010+\u001a\u00020&H\u0014J\u0008\u0010,\u001a\u00020&H\u0014J\u0010\u0010-\u001a\u00020&2\u0006\u0010.\u001a\u00020/H\u0002J\u0008\u00100\u001a\u00020&H\u0002J\u0008\u00101\u001a\u00020&H\u0002J\u0010\u00102\u001a\u00020&2\u0006\u00103\u001a\u00020/H\u0002J\u0010\u00104\u001a\u00020&2\u0006\u00105\u001a\u000206H\u0002J\u000e\u00107\u001a\u0008\u0012\u0004\u0012\u00020908H\u0002J\u0008\u0010:\u001a\u00020&H\u0002J\u0008\u0010;\u001a\u00020&H\u0002J\u0008\u0010<\u001a\u00020&H\u0002J\u0008\u0010=\u001a\u00020&H\u0002J\u000f\u0010>\u001a\u0004\u0018\u00010\u001cH\u0000\u00a2\u0006\u0002\u0008?J\u0008\u0010@\u001a\u00020\u001cH\u0002R\u001b\u0010\u0004\u001a\u00020\u00058BX\u0082\u0084\u0002\u00a2\u0006\u000c\n\u0004\u0008\u0008\u0010\t\u001a\u0004\u0008\u0006\u0010\u0007R\u001b\u0010\n\u001a\u00020\u000b8BX\u0082\u0084\u0002\u00a2\u0006\u000c\n\u0004\u0008\u000e\u0010\t\u001a\u0004\u0008\u000c\u0010\rR\u001b\u0010\u000f\u001a\u00020\u00108BX\u0082\u0084\u0002\u00a2\u0006\u000c\n\u0004\u0008\u0013\u0010\t\u001a\u0004\u0008\u0011\u0010\u0012R#\u0010\u0014\u001a\n \u0016*\u0004\u0018\u00010\u00150\u00158BX\u0082\u0084\u0002\u00a2\u0006\u000c\n\u0004\u0008\u0019\u0010\t\u001a\u0004\u0008\u0017\u0010\u0018R\u0016\u0010\u001a\u001a\n\u0012\u0006\u0012\u0004\u0018\u00010\u001c0\u001bX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u000e\u0010\u001d\u001a\u00020\u001eX\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u000e\u0010\u001f\u001a\u00020\u001eX\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u000e\u0010 \u001a\u00020!X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u0010\u0010\"\u001a\u00020#X\u0082\u0004\u00a2\u0006\u0004\n\u0002\u0010$\u00a8\u0006B\u00b2\u0006\n\u0010C\u001a\u00020/X\u008a\u008e\u0002\u00b2\u0006\n\u0010D\u001a\u00020\u001eX\u008a\u008e\u0002"
+    }
+    d2 = {
+        "Lcom/example/lumisky/MainActivity;",
+        "Landroidx/appcompat/app/AppCompatActivity;",
+        "<init>",
+        "()V",
+        "appSettingsRepository",
+        "Lcom/example/core/settings/AppSettingsRepository;",
+        "getAppSettingsRepository",
+        "()Lcom/example/core/settings/AppSettingsRepository;",
+        "appSettingsRepository$delegate",
+        "Lkotlin/Lazy;",
+        "wallpaperConfigStore",
+        "Lcom/example/engine/config/WallpaperConfigStore;",
+        "getWallpaperConfigStore",
+        "()Lcom/example/engine/config/WallpaperConfigStore;",
+        "wallpaperConfigStore$delegate",
+        "sunTimesRepository",
+        "Lcom/example/core/api/SunTimesRepository;",
+        "getSunTimesRepository",
+        "()Lcom/example/core/api/SunTimesRepository;",
+        "sunTimesRepository$delegate",
+        "setWallpaperExecutor",
+        "Ljava/util/concurrent/ExecutorService;",
+        "kotlin.jvm.PlatformType",
+        "getSetWallpaperExecutor",
+        "()Ljava/util/concurrent/ExecutorService;",
+        "setWallpaperExecutor$delegate",
+        "homeViewModelState",
+        "Landroidx/compose/runtime/MutableState;",
+        "Lcom/example/lumisky/viewmodel/HomeViewModel;",
+        "applyingWallpaper",
+        "",
+        "locationReceiverRegistered",
+        "launchThemeMode",
+        "Lcom/example/core/settings/AppThemeMode;",
+        "locationModeReceiver",
+        "com/example/lumisky/MainActivity$locationModeReceiver$1",
+        "Lcom/example/lumisky/MainActivity$locationModeReceiver$1;",
+        "onCreate",
+        "",
+        "savedInstanceState",
+        "Landroid/os/Bundle;",
+        "onStart",
+        "onUserInteraction",
+        "onStop",
+        "onDestroy",
+        "applyLanguage",
+        "tag",
+        "",
+        "registerLocationModeReceiver",
+        "unregisterLocationModeReceiver",
+        "openWallpaperSetScreen",
+        "wallpaperId",
+        "applyWallpaperWithFreshSunTimes",
+        "baseConfig",
+        "Lcom/example/engine/config/WallpaperConfig;",
+        "buildSunTimesCandidates",
+        "",
+        "Lcom/example/core/api/SunLocation;",
+        "launchSystemWallpaperSetFlow",
+        "notifyWallpaperConfigChanged",
+        "openSystemLocationPanel",
+        "configureLogging",
+        "homeViewModelOrNull",
+        "homeViewModelOrNull$app",
+        "ensureHomeViewModelCreated",
+        "Companion",
+        "app",
+        "currentScreen",
+        "startupAnimationsEnabled"
+    }
+    k = 0x1
+    mv = {
+        0x2,
+        0x2,
+        0x0
+    }
+    xi = 0x30
+.end annotation
+
+
+# static fields
+.field public static final $stable:I
+
+.field public static final Companion:Lcom/example/lumisky/MainActivity$Companion;
+
+.field private static final SCREEN_HOME:Ljava/lang/String; = "home"
+
+.field private static final SCREEN_SETTINGS:Ljava/lang/String; = "settings"
+
+.field private static final SET_WALLPAPER_REFRESH_TIMEOUT_MS:J = 0x708L
+
+.field private static final TAG:Ljava/lang/String; = "MainActivity"
+
+
+# instance fields
+.field private final appSettingsRepository$delegate:Lkotlin/Lazy;
+
+.field private volatile applyingWallpaper:Z
+
+.field private final homeViewModelState:Landroidx/compose/runtime/MutableState;
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "Landroidx/compose/runtime/MutableState<",
+            "Lcom/example/lumisky/viewmodel/HomeViewModel;",
+            ">;"
+        }
+    .end annotation
+.end field
+
+.field private launchThemeMode:Lcom/example/core/settings/AppThemeMode;
+
+.field private final locationModeReceiver:Lcom/example/lumisky/MainActivity$locationModeReceiver$1;
+
+.field private locationReceiverRegistered:Z
+
+.field private final setWallpaperExecutor$delegate:Lkotlin/Lazy;
+
+.field private final sunTimesRepository$delegate:Lkotlin/Lazy;
+
+.field private final wallpaperConfigStore$delegate:Lkotlin/Lazy;
+
+
+# direct methods
+.method static constructor <clinit>()V
+    .registers 2
+
+    new-instance v0, Lcom/example/lumisky/MainActivity$Companion;
+
+    const/4 v1, 0x0
+
+    invoke-direct {v0, v1}, Lcom/example/lumisky/MainActivity$Companion;-><init>(Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+
+    sput-object v0, Lcom/example/lumisky/MainActivity;->Companion:Lcom/example/lumisky/MainActivity$Companion;
+
+    const/16 v0, 0x8
+
+    sput v0, Lcom/example/lumisky/MainActivity;->$stable:I
+
+    return-void
+.end method
+
+.method public constructor <init>()V
+    .registers 3
+
+    .line 63
+    invoke-direct {p0}, Landroidx/appcompat/app/AppCompatActivity;-><init>()V
+
+    .line 65
+    new-instance v0, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda28;
+
+    invoke-direct {v0, p0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda28;-><init>(Lcom/example/lumisky/MainActivity;)V
+
+    invoke-static {v0}, Lkotlin/LazyKt;->lazy(Lkotlin/jvm/functions/Function0;)Lkotlin/Lazy;
+
+    move-result-object v0
+
+    iput-object v0, p0, Lcom/example/lumisky/MainActivity;->appSettingsRepository$delegate:Lkotlin/Lazy;
+
+    .line 66
+    new-instance v0, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda29;
+
+    invoke-direct {v0, p0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda29;-><init>(Lcom/example/lumisky/MainActivity;)V
+
+    invoke-static {v0}, Lkotlin/LazyKt;->lazy(Lkotlin/jvm/functions/Function0;)Lkotlin/Lazy;
+
+    move-result-object v0
+
+    iput-object v0, p0, Lcom/example/lumisky/MainActivity;->wallpaperConfigStore$delegate:Lkotlin/Lazy;
+
+    .line 67
+    new-instance v0, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda30;
+
+    invoke-direct {v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda30;-><init>()V
+
+    invoke-static {v0}, Lkotlin/LazyKt;->lazy(Lkotlin/jvm/functions/Function0;)Lkotlin/Lazy;
+
+    move-result-object v0
+
+    iput-object v0, p0, Lcom/example/lumisky/MainActivity;->sunTimesRepository$delegate:Lkotlin/Lazy;
+
+    .line 68
+    new-instance v0, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda31;
+
+    invoke-direct {v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda31;-><init>()V
+
+    invoke-static {v0}, Lkotlin/LazyKt;->lazy(Lkotlin/jvm/functions/Function0;)Lkotlin/Lazy;
+
+    move-result-object v0
+
+    iput-object v0, p0, Lcom/example/lumisky/MainActivity;->setWallpaperExecutor$delegate:Lkotlin/Lazy;
+
+    .line 69
+    const/4 v0, 0x0
+
+    const/4 v1, 0x2
+
+    invoke-static {v0, v0, v1, v0}, Landroidx/compose/runtime/SnapshotStateKt;->mutableStateOf$default(Ljava/lang/Object;Landroidx/compose/runtime/SnapshotMutationPolicy;ILjava/lang/Object;)Landroidx/compose/runtime/MutableState;
+
+    move-result-object v0
+
+    iput-object v0, p0, Lcom/example/lumisky/MainActivity;->homeViewModelState:Landroidx/compose/runtime/MutableState;
+
+    .line 74
+    sget-object v0, Lcom/example/core/settings/AppThemeMode;->SYSTEM:Lcom/example/core/settings/AppThemeMode;
+
+    iput-object v0, p0, Lcom/example/lumisky/MainActivity;->launchThemeMode:Lcom/example/core/settings/AppThemeMode;
+
+    .line 75
+    new-instance v0, Lcom/example/lumisky/MainActivity$locationModeReceiver$1;
+
+    invoke-direct {v0, p0}, Lcom/example/lumisky/MainActivity$locationModeReceiver$1;-><init>(Lcom/example/lumisky/MainActivity;)V
+
+    iput-object v0, p0, Lcom/example/lumisky/MainActivity;->locationModeReceiver:Lcom/example/lumisky/MainActivity$locationModeReceiver$1;
+
+    .line 63
+    return-void
+.end method
+
+.method public static final synthetic access$ensureHomeViewModelCreated(Lcom/example/lumisky/MainActivity;)Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .registers 2
+    .param p0, "$this"    # Lcom/example/lumisky/MainActivity;
+
+    .line 63
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->ensureHomeViewModelCreated()Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method public static final synthetic access$onCreate$lambda$53$lambda$52$lambda$11(Landroidx/compose/runtime/MutableState;Z)V
+    .registers 2
+    .param p0, "$startupAnimationsEnabled$delegate"    # Landroidx/compose/runtime/MutableState;
+    .param p1, "<set-?>"    # Z
+
+    .line 63
+    invoke-static {p0, p1}, Lcom/example/lumisky/MainActivity;->onCreate$lambda$53$lambda$52$lambda$11(Landroidx/compose/runtime/MutableState;Z)V
+
+    return-void
+.end method
+
+.method static final appSettingsRepository_delegate$lambda$0(Lcom/example/lumisky/MainActivity;)Lcom/example/core/settings/AppSettingsRepository;
+    .registers 4
+    .param p0, "this$0"    # Lcom/example/lumisky/MainActivity;
+
+    .line 65
+    new-instance v0, Lcom/example/core/settings/AppSettingsRepository;
+
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->getApplicationContext()Landroid/content/Context;
+
+    move-result-object v1
+
+    const-string v2, "getApplicationContext(...)"
+
+    invoke-static {v1, v2}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullExpressionValue(Ljava/lang/Object;Ljava/lang/String;)V
+
+    invoke-direct {v0, v1}, Lcom/example/core/settings/AppSettingsRepository;-><init>(Landroid/content/Context;)V
+
+    return-object v0
+.end method
+
+.method private final applyLanguage(Ljava/lang/String;)V
+    .registers 5
+    .param p1, "tag"    # Ljava/lang/String;
+
+    .line 284
+    const-string v0, "system"
+
+    invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->areEqual(Ljava/lang/Object;Ljava/lang/Object;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_d
+
+    .line 285
+    invoke-static {}, Landroidx/core/os/LocaleListCompat;->getEmptyLocaleList()Landroidx/core/os/LocaleListCompat;
+
+    move-result-object v0
+
+    goto :goto_11
+
+    .line 287
+    :cond_d
+    invoke-static {p1}, Landroidx/core/os/LocaleListCompat;->forLanguageTags(Ljava/lang/String;)Landroidx/core/os/LocaleListCompat;
+
+    move-result-object v0
+
+    .line 284
+    :goto_11
+    invoke-static {v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNull(Ljava/lang/Object;)V
+
+    .line 289
+    .local v0, "locales":Landroidx/core/os/LocaleListCompat;
+    invoke-static {}, Landroidx/appcompat/app/AppCompatDelegate;->getApplicationLocales()Landroidx/core/os/LocaleListCompat;
+
+    move-result-object v1
+
+    .line 290
+    invoke-virtual {v1}, Landroidx/core/os/LocaleListCompat;->toLanguageTags()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-virtual {v0}, Landroidx/core/os/LocaleListCompat;->toLanguageTags()Ljava/lang/String;
+
+    move-result-object v2
+
+    .line 289
+    invoke-static {v1, v2}, Lkotlin/jvm/internal/Intrinsics;->areEqual(Ljava/lang/Object;Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_27
+
+    .line 292
+    return-void
+
+    .line 294
+    :cond_27
+    invoke-static {v0}, Landroidx/appcompat/app/AppCompatDelegate;->setApplicationLocales(Landroidx/core/os/LocaleListCompat;)V
+
+    .line 295
+    return-void
+.end method
+
+.method private final applyWallpaperWithFreshSunTimes(Lcom/example/engine/config/WallpaperConfig;)V
+    .registers 9
+    .param p1, "baseConfig"    # Lcom/example/engine/config/WallpaperConfig;
+
+    .line 322
+    iget-boolean v0, p0, Lcom/example/lumisky/MainActivity;->applyingWallpaper:Z
+
+    if-eqz v0, :cond_11
+
+    .line 323
+    sget-object v1, Lcom/example/core/Logger;->INSTANCE:Lcom/example/core/Logger;
+
+    const/4 v5, 0x4
+
+    const/4 v6, 0x0
+
+    const-string v2, "MainActivity"
+
+    const-string v3, "set wallpaper ignored, apply already in progress"
+
+    const/4 v4, 0x0
+
+    invoke-static/range {v1 .. v6}, Lcom/example/core/Logger;->w$default(Lcom/example/core/Logger;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)V
+
+    .line 324
+    return-void
+
+    .line 326
+    :cond_11
+    const/4 v0, 0x1
+
+    iput-boolean v0, p0, Lcom/example/lumisky/MainActivity;->applyingWallpaper:Z
+
+    .line 327
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->getSetWallpaperExecutor()Ljava/util/concurrent/ExecutorService;
+
+    move-result-object v0
+
+    new-instance v1, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda4;
+
+    invoke-direct {v1, p0, p1}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda4;-><init>(Lcom/example/lumisky/MainActivity;Lcom/example/engine/config/WallpaperConfig;)V
+
+    invoke-interface {v0, v1}, Ljava/util/concurrent/ExecutorService;->execute(Ljava/lang/Runnable;)V
+
+    .line 364
+    return-void
+.end method
+
+.method static final applyWallpaperWithFreshSunTimes$lambda$57(Lcom/example/lumisky/MainActivity;Lcom/example/engine/config/WallpaperConfig;)V
+    .registers 29
+    .param p0, "this$0"    # Lcom/example/lumisky/MainActivity;
+    .param p1, "$baseConfig"    # Lcom/example/engine/config/WallpaperConfig;
+
+    .line 328
+    move-object/from16 v1, p0
+
+    .line 329
+    const/4 v2, 0x0
+
+    :try_start_3
+    invoke-direct {v1}, Lcom/example/lumisky/MainActivity;->buildSunTimesCandidates()Ljava/util/List;
+
+    move-result-object v0
+
+    move-object v4, v0
+
+    .line 330
+    .local v4, "candidates":Ljava/util/List;
+    new-instance v0, Ljava/util/concurrent/CountDownLatch;
+
+    const/4 v3, 0x1
+
+    invoke-direct {v0, v3}, Ljava/util/concurrent/CountDownLatch;-><init>(I)V
+
+    .line 331
+    .local v0, "latch":Ljava/util/concurrent/CountDownLatch;
+    new-instance v3, Lkotlin/jvm/internal/Ref$ObjectRef;
+
+    invoke-direct {v3}, Lkotlin/jvm/internal/Ref$ObjectRef;-><init>()V
+
+    move-object v9, v3
+
+    .local v9, "resolvedDaylight":Lkotlin/jvm/internal/Ref$ObjectRef;
+    new-instance v3, Lcom/example/core/api/SunDaylight;
+
+    .line 332
+    invoke-virtual/range {p1 .. p1}, Lcom/example/engine/config/WallpaperConfig;->getDaylight()Lcom/example/engine/config/DaylightConfig;
+
+    move-result-object v5
+
+    invoke-virtual {v5}, Lcom/example/engine/config/DaylightConfig;->getSunriseMinute()I
+
+    move-result v5
+
+    .line 333
+    invoke-virtual/range {p1 .. p1}, Lcom/example/engine/config/WallpaperConfig;->getDaylight()Lcom/example/engine/config/DaylightConfig;
+
+    move-result-object v6
+
+    invoke-virtual {v6}, Lcom/example/engine/config/DaylightConfig;->getSunsetMinute()I
+
+    move-result v6
+
+    .line 334
+    invoke-virtual/range {p1 .. p1}, Lcom/example/engine/config/WallpaperConfig;->getDaylight()Lcom/example/engine/config/DaylightConfig;
+
+    move-result-object v7
+
+    invoke-virtual {v7}, Lcom/example/engine/config/DaylightConfig;->getSolarNoonMinute()I
+
+    move-result v7
+
+    .line 335
+    invoke-virtual/range {p1 .. p1}, Lcom/example/engine/config/WallpaperConfig;->getDaylight()Lcom/example/engine/config/DaylightConfig;
+
+    move-result-object v8
+
+    invoke-virtual {v8}, Lcom/example/engine/config/DaylightConfig;->getTimeZoneId()Ljava/lang/String;
+
+    move-result-object v8
+
+    .line 331
+    invoke-direct {v3, v5, v6, v7, v8}, Lcom/example/core/api/SunDaylight;-><init>(IIILjava/lang/String;)V
+
+    iput-object v3, v9, Lkotlin/jvm/internal/Ref$ObjectRef;->element:Ljava/lang/Object;
+
+    .line 337
+    invoke-direct {v1}, Lcom/example/lumisky/MainActivity;->getSunTimesRepository()Lcom/example/core/api/SunTimesRepository;
+
+    move-result-object v3
+
+    .line 338
+    nop
+
+    .line 337
+    new-instance v6, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda23;
+
+    invoke-direct {v6, v9, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda23;-><init>(Lkotlin/jvm/internal/Ref$ObjectRef;Ljava/util/concurrent/CountDownLatch;)V
+
+    const/4 v7, 0x2
+
+    const/4 v8, 0x0
+
+    const/4 v5, 0x0
+
+    invoke-static/range {v3 .. v8}, Lcom/example/core/api/SunTimesRepository;->refreshAsyncWithCandidates$default(Lcom/example/core/api/SunTimesRepository;Ljava/util/List;ZLkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+
+    .line 343
+    sget-object v3, Ljava/util/concurrent/TimeUnit;->MILLISECONDS:Ljava/util/concurrent/TimeUnit;
+
+    const-wide/16 v5, 0x708
+
+    invoke-virtual {v0, v5, v6, v3}, Ljava/util/concurrent/CountDownLatch;->await(JLjava/util/concurrent/TimeUnit;)Z
+
+    .line 345
+    nop
+
+    .line 346
+    new-instance v3, Lcom/example/engine/config/DaylightConfig;
+
+    .line 347
+    iget-object v5, v9, Lkotlin/jvm/internal/Ref$ObjectRef;->element:Ljava/lang/Object;
+
+    check-cast v5, Lcom/example/core/api/SunDaylight;
+
+    invoke-virtual {v5}, Lcom/example/core/api/SunDaylight;->getSunriseMinute()I
+
+    move-result v5
+
+    .line 348
+    iget-object v6, v9, Lkotlin/jvm/internal/Ref$ObjectRef;->element:Ljava/lang/Object;
+
+    check-cast v6, Lcom/example/core/api/SunDaylight;
+
+    invoke-virtual {v6}, Lcom/example/core/api/SunDaylight;->getSunsetMinute()I
+
+    move-result v6
+
+    .line 349
+    iget-object v7, v9, Lkotlin/jvm/internal/Ref$ObjectRef;->element:Ljava/lang/Object;
+
+    check-cast v7, Lcom/example/core/api/SunDaylight;
+
+    invoke-virtual {v7}, Lcom/example/core/api/SunDaylight;->getSolarNoonMinute()I
+
+    move-result v7
+
+    .line 350
+    iget-object v8, v9, Lkotlin/jvm/internal/Ref$ObjectRef;->element:Ljava/lang/Object;
+
+    check-cast v8, Lcom/example/core/api/SunDaylight;
+
+    invoke-virtual {v8}, Lcom/example/core/api/SunDaylight;->getTimeZoneId()Ljava/lang/String;
+
+    move-result-object v8
+
+    .line 346
+    invoke-direct {v3, v5, v6, v7, v8}, Lcom/example/engine/config/DaylightConfig;-><init>(IIILjava/lang/String;)V
+
+    .line 345
+    const/16 v25, 0x3dff
+
+    const/16 v26, 0x0
+
+    const/4 v11, 0x0
+
+    const/4 v12, 0x0
+
+    const/4 v13, 0x0
+
+    const/4 v14, 0x0
+
+    const/4 v15, 0x0
+
+    const/16 v16, 0x0
+
+    const/16 v17, 0x0
+
+    const/16 v18, 0x0
+
+    const/16 v19, 0x0
+
+    const/16 v21, 0x0
+
+    const/16 v22, 0x0
+
+    const/16 v23, 0x0
+
+    const/16 v24, 0x0
+
+    move-object/from16 v10, p1
+
+    move-object/from16 v20, v3
+
+    invoke-static/range {v10 .. v26}, Lcom/example/engine/config/WallpaperConfig;->copy$default(Lcom/example/engine/config/WallpaperConfig;Ljava/lang/String;Ljava/lang/String;Lcom/example/engine/config/HorizonConfig;Lcom/example/engine/config/CelestialConfig;Lcom/example/engine/config/SkyFeatureFlags;Lcom/example/engine/config/WallpaperTextures;Lcom/example/engine/config/SkyColors;FFLcom/example/engine/config/DaylightConfig;FFLcom/example/engine/config/ShaderProfile;Lcom/example/engine/config/RuntimeRenderPolicy;ILjava/lang/Object;)Lcom/example/engine/config/WallpaperConfig;
+
+    move-result-object v3
+
+    .line 353
+    .local v3, "finalConfig":Lcom/example/engine/config/WallpaperConfig;
+    invoke-direct {v1}, Lcom/example/lumisky/MainActivity;->getWallpaperConfigStore()Lcom/example/engine/config/WallpaperConfigStore;
+
+    move-result-object v5
+
+    invoke-virtual {v5, v3}, Lcom/example/engine/config/WallpaperConfigStore;->saveSelected(Lcom/example/engine/config/WallpaperConfig;)V
+
+    .line 354
+    invoke-direct {v1}, Lcom/example/lumisky/MainActivity;->notifyWallpaperConfigChanged()V
+
+    .line 355
+    new-instance v5, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda24;
+
+    invoke-direct {v5, v1}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda24;-><init>(Lcom/example/lumisky/MainActivity;)V
+
+    invoke-virtual {v1, v5}, Lcom/example/lumisky/MainActivity;->runOnUiThread(Ljava/lang/Runnable;)V
+    :try_end_ab
+    .catchall {:try_start_3 .. :try_end_ab} :catchall_ac
+
+    .end local v0    # "latch":Ljava/util/concurrent/CountDownLatch;
+    .end local v3    # "finalConfig":Lcom/example/engine/config/WallpaperConfig;
+    .end local v4    # "candidates":Ljava/util/List;
+    .end local v9    # "resolvedDaylight":Lkotlin/jvm/internal/Ref$ObjectRef;
+    goto :goto_b6
+
+    .line 358
+    :catchall_ac
+    move-exception v0
+
+    .line 359
+    .local v0, "t":Ljava/lang/Throwable;
+    :try_start_ad
+    sget-object v3, Lcom/example/core/Logger;->INSTANCE:Lcom/example/core/Logger;
+
+    const-string v4, "MainActivity"
+
+    const-string v5, "applyWallpaperWithFreshSunTimes failed"
+
+    invoke-virtual {v3, v4, v5, v0}, Lcom/example/core/Logger;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+    :try_end_b6
+    .catchall {:try_start_ad .. :try_end_b6} :catchall_ba
+
+    .line 361
+    .end local v0    # "t":Ljava/lang/Throwable;
+    :goto_b6
+    iput-boolean v2, v1, Lcom/example/lumisky/MainActivity;->applyingWallpaper:Z
+
+    .line 362
+    nop
+
+    .line 363
+    return-void
+
+    .line 361
+    :catchall_ba
+    move-exception v0
+
+    iput-boolean v2, v1, Lcom/example/lumisky/MainActivity;->applyingWallpaper:Z
+
+    throw v0
+.end method
+
+.method static final applyWallpaperWithFreshSunTimes$lambda$57$lambda$55(Lkotlin/jvm/internal/Ref$ObjectRef;Ljava/util/concurrent/CountDownLatch;Lcom/example/core/api/SunDaylight;)Lkotlin/Unit;
+    .registers 4
+    .param p0, "$resolvedDaylight"    # Lkotlin/jvm/internal/Ref$ObjectRef;
+    .param p1, "$latch"    # Ljava/util/concurrent/CountDownLatch;
+    .param p2, "fetched"    # Lcom/example/core/api/SunDaylight;
+
+    const-string v0, "fetched"
+
+    invoke-static {p2, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 340
+    iput-object p2, p0, Lkotlin/jvm/internal/Ref$ObjectRef;->element:Ljava/lang/Object;
+
+    .line 341
+    invoke-virtual {p1}, Ljava/util/concurrent/CountDownLatch;->countDown()V
+
+    .line 342
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final applyWallpaperWithFreshSunTimes$lambda$57$lambda$56(Lcom/example/lumisky/MainActivity;)V
+    .registers 1
+    .param p0, "this$0"    # Lcom/example/lumisky/MainActivity;
+
+    .line 356
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->launchSystemWallpaperSetFlow()V
+
+    .line 357
+    return-void
+.end method
+
+.method private final buildSunTimesCandidates()Ljava/util/List;
+    .registers 18
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "()",
+            "Ljava/util/List<",
+            "Lcom/example/core/api/SunLocation;",
+            ">;"
+        }
+    .end annotation
+
+    .line 367
+    invoke-direct/range {p0 .. p0}, Lcom/example/lumisky/MainActivity;->getAppSettingsRepository()Lcom/example/core/settings/AppSettingsRepository;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Lcom/example/core/settings/AppSettingsRepository;->snapshot()Lcom/example/core/settings/AppSettingsSnapshot;
+
+    move-result-object v0
+
+    .line 368
+    .local v0, "settings":Lcom/example/core/settings/AppSettingsSnapshot;
+    new-instance v1, Lcom/example/core/api/SunLocation;
+
+    .line 369
+    invoke-virtual {v0}, Lcom/example/core/settings/AppSettingsSnapshot;->getManualCity()Lcom/example/core/settings/ManualCity;
+
+    move-result-object v2
+
+    invoke-virtual {v2}, Lcom/example/core/settings/ManualCity;->getName()Ljava/lang/String;
+
+    move-result-object v2
+
+    .line 370
+    invoke-virtual {v0}, Lcom/example/core/settings/AppSettingsSnapshot;->getManualCity()Lcom/example/core/settings/ManualCity;
+
+    move-result-object v3
+
+    invoke-virtual {v3}, Lcom/example/core/settings/ManualCity;->getLatitude()D
+
+    move-result-wide v3
+
+    .line 371
+    invoke-virtual {v0}, Lcom/example/core/settings/AppSettingsSnapshot;->getManualCity()Lcom/example/core/settings/ManualCity;
+
+    move-result-object v5
+
+    invoke-virtual {v5}, Lcom/example/core/settings/ManualCity;->getLongitude()D
+
+    move-result-wide v5
+
+    .line 372
+    invoke-virtual {v0}, Lcom/example/core/settings/AppSettingsSnapshot;->getManualCity()Lcom/example/core/settings/ManualCity;
+
+    move-result-object v7
+
+    invoke-virtual {v7}, Lcom/example/core/settings/ManualCity;->getTimeZoneId()Ljava/lang/String;
+
+    move-result-object v7
+
+    .line 368
+    invoke-direct/range {v1 .. v7}, Lcom/example/core/api/SunLocation;-><init>(Ljava/lang/String;DDLjava/lang/String;)V
+
+    .line 374
+    .local v1, "manualLocation":Lcom/example/core/api/SunLocation;
+    new-instance v2, Lcom/example/core/api/SunLocation;
+
+    .line 375
+    nop
+
+    .line 376
+    sget-object v3, Lcom/example/core/settings/AppSettingsDefaults;->INSTANCE:Lcom/example/core/settings/AppSettingsDefaults;
+
+    invoke-virtual {v3}, Lcom/example/core/settings/AppSettingsDefaults;->getDEFAULT_CITY()Lcom/example/core/settings/ManualCity;
+
+    move-result-object v3
+
+    invoke-virtual {v3}, Lcom/example/core/settings/ManualCity;->getLatitude()D
+
+    move-result-wide v4
+
+    .line 377
+    sget-object v3, Lcom/example/core/settings/AppSettingsDefaults;->INSTANCE:Lcom/example/core/settings/AppSettingsDefaults;
+
+    invoke-virtual {v3}, Lcom/example/core/settings/AppSettingsDefaults;->getDEFAULT_CITY()Lcom/example/core/settings/ManualCity;
+
+    move-result-object v3
+
+    invoke-virtual {v3}, Lcom/example/core/settings/ManualCity;->getLongitude()D
+
+    move-result-wide v6
+
+    .line 378
+    sget-object v3, Lcom/example/core/settings/AppSettingsDefaults;->INSTANCE:Lcom/example/core/settings/AppSettingsDefaults;
+
+    invoke-virtual {v3}, Lcom/example/core/settings/AppSettingsDefaults;->getDEFAULT_CITY()Lcom/example/core/settings/ManualCity;
+
+    move-result-object v3
+
+    invoke-virtual {v3}, Lcom/example/core/settings/ManualCity;->getTimeZoneId()Ljava/lang/String;
+
+    move-result-object v8
+
+    .line 374
+    const-string v3, "default_city"
+
+    invoke-direct/range {v2 .. v8}, Lcom/example/core/api/SunLocation;-><init>(Ljava/lang/String;DDLjava/lang/String;)V
+
+    .line 381
+    .local v2, "defaultLocation":Lcom/example/core/api/SunLocation;
+    invoke-static {}, Lkotlin/collections/CollectionsKt;->createListBuilder()Ljava/util/List;
+
+    move-result-object v3
+
+    move-object v4, v3
+
+    .local v4, "$this$buildSunTimesCandidates_u24lambda_u2459\\1":Ljava/util/List;
+    const/4 v5, 0x0
+
+    .line 382
+    .local v5, "$i$a$-buildList-MainActivity$buildSunTimesCandidates$1\\1\\381\\0":I
+    invoke-virtual {v0}, Lcom/example/core/settings/AppSettingsSnapshot;->getLocationMode()Lcom/example/core/settings/LocationMode;
+
+    move-result-object v6
+
+    sget-object v7, Lcom/example/core/settings/LocationMode;->GPS:Lcom/example/core/settings/LocationMode;
+
+    if-ne v6, v7, :cond_7a
+
+    .line 384
+    nop
+
+    .line 385
+    nop
+
+    .line 383
+    invoke-virtual {v0}, Lcom/example/core/settings/AppSettingsSnapshot;->getAutomaticLocation()Lcom/example/core/location/LocationSnapshot;
+
+    move-result-object v6
+
+    .line 384
+    if-eqz v6, :cond_79
+
+    .line 383
+    nop
+
+    .line 384
+    const-string v7, "gps_cached"
+
+    invoke-virtual {v6, v7}, Lcom/example/core/location/LocationSnapshot;->toSunLocation(Ljava/lang/String;)Lcom/example/core/api/SunLocation;
+
+    move-result-object v6
+
+    .line 385
+    if-eqz v6, :cond_79
+
+    .line 383
+    nop
+
+    .line 385
+    nop
+
+    .line 467
+    .local v6, "it\\2":Lcom/example/core/api/SunLocation;
+    const/4 v7, 0x0
+
+    .line 385
+    .local v7, "$i$a$-let-MainActivity$buildSunTimesCandidates$1$1\\2\\385\\1":I
+    invoke-interface {v4, v6}, Ljava/util/List;->add(Ljava/lang/Object;)Z
+
+    .end local v6    # "it\\2":Lcom/example/core/api/SunLocation;
+    .end local v7    # "$i$a$-let-MainActivity$buildSunTimesCandidates$1$1\\2\\385\\1":I
+    goto :goto_7a
+
+    .line 384
+    :cond_79
+    nop
+
+    .line 387
+    :cond_7a
+    :goto_7a
+    invoke-interface {v4, v1}, Ljava/util/List;->add(Ljava/lang/Object;)Z
+
+    .line 388
+    invoke-interface {v4, v2}, Ljava/util/List;->add(Ljava/lang/Object;)Z
+
+    .line 389
+    nop
+
+    .line 381
+    .end local v4    # "$this$buildSunTimesCandidates_u24lambda_u2459\\1":Ljava/util/List;
+    .end local v5    # "$i$a$-buildList-MainActivity$buildSunTimesCandidates$1\\1\\381\\0":I
+    invoke-static {v3}, Lkotlin/collections/CollectionsKt;->build(Ljava/util/List;)Ljava/util/List;
+
+    move-result-object v3
+
+    check-cast v3, Ljava/lang/Iterable;
+
+    .line 389
+    nop
+
+    .local v3, "$this$distinctBy\\3":Ljava/lang/Iterable;
+    const/4 v4, 0x0
+
+    .line 468
+    .local v4, "$i$f$distinctBy\\3\\389":I
+    new-instance v5, Ljava/util/HashSet;
+
+    invoke-direct {v5}, Ljava/util/HashSet;-><init>()V
+
+    .line 469
+    .local v5, "set\\3":Ljava/util/HashSet;
+    new-instance v6, Ljava/util/ArrayList;
+
+    invoke-direct {v6}, Ljava/util/ArrayList;-><init>()V
+
+    .line 470
+    .local v6, "list\\3":Ljava/util/ArrayList;
+    invoke-interface {v3}, Ljava/lang/Iterable;->iterator()Ljava/util/Iterator;
+
+    move-result-object v7
+
+    :goto_97
+    invoke-interface {v7}, Ljava/util/Iterator;->hasNext()Z
+
+    move-result v8
+
+    if-eqz v8, :cond_e6
+
+    invoke-interface {v7}, Ljava/util/Iterator;->next()Ljava/lang/Object;
+
+    move-result-object v8
+
+    .line 471
+    .local v8, "e\\3":Ljava/lang/Object;
+    move-object v9, v8
+
+    check-cast v9, Lcom/example/core/api/SunLocation;
+
+    .local v9, "it\\4":Lcom/example/core/api/SunLocation;
+    const/4 v10, 0x0
+
+    .line 389
+    .local v10, "$i$a$-distinctBy-MainActivity$buildSunTimesCandidates$2\\4\\471\\0":I
+    invoke-virtual {v9}, Lcom/example/core/api/SunLocation;->getLatitude()D
+
+    move-result-wide v11
+
+    invoke-virtual {v9}, Lcom/example/core/api/SunLocation;->getLongitude()D
+
+    move-result-wide v13
+
+    invoke-virtual {v9}, Lcom/example/core/api/SunLocation;->getTimeZoneId()Ljava/lang/String;
+
+    move-result-object v15
+
+    if-nez v15, :cond_b5
+
+    const-string v15, ""
+
+    :cond_b5
+    move-object/from16 v16, v0
+
+    .end local v0    # "settings":Lcom/example/core/settings/AppSettingsSnapshot;
+    .local v16, "settings":Lcom/example/core/settings/AppSettingsSnapshot;
+    new-instance v0, Ljava/lang/StringBuilder;
+
+    invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
+
+    invoke-virtual {v0, v11, v12}, Ljava/lang/StringBuilder;->append(D)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    const-string v11, "|"
+
+    invoke-virtual {v0, v11}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    invoke-virtual {v0, v13, v14}, Ljava/lang/StringBuilder;->append(D)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    invoke-virtual {v0, v11}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    invoke-virtual {v0, v15}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v0
+
+    .line 471
+    .end local v9    # "it\\4":Lcom/example/core/api/SunLocation;
+    .end local v10    # "$i$a$-distinctBy-MainActivity$buildSunTimesCandidates$2\\4\\471\\0":I
+    nop
+
+    .line 472
+    .local v0, "key\\3":Ljava/lang/Object;
+    invoke-virtual {v5, v0}, Ljava/util/HashSet;->add(Ljava/lang/Object;)Z
+
+    move-result v9
+
+    if-eqz v9, :cond_e3
+
+    .line 473
+    invoke-virtual {v6, v8}, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
+
+    move-object/from16 v0, v16
+
+    goto :goto_97
+
+    .line 472
+    :cond_e3
+    move-object/from16 v0, v16
+
+    goto :goto_97
+
+    .line 475
+    .end local v8    # "e\\3":Ljava/lang/Object;
+    .end local v16    # "settings":Lcom/example/core/settings/AppSettingsSnapshot;
+    .local v0, "settings":Lcom/example/core/settings/AppSettingsSnapshot;
+    :cond_e6
+    move-object/from16 v16, v0
+
+    .end local v0    # "settings":Lcom/example/core/settings/AppSettingsSnapshot;
+    .restart local v16    # "settings":Lcom/example/core/settings/AppSettingsSnapshot;
+    move-object v0, v6
+
+    check-cast v0, Ljava/util/List;
+
+    .line 381
+    .end local v3    # "$this$distinctBy\\3":Ljava/lang/Iterable;
+    .end local v4    # "$i$f$distinctBy\\3\\389":I
+    .end local v5    # "set\\3":Ljava/util/HashSet;
+    .end local v6    # "list\\3":Ljava/util/ArrayList;
+    return-object v0
+.end method
+
+.method private final configureLogging()V
+    .registers 11
+
+    .line 436
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->getApplicationInfo()Landroid/content/pm/ApplicationInfo;
+
+    move-result-object v0
+
+    iget v0, v0, Landroid/content/pm/ApplicationInfo;->flags:I
+
+    and-int/lit8 v0, v0, 0x2
+
+    if-eqz v0, :cond_c
+
+    const/4 v0, 0x1
+
+    goto :goto_d
+
+    :cond_c
+    const/4 v0, 0x0
+
+    .line 435
+    :goto_d
+    nop
+
+    .line 437
+    .local v0, "debuggable":Z
+    sget-object v1, Lcom/example/core/Logger;->INSTANCE:Lcom/example/core/Logger;
+
+    .line 438
+    new-instance v2, Lcom/example/core/Logger$Config;
+
+    .line 439
+    if-eqz v0, :cond_17
+
+    sget-object v3, Lcom/example/core/Logger$Level;->VERBOSE:Lcom/example/core/Logger$Level;
+
+    goto :goto_19
+
+    :cond_17
+    sget-object v3, Lcom/example/core/Logger$Level;->DEBUG:Lcom/example/core/Logger$Level;
+
+    :goto_19
+    move-object v4, v3
+
+    .line 438
+    const/16 v8, 0x1d
+
+    const/4 v9, 0x0
+
+    const/4 v3, 0x0
+
+    const/4 v5, 0x0
+
+    const/4 v6, 0x0
+
+    const/4 v7, 0x0
+
+    invoke-direct/range {v2 .. v9}, Lcom/example/core/Logger$Config;-><init>(ZLcom/example/core/Logger$Level;Ljava/lang/String;ZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+
+    .line 437
+    invoke-virtual {v1, v2}, Lcom/example/core/Logger;->configure(Lcom/example/core/Logger$Config;)V
+
+    .line 442
+    sget-object v1, Lcom/example/core/Logger;->INSTANCE:Lcom/example/core/Logger;
+
+    invoke-virtual {v1}, Lcom/example/core/Logger;->restartSession()V
+
+    .line 443
+    return-void
+.end method
+
+.method private final ensureHomeViewModelCreated()Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .registers 10
+
+    .line 448
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->homeViewModelOrNull$app()Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    move-result-object v0
+
+    if-eqz v0, :cond_8
+
+    .line 467
+    .local v0, "it\\1":Lcom/example/lumisky/viewmodel/HomeViewModel;
+    const/4 v1, 0x0
+
+    .line 448
+    .local v1, "$i$a$-let-MainActivity$ensureHomeViewModelCreated$1\\1\\448\\0":I
+    return-object v0
+
+    .line 449
+    .end local v0    # "it\\1":Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .end local v1    # "$i$a$-let-MainActivity$ensureHomeViewModelCreated$1\\1\\448\\0":I
+    :cond_8
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->getAppSettingsRepository()Lcom/example/core/settings/AppSettingsRepository;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Lcom/example/core/settings/AppSettingsRepository;->snapshot()Lcom/example/core/settings/AppSettingsSnapshot;
+
+    move-result-object v6
+
+    .line 450
+    .local v6, "initialSettings":Lcom/example/core/settings/AppSettingsSnapshot;
+    new-instance v1, Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    .line 451
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->getApplicationContext()Landroid/content/Context;
+
+    move-result-object v2
+
+    const-string v0, "getApplicationContext(...)"
+
+    invoke-static {v2, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullExpressionValue(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 450
+    nop
+
+    .line 452
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->getAppSettingsRepository()Lcom/example/core/settings/AppSettingsRepository;
+
+    move-result-object v4
+
+    .line 450
+    nop
+
+    .line 453
+    nop
+
+    .line 450
+    const/16 v7, 0xa
+
+    const/4 v8, 0x0
+
+    const/4 v3, 0x0
+
+    const/4 v5, 0x0
+
+    invoke-direct/range {v1 .. v8}, Lcom/example/lumisky/viewmodel/HomeViewModel;-><init>(Landroid/content/Context;Lcom/example/core/api/SunTimesRepository;Lcom/example/core/settings/AppSettingsRepository;Lcom/example/core/location/LastKnownLocationProvider;Lcom/example/core/settings/AppSettingsSnapshot;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+
+    .line 454
+    move-object v0, v1
+
+    .local v0, "created\\2":Lcom/example/lumisky/viewmodel/HomeViewModel;
+    const/4 v2, 0x0
+
+    .line 455
+    .local v2, "$i$a$-also-MainActivity$ensureHomeViewModelCreated$2\\2\\454\\0":I
+    iget-object v3, p0, Lcom/example/lumisky/MainActivity;->homeViewModelState:Landroidx/compose/runtime/MutableState;
+
+    invoke-interface {v3, v0}, Landroidx/compose/runtime/MutableState;->setValue(Ljava/lang/Object;)V
+
+    .line 456
+    nop
+
+    .line 454
+    .end local v0    # "created\\2":Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .end local v2    # "$i$a$-also-MainActivity$ensureHomeViewModelCreated$2\\2\\454\\0":I
+    nop
+
+    .line 450
+    return-object v1
+.end method
+
+.method private final getAppSettingsRepository()Lcom/example/core/settings/AppSettingsRepository;
+    .registers 2
+
+    .line 65
+    iget-object v0, p0, Lcom/example/lumisky/MainActivity;->appSettingsRepository$delegate:Lkotlin/Lazy;
+
+    invoke-interface {v0}, Lkotlin/Lazy;->getValue()Ljava/lang/Object;
+
+    move-result-object v0
+
+    check-cast v0, Lcom/example/core/settings/AppSettingsRepository;
+
+    return-object v0
+.end method
+
+.method private final getSetWallpaperExecutor()Ljava/util/concurrent/ExecutorService;
+    .registers 2
+
+    .line 68
+    iget-object v0, p0, Lcom/example/lumisky/MainActivity;->setWallpaperExecutor$delegate:Lkotlin/Lazy;
+
+    invoke-interface {v0}, Lkotlin/Lazy;->getValue()Ljava/lang/Object;
+
+    move-result-object v0
+
+    check-cast v0, Ljava/util/concurrent/ExecutorService;
+
+    return-object v0
+.end method
+
+.method private final getSunTimesRepository()Lcom/example/core/api/SunTimesRepository;
+    .registers 2
+
+    .line 67
+    iget-object v0, p0, Lcom/example/lumisky/MainActivity;->sunTimesRepository$delegate:Lkotlin/Lazy;
+
+    invoke-interface {v0}, Lkotlin/Lazy;->getValue()Ljava/lang/Object;
+
+    move-result-object v0
+
+    check-cast v0, Lcom/example/core/api/SunTimesRepository;
+
+    return-object v0
+.end method
+
+.method private final getWallpaperConfigStore()Lcom/example/engine/config/WallpaperConfigStore;
+    .registers 2
+
+    .line 66
+    iget-object v0, p0, Lcom/example/lumisky/MainActivity;->wallpaperConfigStore$delegate:Lkotlin/Lazy;
+
+    invoke-interface {v0}, Lkotlin/Lazy;->getValue()Ljava/lang/Object;
+
+    move-result-object v0
+
+    check-cast v0, Lcom/example/engine/config/WallpaperConfigStore;
+
+    return-object v0
+.end method
+
+.method private final launchSystemWallpaperSetFlow()V
+    .registers 9
+
+    .line 393
+    new-instance v0, Landroid/content/Intent;
+
+    const-string v1, "android.service.wallpaper.CHANGE_LIVE_WALLPAPER"
+
+    invoke-direct {v0, v1}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
+
+    move-object v1, v0
+
+    .local v1, "$this$launchSystemWallpaperSetFlow_u24lambda_u2461\\1":Landroid/content/Intent;
+    const/4 v2, 0x0
+
+    .line 394
+    .local v2, "$i$a$-apply-MainActivity$launchSystemWallpaperSetFlow$directIntent$1\\1\\393\\0":I
+    nop
+
+    .line 395
+    nop
+
+    .line 396
+    new-instance v3, Landroid/content/ComponentName;
+
+    .line 397
+    move-object v4, p0
+
+    check-cast v4, Landroid/content/Context;
+
+    .line 398
+    const-class v5, Lcom/example/wallpaper/SkyWallpaperService;
+
+    .line 396
+    invoke-direct {v3, v4, v5}, Landroid/content/ComponentName;-><init>(Landroid/content/Context;Ljava/lang/Class;)V
+
+    check-cast v3, Landroid/os/Parcelable;
+
+    .line 394
+    const-string v4, "android.service.wallpaper.extra.LIVE_WALLPAPER_COMPONENT"
+
+    invoke-virtual {v1, v4, v3}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Landroid/os/Parcelable;)Landroid/content/Intent;
+
+    .line 401
+    nop
+
+    .line 393
+    .end local v1    # "$this$launchSystemWallpaperSetFlow_u24lambda_u2461\\1":Landroid/content/Intent;
+    .end local v2    # "$i$a$-apply-MainActivity$launchSystemWallpaperSetFlow$directIntent$1\\1\\393\\0":I
+    nop
+
+    .line 402
+    .local v0, "directIntent":Landroid/content/Intent;
+    const/4 v1, 0x0
+
+    :try_start_1f
+    sget-object v2, Lkotlin/Result;->Companion:Lkotlin/Result$Companion;
+
+    move-object v2, p0
+
+    check-cast v2, Lcom/example/lumisky/MainActivity;
+
+    .local v2, "$this$launchSystemWallpaperSetFlow_u24lambda_u2462\\2":Lcom/example/lumisky/MainActivity;
+    const/4 v3, 0x0
+
+    .line 403
+    .local v3, "$i$a$-runCatching-MainActivity$launchSystemWallpaperSetFlow$1\\2\\402\\0":I
+    invoke-virtual {v2, v0}, Lcom/example/lumisky/MainActivity;->startActivity(Landroid/content/Intent;)V
+
+    .line 404
+    invoke-virtual {v2, v1, v1}, Lcom/example/lumisky/MainActivity;->overridePendingTransition(II)V
+
+    .line 405
+    nop
+
+    .end local v2    # "$this$launchSystemWallpaperSetFlow_u24lambda_u2462\\2":Lcom/example/lumisky/MainActivity;
+    .end local v3    # "$i$a$-runCatching-MainActivity$launchSystemWallpaperSetFlow$1\\2\\402\\0":I
+    sget-object v2, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    .line 402
+    invoke-static {v2}, Lkotlin/Result;->constructor-impl(Ljava/lang/Object;)Ljava/lang/Object;
+
+    move-result-object v2
+    :try_end_32
+    .catchall {:try_start_1f .. :try_end_32} :catchall_33
+
+    goto :goto_3e
+
+    :catchall_33
+    move-exception v2
+
+    sget-object v3, Lkotlin/Result;->Companion:Lkotlin/Result$Companion;
+
+    invoke-static {v2}, Lkotlin/ResultKt;->createFailure(Ljava/lang/Throwable;)Ljava/lang/Object;
+
+    move-result-object v2
+
+    invoke-static {v2}, Lkotlin/Result;->constructor-impl(Ljava/lang/Object;)Ljava/lang/Object;
+
+    move-result-object v2
+
+    .line 405
+    :goto_3e
+    invoke-static {v2}, Lkotlin/Result;->exceptionOrNull-impl(Ljava/lang/Object;)Ljava/lang/Throwable;
+
+    move-result-object v2
+
+    if-eqz v2, :cond_74
+
+    .local v2, "it\\4":Ljava/lang/Throwable;
+    const/4 v3, 0x0
+
+    .line 406
+    .local v3, "$i$a$-onFailure-MainActivity$launchSystemWallpaperSetFlow$2\\4\\405\\0":I
+    sget-object v4, Lcom/example/core/Logger;->INSTANCE:Lcom/example/core/Logger;
+
+    const-string v5, "MainActivity"
+
+    const-string v6, "direct live wallpaper intent failed, falling back chooser"
+
+    invoke-virtual {v4, v5, v6, v2}, Lcom/example/core/Logger;->w(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+
+    .line 407
+    :try_start_4e
+    sget-object v4, Lkotlin/Result;->Companion:Lkotlin/Result$Companion;
+
+    move-object v4, p0
+
+    check-cast v4, Lcom/example/lumisky/MainActivity;
+
+    .local v4, "$this$launchSystemWallpaperSetFlow_u24lambda_u2464_u24lambda_u2463\\5":Lcom/example/lumisky/MainActivity;
+    const/4 v5, 0x0
+
+    .line 408
+    .local v5, "$i$a$-runCatching-MainActivity$launchSystemWallpaperSetFlow$2$1\\5\\407\\4":I
+    new-instance v6, Landroid/content/Intent;
+
+    const-string v7, "android.service.wallpaper.LIVE_WALLPAPER_CHOOSER"
+
+    invoke-direct {v6, v7}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
+
+    invoke-virtual {v4, v6}, Lcom/example/lumisky/MainActivity;->startActivity(Landroid/content/Intent;)V
+
+    .line 409
+    invoke-virtual {v4, v1, v1}, Lcom/example/lumisky/MainActivity;->overridePendingTransition(II)V
+
+    .line 410
+    nop
+
+    .end local v4    # "$this$launchSystemWallpaperSetFlow_u24lambda_u2464_u24lambda_u2463\\5":Lcom/example/lumisky/MainActivity;
+    .end local v5    # "$i$a$-runCatching-MainActivity$launchSystemWallpaperSetFlow$2$1\\5\\407\\4":I
+    sget-object v1, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    .line 407
+    invoke-static {v1}, Lkotlin/Result;->constructor-impl(Ljava/lang/Object;)Ljava/lang/Object;
+    :try_end_67
+    .catchall {:try_start_4e .. :try_end_67} :catchall_68
+
+    goto :goto_72
+
+    :catchall_68
+    move-exception v1
+
+    sget-object v4, Lkotlin/Result;->Companion:Lkotlin/Result$Companion;
+
+    invoke-static {v1}, Lkotlin/ResultKt;->createFailure(Ljava/lang/Throwable;)Ljava/lang/Object;
+
+    move-result-object v1
+
+    invoke-static {v1}, Lkotlin/Result;->constructor-impl(Ljava/lang/Object;)Ljava/lang/Object;
+
+    .line 411
+    :goto_72
+    nop
+
+    .line 405
+    .end local v2    # "it\\4":Ljava/lang/Throwable;
+    .end local v3    # "$i$a$-onFailure-MainActivity$launchSystemWallpaperSetFlow$2\\4\\405\\0":I
+    nop
+
+    .line 412
+    :cond_74
+    return-void
+.end method
+
+.method private final notifyWallpaperConfigChanged()V
+    .registers 6
+
+    .line 415
+    :try_start_0
+    sget-object v0, Lkotlin/Result;->Companion:Lkotlin/Result$Companion;
+
+    move-object v0, p0
+
+    check-cast v0, Lcom/example/lumisky/MainActivity;
+
+    .local v0, "$this$notifyWallpaperConfigChanged_u24lambda_u2465\\1":Lcom/example/lumisky/MainActivity;
+    const/4 v1, 0x0
+
+    .line 416
+    .local v1, "$i$a$-runCatching-MainActivity$notifyWallpaperConfigChanged$1\\1\\415\\0":I
+    nop
+
+    .line 417
+    new-instance v2, Landroid/content/Intent;
+
+    const-string v3, "com.example.lumisky.action.APPLY_STORED_WALLPAPER_CONFIG"
+
+    invoke-direct {v2, v3}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
+
+    .line 418
+    invoke-virtual {v0}, Lcom/example/lumisky/MainActivity;->getPackageName()Ljava/lang/String;
+
+    move-result-object v3
+
+    invoke-virtual {v2, v3}, Landroid/content/Intent;->setPackage(Ljava/lang/String;)Landroid/content/Intent;
+
+    move-result-object v2
+
+    .line 416
+    invoke-virtual {v0, v2}, Lcom/example/lumisky/MainActivity;->sendBroadcast(Landroid/content/Intent;)V
+
+    .line 420
+    nop
+
+    .end local v0    # "$this$notifyWallpaperConfigChanged_u24lambda_u2465\\1":Lcom/example/lumisky/MainActivity;
+    .end local v1    # "$i$a$-runCatching-MainActivity$notifyWallpaperConfigChanged$1\\1\\415\\0":I
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    .line 415
+    invoke-static {v0}, Lkotlin/Result;->constructor-impl(Ljava/lang/Object;)Ljava/lang/Object;
+
+    move-result-object v0
+    :try_end_20
+    .catchall {:try_start_0 .. :try_end_20} :catchall_21
+
+    goto :goto_2c
+
+    :catchall_21
+    move-exception v0
+
+    sget-object v1, Lkotlin/Result;->Companion:Lkotlin/Result$Companion;
+
+    invoke-static {v0}, Lkotlin/ResultKt;->createFailure(Ljava/lang/Throwable;)Ljava/lang/Object;
+
+    move-result-object v0
+
+    invoke-static {v0}, Lkotlin/Result;->constructor-impl(Ljava/lang/Object;)Ljava/lang/Object;
+
+    move-result-object v0
+
+    .line 420
+    :goto_2c
+    invoke-static {v0}, Lkotlin/Result;->exceptionOrNull-impl(Ljava/lang/Object;)Ljava/lang/Throwable;
+
+    move-result-object v0
+
+    if-eqz v0, :cond_3e
+
+    .local v0, "it\\3":Ljava/lang/Throwable;
+    const/4 v1, 0x0
+
+    .line 421
+    .local v1, "$i$a$-onFailure-MainActivity$notifyWallpaperConfigChanged$2\\3\\420\\0":I
+    sget-object v2, Lcom/example/core/Logger;->INSTANCE:Lcom/example/core/Logger;
+
+    const-string v3, "MainActivity"
+
+    const-string v4, "failed to broadcast wallpaper config update"
+
+    invoke-virtual {v2, v3, v4, v0}, Lcom/example/core/Logger;->w(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+
+    .line 422
+    nop
+
+    .line 420
+    .end local v0    # "it\\3":Ljava/lang/Throwable;
+    .end local v1    # "$i$a$-onFailure-MainActivity$notifyWallpaperConfigChanged$2\\3\\420\\0":I
+    nop
+
+    .line 423
+    :cond_3e
+    return-void
+.end method
+
+.method static final onCreate$lambda$53(Lcom/example/lumisky/MainActivity;Landroidx/compose/runtime/Composer;I)Lkotlin/Unit;
+    .registers 11
+    .param p0, "this$0"    # Lcom/example/lumisky/MainActivity;
+    .param p1, "$composer"    # Landroidx/compose/runtime/Composer;
+    .param p2, "$changed"    # I
+
+    const-string v0, "C99@4275L5038,97@4230L5083:MainActivity.kt#77dxrf"
+
+    invoke-static {p1, v0}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    and-int/lit8 v0, p2, 0x3
+
+    const/4 v1, 0x2
+
+    const/4 v2, 0x1
+
+    const/4 v3, 0x0
+
+    if-eq v0, v1, :cond_e
+
+    move v0, v2
+
+    goto :goto_f
+
+    :cond_e
+    move v0, v3
+
+    :goto_f
+    and-int/lit8 v1, p2, 0x1
+
+    invoke-interface {p1, v0, v1}, Landroidx/compose/runtime/Composer;->shouldExecute(ZI)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_9b
+
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->isTraceInProgress()Z
+
+    move-result v0
+
+    if-eqz v0, :cond_26
+
+    const/4 v0, -0x1
+
+    const-string v1, "com.example.lumisky.MainActivity.onCreate.<anonymous> (MainActivity.kt:90)"
+
+    const v4, -0x6fbea73
+
+    invoke-static {v4, p2, v0, v1}, Landroidx/compose/runtime/ComposerKt;->traceEventStart(IIILjava/lang/String;)V
+
+    .line 91
+    :cond_26
+    iget-object v0, p0, Lcom/example/lumisky/MainActivity;->homeViewModelState:Landroidx/compose/runtime/MutableState;
+
+    invoke-interface {v0}, Landroidx/compose/runtime/MutableState;->getValue()Ljava/lang/Object;
+
+    move-result-object v0
+
+    check-cast v0, Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    .line 92
+    .local v0, "homeViewModel":Lcom/example/lumisky/viewmodel/HomeViewModel;
+    if-eqz v0, :cond_36
+
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getAppThemeMode()Lcom/example/core/settings/AppThemeMode;
+
+    move-result-object v1
+
+    if-nez v1, :cond_38
+
+    :cond_36
+    iget-object v1, p0, Lcom/example/lumisky/MainActivity;->launchThemeMode:Lcom/example/core/settings/AppThemeMode;
+
+    .line 93
+    .local v1, "resolvedThemeMode":Lcom/example/core/settings/AppThemeMode;
+    :cond_38
+    sget-object v4, Lcom/example/lumisky/MainActivity$WhenMappings;->$EnumSwitchMapping$0:[I
+
+    invoke-virtual {v1}, Lcom/example/core/settings/AppThemeMode;->ordinal()I
+
+    move-result v5
+
+    aget v4, v4, v5
+
+    packed-switch v4, :pswitch_data_a2
+
+    const v2, -0x37ab0745
+
+    invoke-interface {p1, v2}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    invoke-interface {p1}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    new-instance v2, Lkotlin/NoWhenBranchMatchedException;
+
+    invoke-direct {v2}, Lkotlin/NoWhenBranchMatchedException;-><init>()V
+
+    throw v2
+
+    .line 96
+    :pswitch_52
+    const v4, 0x424c161e
+
+    invoke-interface {p1, v4}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    invoke-interface {p1}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    move v4, v2
+
+    goto :goto_7a
+
+    .line 95
+    :pswitch_5d
+    const v4, 0x424b9e23
+
+    invoke-interface {p1, v4}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    invoke-interface {p1}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    move v4, v3
+
+    goto :goto_7a
+
+    .line 94
+    :pswitch_68
+    const v4, -0x37ab00fe
+
+    invoke-interface {p1, v4}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    const-string v4, "93@4138L21"
+
+    invoke-static {p1, v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    invoke-static {p1, v3}, Landroidx/compose/foundation/DarkThemeKt;->isSystemInDarkTheme(Landroidx/compose/runtime/Composer;I)Z
+
+    move-result v4
+
+    invoke-interface {p1}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    .line 93
+    :goto_7a
+    nop
+
+    .line 99
+    .local v4, "darkTheme":Z
+    nop
+
+    .line 100
+    new-instance v5, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda21;
+
+    invoke-direct {v5, p0, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda21;-><init>(Lcom/example/lumisky/MainActivity;Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    const/16 v6, 0x36
+
+    const v7, 0x65441a12
+
+    invoke-static {v7, v2, v5, p1, v6}, Landroidx/compose/runtime/internal/ComposableLambdaKt;->rememberComposableLambda(IZLjava/lang/Object;Landroidx/compose/runtime/Composer;I)Landroidx/compose/runtime/internal/ComposableLambda;
+
+    move-result-object v2
+
+    check-cast v2, Lkotlin/jvm/functions/Function2;
+
+    .line 98
+    const/16 v5, 0x30
+
+    invoke-static {v4, v2, p1, v5, v3}, Lcom/example/lumisky/ui/theme/ThemeKt;->LumiskyTheme(ZLkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;II)V
+
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->isTraceInProgress()Z
+
+    move-result v2
+
+    if-eqz v2, :cond_9e
+
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->traceEventEnd()V
+
+    .end local v0    # "homeViewModel":Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .end local v1    # "resolvedThemeMode":Lcom/example/core/settings/AppThemeMode;
+    .end local v4    # "darkTheme":Z
+    goto :goto_9e
+
+    .line 90
+    :cond_9b
+    invoke-interface {p1}, Landroidx/compose/runtime/Composer;->skipToGroupEnd()V
+
+    .line 255
+    :cond_9e
+    :goto_9e
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+
+    nop
+
+    :pswitch_data_a2
+    .packed-switch 0x1
+        :pswitch_68
+        :pswitch_5d
+        :pswitch_52
+    .end packed-switch
+.end method
+
+.method static final onCreate$lambda$53$lambda$52(Lcom/example/lumisky/MainActivity;Lcom/example/lumisky/viewmodel/HomeViewModel;Landroidx/compose/runtime/Composer;I)Lkotlin/Unit;
+    .registers 28
+    .param p0, "this$0"    # Lcom/example/lumisky/MainActivity;
+    .param p1, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .param p2, "$composer"    # Landroidx/compose/runtime/Composer;
+    .param p3, "$changed"    # I
+
+    move-object/from16 v0, p0
+
+    move-object/from16 v1, p1
+
+    move-object/from16 v7, p2
+
+    move/from16 v12, p3
+
+    const-string v2, "C100@4319L31,100@4302L48,101@4404L25,101@4387L42,116@4876L202,116@4865L213,123@5105L65,123@5084L86:MainActivity.kt#77dxrf"
+
+    invoke-static {v7, v2}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    and-int/lit8 v2, v12, 0x3
+
+    const/4 v3, 0x2
+
+    const/4 v11, 0x0
+
+    if-eq v2, v3, :cond_15
+
+    const/4 v2, 0x1
+
+    goto :goto_16
+
+    :cond_15
+    move v2, v11
+
+    :goto_16
+    and-int/lit8 v3, v12, 0x1
+
+    invoke-interface {v7, v2, v3}, Landroidx/compose/runtime/Composer;->shouldExecute(ZI)Z
+
+    move-result v2
+
+    if-eqz v2, :cond_296
+
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->isTraceInProgress()Z
+
+    move-result v2
+
+    if-eqz v2, :cond_2d
+
+    const/4 v2, -0x1
+
+    const-string v3, "com.example.lumisky.MainActivity.onCreate.<anonymous>.<anonymous> (MainActivity.kt:100)"
+
+    const v4, 0x65441a12
+
+    invoke-static {v4, v12, v2, v3}, Landroidx/compose/runtime/ComposerKt;->traceEventStart(IIILjava/lang/String;)V
+
+    :cond_2d
+    new-array v2, v11, [Ljava/lang/Object;
+
+    .line 101
+    const v3, 0x24a5e331
+
+    const-string v13, "CC(remember):MainActivity.kt#9igjgp"
+
+    invoke-static {v7, v3, v13}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    const/4 v3, 0x0
+
+    .local v3, "invalid\\1":Z
+    move-object/from16 v4, p2
+
+    .local v4, "$this$cache\\1":Landroidx/compose/runtime/Composer;
+    const/4 v5, 0x0
+
+    .line 572
+    .local v5, "$i$f$cache\\1\\101":I
+    invoke-interface {v4}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v6
+
+    .local v6, "it\\1":Ljava/lang/Object;
+    const/4 v8, 0x0
+
+    .line 573
+    .local v8, "$i$a$-let-ComposerKt$cache$1\\2\\572\\1":I
+    sget-object v9, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    invoke-virtual {v9}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v9
+
+    if-ne v6, v9, :cond_53
+
+    .line 574
+    const/4 v9, 0x0
+
+    .local v9, "$i$a$-cache-MainActivity$onCreate$1$1$currentScreen$2\\3\\574\\0":I
+    new-instance v14, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda0;
+
+    invoke-direct {v14}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda0;-><init>()V
+
+    .line 575
+    .end local v9    # "$i$a$-cache-MainActivity$onCreate$1$1$currentScreen$2\\3\\574\\0":I
+    .local v14, "value\\2":Ljava/lang/Object;
+    invoke-interface {v4, v14}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 576
+    move-object v6, v14
+
+    .end local v14    # "value\\2":Ljava/lang/Object;
+    goto :goto_54
+
+    .line 577
+    :cond_53
+    nop
+
+    .line 572
+    .end local v6    # "it\\1":Ljava/lang/Object;
+    .end local v8    # "$i$a$-let-ComposerKt$cache$1\\2\\572\\1":I
+    :goto_54
+    nop
+
+    .line 101
+    .end local v3    # "invalid\\1":Z
+    .end local v4    # "$this$cache\\1":Landroidx/compose/runtime/Composer;
+    .end local v5    # "$i$f$cache\\1\\101":I
+    check-cast v6, Lkotlin/jvm/functions/Function0;
+
+    invoke-static {v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    const/16 v14, 0x30
+
+    invoke-static {v2, v6, v7, v14}, Landroidx/compose/runtime/saveable/RememberSaveableKt;->rememberSaveable([Ljava/lang/Object;Lkotlin/jvm/functions/Function0;Landroidx/compose/runtime/Composer;I)Ljava/lang/Object;
+
+    move-result-object v2
+
+    move-object v15, v2
+
+    check-cast v15, Landroidx/compose/runtime/MutableState;
+
+    .local v15, "currentScreen$delegate":Landroidx/compose/runtime/MutableState;
+    new-array v2, v11, [Ljava/lang/Object;
+
+    .line 102
+    const v3, 0x24a5edcb
+
+    invoke-static {v7, v3, v13}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    const/4 v3, 0x0
+
+    .local v3, "invalid\\4":Z
+    move-object/from16 v4, p2
+
+    .local v4, "$this$cache\\4":Landroidx/compose/runtime/Composer;
+    const/4 v5, 0x0
+
+    .line 578
+    .local v5, "$i$f$cache\\4\\102":I
+    invoke-interface {v4}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v6
+
+    .local v6, "it\\4":Ljava/lang/Object;
+    const/4 v8, 0x0
+
+    .line 579
+    .local v8, "$i$a$-let-ComposerKt$cache$1\\5\\578\\4":I
+    sget-object v9, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    invoke-virtual {v9}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v9
+
+    if-ne v6, v9, :cond_89
+
+    .line 580
+    const/4 v9, 0x0
+
+    .local v9, "$i$a$-cache-MainActivity$onCreate$1$1$startupAnimationsEnabled$2\\6\\580\\0":I
+    new-instance v16, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda11;
+
+    invoke-direct/range {v16 .. v16}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda11;-><init>()V
+
+    .end local v9    # "$i$a$-cache-MainActivity$onCreate$1$1$startupAnimationsEnabled$2\\6\\580\\0":I
+    move-object/from16 v9, v16
+
+    .line 581
+    .local v9, "value\\5":Ljava/lang/Object;
+    invoke-interface {v4, v9}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 582
+    move-object v6, v9
+
+    .end local v9    # "value\\5":Ljava/lang/Object;
+    goto :goto_8a
+
+    .line 583
+    :cond_89
+    nop
+
+    .line 578
+    .end local v6    # "it\\4":Ljava/lang/Object;
+    .end local v8    # "$i$a$-let-ComposerKt$cache$1\\5\\578\\4":I
+    :goto_8a
+    nop
+
+    .line 102
+    .end local v3    # "invalid\\4":Z
+    .end local v4    # "$this$cache\\4":Landroidx/compose/runtime/Composer;
+    .end local v5    # "$i$f$cache\\4\\102":I
+    check-cast v6, Lkotlin/jvm/functions/Function0;
+
+    invoke-static {v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    invoke-static {v2, v6, v7, v14}, Landroidx/compose/runtime/saveable/RememberSaveableKt;->rememberSaveable([Ljava/lang/Object;Lkotlin/jvm/functions/Function0;Landroidx/compose/runtime/Composer;I)Ljava/lang/Object;
+
+    move-result-object v2
+
+    check-cast v2, Landroidx/compose/runtime/MutableState;
+
+    .line 103
+    .local v2, "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    invoke-static {v15}, Lcom/example/lumisky/MainActivity;->onCreate$lambda$53$lambda$52$lambda$6(Landroidx/compose/runtime/MutableState;)Ljava/lang/String;
+
+    move-result-object v3
+
+    const-string v4, "home"
+
+    invoke-static {v3, v4}, Lkotlin/jvm/internal/Intrinsics;->areEqual(Ljava/lang/Object;Ljava/lang/Object;)Z
+
+    move-result v3
+
+    if-eqz v3, :cond_b0
+
+    const v3, 0x70192dca
+
+    invoke-interface {v7, v3}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    invoke-interface {v7}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    .line 104
+    invoke-static {}, Lcom/example/lumisky/ui/home/HomeScreenKt;->getHomeScreenBackgroundColor()J
+
+    move-result-wide v3
+
+    goto :goto_ca
+
+    .line 105
+    :cond_b0
+    const v3, 0x7019d99f
+
+    invoke-interface {v7, v3}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    const-string v3, "105@4560L11"
+
+    invoke-static {v7, v3}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    .line 106
+    sget-object v3, Landroidx/compose/material3/MaterialTheme;->INSTANCE:Landroidx/compose/material3/MaterialTheme;
+
+    sget v4, Landroidx/compose/material3/MaterialTheme;->$stable:I
+
+    invoke-virtual {v3, v7, v4}, Landroidx/compose/material3/MaterialTheme;->getColorScheme(Landroidx/compose/runtime/Composer;I)Landroidx/compose/material3/ColorScheme;
+
+    move-result-object v3
+
+    invoke-virtual {v3}, Landroidx/compose/material3/ColorScheme;->getBackground-0d7_KjU()J
+
+    move-result-wide v3
+
+    .line 105
+    invoke-interface {v7}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    .line 103
+    :goto_ca
+    nop
+
+    .line 108
+    .local v3, "targetSystemBarColor":J
+    invoke-static {v2}, Lcom/example/lumisky/MainActivity;->onCreate$lambda$53$lambda$52$lambda$10(Landroidx/compose/runtime/MutableState;)Z
+
+    move-result v5
+
+    const/4 v6, 0x6
+
+    const/4 v8, 0x0
+
+    if-eqz v5, :cond_112
+
+    const v5, 0x701b7fff
+
+    invoke-interface {v7, v5}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    const-string v5, "108@4651L158"
+
+    invoke-static {v7, v5}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    .line 110
+    nop
+
+    .line 111
+    const/16 v5, 0x140
+
+    invoke-static {v5, v11, v8, v6, v8}, Landroidx/compose/animation/core/AnimationSpecKt;->tween$default(IILandroidx/compose/animation/core/Easing;ILjava/lang/Object;)Landroidx/compose/animation/core/TweenSpec;
+
+    move-result-object v5
+
+    check-cast v5, Landroidx/compose/animation/core/AnimationSpec;
+
+    .line 112
+    nop
+
+    .line 109
+    move-object v9, v2
+
+    move-wide v2, v3
+
+    move-object v4, v5
+
+    .end local v3    # "targetSystemBarColor":J
+    .local v2, "targetSystemBarColor":J
+    .local v9, "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    const-string v5, "main_system_bar_color"
+
+    move/from16 v16, v6
+
+    const/4 v6, 0x0
+
+    move-object/from16 v17, v8
+
+    const/16 v8, 0x1b0
+
+    move-object/from16 v18, v9
+
+    .end local v9    # "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    .local v18, "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    const/16 v9, 0x8
+
+    move/from16 v19, v14
+
+    move-object/from16 v10, v17
+
+    move-object/from16 v14, v18
+
+    .end local v18    # "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    .local v14, "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    invoke-static/range {v2 .. v9}, Landroidx/compose/animation/SingleValueAnimationKt;->animateColorAsState-euL9pac(JLandroidx/compose/animation/core/AnimationSpec;Ljava/lang/String;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;II)Landroidx/compose/runtime/State;
+
+    move-result-object v4
+
+    .line 113
+    move-wide/from16 v20, v2
+
+    .end local v2    # "targetSystemBarColor":J
+    .local v20, "targetSystemBarColor":J
+    invoke-interface {v4}, Landroidx/compose/runtime/State;->getValue()Ljava/lang/Object;
+
+    move-result-object v2
+
+    .line 108
+    check-cast v2, Landroidx/compose/ui/graphics/Color;
+
+    invoke-virtual {v2}, Landroidx/compose/ui/graphics/Color;->unbox-impl()J
+
+    move-result-wide v3
+
+    invoke-interface {v7}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    goto :goto_122
+
+    .line 114
+    .end local v14    # "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    .end local v20    # "targetSystemBarColor":J
+    .local v2, "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    .restart local v3    # "targetSystemBarColor":J
+    :cond_112
+    move-wide/from16 v20, v3
+
+    move-object v10, v8
+
+    move/from16 v19, v14
+
+    move-object v14, v2
+
+    .end local v2    # "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    .end local v3    # "targetSystemBarColor":J
+    .restart local v14    # "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    .restart local v20    # "targetSystemBarColor":J
+    const v2, 0x701e33af
+
+    invoke-interface {v7, v2}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    invoke-interface {v7}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    .line 115
+    nop
+
+    .line 108
+    :goto_122
+    move-wide v2, v3
+
+    .line 117
+    .local v2, "systemBarColor":J
+    const v4, 0x24a6297c
+
+    invoke-static {v7, v4, v13}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v7, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v4
+
+    invoke-interface {v7, v2, v3}, Landroidx/compose/runtime/Composer;->changed(J)Z
+
+    move-result v5
+
+    or-int/2addr v4, v5
+
+    .local v4, "invalid\\7":Z
+    move-object/from16 v5, p2
+
+    .local v5, "$this$cache\\7":Landroidx/compose/runtime/Composer;
+    const/4 v6, 0x0
+
+    .line 584
+    .local v6, "$i$f$cache\\7\\117":I
+    invoke-interface {v5}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v8
+
+    .local v8, "it\\7":Ljava/lang/Object;
+    const/4 v9, 0x0
+
+    .line 585
+    .local v9, "$i$a$-let-ComposerKt$cache$1\\8\\584\\7":I
+    if-nez v4, :cond_146
+
+    sget-object v18, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    invoke-virtual/range {v18 .. v18}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v10
+
+    if-ne v8, v10, :cond_145
+
+    goto :goto_146
+
+    .line 589
+    :cond_145
+    goto :goto_151
+
+    .line 586
+    :cond_146
+    :goto_146
+    const/4 v10, 0x0
+
+    .line 117
+    .local v10, "$i$a$-cache-MainActivity$onCreate$1$1$1\\9\\586\\0":I
+    new-instance v11, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda22;
+
+    invoke-direct {v11, v0, v2, v3}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda22;-><init>(Lcom/example/lumisky/MainActivity;J)V
+
+    .line 586
+    .end local v10    # "$i$a$-cache-MainActivity$onCreate$1$1$1\\9\\586\\0":I
+    nop
+
+    .line 587
+    .local v11, "value\\8":Ljava/lang/Object;
+    invoke-interface {v5, v11}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 588
+    move-object v8, v11
+
+    .line 584
+    .end local v8    # "it\\7":Ljava/lang/Object;
+    .end local v9    # "$i$a$-let-ComposerKt$cache$1\\8\\584\\7":I
+    .end local v11    # "value\\8":Ljava/lang/Object;
+    :goto_151
+    nop
+
+    .line 117
+    .end local v4    # "invalid\\7":Z
+    .end local v5    # "$this$cache\\7":Landroidx/compose/runtime/Composer;
+    .end local v6    # "$i$f$cache\\7\\117":I
+    check-cast v8, Lkotlin/jvm/functions/Function0;
+
+    invoke-static {v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    const/4 v4, 0x0
+
+    invoke-static {v8, v7, v4}, Landroidx/compose/runtime/EffectsKt;->SideEffect(Lkotlin/jvm/functions/Function0;Landroidx/compose/runtime/Composer;I)V
+
+    .line 124
+    sget-object v4, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    const v5, 0x24a64593
+
+    invoke-static {v7, v5, v13}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v7, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v5
+
+    .local v5, "invalid\\10":Z
+    move-object/from16 v6, p2
+
+    .local v6, "$this$cache\\10":Landroidx/compose/runtime/Composer;
+    const/4 v8, 0x0
+
+    .line 590
+    .local v8, "$i$f$cache\\10\\124":I
+    invoke-interface {v6}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v9
+
+    .local v9, "it\\10":Ljava/lang/Object;
+    const/4 v10, 0x0
+
+    .line 591
+    .local v10, "$i$a$-let-ComposerKt$cache$1\\11\\590\\10":I
+    if-nez v5, :cond_17d
+
+    sget-object v11, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    invoke-virtual {v11}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v11
+
+    if-ne v9, v11, :cond_17a
+
+    goto :goto_17d
+
+    .line 595
+    :cond_17a
+    move-wide/from16 v22, v2
+
+    goto :goto_18d
+
+    .line 592
+    :cond_17d
+    :goto_17d
+    const/4 v11, 0x0
+
+    .line 124
+    .local v11, "$i$a$-cache-MainActivity$onCreate$1$1$2\\12\\592\\0":I
+    move-wide/from16 v22, v2
+
+    .end local v2    # "systemBarColor":J
+    .local v22, "systemBarColor":J
+    new-instance v2, Lcom/example/lumisky/MainActivity$onCreate$1$1$2$1;
+
+    const/4 v3, 0x0
+
+    invoke-direct {v2, v0, v3}, Lcom/example/lumisky/MainActivity$onCreate$1$1$2$1;-><init>(Lcom/example/lumisky/MainActivity;Lkotlin/coroutines/Continuation;)V
+
+    check-cast v2, Lkotlin/jvm/functions/Function2;
+
+    .line 592
+    .end local v11    # "$i$a$-cache-MainActivity$onCreate$1$1$2\\12\\592\\0":I
+    nop
+
+    .line 593
+    .local v2, "value\\11":Ljava/lang/Object;
+    invoke-interface {v6, v2}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 594
+    move-object v9, v2
+
+    .line 590
+    .end local v2    # "value\\11":Ljava/lang/Object;
+    .end local v9    # "it\\10":Ljava/lang/Object;
+    .end local v10    # "$i$a$-let-ComposerKt$cache$1\\11\\590\\10":I
+    :goto_18d
+    nop
+
+    .line 124
+    .end local v5    # "invalid\\10":Z
+    .end local v6    # "$this$cache\\10":Landroidx/compose/runtime/Composer;
+    .end local v8    # "$i$f$cache\\10\\124":I
+    check-cast v9, Lkotlin/jvm/functions/Function2;
+
+    invoke-static {v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    const/4 v2, 0x6
+
+    invoke-static {v4, v9, v7, v2}, Landroidx/compose/runtime/EffectsKt;->LaunchedEffect(Ljava/lang/Object;Lkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;I)V
+
+    .line 129
+    if-nez v1, :cond_1ad
+
+    const v2, 0x7023e433
+
+    invoke-interface {v7, v2}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    const-string v2, "129@5210L16"
+
+    invoke-static {v7, v2}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    .line 130
+    const/4 v4, 0x0
+
+    invoke-static {v7, v4}, Lcom/example/lumisky/ui/home/HomeScreenKt;->LaunchSkeleton(Landroidx/compose/runtime/Composer;I)V
+
+    .line 129
+    invoke-interface {v7}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    goto/16 :goto_28c
+
+    .line 131
+    :cond_1ad
+    const v2, 0x7026552a
+
+    invoke-interface {v7, v2}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    const-string v2, "131@5295L2590,204@7921L96,204@7891L126"
+
+    invoke-static {v7, v2}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    .line 132
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda25;
+
+    invoke-direct {v2, v1, v0, v15, v14}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda25;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;Lcom/example/lumisky/MainActivity;Landroidx/compose/runtime/MutableState;Landroidx/compose/runtime/MutableState;)V
+
+    const v3, -0x4da32af6
+
+    const/16 v4, 0x36
+
+    const/4 v5, 0x1
+
+    invoke-static {v3, v5, v2, v7, v4}, Landroidx/compose/runtime/internal/ComposableLambdaKt;->rememberComposableLambda(IZLjava/lang/Object;Landroidx/compose/runtime/Composer;I)Landroidx/compose/runtime/internal/ComposableLambda;
+
+    move-result-object v2
+
+    check-cast v2, Lkotlin/jvm/functions/Function3;
+
+    .line 205
+    .local v2, "screenContent":Lkotlin/jvm/functions/Function3;
+    const v3, 0x24a7a5b2
+
+    invoke-static {v7, v3, v13}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v7, v14}, Landroidx/compose/runtime/Composer;->changed(Ljava/lang/Object;)Z
+
+    move-result v3
+
+    invoke-interface {v7, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v5
+
+    or-int/2addr v3, v5
+
+    .local v3, "invalid\\13":Z
+    move-object/from16 v5, p2
+
+    .local v5, "$this$cache\\13":Landroidx/compose/runtime/Composer;
+    const/4 v6, 0x0
+
+    .line 596
+    .local v6, "$i$f$cache\\13\\205":I
+    invoke-interface {v5}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v8
+
+    .local v8, "it\\13":Ljava/lang/Object;
+    const/4 v9, 0x0
+
+    .line 597
+    .local v9, "$i$a$-let-ComposerKt$cache$1\\14\\596\\13":I
+    if-nez v3, :cond_1ec
+
+    sget-object v10, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    invoke-virtual {v10}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v10
+
+    if-ne v8, v10, :cond_1eb
+
+    goto :goto_1ec
+
+    .line 601
+    :cond_1eb
+    goto :goto_1fa
+
+    .line 598
+    :cond_1ec
+    :goto_1ec
+    const/4 v10, 0x0
+
+    .line 205
+    .local v10, "$i$a$-cache-MainActivity$onCreate$1$1$3\\15\\598\\0":I
+    new-instance v11, Lcom/example/lumisky/MainActivity$onCreate$1$1$3$1;
+
+    const/4 v4, 0x0
+
+    invoke-direct {v11, v0, v14, v4}, Lcom/example/lumisky/MainActivity$onCreate$1$1$3$1;-><init>(Lcom/example/lumisky/MainActivity;Landroidx/compose/runtime/MutableState;Lkotlin/coroutines/Continuation;)V
+
+    check-cast v11, Lkotlin/jvm/functions/Function2;
+
+    .line 598
+    .end local v10    # "$i$a$-cache-MainActivity$onCreate$1$1$3\\15\\598\\0":I
+    nop
+
+    .line 599
+    .local v11, "value\\14":Ljava/lang/Object;
+    invoke-interface {v5, v11}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 600
+    move-object v8, v11
+
+    .line 596
+    .end local v8    # "it\\13":Ljava/lang/Object;
+    .end local v9    # "$i$a$-let-ComposerKt$cache$1\\14\\596\\13":I
+    .end local v11    # "value\\14":Ljava/lang/Object;
+    :goto_1fa
+    nop
+
+    .line 205
+    .end local v3    # "invalid\\13":Z
+    .end local v5    # "$this$cache\\13":Landroidx/compose/runtime/Composer;
+    .end local v6    # "$i$f$cache\\13\\205":I
+    check-cast v8, Lkotlin/jvm/functions/Function2;
+
+    invoke-static {v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    const/4 v4, 0x0
+
+    invoke-static {v1, v8, v7, v4}, Landroidx/compose/runtime/EffectsKt;->LaunchedEffect(Ljava/lang/Object;Lkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;I)V
+
+    .line 210
+    invoke-static {v14}, Lcom/example/lumisky/MainActivity;->onCreate$lambda$53$lambda$52$lambda$10(Landroidx/compose/runtime/MutableState;)Z
+
+    move-result v3
+
+    if-eqz v3, :cond_26f
+
+    const v3, 0x704f95c0
+
+    invoke-interface {v7, v3}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    const-string v3, "212@8138L1010,246@9198L48,210@8061L1185"
+
+    invoke-static {v7, v3}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    .line 212
+    invoke-static {v15}, Lcom/example/lumisky/MainActivity;->onCreate$lambda$53$lambda$52$lambda$6(Landroidx/compose/runtime/MutableState;)Ljava/lang/String;
+
+    move-result-object v3
+
+    .line 213
+    const v4, 0x24a7c464
+
+    invoke-static {v7, v4, v13}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    const/4 v4, 0x0
+
+    .local v4, "invalid\\16":Z
+    move-object/from16 v5, p2
+
+    .local v5, "$this$cache\\16":Landroidx/compose/runtime/Composer;
+    const/4 v6, 0x0
+
+    .line 602
+    .local v6, "$i$f$cache\\16\\213":I
+    invoke-interface {v5}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v8
+
+    .local v8, "it\\16":Ljava/lang/Object;
+    const/4 v9, 0x0
+
+    .line 603
+    .local v9, "$i$a$-let-ComposerKt$cache$1\\17\\602\\16":I
+    sget-object v10, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    invoke-virtual {v10}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v10
+
+    if-ne v8, v10, :cond_23b
+
+    .line 604
+    const/4 v10, 0x0
+
+    .local v10, "$i$a$-cache-MainActivity$onCreate$1$1$4\\18\\604\\0":I
+    new-instance v11, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda26;
+
+    invoke-direct {v11}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda26;-><init>()V
+
+    .line 605
+    .end local v10    # "$i$a$-cache-MainActivity$onCreate$1$1$4\\18\\604\\0":I
+    .local v11, "value\\17":Ljava/lang/Object;
+    invoke-interface {v5, v11}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 606
+    move-object v8, v11
+
+    .end local v11    # "value\\17":Ljava/lang/Object;
+    goto :goto_23c
+
+    .line 607
+    :cond_23b
+    nop
+
+    .line 602
+    .end local v8    # "it\\16":Ljava/lang/Object;
+    .end local v9    # "$i$a$-let-ComposerKt$cache$1\\17\\602\\16":I
+    :goto_23c
+    nop
+
+    .line 213
+    .end local v4    # "invalid\\16":Z
+    .end local v5    # "$this$cache\\16":Landroidx/compose/runtime/Composer;
+    .end local v6    # "$i$f$cache\\16\\213":I
+    move-object v4, v8
+
+    check-cast v4, Lkotlin/jvm/functions/Function1;
+
+    invoke-static {v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 246
+    nop
+
+    .line 247
+    new-instance v5, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda27;
+
+    invoke-direct {v5, v2}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda27;-><init>(Lkotlin/jvm/functions/Function3;)V
+
+    const v6, -0x376f32f7
+
+    const/16 v8, 0x36
+
+    const/4 v9, 0x1
+
+    invoke-static {v6, v9, v5, v7, v8}, Landroidx/compose/runtime/internal/ComposableLambdaKt;->rememberComposableLambda(IZLjava/lang/Object;Landroidx/compose/runtime/Composer;I)Landroidx/compose/runtime/internal/ComposableLambda;
+
+    move-result-object v5
+
+    move-object v8, v5
+
+    check-cast v8, Lkotlin/jvm/functions/Function4;
+
+    .line 211
+    move-object v5, v2
+
+    move-object v2, v3
+
+    .end local v2    # "screenContent":Lkotlin/jvm/functions/Function3;
+    .local v5, "screenContent":Lkotlin/jvm/functions/Function3;
+    const/4 v3, 0x0
+
+    move-object v6, v5
+
+    .end local v5    # "screenContent":Lkotlin/jvm/functions/Function3;
+    .local v6, "screenContent":Lkotlin/jvm/functions/Function3;
+    const/4 v5, 0x0
+
+    move-object v9, v6
+
+    .end local v6    # "screenContent":Lkotlin/jvm/functions/Function3;
+    .local v9, "screenContent":Lkotlin/jvm/functions/Function3;
+    const-string v6, "main_screen_transition"
+
+    const/4 v7, 0x0
+
+    const v10, 0x186180
+
+    const/16 v11, 0x2a
+
+    move-object v13, v9
+
+    move-object/from16 v9, p2
+
+    .end local v9    # "screenContent":Lkotlin/jvm/functions/Function3;
+    .local v13, "screenContent":Lkotlin/jvm/functions/Function3;
+    invoke-static/range {v2 .. v11}, Landroidx/compose/animation/AnimatedContentKt;->AnimatedContent(Ljava/lang/Object;Landroidx/compose/ui/Modifier;Lkotlin/jvm/functions/Function1;Landroidx/compose/ui/Alignment;Ljava/lang/String;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function4;Landroidx/compose/runtime/Composer;II)V
+
+    .line 210
+    move-object v7, v9
+
+    invoke-interface {v7}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    goto :goto_289
+
+    .line 250
+    .end local v13    # "screenContent":Lkotlin/jvm/functions/Function3;
+    .restart local v2    # "screenContent":Lkotlin/jvm/functions/Function3;
+    :cond_26f
+    move-object v13, v2
+
+    .end local v2    # "screenContent":Lkotlin/jvm/functions/Function3;
+    .restart local v13    # "screenContent":Lkotlin/jvm/functions/Function3;
+    const v2, 0x70614ae5
+
+    invoke-interface {v7, v2}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    const-string v2, "250@9267L28"
+
+    invoke-static {v7, v2}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    .line 251
+    invoke-static {v15}, Lcom/example/lumisky/MainActivity;->onCreate$lambda$53$lambda$52$lambda$6(Landroidx/compose/runtime/MutableState;)Ljava/lang/String;
+
+    move-result-object v2
+
+    invoke-static/range {v19 .. v19}, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+
+    move-result-object v3
+
+    invoke-interface {v13, v2, v7, v3}, Lkotlin/jvm/functions/Function3;->invoke(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    .line 250
+    invoke-interface {v7}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    .line 131
+    .end local v13    # "screenContent":Lkotlin/jvm/functions/Function3;
+    :goto_289
+    invoke-interface {v7}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    :goto_28c
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->isTraceInProgress()Z
+
+    move-result v2
+
+    if-eqz v2, :cond_299
+
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->traceEventEnd()V
+
+    .end local v14    # "startupAnimationsEnabled$delegate":Landroidx/compose/runtime/MutableState;
+    .end local v15    # "currentScreen$delegate":Landroidx/compose/runtime/MutableState;
+    .end local v20    # "targetSystemBarColor":J
+    .end local v22    # "systemBarColor":J
+    goto :goto_299
+
+    .line 100
+    :cond_296
+    invoke-interface {v7}, Landroidx/compose/runtime/Composer;->skipToGroupEnd()V
+
+    .line 254
+    :cond_299
+    :goto_299
+    sget-object v2, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v2
+.end method
+
+.method private static final onCreate$lambda$53$lambda$52$lambda$10(Landroidx/compose/runtime/MutableState;)Z
+    .registers 5
+    .param p0, "$startupAnimationsEnabled$delegate"    # Landroidx/compose/runtime/MutableState;
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "(",
+            "Landroidx/compose/runtime/MutableState<",
+            "Ljava/lang/Boolean;",
+            ">;)Z"
+        }
+    .end annotation
+
+    .line 102
+    move-object v0, p0
+
+    check-cast v0, Landroidx/compose/runtime/State;
+
+    .local v0, "$this$getValue\\1":Landroidx/compose/runtime/State;
+    const/4 v1, 0x0
+
+    .local v1, "this_\\1":Ljava/lang/Object;
+    const/4 v2, 0x0
+
+    .local v2, "property\\1":Lkotlin/reflect/KProperty;
+    const/4 v3, 0x0
+
+    .line 479
+    .local v3, "$i$f$getValue\\1\\102":I
+    invoke-interface {v0}, Landroidx/compose/runtime/State;->getValue()Ljava/lang/Object;
+
+    move-result-object v0
+
+    .end local v0    # "$this$getValue\\1":Landroidx/compose/runtime/State;
+    .end local v1    # "this_\\1":Ljava/lang/Object;
+    .end local v2    # "property\\1":Lkotlin/reflect/KProperty;
+    .end local v3    # "$i$f$getValue\\1\\102":I
+    check-cast v0, Ljava/lang/Boolean;
+
+    invoke-virtual {v0}, Ljava/lang/Boolean;->booleanValue()Z
+
+    move-result v0
+
+    .line 102
+    return v0
+.end method
+
+.method private static final onCreate$lambda$53$lambda$52$lambda$11(Landroidx/compose/runtime/MutableState;Z)V
+    .registers 7
+    .param p0, "$startupAnimationsEnabled$delegate"    # Landroidx/compose/runtime/MutableState;
+    .param p1, "<set-?>"    # Z
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "(",
+            "Landroidx/compose/runtime/MutableState<",
+            "Ljava/lang/Boolean;",
+            ">;Z)V"
+        }
+    .end annotation
+
+    .line 102
+    const/4 v0, 0x0
+
+    .local v0, "this_\\1":Ljava/lang/Object;
+    const/4 v1, 0x0
+
+    .local v1, "property\\1":Lkotlin/reflect/KProperty;
+    invoke-static {p1}, Ljava/lang/Boolean;->valueOf(Z)Ljava/lang/Boolean;
+
+    move-result-object v2
+
+    .local v2, "value\\1":Ljava/lang/Object;
+    move-object v3, p0
+
+    .local v3, "$this$setValue\\1":Landroidx/compose/runtime/MutableState;
+    const/4 v4, 0x0
+
+    .line 480
+    .local v4, "$i$f$setValue\\1\\102":I
+    invoke-interface {v3, v2}, Landroidx/compose/runtime/MutableState;->setValue(Ljava/lang/Object;)V
+
+    .line 481
+    nop
+
+    .line 102
+    .end local v0    # "this_\\1":Ljava/lang/Object;
+    .end local v1    # "property\\1":Lkotlin/reflect/KProperty;
+    .end local v2    # "value\\1":Ljava/lang/Object;
+    .end local v3    # "$this$setValue\\1":Landroidx/compose/runtime/MutableState;
+    .end local v4    # "$i$f$setValue\\1\\102":I
+    return-void
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$13$lambda$12(Lcom/example/lumisky/MainActivity;J)Lkotlin/Unit;
+    .registers 6
+    .param p0, "this$0"    # Lcom/example/lumisky/MainActivity;
+    .param p1, "$systemBarColor"    # J
+
+    .line 118
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->getWindow()Landroid/view/Window;
+
+    move-result-object v0
+
+    invoke-static {p1, p2}, Landroidx/compose/ui/graphics/ColorKt;->toArgb-8_81llA(J)I
+
+    move-result v1
+
+    invoke-virtual {v0, v1}, Landroid/view/Window;->setStatusBarColor(I)V
+
+    .line 120
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->getWindow()Landroid/view/Window;
+
+    move-result-object v0
+
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->getWindow()Landroid/view/Window;
+
+    move-result-object v1
+
+    invoke-virtual {v1}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+
+    move-result-object v1
+
+    invoke-static {v0, v1}, Landroidx/core/view/WindowCompat;->getInsetsController(Landroid/view/Window;Landroid/view/View;)Landroidx/core/view/WindowInsetsControllerCompat;
+
+    move-result-object v0
+
+    .line 121
+    invoke-static {p1, p2}, Landroidx/compose/ui/graphics/ColorKt;->luminance-8_81llA(J)F
+
+    move-result v1
+
+    const/high16 v2, 0x3f000000    # 0.5f
+
+    cmpl-float v1, v1, v2
+
+    if-lez v1, :cond_27
+
+    const/4 v1, 0x1
+
+    goto :goto_28
+
+    :cond_27
+    const/4 v1, 0x0
+
+    :goto_28
+    invoke-virtual {v0, v1}, Landroidx/core/view/WindowInsetsControllerCompat;->setAppearanceLightStatusBars(Z)V
+
+    .line 122
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45(Lcom/example/lumisky/viewmodel/HomeViewModel;Lcom/example/lumisky/MainActivity;Landroidx/compose/runtime/MutableState;Landroidx/compose/runtime/MutableState;Ljava/lang/String;Landroidx/compose/runtime/Composer;I)Lkotlin/Unit;
+    .registers 37
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .param p1, "this$0"    # Lcom/example/lumisky/MainActivity;
+    .param p2, "$currentScreen$delegate"    # Landroidx/compose/runtime/MutableState;
+    .param p3, "$startupAnimationsEnabled$delegate"    # Landroidx/compose/runtime/MutableState;
+    .param p4, "screen"    # Ljava/lang/String;
+    .param p5, "$composer"    # Landroidx/compose/runtime/Composer;
+    .param p6, "$changed"    # I
+
+    move-object/from16 v0, p0
+
+    move-object/from16 v1, p1
+
+    move-object/from16 v2, p2
+
+    move-object/from16 v3, p4
+
+    move-object/from16 v4, p5
+
+    const-string v5, "screen"
+
+    invoke-static {v3, v5}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    const-string v5, "CN(screen):MainActivity.kt#77dxrf"
+
+    invoke-static {v4, v5}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    move/from16 v5, p6
+
+    .local v5, "$dirty":I
+    and-int/lit8 v6, p6, 0x6
+
+    if-nez v6, :cond_24
+
+    invoke-interface {v4, v3}, Landroidx/compose/runtime/Composer;->changed(Ljava/lang/Object;)Z
+
+    move-result v6
+
+    if-eqz v6, :cond_22
+
+    const/4 v6, 0x4
+
+    goto :goto_23
+
+    :cond_22
+    const/4 v6, 0x2
+
+    :goto_23
+    or-int/2addr v5, v6
+
+    :cond_24
+    and-int/lit8 v6, v5, 0x13
+
+    const/16 v7, 0x12
+
+    const/4 v8, 0x1
+
+    if-eq v6, v7, :cond_2d
+
+    move v6, v8
+
+    goto :goto_2e
+
+    :cond_2d
+    const/4 v6, 0x0
+
+    :goto_2e
+    and-int/lit8 v7, v5, 0x1
+
+    invoke-interface {v4, v6, v7}, Landroidx/compose/runtime/Composer;->shouldExecute(ZI)Z
+
+    move-result v6
+
+    if-eqz v6, :cond_45e
+
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->isTraceInProgress()Z
+
+    move-result v6
+
+    if-eqz v6, :cond_45
+
+    const/4 v6, -0x1
+
+    const-string v7, "com.example.lumisky.MainActivity.onCreate.<anonymous>.<anonymous>.<anonymous> (MainActivity.kt:132)"
+
+    const v9, -0x4da32af6
+
+    invoke-static {v9, v5, v6, v7}, Landroidx/compose/runtime/ComposerKt;->traceEventStart(IIILjava/lang/String;)V
+
+    .line 133
+    :cond_45
+    nop
+
+    .line 134
+    const-string v6, "home"
+
+    invoke-static {v3, v6}, Lkotlin/jvm/internal/Intrinsics;->areEqual(Ljava/lang/Object;Ljava/lang/Object;)Z
+
+    move-result v6
+
+    const-string v7, "CC(remember):MainActivity.kt#9igjgp"
+
+    if-eqz v6, :cond_1e9
+
+    const v6, -0x71843ab5
+
+    invoke-interface {v4, v6}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    const-string v6, "139@5672L64,142@5766L64,145@5855L64,148@5946L53,151@6025L53,154@6109L52,133@5351L961"
+
+    invoke-static {v4, v6}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    .line 135
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getItems()Ljava/util/List;
+
+    move-result-object v6
+
+    .line 136
+    move v9, v5
+
+    .end local v5    # "$dirty":I
+    .local v9, "$dirty":I
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getSelectedWallpaperId()Ljava/lang/String;
+
+    move-result-object v5
+
+    .line 137
+    move-object v10, v6
+
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getLiveWallpaperId()Ljava/lang/String;
+
+    move-result-object v6
+
+    .line 138
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getHighRefreshEnabled()Z
+
+    move-result v11
+
+    .line 139
+    move v12, v8
+
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getPerformanceMode()Lcom/example/core/settings/PerformanceMode;
+
+    move-result-object v8
+
+    .line 140
+    const v13, -0x71841616
+
+    invoke-static {v4, v13, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v13
+
+    .local v13, "invalid\\1":Z
+    move-object/from16 v14, p5
+
+    .local v14, "$this$cache\\1":Landroidx/compose/runtime/Composer;
+    const/4 v15, 0x0
+
+    .line 482
+    .local v15, "$i$f$cache\\1\\140":I
+    move/from16 v16, v12
+
+    invoke-interface {v14}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v12
+
+    .local v12, "it\\1":Ljava/lang/Object;
+    const/16 v17, 0x0
+
+    .line 483
+    .local v17, "$i$a$-let-ComposerKt$cache$1\\2\\482\\1":I
+    if-nez v13, :cond_95
+
+    sget-object v18, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move-object/from16 v19, v5
+
+    invoke-virtual/range {v18 .. v18}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v5
+
+    if-ne v12, v5, :cond_94
+
+    goto :goto_97
+
+    .line 487
+    :cond_94
+    goto :goto_a4
+
+    .line 483
+    :cond_95
+    move-object/from16 v19, v5
+
+    .line 484
+    :goto_97
+    const/4 v5, 0x0
+
+    .line 140
+    .local v5, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$1\\3\\484\\0":I
+    move/from16 v18, v5
+
+    .end local v5    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$1\\3\\484\\0":I
+    .local v18, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$1\\3\\484\\0":I
+    new-instance v5, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda5;
+
+    invoke-direct {v5, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda5;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    .line 484
+    .end local v18    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$1\\3\\484\\0":I
+    nop
+
+    .line 485
+    .local v5, "value\\2":Ljava/lang/Object;
+    invoke-interface {v14, v5}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 486
+    move-object v12, v5
+
+    .line 482
+    .end local v5    # "value\\2":Ljava/lang/Object;
+    .end local v12    # "it\\1":Ljava/lang/Object;
+    .end local v17    # "$i$a$-let-ComposerKt$cache$1\\2\\482\\1":I
+    :goto_a4
+    nop
+
+    .line 140
+    .end local v13    # "invalid\\1":Z
+    .end local v14    # "$this$cache\\1":Landroidx/compose/runtime/Composer;
+    .end local v15    # "$i$f$cache\\1\\140":I
+    check-cast v12, Lkotlin/jvm/functions/Function1;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 143
+    const v5, -0x71840a56
+
+    invoke-static {v4, v5, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v5
+
+    .local v5, "invalid\\4":Z
+    move-object/from16 v13, p5
+
+    .local v13, "$this$cache\\4":Landroidx/compose/runtime/Composer;
+    const/4 v14, 0x0
+
+    .line 488
+    .local v14, "$i$f$cache\\4\\143":I
+    invoke-interface {v13}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v15
+
+    .local v15, "it\\4":Ljava/lang/Object;
+    const/16 v17, 0x0
+
+    .line 489
+    .local v17, "$i$a$-let-ComposerKt$cache$1\\5\\488\\4":I
+    if-nez v5, :cond_cb
+
+    sget-object v18, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move/from16 v20, v5
+
+    .end local v5    # "invalid\\4":Z
+    .local v20, "invalid\\4":Z
+    invoke-virtual/range {v18 .. v18}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v5
+
+    if-ne v15, v5, :cond_ca
+
+    goto :goto_cd
+
+    .line 493
+    :cond_ca
+    goto :goto_da
+
+    .line 489
+    .end local v20    # "invalid\\4":Z
+    .restart local v5    # "invalid\\4":Z
+    :cond_cb
+    move/from16 v20, v5
+
+    .line 490
+    .end local v5    # "invalid\\4":Z
+    .restart local v20    # "invalid\\4":Z
+    :goto_cd
+    const/4 v5, 0x0
+
+    .line 143
+    .local v5, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$2\\6\\490\\0":I
+    move/from16 v18, v5
+
+    .end local v5    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$2\\6\\490\\0":I
+    .local v18, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$2\\6\\490\\0":I
+    new-instance v5, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda12;
+
+    invoke-direct {v5, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda12;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    .line 490
+    .end local v18    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$2\\6\\490\\0":I
+    nop
+
+    .line 491
+    .local v5, "value\\5":Ljava/lang/Object;
+    invoke-interface {v13, v5}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 492
+    move-object v15, v5
+
+    .line 488
+    .end local v5    # "value\\5":Ljava/lang/Object;
+    .end local v15    # "it\\4":Ljava/lang/Object;
+    .end local v17    # "$i$a$-let-ComposerKt$cache$1\\5\\488\\4":I
+    :goto_da
+    nop
+
+    .line 143
+    .end local v13    # "$this$cache\\4":Landroidx/compose/runtime/Composer;
+    .end local v14    # "$i$f$cache\\4\\143":I
+    .end local v20    # "invalid\\4":Z
+    check-cast v15, Lkotlin/jvm/functions/Function1;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 146
+    const v5, -0x7183ff36
+
+    invoke-static {v4, v5, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v5
+
+    .local v5, "invalid\\7":Z
+    move-object/from16 v13, p5
+
+    .local v13, "$this$cache\\7":Landroidx/compose/runtime/Composer;
+    const/4 v14, 0x0
+
+    .line 494
+    .local v14, "$i$f$cache\\7\\146":I
+    move/from16 v17, v5
+
+    .end local v5    # "invalid\\7":Z
+    .local v17, "invalid\\7":Z
+    invoke-interface {v13}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v5
+
+    .local v5, "it\\7":Ljava/lang/Object;
+    const/16 v18, 0x0
+
+    .line 495
+    .local v18, "$i$a$-let-ComposerKt$cache$1\\8\\494\\7":I
+    if-nez v17, :cond_103
+
+    sget-object v20, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move-object/from16 v21, v6
+
+    invoke-virtual/range {v20 .. v20}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v6
+
+    if-ne v5, v6, :cond_102
+
+    goto :goto_105
+
+    .line 499
+    :cond_102
+    goto :goto_112
+
+    .line 495
+    :cond_103
+    move-object/from16 v21, v6
+
+    .line 496
+    :goto_105
+    const/4 v6, 0x0
+
+    .line 146
+    .local v6, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$3\\9\\496\\0":I
+    move-object/from16 v20, v5
+
+    .end local v5    # "it\\7":Ljava/lang/Object;
+    .local v20, "it\\7":Ljava/lang/Object;
+    new-instance v5, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda13;
+
+    invoke-direct {v5, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda13;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    .line 496
+    .end local v6    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$3\\9\\496\\0":I
+    nop
+
+    .line 497
+    .local v5, "value\\8":Ljava/lang/Object;
+    invoke-interface {v13, v5}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 498
+    nop
+
+    .line 494
+    .end local v5    # "value\\8":Ljava/lang/Object;
+    .end local v18    # "$i$a$-let-ComposerKt$cache$1\\8\\494\\7":I
+    .end local v20    # "it\\7":Ljava/lang/Object;
+    :goto_112
+    nop
+
+    .line 146
+    .end local v13    # "$this$cache\\7":Landroidx/compose/runtime/Composer;
+    .end local v14    # "$i$f$cache\\7\\146":I
+    .end local v17    # "invalid\\7":Z
+    check-cast v5, Lkotlin/jvm/functions/Function1;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 149
+    const v6, -0x7183f3e1
+
+    invoke-static {v4, v6, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v6
+
+    .local v6, "invalid\\10":Z
+    move-object/from16 v13, p5
+
+    .local v13, "$this$cache\\10":Landroidx/compose/runtime/Composer;
+    const/4 v14, 0x0
+
+    .line 500
+    .local v14, "$i$f$cache\\10\\149":I
+    move-object/from16 v17, v5
+
+    invoke-interface {v13}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v5
+
+    .local v5, "it\\10":Ljava/lang/Object;
+    const/16 v18, 0x0
+
+    .line 501
+    .local v18, "$i$a$-let-ComposerKt$cache$1\\11\\500\\10":I
+    if-nez v6, :cond_13b
+
+    sget-object v20, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move/from16 v22, v6
+
+    .end local v6    # "invalid\\10":Z
+    .local v22, "invalid\\10":Z
+    invoke-virtual/range {v20 .. v20}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v6
+
+    if-ne v5, v6, :cond_13a
+
+    goto :goto_13d
+
+    .line 505
+    :cond_13a
+    goto :goto_14a
+
+    .line 501
+    .end local v22    # "invalid\\10":Z
+    .restart local v6    # "invalid\\10":Z
+    :cond_13b
+    move/from16 v22, v6
+
+    .line 502
+    .end local v6    # "invalid\\10":Z
+    .restart local v22    # "invalid\\10":Z
+    :goto_13d
+    const/4 v6, 0x0
+
+    .line 149
+    .local v6, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$4\\12\\502\\0":I
+    move-object/from16 v20, v5
+
+    .end local v5    # "it\\10":Ljava/lang/Object;
+    .local v20, "it\\10":Ljava/lang/Object;
+    new-instance v5, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda14;
+
+    invoke-direct {v5, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda14;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    .line 502
+    .end local v6    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$4\\12\\502\\0":I
+    nop
+
+    .line 503
+    .local v5, "value\\11":Ljava/lang/Object;
+    invoke-interface {v13, v5}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 504
+    nop
+
+    .line 500
+    .end local v5    # "value\\11":Ljava/lang/Object;
+    .end local v18    # "$i$a$-let-ComposerKt$cache$1\\11\\500\\10":I
+    .end local v20    # "it\\10":Ljava/lang/Object;
+    :goto_14a
+    nop
+
+    .line 149
+    .end local v13    # "$this$cache\\10":Landroidx/compose/runtime/Composer;
+    .end local v14    # "$i$f$cache\\10\\149":I
+    .end local v22    # "invalid\\10":Z
+    check-cast v5, Lkotlin/jvm/functions/Function0;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 152
+    const v6, -0x7183ea01
+
+    invoke-static {v4, v6, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v1}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v6
+
+    .local v6, "invalid\\13":Z
+    move-object/from16 v13, p5
+
+    .local v13, "$this$cache\\13":Landroidx/compose/runtime/Composer;
+    const/4 v14, 0x0
+
+    .line 506
+    .local v14, "$i$f$cache\\13\\152":I
+    move-object/from16 v18, v5
+
+    invoke-interface {v13}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v5
+
+    .local v5, "it\\13":Ljava/lang/Object;
+    const/16 v20, 0x0
+
+    .line 507
+    .local v20, "$i$a$-let-ComposerKt$cache$1\\14\\506\\13":I
+    if-nez v6, :cond_173
+
+    sget-object v22, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move/from16 v23, v6
+
+    .end local v6    # "invalid\\13":Z
+    .local v23, "invalid\\13":Z
+    invoke-virtual/range {v22 .. v22}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v6
+
+    if-ne v5, v6, :cond_172
+
+    goto :goto_175
+
+    .line 511
+    :cond_172
+    goto :goto_182
+
+    .line 507
+    .end local v23    # "invalid\\13":Z
+    .restart local v6    # "invalid\\13":Z
+    :cond_173
+    move/from16 v23, v6
+
+    .line 508
+    .end local v6    # "invalid\\13":Z
+    .restart local v23    # "invalid\\13":Z
+    :goto_175
+    const/4 v6, 0x0
+
+    .line 152
+    .local v6, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$5\\15\\508\\0":I
+    move-object/from16 v22, v5
+
+    .end local v5    # "it\\13":Ljava/lang/Object;
+    .local v22, "it\\13":Ljava/lang/Object;
+    new-instance v5, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda15;
+
+    invoke-direct {v5, v1}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda15;-><init>(Lcom/example/lumisky/MainActivity;)V
+
+    .line 508
+    .end local v6    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$5\\15\\508\\0":I
+    nop
+
+    .line 509
+    .local v5, "value\\14":Ljava/lang/Object;
+    invoke-interface {v13, v5}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 510
+    nop
+
+    .line 506
+    .end local v5    # "value\\14":Ljava/lang/Object;
+    .end local v20    # "$i$a$-let-ComposerKt$cache$1\\14\\506\\13":I
+    .end local v22    # "it\\13":Ljava/lang/Object;
+    :goto_182
+    nop
+
+    .line 152
+    .end local v13    # "$this$cache\\13":Landroidx/compose/runtime/Composer;
+    .end local v14    # "$i$f$cache\\13\\152":I
+    .end local v23    # "invalid\\13":Z
+    move-object v13, v5
+
+    check-cast v13, Lkotlin/jvm/functions/Function1;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 155
+    const v5, -0x7183df82
+
+    invoke-static {v4, v5, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v2}, Landroidx/compose/runtime/Composer;->changed(Ljava/lang/Object;)Z
+
+    move-result v5
+
+    .local v5, "invalid\\16":Z
+    move-object/from16 v6, p5
+
+    .local v6, "$this$cache\\16":Landroidx/compose/runtime/Composer;
+    const/4 v7, 0x0
+
+    .line 512
+    .local v7, "$i$f$cache\\16\\155":I
+    invoke-interface {v6}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v14
+
+    .local v14, "it\\16":Ljava/lang/Object;
+    const/16 v20, 0x0
+
+    .line 513
+    .local v20, "$i$a$-let-ComposerKt$cache$1\\17\\512\\16":I
+    if-nez v5, :cond_1a8
+
+    sget-object v22, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    invoke-virtual/range {v22 .. v22}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v4
+
+    if-ne v14, v4, :cond_1a7
+
+    goto :goto_1a8
+
+    .line 517
+    :cond_1a7
+    goto :goto_1b5
+
+    .line 514
+    :cond_1a8
+    :goto_1a8
+    const/4 v4, 0x0
+
+    .line 155
+    .local v4, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$6\\18\\514\\0":I
+    move/from16 v22, v4
+
+    .end local v4    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$6\\18\\514\\0":I
+    .local v22, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$6\\18\\514\\0":I
+    new-instance v4, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda16;
+
+    invoke-direct {v4, v2}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda16;-><init>(Landroidx/compose/runtime/MutableState;)V
+
+    .line 514
+    .end local v22    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$6\\18\\514\\0":I
+    nop
+
+    .line 515
+    .local v4, "value\\17":Ljava/lang/Object;
+    invoke-interface {v6, v4}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 516
+    move-object v14, v4
+
+    .line 512
+    .end local v4    # "value\\17":Ljava/lang/Object;
+    .end local v14    # "it\\16":Ljava/lang/Object;
+    .end local v20    # "$i$a$-let-ComposerKt$cache$1\\17\\512\\16":I
+    :goto_1b5
+    nop
+
+    .line 155
+    .end local v5    # "invalid\\16":Z
+    .end local v6    # "$this$cache\\16":Landroidx/compose/runtime/Composer;
+    .end local v7    # "$i$f$cache\\16\\155":I
+    check-cast v14, Lkotlin/jvm/functions/Function0;
+
+    invoke-static/range {p5 .. p5}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 158
+    invoke-static/range {p3 .. p3}, Lcom/example/lumisky/MainActivity;->onCreate$lambda$53$lambda$52$lambda$10(Landroidx/compose/runtime/MutableState;)Z
+
+    move-result v4
+
+    .line 159
+    xor-int/lit8 v4, v4, 0x1
+
+    invoke-static/range {p3 .. p3}, Lcom/example/lumisky/MainActivity;->onCreate$lambda$53$lambda$52$lambda$10(Landroidx/compose/runtime/MutableState;)Z
+
+    move-result v16
+
+    .line 134
+    move-object/from16 v5, v18
+
+    const/16 v18, 0x0
+
+    move v6, v9
+
+    move-object v9, v12
+
+    move-object v12, v5
+
+    move-object/from16 v5, v19
+
+    .end local v9    # "$dirty":I
+    .local v6, "$dirty":I
+    const/16 v19, 0x0
+
+    const/16 v20, 0x0
+
+    move-object v7, v15
+
+    move v15, v4
+
+    move-object v4, v10
+
+    move-object v10, v7
+
+    move/from16 v27, v6
+
+    move v7, v11
+
+    move-object/from16 v11, v17
+
+    move-object/from16 v6, v21
+
+    move-object/from16 v17, p5
+
+    .end local v6    # "$dirty":I
+    .local v27, "$dirty":I
+    invoke-static/range {v4 .. v20}, Lcom/example/lumisky/ui/home/HomeScreenKt;->HomeScreen(Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ZLcom/example/core/settings/PerformanceMode;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;ZZLandroidx/compose/runtime/Composer;III)V
+
+    move-object/from16 v4, v17
+
+    invoke-interface {v4}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    goto/16 :goto_454
+
+    .line 162
+    .end local v27    # "$dirty":I
+    .local v5, "$dirty":I
+    :cond_1e9
+    move/from16 v27, v5
+
+    .end local v5    # "$dirty":I
+    .restart local v27    # "$dirty":I
+    const-string v5, "settings"
+
+    invoke-static {v3, v5}, Lkotlin/jvm/internal/Intrinsics;->areEqual(Ljava/lang/Object;Ljava/lang/Object;)Z
+
+    move-result v5
+
+    if-eqz v5, :cond_44b
+
+    const v5, 0x410c215e
+
+    invoke-interface {v4, v5}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    const-string v5, "198@7813L48,163@6430L37,165@6563L100,171@6757L91,182@7242L88,187@7360L55,190@7457L29,192@7566L48,194@7694L92,161@6340L1530"
+
+    invoke-static {v4, v5}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    .line 163
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getAppThemeMode()Lcom/example/core/settings/AppThemeMode;
+
+    move-result-object v5
+
+    .line 165
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getHighRefreshEnabled()Z
+
+    move-result v6
+
+    .line 171
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getPerformanceMode()Lcom/example/core/settings/PerformanceMode;
+
+    move-result-object v9
+
+    .line 177
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getLocationMode()Lcom/example/core/settings/LocationMode;
+
+    move-result-object v11
+
+    .line 178
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getLocationLabel()Ljava/lang/String;
+
+    move-result-object v12
+
+    .line 179
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getDaylight()Lcom/example/core/api/SunDaylight;
+
+    move-result-object v13
+
+    .line 180
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getGpsLocationAvailable()Z
+
+    move-result v14
+
+    .line 181
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getSystemLocationEnabled()Z
+
+    move-result v15
+
+    .line 182
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getLocationRefreshInProgress()Z
+
+    move-result v16
+
+    .line 192
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getManualCity()Lcom/example/core/settings/ManualCity;
+
+    move-result-object v20
+
+    .line 194
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->getLanguageTag()Ljava/lang/String;
+
+    move-result-object v22
+
+    .line 199
+    const v8, -0x71830a86
+
+    invoke-static {v4, v8, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v2}, Landroidx/compose/runtime/Composer;->changed(Ljava/lang/Object;)Z
+
+    move-result v8
+
+    .local v8, "invalid\\19":Z
+    move-object/from16 v10, p5
+
+    .local v10, "$this$cache\\19":Landroidx/compose/runtime/Composer;
+    const/16 v17, 0x0
+
+    .line 518
+    .local v17, "$i$f$cache\\19\\199":I
+    invoke-interface {v10}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v3
+
+    .local v3, "it\\19":Ljava/lang/Object;
+    const/16 v18, 0x0
+
+    .line 519
+    .local v18, "$i$a$-let-ComposerKt$cache$1\\20\\518\\19":I
+    if-nez v8, :cond_24c
+
+    sget-object v19, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move-object/from16 v21, v5
+
+    invoke-virtual/range {v19 .. v19}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v5
+
+    if-ne v3, v5, :cond_24b
+
+    goto :goto_24e
+
+    .line 523
+    :cond_24b
+    goto :goto_25b
+
+    .line 519
+    :cond_24c
+    move-object/from16 v21, v5
+
+    .line 520
+    :goto_24e
+    const/4 v5, 0x0
+
+    .line 199
+    .local v5, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$7\\21\\520\\0":I
+    move-object/from16 v19, v3
+
+    .end local v3    # "it\\19":Ljava/lang/Object;
+    .local v19, "it\\19":Ljava/lang/Object;
+    new-instance v3, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda17;
+
+    invoke-direct {v3, v2}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda17;-><init>(Landroidx/compose/runtime/MutableState;)V
+
+    .line 520
+    .end local v5    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$7\\21\\520\\0":I
+    nop
+
+    .line 521
+    .local v3, "value\\20":Ljava/lang/Object;
+    invoke-interface {v10, v3}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 522
+    nop
+
+    .line 518
+    .end local v3    # "value\\20":Ljava/lang/Object;
+    .end local v18    # "$i$a$-let-ComposerKt$cache$1\\20\\518\\19":I
+    .end local v19    # "it\\19":Ljava/lang/Object;
+    :goto_25b
+    nop
+
+    .line 199
+    .end local v8    # "invalid\\19":Z
+    .end local v10    # "$this$cache\\19":Landroidx/compose/runtime/Composer;
+    .end local v17    # "$i$f$cache\\19\\199":I
+    check-cast v3, Lkotlin/jvm/functions/Function0;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 163
+    nop
+
+    .line 164
+    const v5, -0x7183b771
+
+    invoke-static {v4, v5, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v5
+
+    .local v5, "invalid\\22":Z
+    move-object/from16 v8, p5
+
+    .local v8, "$this$cache\\22":Landroidx/compose/runtime/Composer;
+    const/4 v10, 0x0
+
+    .line 524
+    .local v10, "$i$f$cache\\22\\164":I
+    invoke-interface {v8}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v2
+
+    .local v2, "it\\22":Ljava/lang/Object;
+    const/16 v17, 0x0
+
+    .line 525
+    .local v17, "$i$a$-let-ComposerKt$cache$1\\23\\524\\22":I
+    if-nez v5, :cond_283
+
+    sget-object v18, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move-object/from16 v19, v3
+
+    invoke-virtual/range {v18 .. v18}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v3
+
+    if-ne v2, v3, :cond_282
+
+    goto :goto_285
+
+    .line 529
+    :cond_282
+    goto :goto_292
+
+    .line 525
+    :cond_283
+    move-object/from16 v19, v3
+
+    .line 526
+    :goto_285
+    const/4 v3, 0x0
+
+    .line 164
+    .local v3, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$8\\24\\526\\0":I
+    move-object/from16 v18, v2
+
+    .end local v2    # "it\\22":Ljava/lang/Object;
+    .local v18, "it\\22":Ljava/lang/Object;
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda18;
+
+    invoke-direct {v2, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda18;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    .line 526
+    .end local v3    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$8\\24\\526\\0":I
+    nop
+
+    .line 527
+    .local v2, "value\\23":Ljava/lang/Object;
+    invoke-interface {v8, v2}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 528
+    nop
+
+    .line 524
+    .end local v2    # "value\\23":Ljava/lang/Object;
+    .end local v17    # "$i$a$-let-ComposerKt$cache$1\\23\\524\\22":I
+    .end local v18    # "it\\22":Ljava/lang/Object;
+    :goto_292
+    nop
+
+    .line 164
+    .end local v5    # "invalid\\22":Z
+    .end local v8    # "$this$cache\\22":Landroidx/compose/runtime/Composer;
+    .end local v10    # "$i$f$cache\\22\\164":I
+    check-cast v2, Lkotlin/jvm/functions/Function0;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 165
+    nop
+
+    .line 166
+    const v3, -0x7183a692
+
+    invoke-static {v4, v3, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v3
+
+    .local v3, "invalid\\25":Z
+    move-object/from16 v5, p5
+
+    .local v5, "$this$cache\\25":Landroidx/compose/runtime/Composer;
+    const/4 v8, 0x0
+
+    .line 530
+    .local v8, "$i$f$cache\\25\\166":I
+    invoke-interface {v5}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v10
+
+    .local v10, "it\\25":Ljava/lang/Object;
+    const/16 v17, 0x0
+
+    .line 531
+    .local v17, "$i$a$-let-ComposerKt$cache$1\\26\\530\\25":I
+    if-nez v3, :cond_2ba
+
+    sget-object v18, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move-object/from16 v23, v2
+
+    invoke-virtual/range {v18 .. v18}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v2
+
+    if-ne v10, v2, :cond_2b9
+
+    goto :goto_2bc
+
+    .line 535
+    :cond_2b9
+    goto :goto_2c9
+
+    .line 531
+    :cond_2ba
+    move-object/from16 v23, v2
+
+    .line 532
+    :goto_2bc
+    const/4 v2, 0x0
+
+    .line 166
+    .local v2, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$9\\27\\532\\0":I
+    move/from16 v18, v2
+
+    .end local v2    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$9\\27\\532\\0":I
+    .local v18, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$9\\27\\532\\0":I
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda19;
+
+    invoke-direct {v2, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda19;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    .line 532
+    .end local v18    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$9\\27\\532\\0":I
+    nop
+
+    .line 533
+    .local v2, "value\\26":Ljava/lang/Object;
+    invoke-interface {v5, v2}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 534
+    move-object v10, v2
+
+    .line 530
+    .end local v2    # "value\\26":Ljava/lang/Object;
+    .end local v10    # "it\\25":Ljava/lang/Object;
+    .end local v17    # "$i$a$-let-ComposerKt$cache$1\\26\\530\\25":I
+    :goto_2c9
+    nop
+
+    .line 166
+    .end local v3    # "invalid\\25":Z
+    .end local v5    # "$this$cache\\25":Landroidx/compose/runtime/Composer;
+    .end local v8    # "$i$f$cache\\25\\166":I
+    move-object v8, v10
+
+    check-cast v8, Lkotlin/jvm/functions/Function1;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 171
+    nop
+
+    .line 172
+    const v2, -0x71838e5b
+
+    invoke-static {v4, v2, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v2
+
+    .local v2, "invalid\\28":Z
+    move-object/from16 v3, p5
+
+    .local v3, "$this$cache\\28":Landroidx/compose/runtime/Composer;
+    const/4 v5, 0x0
+
+    .line 536
+    .local v5, "$i$f$cache\\28\\172":I
+    invoke-interface {v3}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v10
+
+    .local v10, "it\\28":Ljava/lang/Object;
+    const/16 v17, 0x0
+
+    .line 537
+    .local v17, "$i$a$-let-ComposerKt$cache$1\\29\\536\\28":I
+    if-nez v2, :cond_2f2
+
+    sget-object v18, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move/from16 v24, v2
+
+    .end local v2    # "invalid\\28":Z
+    .local v24, "invalid\\28":Z
+    invoke-virtual/range {v18 .. v18}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v2
+
+    if-ne v10, v2, :cond_2f1
+
+    goto :goto_2f4
+
+    .line 541
+    :cond_2f1
+    goto :goto_301
+
+    .line 537
+    .end local v24    # "invalid\\28":Z
+    .restart local v2    # "invalid\\28":Z
+    :cond_2f2
+    move/from16 v24, v2
+
+    .line 538
+    .end local v2    # "invalid\\28":Z
+    .restart local v24    # "invalid\\28":Z
+    :goto_2f4
+    const/4 v2, 0x0
+
+    .line 172
+    .local v2, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$10\\30\\538\\0":I
+    move/from16 v18, v2
+
+    .end local v2    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$10\\30\\538\\0":I
+    .local v18, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$10\\30\\538\\0":I
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda20;
+
+    invoke-direct {v2, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda20;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    .line 538
+    .end local v18    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$10\\30\\538\\0":I
+    nop
+
+    .line 539
+    .local v2, "value\\29":Ljava/lang/Object;
+    invoke-interface {v3, v2}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 540
+    move-object v10, v2
+
+    .line 536
+    .end local v2    # "value\\29":Ljava/lang/Object;
+    .end local v10    # "it\\28":Ljava/lang/Object;
+    .end local v17    # "$i$a$-let-ComposerKt$cache$1\\29\\536\\28":I
+    :goto_301
+    nop
+
+    .line 172
+    .end local v3    # "$this$cache\\28":Landroidx/compose/runtime/Composer;
+    .end local v5    # "$i$f$cache\\28\\172":I
+    .end local v24    # "invalid\\28":Z
+    check-cast v10, Lkotlin/jvm/functions/Function1;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 177
+    nop
+
+    .line 178
+    nop
+
+    .line 179
+    nop
+
+    .line 180
+    nop
+
+    .line 181
+    nop
+
+    .line 182
+    nop
+
+    .line 183
+    const v2, -0x718351be
+
+    invoke-static {v4, v2, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v2
+
+    .local v2, "invalid\\31":Z
+    move-object/from16 v3, p5
+
+    .local v3, "$this$cache\\31":Landroidx/compose/runtime/Composer;
+    const/4 v5, 0x0
+
+    .line 542
+    .local v5, "$i$f$cache\\31\\183":I
+    move/from16 v17, v2
+
+    .end local v2    # "invalid\\31":Z
+    .local v17, "invalid\\31":Z
+    invoke-interface {v3}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v2
+
+    .local v2, "it\\31":Ljava/lang/Object;
+    const/16 v18, 0x0
+
+    .line 543
+    .local v18, "$i$a$-let-ComposerKt$cache$1\\32\\542\\31":I
+    if-nez v17, :cond_330
+
+    sget-object v24, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move/from16 v25, v5
+
+    .end local v5    # "$i$f$cache\\31\\183":I
+    .local v25, "$i$f$cache\\31\\183":I
+    invoke-virtual/range {v24 .. v24}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v5
+
+    if-ne v2, v5, :cond_32f
+
+    goto :goto_332
+
+    .line 547
+    :cond_32f
+    goto :goto_33f
+
+    .line 543
+    .end local v25    # "$i$f$cache\\31\\183":I
+    .restart local v5    # "$i$f$cache\\31\\183":I
+    :cond_330
+    move/from16 v25, v5
+
+    .line 544
+    .end local v5    # "$i$f$cache\\31\\183":I
+    .restart local v25    # "$i$f$cache\\31\\183":I
+    :goto_332
+    const/4 v5, 0x0
+
+    .line 183
+    .local v5, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$11\\33\\544\\0":I
+    move-object/from16 v24, v2
+
+    .end local v2    # "it\\31":Ljava/lang/Object;
+    .local v24, "it\\31":Ljava/lang/Object;
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda6;
+
+    invoke-direct {v2, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda6;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    .line 544
+    .end local v5    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$11\\33\\544\\0":I
+    nop
+
+    .line 545
+    .local v2, "value\\32":Ljava/lang/Object;
+    invoke-interface {v3, v2}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 546
+    nop
+
+    .line 542
+    .end local v2    # "value\\32":Ljava/lang/Object;
+    .end local v18    # "$i$a$-let-ComposerKt$cache$1\\32\\542\\31":I
+    .end local v24    # "it\\31":Ljava/lang/Object;
+    :goto_33f
+    nop
+
+    .line 183
+    .end local v3    # "$this$cache\\31":Landroidx/compose/runtime/Composer;
+    .end local v17    # "invalid\\31":Z
+    .end local v25    # "$i$f$cache\\31\\183":I
+    move-object/from16 v17, v2
+
+    check-cast v17, Lkotlin/jvm/functions/Function1;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 188
+    const v2, -0x7183431f
+
+    invoke-static {v4, v2, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v2
+
+    .local v2, "invalid\\34":Z
+    move-object/from16 v3, p5
+
+    .local v3, "$this$cache\\34":Landroidx/compose/runtime/Composer;
+    const/4 v5, 0x0
+
+    .line 548
+    .local v5, "$i$f$cache\\34\\188":I
+    move/from16 v18, v2
+
+    .end local v2    # "invalid\\34":Z
+    .local v18, "invalid\\34":Z
+    invoke-interface {v3}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v2
+
+    .local v2, "it\\34":Ljava/lang/Object;
+    const/16 v24, 0x0
+
+    .line 549
+    .local v24, "$i$a$-let-ComposerKt$cache$1\\35\\548\\34":I
+    if-nez v18, :cond_36a
+
+    sget-object v25, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move/from16 v26, v5
+
+    .end local v5    # "$i$f$cache\\34\\188":I
+    .local v26, "$i$f$cache\\34\\188":I
+    invoke-virtual/range {v25 .. v25}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v5
+
+    if-ne v2, v5, :cond_369
+
+    goto :goto_36c
+
+    .line 553
+    :cond_369
+    goto :goto_379
+
+    .line 549
+    .end local v26    # "$i$f$cache\\34\\188":I
+    .restart local v5    # "$i$f$cache\\34\\188":I
+    :cond_36a
+    move/from16 v26, v5
+
+    .line 550
+    .end local v5    # "$i$f$cache\\34\\188":I
+    .restart local v26    # "$i$f$cache\\34\\188":I
+    :goto_36c
+    const/4 v5, 0x0
+
+    .line 188
+    .local v5, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$12\\36\\550\\0":I
+    move-object/from16 v25, v2
+
+    .end local v2    # "it\\34":Ljava/lang/Object;
+    .local v25, "it\\34":Ljava/lang/Object;
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda7;
+
+    invoke-direct {v2, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda7;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    .line 550
+    .end local v5    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$12\\36\\550\\0":I
+    nop
+
+    .line 551
+    .local v2, "value\\35":Ljava/lang/Object;
+    invoke-interface {v3, v2}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 552
+    nop
+
+    .line 548
+    .end local v2    # "value\\35":Ljava/lang/Object;
+    .end local v24    # "$i$a$-let-ComposerKt$cache$1\\35\\548\\34":I
+    .end local v25    # "it\\34":Ljava/lang/Object;
+    :goto_379
+    nop
+
+    .line 188
+    .end local v3    # "$this$cache\\34":Landroidx/compose/runtime/Composer;
+    .end local v18    # "invalid\\34":Z
+    .end local v26    # "$i$f$cache\\34\\188":I
+    move-object/from16 v18, v2
+
+    check-cast v18, Lkotlin/jvm/functions/Function0;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 191
+    const v2, -0x71833719
+
+    invoke-static {v4, v2, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v1}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v2
+
+    .local v2, "invalid\\37":Z
+    move-object/from16 v3, p5
+
+    .local v3, "$this$cache\\37":Landroidx/compose/runtime/Composer;
+    const/4 v5, 0x0
+
+    .line 554
+    .local v5, "$i$f$cache\\37\\191":I
+    move/from16 v24, v2
+
+    .end local v2    # "invalid\\37":Z
+    .local v24, "invalid\\37":Z
+    invoke-interface {v3}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v2
+
+    .local v2, "it\\37":Ljava/lang/Object;
+    const/16 v25, 0x0
+
+    .line 555
+    .local v25, "$i$a$-let-ComposerKt$cache$1\\38\\554\\37":I
+    if-nez v24, :cond_3a4
+
+    sget-object v26, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move/from16 v28, v5
+
+    .end local v5    # "$i$f$cache\\37\\191":I
+    .local v28, "$i$f$cache\\37\\191":I
+    invoke-virtual/range {v26 .. v26}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v5
+
+    if-ne v2, v5, :cond_3a3
+
+    goto :goto_3a6
+
+    .line 559
+    :cond_3a3
+    goto :goto_3b3
+
+    .line 555
+    .end local v28    # "$i$f$cache\\37\\191":I
+    .restart local v5    # "$i$f$cache\\37\\191":I
+    :cond_3a4
+    move/from16 v28, v5
+
+    .line 556
+    .end local v5    # "$i$f$cache\\37\\191":I
+    .restart local v28    # "$i$f$cache\\37\\191":I
+    :goto_3a6
+    const/4 v5, 0x0
+
+    .line 191
+    .local v5, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$13\\39\\556\\0":I
+    move-object/from16 v26, v2
+
+    .end local v2    # "it\\37":Ljava/lang/Object;
+    .local v26, "it\\37":Ljava/lang/Object;
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda8;
+
+    invoke-direct {v2, v1}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda8;-><init>(Lcom/example/lumisky/MainActivity;)V
+
+    .line 556
+    .end local v5    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$13\\39\\556\\0":I
+    nop
+
+    .line 557
+    .local v2, "value\\38":Ljava/lang/Object;
+    invoke-interface {v3, v2}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 558
+    nop
+
+    .line 554
+    .end local v2    # "value\\38":Ljava/lang/Object;
+    .end local v25    # "$i$a$-let-ComposerKt$cache$1\\38\\554\\37":I
+    .end local v26    # "it\\37":Ljava/lang/Object;
+    :goto_3b3
+    nop
+
+    .line 191
+    .end local v3    # "$this$cache\\37":Landroidx/compose/runtime/Composer;
+    .end local v24    # "invalid\\37":Z
+    .end local v28    # "$i$f$cache\\37\\191":I
+    check-cast v2, Lkotlin/jvm/functions/Function0;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 192
+    nop
+
+    .line 193
+    const v3, -0x71832966
+
+    invoke-static {v4, v3, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v3
+
+    .local v3, "invalid\\40":Z
+    move-object/from16 v5, p5
+
+    .local v5, "$this$cache\\40":Landroidx/compose/runtime/Composer;
+    const/16 v24, 0x0
+
+    .line 560
+    .local v24, "$i$f$cache\\40\\193":I
+    move-object/from16 v25, v2
+
+    invoke-interface {v5}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v2
+
+    .local v2, "it\\40":Ljava/lang/Object;
+    const/16 v26, 0x0
+
+    .line 561
+    .local v26, "$i$a$-let-ComposerKt$cache$1\\41\\560\\40":I
+    if-nez v3, :cond_3de
+
+    sget-object v28, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move/from16 v29, v3
+
+    .end local v3    # "invalid\\40":Z
+    .local v29, "invalid\\40":Z
+    invoke-virtual/range {v28 .. v28}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v3
+
+    if-ne v2, v3, :cond_3dd
+
+    goto :goto_3e0
+
+    .line 565
+    :cond_3dd
+    goto :goto_3ed
+
+    .line 561
+    .end local v29    # "invalid\\40":Z
+    .restart local v3    # "invalid\\40":Z
+    :cond_3de
+    move/from16 v29, v3
+
+    .line 562
+    .end local v3    # "invalid\\40":Z
+    .restart local v29    # "invalid\\40":Z
+    :goto_3e0
+    const/4 v3, 0x0
+
+    .line 193
+    .local v3, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$14\\42\\562\\0":I
+    move-object/from16 v28, v2
+
+    .end local v2    # "it\\40":Ljava/lang/Object;
+    .local v28, "it\\40":Ljava/lang/Object;
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda9;
+
+    invoke-direct {v2, v0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda9;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;)V
+
+    .line 562
+    .end local v3    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$14\\42\\562\\0":I
+    nop
+
+    .line 563
+    .local v2, "value\\41":Ljava/lang/Object;
+    invoke-interface {v5, v2}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 564
+    nop
+
+    .line 560
+    .end local v2    # "value\\41":Ljava/lang/Object;
+    .end local v26    # "$i$a$-let-ComposerKt$cache$1\\41\\560\\40":I
+    .end local v28    # "it\\40":Ljava/lang/Object;
+    :goto_3ed
+    nop
+
+    .line 193
+    .end local v5    # "$this$cache\\40":Landroidx/compose/runtime/Composer;
+    .end local v24    # "$i$f$cache\\40\\193":I
+    .end local v29    # "invalid\\40":Z
+    check-cast v2, Lkotlin/jvm/functions/Function1;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 194
+    nop
+
+    .line 195
+    const v3, -0x7183193a
+
+    invoke-static {v4, v3, v7}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerStart(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+
+    invoke-interface {v4, v0}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v3
+
+    invoke-interface {v4, v1}, Landroidx/compose/runtime/Composer;->changedInstance(Ljava/lang/Object;)Z
+
+    move-result v5
+
+    or-int/2addr v3, v5
+
+    .local v3, "invalid\\43":Z
+    move-object/from16 v5, p5
+
+    .local v5, "$this$cache\\43":Landroidx/compose/runtime/Composer;
+    const/4 v7, 0x0
+
+    .line 566
+    .local v7, "$i$f$cache\\43\\195":I
+    move-object/from16 v24, v2
+
+    invoke-interface {v5}, Landroidx/compose/runtime/Composer;->rememberedValue()Ljava/lang/Object;
+
+    move-result-object v2
+
+    .local v2, "it\\43":Ljava/lang/Object;
+    const/16 v26, 0x0
+
+    .line 567
+    .local v26, "$i$a$-let-ComposerKt$cache$1\\44\\566\\43":I
+    if-nez v3, :cond_41c
+
+    sget-object v28, Landroidx/compose/runtime/Composer;->Companion:Landroidx/compose/runtime/Composer$Companion;
+
+    move/from16 v29, v3
+
+    .end local v3    # "invalid\\43":Z
+    .local v29, "invalid\\43":Z
+    invoke-virtual/range {v28 .. v28}, Landroidx/compose/runtime/Composer$Companion;->getEmpty()Ljava/lang/Object;
+
+    move-result-object v3
+
+    if-ne v2, v3, :cond_41b
+
+    goto :goto_41e
+
+    .line 571
+    :cond_41b
+    goto :goto_42b
+
+    .line 567
+    .end local v29    # "invalid\\43":Z
+    .restart local v3    # "invalid\\43":Z
+    :cond_41c
+    move/from16 v29, v3
+
+    .line 568
+    .end local v3    # "invalid\\43":Z
+    .restart local v29    # "invalid\\43":Z
+    :goto_41e
+    const/4 v3, 0x0
+
+    .line 195
+    .local v3, "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$15\\45\\568\\0":I
+    move-object/from16 v28, v2
+
+    .end local v2    # "it\\43":Ljava/lang/Object;
+    .local v28, "it\\43":Ljava/lang/Object;
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda10;
+
+    invoke-direct {v2, v0, v1}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda10;-><init>(Lcom/example/lumisky/viewmodel/HomeViewModel;Lcom/example/lumisky/MainActivity;)V
+
+    .line 568
+    .end local v3    # "$i$a$-cache-MainActivity$onCreate$1$1$screenContent$1$15\\45\\568\\0":I
+    nop
+
+    .line 569
+    .local v2, "value\\44":Ljava/lang/Object;
+    invoke-interface {v5, v2}, Landroidx/compose/runtime/Composer;->updateRememberedValue(Ljava/lang/Object;)V
+
+    .line 570
+    nop
+
+    .line 566
+    .end local v2    # "value\\44":Ljava/lang/Object;
+    .end local v26    # "$i$a$-let-ComposerKt$cache$1\\44\\566\\43":I
+    .end local v28    # "it\\43":Ljava/lang/Object;
+    :goto_42b
+    nop
+
+    .line 195
+    .end local v5    # "$this$cache\\43":Landroidx/compose/runtime/Composer;
+    .end local v7    # "$i$f$cache\\43\\195":I
+    .end local v29    # "invalid\\43":Z
+    check-cast v2, Lkotlin/jvm/functions/Function1;
+
+    invoke-static {v4}, Landroidx/compose/runtime/ComposerKt;->sourceInformationMarkerEnd(Landroidx/compose/runtime/Composer;)V
+
+    .line 162
+    move-object/from16 v3, v19
+
+    move-object/from16 v19, v25
+
+    const/16 v25, 0x0
+
+    const/16 v26, 0x0
+
+    move v7, v6
+
+    move-object/from16 v5, v21
+
+    move-object/from16 v6, v23
+
+    move-object/from16 v21, v24
+
+    move-object/from16 v23, v2
+
+    move-object/from16 v24, v4
+
+    move-object v4, v3
+
+    invoke-static/range {v4 .. v26}, Lcom/example/lumisky/ui/settings/SettingsScreenKt;->SettingsScreen(Lkotlin/jvm/functions/Function0;Lcom/example/core/settings/AppThemeMode;Lkotlin/jvm/functions/Function0;ZLkotlin/jvm/functions/Function1;Lcom/example/core/settings/PerformanceMode;Lkotlin/jvm/functions/Function1;Lcom/example/core/settings/LocationMode;Ljava/lang/String;Lcom/example/core/api/SunDaylight;ZZZLkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function0;Lcom/example/core/settings/ManualCity;Lkotlin/jvm/functions/Function1;Ljava/lang/String;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;II)V
+
+    move-object/from16 v4, v24
+
+    goto :goto_451
+
+    :cond_44b
+    const v2, 0x40ab6cb8
+
+    invoke-interface {v4, v2}, Landroidx/compose/runtime/Composer;->startReplaceGroup(I)V
+
+    :goto_451
+    invoke-interface {v4}, Landroidx/compose/runtime/Composer;->endReplaceGroup()V
+
+    :goto_454
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->isTraceInProgress()Z
+
+    move-result v2
+
+    if-eqz v2, :cond_463
+
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->traceEventEnd()V
+
+    goto :goto_463
+
+    .line 132
+    .end local v27    # "$dirty":I
+    .local v5, "$dirty":I
+    :cond_45e
+    move/from16 v27, v5
+
+    .end local v5    # "$dirty":I
+    .restart local v27    # "$dirty":I
+    invoke-interface {v4}, Landroidx/compose/runtime/Composer;->skipToGroupEnd()V
+
+    .line 204
+    :cond_463
+    :goto_463
+    sget-object v2, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v2
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$16$lambda$15(Lcom/example/lumisky/viewmodel/HomeViewModel;Ljava/lang/String;)Lkotlin/Unit;
+    .registers 3
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .param p1, "id"    # Ljava/lang/String;
+
+    const-string v0, "id"
+
+    invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 141
+    invoke-virtual {p0, p1}, Lcom/example/lumisky/viewmodel/HomeViewModel;->onWallpaperSelected(Ljava/lang/String;)V
+
+    .line 142
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$18$lambda$17(Lcom/example/lumisky/viewmodel/HomeViewModel;Ljava/util/List;)Lkotlin/Unit;
+    .registers 3
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .param p1, "ids"    # Ljava/util/List;
+
+    const-string v0, "ids"
+
+    invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 144
+    invoke-virtual {p0, p1}, Lcom/example/lumisky/viewmodel/HomeViewModel;->onCategoryFocused(Ljava/util/List;)V
+
+    .line 145
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$20$lambda$19(Lcom/example/lumisky/viewmodel/HomeViewModel;Ljava/lang/String;)Lkotlin/Unit;
+    .registers 3
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .param p1, "id"    # Ljava/lang/String;
+
+    const-string v0, "id"
+
+    invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 147
+    invoke-virtual {p0, p1}, Lcom/example/lumisky/viewmodel/HomeViewModel;->activateLivePreview(Ljava/lang/String;)V
+
+    .line 148
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$22$lambda$21(Lcom/example/lumisky/viewmodel/HomeViewModel;)Lkotlin/Unit;
+    .registers 2
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    .line 150
+    invoke-virtual {p0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->clearLivePreview()V
+
+    .line 151
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$24$lambda$23(Lcom/example/lumisky/MainActivity;Ljava/lang/String;)Lkotlin/Unit;
+    .registers 3
+    .param p0, "this$0"    # Lcom/example/lumisky/MainActivity;
+    .param p1, "id"    # Ljava/lang/String;
+
+    const-string v0, "id"
+
+    invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 153
+    invoke-direct {p0, p1}, Lcom/example/lumisky/MainActivity;->openWallpaperSetScreen(Ljava/lang/String;)V
+
+    .line 154
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$26$lambda$25(Landroidx/compose/runtime/MutableState;)Lkotlin/Unit;
+    .registers 2
+    .param p0, "$currentScreen$delegate"    # Landroidx/compose/runtime/MutableState;
+
+    .line 156
+    const-string v0, "settings"
+
+    invoke-static {p0, v0}, Lcom/example/lumisky/MainActivity;->onCreate$lambda$53$lambda$52$lambda$7(Landroidx/compose/runtime/MutableState;Ljava/lang/String;)V
+
+    .line 157
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$28$lambda$27(Landroidx/compose/runtime/MutableState;)Lkotlin/Unit;
+    .registers 2
+    .param p0, "$currentScreen$delegate"    # Landroidx/compose/runtime/MutableState;
+
+    .line 200
+    const-string v0, "home"
+
+    invoke-static {p0, v0}, Lcom/example/lumisky/MainActivity;->onCreate$lambda$53$lambda$52$lambda$7(Landroidx/compose/runtime/MutableState;Ljava/lang/String;)V
+
+    .line 201
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$30$lambda$29(Lcom/example/lumisky/viewmodel/HomeViewModel;)Lkotlin/Unit;
+    .registers 2
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    .line 164
+    invoke-virtual {p0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->cycleAppThemeMode()V
+
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$32$lambda$31(Lcom/example/lumisky/viewmodel/HomeViewModel;Z)Lkotlin/Unit;
+    .registers 3
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .param p1, "enabled"    # Z
+
+    .line 167
+    nop
+
+    .line 168
+    nop
+
+    .line 167
+    invoke-virtual {p0, p1}, Lcom/example/lumisky/viewmodel/HomeViewModel;->updateHighRefreshEnabled(Z)V
+
+    .line 170
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$34$lambda$33(Lcom/example/lumisky/viewmodel/HomeViewModel;Lcom/example/core/settings/PerformanceMode;)Lkotlin/Unit;
+    .registers 3
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .param p1, "mode"    # Lcom/example/core/settings/PerformanceMode;
+
+    const-string v0, "mode"
+
+    invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 173
+    nop
+
+    .line 174
+    nop
+
+    .line 173
+    invoke-virtual {p0, p1}, Lcom/example/lumisky/viewmodel/HomeViewModel;->updatePerformanceMode(Lcom/example/core/settings/PerformanceMode;)V
+
+    .line 176
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$36$lambda$35(Lcom/example/lumisky/viewmodel/HomeViewModel;Lcom/example/core/settings/LocationMode;)Lkotlin/Unit;
+    .registers 3
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .param p1, "mode"    # Lcom/example/core/settings/LocationMode;
+
+    const-string v0, "mode"
+
+    invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 184
+    nop
+
+    .line 185
+    nop
+
+    .line 184
+    invoke-virtual {p0, p1}, Lcom/example/lumisky/viewmodel/HomeViewModel;->updateLocationMode(Lcom/example/core/settings/LocationMode;)V
+
+    .line 187
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$38$lambda$37(Lcom/example/lumisky/viewmodel/HomeViewModel;)Lkotlin/Unit;
+    .registers 2
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    .line 189
+    invoke-virtual {p0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->refreshLocationNow()V
+
+    .line 190
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$40$lambda$39(Lcom/example/lumisky/MainActivity;)Lkotlin/Unit;
+    .registers 2
+    .param p0, "this$0"    # Lcom/example/lumisky/MainActivity;
+
+    .line 191
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->openSystemLocationPanel()V
+
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$42$lambda$41(Lcom/example/lumisky/viewmodel/HomeViewModel;Lcom/example/core/settings/ManualCity;)Lkotlin/Unit;
+    .registers 3
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .param p1, "city"    # Lcom/example/core/settings/ManualCity;
+
+    const-string v0, "city"
+
+    invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 193
+    invoke-virtual {p0, p1}, Lcom/example/lumisky/viewmodel/HomeViewModel;->updateManualCity(Lcom/example/core/settings/ManualCity;)V
+
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$45$lambda$44$lambda$43(Lcom/example/lumisky/viewmodel/HomeViewModel;Lcom/example/lumisky/MainActivity;Ljava/lang/String;)Lkotlin/Unit;
+    .registers 4
+    .param p0, "$homeViewModel"    # Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .param p1, "this$0"    # Lcom/example/lumisky/MainActivity;
+    .param p2, "tag"    # Ljava/lang/String;
+
+    const-string v0, "tag"
+
+    invoke-static {p2, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 196
+    invoke-virtual {p0, p2}, Lcom/example/lumisky/viewmodel/HomeViewModel;->updateLanguageTag(Ljava/lang/String;)V
+
+    .line 197
+    invoke-direct {p1, p2}, Lcom/example/lumisky/MainActivity;->applyLanguage(Ljava/lang/String;)V
+
+    .line 198
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$5$lambda$4()Landroidx/compose/runtime/MutableState;
+    .registers 3
+
+    .line 101
+    const/4 v0, 0x0
+
+    const/4 v1, 0x2
+
+    const-string v2, "home"
+
+    invoke-static {v2, v0, v1, v0}, Landroidx/compose/runtime/SnapshotStateKt;->mutableStateOf$default(Ljava/lang/Object;Landroidx/compose/runtime/SnapshotMutationPolicy;ILjava/lang/Object;)Landroidx/compose/runtime/MutableState;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$50$lambda$49(Landroidx/compose/animation/AnimatedContentTransitionScope;)Landroidx/compose/animation/ContentTransform;
+    .registers 10
+    .param p0, "$this$AnimatedContent"    # Landroidx/compose/animation/AnimatedContentTransitionScope;
+
+    const-string v0, "$this$AnimatedContent"
+
+    invoke-static {p0, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    .line 214
+    invoke-interface {p0}, Landroidx/compose/animation/AnimatedContentTransitionScope;->getTargetState()Ljava/lang/Object;
+
+    move-result-object v0
+
+    const-string v1, "settings"
+
+    invoke-static {v0, v1}, Lkotlin/jvm/internal/Intrinsics;->areEqual(Ljava/lang/Object;Ljava/lang/Object;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_18
+
+    .line 215
+    sget-object v0, Landroidx/compose/animation/AnimatedContentTransitionScope$SlideDirection;->Companion:Landroidx/compose/animation/AnimatedContentTransitionScope$SlideDirection$Companion;
+
+    invoke-virtual {v0}, Landroidx/compose/animation/AnimatedContentTransitionScope$SlideDirection$Companion;->getLeft-DKzdypw()I
+
+    move-result v0
+
+    goto :goto_1e
+
+    .line 217
+    :cond_18
+    sget-object v0, Landroidx/compose/animation/AnimatedContentTransitionScope$SlideDirection;->Companion:Landroidx/compose/animation/AnimatedContentTransitionScope$SlideDirection$Companion;
+
+    invoke-virtual {v0}, Landroidx/compose/animation/AnimatedContentTransitionScope$SlideDirection$Companion;->getRight-DKzdypw()I
+
+    move-result v0
+
+    .line 214
+    :goto_1e
+    nop
+
+    .line 219
+    .local v0, "direction":I
+    nop
+
+    .line 220
+    nop
+
+    .line 221
+    nop
+
+    .line 223
+    nop
+
+    .line 222
+    nop
+
+    .line 224
+    invoke-static {}, Landroidx/compose/animation/core/EasingKt;->getFastOutSlowInEasing()Landroidx/compose/animation/core/Easing;
+
+    move-result-object v1
+
+    .line 222
+    const/16 v2, 0x168
+
+    const/4 v3, 0x0
+
+    const/4 v4, 0x2
+
+    const/4 v5, 0x0
+
+    invoke-static {v2, v3, v1, v4, v5}, Landroidx/compose/animation/core/AnimationSpecKt;->tween$default(IILandroidx/compose/animation/core/Easing;ILjava/lang/Object;)Landroidx/compose/animation/core/TweenSpec;
+
+    move-result-object v1
+
+    check-cast v1, Landroidx/compose/animation/core/FiniteAnimationSpec;
+
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda2;
+
+    invoke-direct {v2}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda2;-><init>()V
+
+    .line 220
+    invoke-interface {p0, v0, v1, v2}, Landroidx/compose/animation/AnimatedContentTransitionScope;->slideIntoContainer-mOhB8PU(ILandroidx/compose/animation/core/FiniteAnimationSpec;Lkotlin/jvm/functions/Function1;)Landroidx/compose/animation/EnterTransition;
+
+    move-result-object v1
+
+    .line 229
+    nop
+
+    .line 230
+    nop
+
+    .line 228
+    const/4 v2, 0x4
+
+    const/16 v6, 0xdc
+
+    const/16 v7, 0x3c
+
+    invoke-static {v6, v7, v5, v2, v5}, Landroidx/compose/animation/core/AnimationSpecKt;->tween$default(IILandroidx/compose/animation/core/Easing;ILjava/lang/Object;)Landroidx/compose/animation/core/TweenSpec;
+
+    move-result-object v2
+
+    check-cast v2, Landroidx/compose/animation/core/FiniteAnimationSpec;
+
+    .line 227
+    const/4 v6, 0x0
+
+    invoke-static {v2, v6, v4, v5}, Landroidx/compose/animation/EnterExitTransitionKt;->fadeIn$default(Landroidx/compose/animation/core/FiniteAnimationSpec;FILjava/lang/Object;)Landroidx/compose/animation/EnterTransition;
+
+    move-result-object v2
+
+    .line 220
+    invoke-virtual {v1, v2}, Landroidx/compose/animation/EnterTransition;->plus(Landroidx/compose/animation/EnterTransition;)Landroidx/compose/animation/EnterTransition;
+
+    move-result-object v1
+
+    .line 234
+    nop
+
+    .line 235
+    nop
+
+    .line 237
+    nop
+
+    .line 236
+    nop
+
+    .line 238
+    invoke-static {}, Landroidx/compose/animation/core/EasingKt;->getFastOutSlowInEasing()Landroidx/compose/animation/core/Easing;
+
+    move-result-object v2
+
+    .line 236
+    const/16 v7, 0x118
+
+    invoke-static {v7, v3, v2, v4, v5}, Landroidx/compose/animation/core/AnimationSpecKt;->tween$default(IILandroidx/compose/animation/core/Easing;ILjava/lang/Object;)Landroidx/compose/animation/core/TweenSpec;
+
+    move-result-object v2
+
+    check-cast v2, Landroidx/compose/animation/core/FiniteAnimationSpec;
+
+    new-instance v7, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda3;
+
+    invoke-direct {v7}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda3;-><init>()V
+
+    .line 234
+    invoke-interface {p0, v0, v2, v7}, Landroidx/compose/animation/AnimatedContentTransitionScope;->slideOutOfContainer-mOhB8PU(ILandroidx/compose/animation/core/FiniteAnimationSpec;Lkotlin/jvm/functions/Function1;)Landroidx/compose/animation/ExitTransition;
+
+    move-result-object v2
+
+    .line 242
+    const/16 v7, 0xb4
+
+    const/4 v8, 0x6
+
+    invoke-static {v7, v3, v5, v8, v5}, Landroidx/compose/animation/core/AnimationSpecKt;->tween$default(IILandroidx/compose/animation/core/Easing;ILjava/lang/Object;)Landroidx/compose/animation/core/TweenSpec;
+
+    move-result-object v7
+
+    check-cast v7, Landroidx/compose/animation/core/FiniteAnimationSpec;
+
+    .line 241
+    invoke-static {v7, v6, v4, v5}, Landroidx/compose/animation/EnterExitTransitionKt;->fadeOut$default(Landroidx/compose/animation/core/FiniteAnimationSpec;FILjava/lang/Object;)Landroidx/compose/animation/ExitTransition;
+
+    move-result-object v6
+
+    .line 234
+    invoke-virtual {v2, v6}, Landroidx/compose/animation/ExitTransition;->plus(Landroidx/compose/animation/ExitTransition;)Landroidx/compose/animation/ExitTransition;
+
+    move-result-object v2
+
+    .line 233
+    invoke-static {v1, v2}, Landroidx/compose/animation/AnimatedContentKt;->togetherWith(Landroidx/compose/animation/EnterTransition;Landroidx/compose/animation/ExitTransition;)Landroidx/compose/animation/ContentTransform;
+
+    move-result-object v1
+
+    .line 244
+    invoke-static {v3, v5, v4, v5}, Landroidx/compose/animation/AnimatedContentKt;->SizeTransform$default(ZLkotlin/jvm/functions/Function2;ILjava/lang/Object;)Landroidx/compose/animation/SizeTransform;
+
+    move-result-object v2
+
+    invoke-interface {p0, v1, v2}, Landroidx/compose/animation/AnimatedContentTransitionScope;->using(Landroidx/compose/animation/ContentTransform;Landroidx/compose/animation/SizeTransform;)Landroidx/compose/animation/ContentTransform;
+
+    move-result-object v1
+
+    return-object v1
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$50$lambda$49$lambda$47(I)I
+    .registers 2
+    .param p0, "offset"    # I
+
+    .line 226
+    div-int/lit8 v0, p0, 0x3
+
+    return v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$50$lambda$49$lambda$48(I)I
+    .registers 2
+    .param p0, "offset"    # I
+
+    .line 240
+    div-int/lit8 v0, p0, 0x4
+
+    return v0
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$51(Lkotlin/jvm/functions/Function3;Landroidx/compose/animation/AnimatedContentScope;Ljava/lang/String;Landroidx/compose/runtime/Composer;I)Lkotlin/Unit;
+    .registers 8
+    .param p0, "$screenContent"    # Lkotlin/jvm/functions/Function3;
+    .param p1, "$this$AnimatedContent"    # Landroidx/compose/animation/AnimatedContentScope;
+    .param p2, "screen"    # Ljava/lang/String;
+    .param p3, "$composer"    # Landroidx/compose/runtime/Composer;
+    .param p4, "$changed"    # I
+
+    const-string v0, "$this$AnimatedContent"
+
+    invoke-static {p1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    const-string v0, "screen"
+
+    invoke-static {p2, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullParameter(Ljava/lang/Object;Ljava/lang/String;)V
+
+    const-string v0, "CN(screen)247@9217L21:MainActivity.kt#77dxrf"
+
+    invoke-static {p3, v0}, Landroidx/compose/runtime/ComposerKt;->sourceInformation(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->isTraceInProgress()Z
+
+    move-result v0
+
+    if-eqz v0, :cond_1e
+
+    const/4 v0, -0x1
+
+    const-string v1, "com.example.lumisky.MainActivity.onCreate.<anonymous>.<anonymous>.<anonymous> (MainActivity.kt:247)"
+
+    const v2, -0x376f32f7
+
+    invoke-static {v2, p4, v0, v1}, Landroidx/compose/runtime/ComposerKt;->traceEventStart(IIILjava/lang/String;)V
+
+    .line 248
+    :cond_1e
+    shr-int/lit8 v0, p4, 0x3
+
+    and-int/lit8 v0, v0, 0xe
+
+    or-int/lit8 v0, v0, 0x30
+
+    invoke-static {v0}, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+
+    move-result-object v0
+
+    invoke-interface {p0, p2, p3, v0}, Lkotlin/jvm/functions/Function3;->invoke(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->isTraceInProgress()Z
+
+    move-result v0
+
+    if-eqz v0, :cond_34
+
+    invoke-static {}, Landroidx/compose/runtime/ComposerKt;->traceEventEnd()V
+
+    .line 249
+    :cond_34
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    return-object v0
+.end method
+
+.method private static final onCreate$lambda$53$lambda$52$lambda$6(Landroidx/compose/runtime/MutableState;)Ljava/lang/String;
+    .registers 5
+    .param p0, "$currentScreen$delegate"    # Landroidx/compose/runtime/MutableState;
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "(",
+            "Landroidx/compose/runtime/MutableState<",
+            "Ljava/lang/String;",
+            ">;)",
+            "Ljava/lang/String;"
+        }
+    .end annotation
+
+    .line 101
+    move-object v0, p0
+
+    check-cast v0, Landroidx/compose/runtime/State;
+
+    .local v0, "$this$getValue\\1":Landroidx/compose/runtime/State;
+    const/4 v1, 0x0
+
+    .local v1, "this_\\1":Ljava/lang/Object;
+    const/4 v2, 0x0
+
+    .local v2, "property\\1":Lkotlin/reflect/KProperty;
+    const/4 v3, 0x0
+
+    .line 476
+    .local v3, "$i$f$getValue\\1\\101":I
+    invoke-interface {v0}, Landroidx/compose/runtime/State;->getValue()Ljava/lang/Object;
+
+    move-result-object v0
+
+    .end local v0    # "$this$getValue\\1":Landroidx/compose/runtime/State;
+    .end local v1    # "this_\\1":Ljava/lang/Object;
+    .end local v2    # "property\\1":Lkotlin/reflect/KProperty;
+    .end local v3    # "$i$f$getValue\\1\\101":I
+    check-cast v0, Ljava/lang/String;
+
+    .line 101
+    return-object v0
+.end method
+
+.method private static final onCreate$lambda$53$lambda$52$lambda$7(Landroidx/compose/runtime/MutableState;Ljava/lang/String;)V
+    .registers 7
+    .param p0, "$currentScreen$delegate"    # Landroidx/compose/runtime/MutableState;
+    .param p1, "<set-?>"    # Ljava/lang/String;
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "(",
+            "Landroidx/compose/runtime/MutableState<",
+            "Ljava/lang/String;",
+            ">;",
+            "Ljava/lang/String;",
+            ")V"
+        }
+    .end annotation
+
+    .line 101
+    const/4 v0, 0x0
+
+    .local v0, "this_\\1":Ljava/lang/Object;
+    const/4 v1, 0x0
+
+    .local v1, "property\\1":Lkotlin/reflect/KProperty;
+    move-object v2, p1
+
+    .local v2, "value\\1":Ljava/lang/Object;
+    move-object v3, p0
+
+    .local v3, "$this$setValue\\1":Landroidx/compose/runtime/MutableState;
+    const/4 v4, 0x0
+
+    .line 477
+    .local v4, "$i$f$setValue\\1\\101":I
+    invoke-interface {v3, v2}, Landroidx/compose/runtime/MutableState;->setValue(Ljava/lang/Object;)V
+
+    .line 478
+    nop
+
+    .line 101
+    .end local v0    # "this_\\1":Ljava/lang/Object;
+    .end local v1    # "property\\1":Lkotlin/reflect/KProperty;
+    .end local v2    # "value\\1":Ljava/lang/Object;
+    .end local v3    # "$this$setValue\\1":Landroidx/compose/runtime/MutableState;
+    .end local v4    # "$i$f$setValue\\1\\101":I
+    return-void
+.end method
+
+.method static final onCreate$lambda$53$lambda$52$lambda$9$lambda$8()Landroidx/compose/runtime/MutableState;
+    .registers 3
+
+    .line 102
+    const/4 v0, 0x0
+
+    invoke-static {v0}, Ljava/lang/Boolean;->valueOf(Z)Ljava/lang/Boolean;
+
+    move-result-object v0
+
+    const/4 v1, 0x0
+
+    const/4 v2, 0x2
+
+    invoke-static {v0, v1, v2, v1}, Landroidx/compose/runtime/SnapshotStateKt;->mutableStateOf$default(Ljava/lang/Object;Landroidx/compose/runtime/SnapshotMutationPolicy;ILjava/lang/Object;)Landroidx/compose/runtime/MutableState;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method private final openSystemLocationPanel()V
+    .registers 7
+
+    .line 426
+    new-instance v0, Landroid/content/Intent;
+
+    const-string v1, "android.settings.LOCATION_SOURCE_SETTINGS"
+
+    invoke-direct {v0, v1}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
+
+    .line 427
+    .local v0, "intent":Landroid/content/Intent;
+    :try_start_7
+    sget-object v1, Lkotlin/Result;->Companion:Lkotlin/Result$Companion;
+
+    move-object v1, p0
+
+    check-cast v1, Lcom/example/lumisky/MainActivity;
+
+    .local v1, "$this$openSystemLocationPanel_u24lambda_u2467\\1":Lcom/example/lumisky/MainActivity;
+    const/4 v2, 0x0
+
+    .line 428
+    .local v2, "$i$a$-runCatching-MainActivity$openSystemLocationPanel$1\\1\\427\\0":I
+    invoke-virtual {v1, v0}, Lcom/example/lumisky/MainActivity;->startActivity(Landroid/content/Intent;)V
+
+    .line 429
+    nop
+
+    .end local v1    # "$this$openSystemLocationPanel_u24lambda_u2467\\1":Lcom/example/lumisky/MainActivity;
+    .end local v2    # "$i$a$-runCatching-MainActivity$openSystemLocationPanel$1\\1\\427\\0":I
+    sget-object v1, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    .line 427
+    invoke-static {v1}, Lkotlin/Result;->constructor-impl(Ljava/lang/Object;)Ljava/lang/Object;
+
+    move-result-object v1
+    :try_end_17
+    .catchall {:try_start_7 .. :try_end_17} :catchall_18
+
+    goto :goto_23
+
+    :catchall_18
+    move-exception v1
+
+    sget-object v2, Lkotlin/Result;->Companion:Lkotlin/Result$Companion;
+
+    invoke-static {v1}, Lkotlin/ResultKt;->createFailure(Ljava/lang/Throwable;)Ljava/lang/Object;
+
+    move-result-object v1
+
+    invoke-static {v1}, Lkotlin/Result;->constructor-impl(Ljava/lang/Object;)Ljava/lang/Object;
+
+    move-result-object v1
+
+    .line 429
+    :goto_23
+    invoke-static {v1}, Lkotlin/Result;->exceptionOrNull-impl(Ljava/lang/Object;)Ljava/lang/Throwable;
+
+    move-result-object v1
+
+    if-eqz v1, :cond_35
+
+    .local v1, "it\\3":Ljava/lang/Throwable;
+    const/4 v2, 0x0
+
+    .line 430
+    .local v2, "$i$a$-onFailure-MainActivity$openSystemLocationPanel$2\\3\\429\\0":I
+    sget-object v3, Lcom/example/core/Logger;->INSTANCE:Lcom/example/core/Logger;
+
+    const-string v4, "MainActivity"
+
+    const-string v5, "failed to open system location panel"
+
+    invoke-virtual {v3, v4, v5, v1}, Lcom/example/core/Logger;->w(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+
+    .line 431
+    nop
+
+    .line 429
+    .end local v1    # "it\\3":Ljava/lang/Throwable;
+    .end local v2    # "$i$a$-onFailure-MainActivity$openSystemLocationPanel$2\\3\\429\\0":I
+    nop
+
+    .line 432
+    :cond_35
+    return-void
+.end method
+
+.method private final openWallpaperSetScreen(Ljava/lang/String;)V
+    .registers 4
+    .param p1, "wallpaperId"    # Ljava/lang/String;
+
+    .line 316
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->homeViewModelOrNull$app()Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    move-result-object v0
+
+    if-nez v0, :cond_7
+
+    return-void
+
+    .line 317
+    .local v0, "homeViewModel":Lcom/example/lumisky/viewmodel/HomeViewModel;
+    :cond_7
+    invoke-virtual {v0, p1}, Lcom/example/lumisky/viewmodel/HomeViewModel;->configFor(Ljava/lang/String;)Lcom/example/engine/config/WallpaperConfig;
+
+    move-result-object v1
+
+    .line 318
+    .local v1, "baseConfig":Lcom/example/engine/config/WallpaperConfig;
+    invoke-direct {p0, v1}, Lcom/example/lumisky/MainActivity;->applyWallpaperWithFreshSunTimes(Lcom/example/engine/config/WallpaperConfig;)V
+
+    .line 319
+    return-void
+.end method
+
+.method private final registerLocationModeReceiver()V
+    .registers 5
+
+    .line 298
+    iget-boolean v0, p0, Lcom/example/lumisky/MainActivity;->locationReceiverRegistered:Z
+
+    if-eqz v0, :cond_5
+
+    return-void
+
+    .line 299
+    :cond_5
+    new-instance v0, Landroid/content/IntentFilter;
+
+    const-string v1, "android.location.MODE_CHANGED"
+
+    invoke-direct {v0, v1}, Landroid/content/IntentFilter;-><init>(Ljava/lang/String;)V
+
+    .line 300
+    .local v0, "filter":Landroid/content/IntentFilter;
+    sget v1, Landroid/os/Build$VERSION;->SDK_INT:I
+
+    .line 304
+    iget-object v2, p0, Lcom/example/lumisky/MainActivity;->locationModeReceiver:Lcom/example/lumisky/MainActivity$locationModeReceiver$1;
+
+    .line 300
+    const/16 v3, 0x21
+
+    if-lt v1, v3, :cond_1b
+
+    .line 301
+    check-cast v2, Landroid/content/BroadcastReceiver;
+
+    const/4 v1, 0x4
+
+    invoke-virtual {p0, v2, v0, v1}, Lcom/example/lumisky/MainActivity;->registerReceiver(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;I)Landroid/content/Intent;
+
+    goto :goto_20
+
+    .line 304
+    :cond_1b
+    check-cast v2, Landroid/content/BroadcastReceiver;
+
+    invoke-virtual {p0, v2, v0}, Lcom/example/lumisky/MainActivity;->registerReceiver(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;
+
+    .line 306
+    :goto_20
+    const/4 v1, 0x1
+
+    iput-boolean v1, p0, Lcom/example/lumisky/MainActivity;->locationReceiverRegistered:Z
+
+    .line 307
+    return-void
+.end method
+
+.method static final setWallpaperExecutor_delegate$lambda$3()Ljava/util/concurrent/ExecutorService;
+    .registers 1
+
+    .line 68
+    invoke-static {}, Ljava/util/concurrent/Executors;->newSingleThreadExecutor()Ljava/util/concurrent/ExecutorService;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method static final sunTimesRepository_delegate$lambda$2()Lcom/example/core/api/SunTimesRepository;
+    .registers 3
+
+    .line 67
+    new-instance v0, Lcom/example/core/api/SunTimesRepository;
+
+    const/4 v1, 0x0
+
+    const/4 v2, 0x1
+
+    invoke-direct {v0, v1, v2, v1}, Lcom/example/core/api/SunTimesRepository;-><init>(Lcom/example/core/api/SunTimesApiClient;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+
+    return-object v0
+.end method
+
+.method private final unregisterLocationModeReceiver()V
+    .registers 4
+
+    .line 310
+    iget-boolean v0, p0, Lcom/example/lumisky/MainActivity;->locationReceiverRegistered:Z
+
+    if-nez v0, :cond_5
+
+    return-void
+
+    .line 311
+    :cond_5
+    :try_start_5
+    sget-object v0, Lkotlin/Result;->Companion:Lkotlin/Result$Companion;
+
+    move-object v0, p0
+
+    check-cast v0, Lcom/example/lumisky/MainActivity;
+
+    .line 467
+    .local v0, "$this$unregisterLocationModeReceiver_u24lambda_u2454\\1":Lcom/example/lumisky/MainActivity;
+    const/4 v1, 0x0
+
+    .line 311
+    .local v1, "$i$a$-runCatching-MainActivity$unregisterLocationModeReceiver$1\\1\\311\\0":I
+    iget-object v2, v0, Lcom/example/lumisky/MainActivity;->locationModeReceiver:Lcom/example/lumisky/MainActivity$locationModeReceiver$1;
+
+    check-cast v2, Landroid/content/BroadcastReceiver;
+
+    invoke-virtual {v0, v2}, Lcom/example/lumisky/MainActivity;->unregisterReceiver(Landroid/content/BroadcastReceiver;)V
+
+    .end local v0    # "$this$unregisterLocationModeReceiver_u24lambda_u2454\\1":Lcom/example/lumisky/MainActivity;
+    .end local v1    # "$i$a$-runCatching-MainActivity$unregisterLocationModeReceiver$1\\1\\311\\0":I
+    sget-object v0, Lkotlin/Unit;->INSTANCE:Lkotlin/Unit;
+
+    invoke-static {v0}, Lkotlin/Result;->constructor-impl(Ljava/lang/Object;)Ljava/lang/Object;
+    :try_end_17
+    .catchall {:try_start_5 .. :try_end_17} :catchall_18
+
+    goto :goto_22
+
+    :catchall_18
+    move-exception v0
+
+    sget-object v1, Lkotlin/Result;->Companion:Lkotlin/Result$Companion;
+
+    invoke-static {v0}, Lkotlin/ResultKt;->createFailure(Ljava/lang/Throwable;)Ljava/lang/Object;
+
+    move-result-object v0
+
+    invoke-static {v0}, Lkotlin/Result;->constructor-impl(Ljava/lang/Object;)Ljava/lang/Object;
+
+    .line 312
+    :goto_22
+    const/4 v0, 0x0
+
+    iput-boolean v0, p0, Lcom/example/lumisky/MainActivity;->locationReceiverRegistered:Z
+
+    .line 313
+    return-void
+.end method
+
+.method static final wallpaperConfigStore_delegate$lambda$1(Lcom/example/lumisky/MainActivity;)Lcom/example/engine/config/WallpaperConfigStore;
+    .registers 4
+    .param p0, "this$0"    # Lcom/example/lumisky/MainActivity;
+
+    .line 66
+    new-instance v0, Lcom/example/engine/config/WallpaperConfigStore;
+
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->getApplicationContext()Landroid/content/Context;
+
+    move-result-object v1
+
+    const-string v2, "getApplicationContext(...)"
+
+    invoke-static {v1, v2}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullExpressionValue(Ljava/lang/Object;Ljava/lang/String;)V
+
+    invoke-direct {v0, v1}, Lcom/example/engine/config/WallpaperConfigStore;-><init>(Landroid/content/Context;)V
+
+    return-object v0
+.end method
+
+
+# virtual methods
+.method public final homeViewModelOrNull$app()Lcom/example/lumisky/viewmodel/HomeViewModel;
+    .registers 2
+
+    .line 445
+    iget-object v0, p0, Lcom/example/lumisky/MainActivity;->homeViewModelState:Landroidx/compose/runtime/MutableState;
+
+    invoke-interface {v0}, Landroidx/compose/runtime/MutableState;->getValue()Ljava/lang/Object;
+
+    move-result-object v0
+
+    check-cast v0, Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    return-object v0
+.end method
+
+.method protected onCreate(Landroid/os/Bundle;)V
+    .registers 7
+    .param p1, "savedInstanceState"    # Landroid/os/Bundle;
+
+    .line 84
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->configureLogging()V
+
+    .line 85
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->getAppSettingsRepository()Lcom/example/core/settings/AppSettingsRepository;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Lcom/example/core/settings/AppSettingsRepository;->getAppThemeMode()Lcom/example/core/settings/AppThemeMode;
+
+    move-result-object v0
+
+    iput-object v0, p0, Lcom/example/lumisky/MainActivity;->launchThemeMode:Lcom/example/core/settings/AppThemeMode;
+
+    .line 86
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->getAppSettingsRepository()Lcom/example/core/settings/AppSettingsRepository;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Lcom/example/core/settings/AppSettingsRepository;->getLanguageTag()Ljava/lang/String;
+
+    move-result-object v0
+
+    .line 87
+    .local v0, "launchLanguageTag":Ljava/lang/String;
+    invoke-direct {p0, v0}, Lcom/example/lumisky/MainActivity;->applyLanguage(Ljava/lang/String;)V
+
+    .line 88
+    invoke-super {p0, p1}, Landroidx/appcompat/app/AppCompatActivity;->onCreate(Landroid/os/Bundle;)V
+
+    .line 90
+    move-object v1, p0
+
+    check-cast v1, Landroidx/activity/ComponentActivity;
+
+    new-instance v2, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda1;
+
+    invoke-direct {v2, p0}, Lcom/example/lumisky/MainActivity$$ExternalSyntheticLambda1;-><init>(Lcom/example/lumisky/MainActivity;)V
+
+    const v3, -0x6fbea73
+
+    const/4 v4, 0x1
+
+    invoke-static {v3, v4, v2}, Landroidx/compose/runtime/internal/ComposableLambdaKt;->composableLambdaInstance(IZLjava/lang/Object;)Landroidx/compose/runtime/internal/ComposableLambda;
+
+    move-result-object v2
+
+    check-cast v2, Lkotlin/jvm/functions/Function2;
+
+    const/4 v3, 0x0
+
+    invoke-static {v1, v3, v2, v4, v3}, Landroidx/activity/compose/ComponentActivityKt;->setContent$default(Landroidx/activity/ComponentActivity;Landroidx/compose/runtime/CompositionContext;Lkotlin/jvm/functions/Function2;ILjava/lang/Object;)V
+
+    .line 256
+    return-void
+.end method
+
+.method protected onDestroy()V
+    .registers 2
+
+    .line 276
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->unregisterLocationModeReceiver()V
+
+    .line 277
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->getSetWallpaperExecutor()Ljava/util/concurrent/ExecutorService;
+
+    move-result-object v0
+
+    invoke-interface {v0}, Ljava/util/concurrent/ExecutorService;->shutdownNow()Ljava/util/List;
+
+    .line 278
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->getSunTimesRepository()Lcom/example/core/api/SunTimesRepository;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Lcom/example/core/api/SunTimesRepository;->release()V
+
+    .line 279
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->homeViewModelOrNull$app()Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    move-result-object v0
+
+    if-eqz v0, :cond_1a
+
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->release()V
+
+    .line 280
+    :cond_1a
+    invoke-super {p0}, Landroidx/appcompat/app/AppCompatActivity;->onDestroy()V
+
+    .line 281
+    return-void
+.end method
+
+.method protected onStart()V
+    .registers 2
+
+    .line 259
+    invoke-super {p0}, Landroidx/appcompat/app/AppCompatActivity;->onStart()V
+
+    .line 260
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->registerLocationModeReceiver()V
+
+    .line 261
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->homeViewModelOrNull$app()Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    move-result-object v0
+
+    if-eqz v0, :cond_f
+
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->onForegroundStarted()V
+
+    .line 262
+    :cond_f
+    return-void
+.end method
+
+.method protected onStop()V
+    .registers 2
+
+    .line 270
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->homeViewModelOrNull$app()Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    move-result-object v0
+
+    if-eqz v0, :cond_9
+
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->onForegroundStopped()V
+
+    .line 271
+    :cond_9
+    invoke-direct {p0}, Lcom/example/lumisky/MainActivity;->unregisterLocationModeReceiver()V
+
+    .line 272
+    invoke-super {p0}, Landroidx/appcompat/app/AppCompatActivity;->onStop()V
+
+    .line 273
+    return-void
+.end method
+
+.method public onUserInteraction()V
+    .registers 2
+
+    .line 265
+    invoke-super {p0}, Landroidx/appcompat/app/AppCompatActivity;->onUserInteraction()V
+
+    .line 266
+    invoke-virtual {p0}, Lcom/example/lumisky/MainActivity;->homeViewModelOrNull$app()Lcom/example/lumisky/viewmodel/HomeViewModel;
+
+    move-result-object v0
+
+    if-eqz v0, :cond_c
+
+    invoke-virtual {v0}, Lcom/example/lumisky/viewmodel/HomeViewModel;->onUserInteraction()V
+
+    .line 267
+    :cond_c
+    return-void
+.end method
+
+
+D:\Lumisky>if "0" == "0" goto mainEnd 
+
+D:\Lumisky>if "Windows_NT" == "Windows_NT" endlocal

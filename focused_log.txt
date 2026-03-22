@@ -1,0 +1,28 @@
+--------- beginning of system
+03-22 22:30:08.816 I/ActivityTaskManager( 2053): Config changes=80000000 {1.0 286mcc2mnc [tr_TR] ldltr sw392dp w392dp h818dp 440dpi nrml long hdr widecg port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 2400) mAppBounds=Rect(0, 104 - 1080, 2356) mMaxBounds=Rect(0, 0 - 1080, 2400) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false} as.6 s.4512 fontWeightAdjustment=0 themeChanged=2 themeChangedFlags=128 extraData = Bundle[{}]/d}
+--------- beginning of crash
+03-22 22:32:01.760 E/AndroidRuntime(20261): FATAL EXCEPTION: main
+03-22 22:32:01.760 E/AndroidRuntime(20261): Process: com.example.lumisky, PID: 20261
+03-22 22:32:01.760 E/AndroidRuntime(20261): java.lang.NoClassDefFoundError: Failed resolution of: Landroidx/startup/R$string;
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at androidx.startup.AppInitializer.discoverAndInitialize(AppInitializer.java:216)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at androidx.startup.AppInitializer.discoverAndInitialize(AppInitializer.java:206)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at androidx.startup.InitializationProvider.onCreate(InitializationProvider.java:45)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.content.ContentProvider.attachInfo(ContentProvider.java:2468)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.content.ContentProvider.attachInfo(ContentProvider.java:2433)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.app.ActivityThread.installProvider(ActivityThread.java:7867)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.app.ActivityThread.installContentProviders(ActivityThread.java:7378)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:7111)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(Unknown Source:0)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2220)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.os.Looper.loopOnce(Looper.java:211)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.os.Looper.loop(Looper.java:300)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at android.app.ActivityThread.main(ActivityThread.java:8296)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at java.lang.reflect.Method.invoke(Native Method)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:559)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:954)
+03-22 22:32:01.760 E/AndroidRuntime(20261): Caused by: java.lang.ClassNotFoundException: Didn't find class "androidx.startup.R$string" on path: DexPathList[[zip file "/data/app/~~5WayRe5uDk1M3hgGrdh3_w==/com.example.lumisky-UTJDqAzYrQe0BvhEYWpwIQ==/base.apk"],nativeLibraryDirectories=[/data/app/~~5WayRe5uDk1M3hgGrdh3_w==/com.example.lumisky-UTJDqAzYrQe0BvhEYWpwIQ==/lib/arm64, /data/app/~~5WayRe5uDk1M3hgGrdh3_w==/com.example.lumisky-UTJDqAzYrQe0BvhEYWpwIQ==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at dalvik.system.BaseDexClassLoader.findClass(BaseDexClassLoader.java:259)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at java.lang.ClassLoader.loadClass(ClassLoader.java:642)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	at java.lang.ClassLoader.loadClass(ClassLoader.java:578)
+03-22 22:32:01.760 E/AndroidRuntime(20261): 	... 17 more

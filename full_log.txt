@@ -1,0 +1,338 @@
+--------- beginning of main
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_STREAM_TABLE
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> audstrm_cal->cal_type.cal_data.cal_size = 20
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> send_afe_topology
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AFE_TOPOLOGY_ID
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> GET_AFE_TOPOLOGY_ID for adcd_id 102, Topology Id 1000b909
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> send_afe_cal
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AFE_INSTANCE_COMMON_TABLE_SIZE
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AFE_INSTANCE_COMMON_TABLE
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> AUDIO_SET_AFE_CAL cal_type[17] acdb_id[102]
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> send_hw_delay : acdb_id = 102 path = 1
+03-22 22:32:08.644 D/ACDB-LOADER( 1036): ACDB -> ACDB_AVSYNC_INFO: ACDB_CMD_GET_DEVICE_PROPERTY
+03-22 22:32:08.644 D/audio_hw_primary( 1036): enable_audio_route: apply mixer and update path: spkr-vi-record
+03-22 22:32:08.644 D/audio_route( 1036): Apply path: spkr-vi-record
+03-22 22:32:08.646 E/audio_hw_tfa98xx_feedback( 1036): pcm_dev_tx_id = 38
+03-22 22:32:08.655 I/audio_hw_utils( 1036): audio_extn_utils_update_stream_output_app_type_cfg Allowing 24 and above bits playback on speaker ONLY at default sampling rate
+03-22 22:32:08.655 D/audio_hw_primary( 1036): audio_is_true_native_stream_active:napb: (0) (low-latency-playback)id (1) sr 48000 bw (16) device speaker
+03-22 22:32:08.655 E/soundtrigger( 1036): audio_extn_sound_trigger_update_stream_status: invalid input device 0x0, for event 3
+03-22 22:32:08.655 D/soundtrigger( 1036): audio_extn_sound_trigger_update_stream_status: uc_info->id 1 of type 0 for Event 3, with Raise=0
+03-22 22:32:08.655 D/audio_hw_utils( 1036): audio_extn_utils_send_app_type_cfg: usecase->out_snd_device speaker
+03-22 22:32:08.655 D/msm8974_platform( 1036): platform_split_snd_device: snd_device(2) num devices(0) new_snd_devices(0)
+03-22 22:32:08.655 D/audio_hw_utils( 1036): audio_extn_btsco_get_sample_rate:Not a BT SCO device, need not update sampling rate
+03-22 22:32:08.655 I/audio_hw_utils( 1036): send_app_type_cfg_for_device: change app type from 69937 to 69940
+03-22 22:32:08.655 I/audio_hw_utils( 1036): send_app_type_cfg_for_device PLAYBACK app_type 69940, acdb_dev_id 10011, sample_rate 48000, snd_device_be_idx 43
+03-22 22:32:08.656 D/msm8974_platform( 1036): platform_split_snd_device: snd_device(2) num devices(1) new_snd_devices(0)
+03-22 22:32:08.656 D/audio_hw_utils( 1036): audio_extn_btsco_get_sample_rate:Not a BT SCO device, need not update sampling rate
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> send_audio_cal, acdb_id = 10011, path = 0, app id = 0x11134, sample rate = 48000, afe_sample_rate = 96000
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> send_asm_topology
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_STREAM_TOPOLOGY_ID
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> send_adm_topology
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_COMMON_TOPOLOGY_ID
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> send_audtable
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_COMMON_TABLE_SIZE
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_COMMON_TABLE
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> AUDIO_SET_AUDPROC_CAL cal_type[11] acdb_id[10011] app_type[69940]
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> send_audvoltable
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_GAIN_DEP_STEP_TABLE_SIZE
+03-22 22:32:08.656 D/android.hardware.audio.service( 1036): Failed to fetch the lookup information of the device 0000271B 
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): Error: ACDB_CMD_GET_AUDPROC_INSTANCE_GAIN_DEP_STEP_TABLE_SIZE Returned = -19
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_GAIN_DEP_STEP_TABLE, vol index 0
+03-22 22:32:08.656 D/android.hardware.audio.service( 1036): Failed to fetch the lookup information of the device 0000271B 
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): Error: ACDB AudProc vol returned = -19
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> AUDIO_SET_VOL_CAL cal type = 12
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_STREAM_TABLE_SIZE
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> send_audstrmtable
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_STREAM_TABLE
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> audstrm_cal->cal_type.cal_data.cal_size = 20
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> send_afe_topology
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AFE_TOPOLOGY_ID
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> GET_AFE_TOPOLOGY_ID for adcd_id 10011, Topology Id 1000b910
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> send_afe_cal
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AFE_INSTANCE_COMMON_TABLE_SIZE
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AFE_INSTANCE_COMMON_TABLE
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> AUDIO_SET_AFE_CAL cal_type[16] acdb_id[10011]
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> send_hw_delay : acdb_id = 10011 path = 0
+03-22 22:32:08.656 D/ACDB-LOADER( 1036): ACDB -> ACDB_AVSYNC_INFO: ACDB_CMD_GET_DEVICE_PROPERTY
+03-22 22:32:08.656 D/msm8974_platform( 1036): platform_split_snd_device: snd_device(2) num devices(0) new_snd_devices(0)
+03-22 22:32:08.656 I/msm8974_platform( 1036): platform_get_custom_mtmx_params: no matching param with id 0 ip_ch 2 op_ch 2 uc_id 1 snd_dev 2
+03-22 22:32:08.656 D/audio_hw_primary( 1036): enable_audio_route: apply mixer and update path: low-latency-playback speaker
+03-22 22:32:08.656 D/audio_route( 1036): Apply path: low-latency-playback speaker
+03-22 22:32:08.657 D/send_data_to_xlog( 1036): send_misound_data_to_xlog: enter: usecase(1)
+03-22 22:32:08.657 D/ultrasound_extn( 1036): ultrasound_select_devices_post: enter: engine_suspended: 0
+03-22 22:32:08.657 D/ultrasound_extn( 1036): dump_usecase_list: start ======================================
+03-22 22:32:08.657 D/ultrasound_extn( 1036): dump_usecase_list: enter state: 0[init] suspended: 0 stop_reprot: 0 cnt: 0 pre_cnt 0
+03-22 22:32:08.657 D/ultrasound_extn( 1036): dump_usecase_list: select_devices_post usecase[#0]:(23, audio-record) in_dev:(210, voice-rec-mic) out_dv:(0, )
+03-22 22:32:08.657 D/ultrasound_extn( 1036): dump_usecase_list: select_devices_post usecase[#1]:(1, low-latency-playback) in_dev:(0, ) out_dv:(2, speaker)
+03-22 22:32:08.657 D/ultrasound_extn( 1036): dump_usecase_list: select_devices_post usecase[#2]:(53, spkr-vi-record) in_dev:(234, vi-feedback) out_dv:(0, )
+03-22 22:32:08.657 D/ultrasound_extn( 1036): dump_usecase_list: RX_CDC_DMA_RX_0 SampleRate		 KHZ_48
+03-22 22:32:08.658 D/ultrasound_extn( 1036): dump_usecase_list: RX_CDC_DMA_RX_0 Format		 S16_LE
+03-22 22:32:08.658 D/ultrasound_extn( 1036): dump_usecase_list: RX_CDC_DMA_RX_0 Channels		 One
+03-22 22:32:08.658 D/ultrasound_extn( 1036): dump_usecase_list: RX_CDC_DMA_RX_1 SampleRate		 KHZ_96
+03-22 22:32:08.659 D/ultrasound_extn( 1036): dump_usecase_list: RX_CDC_DMA_RX_1 Format		 S16_LE
+03-22 22:32:08.659 D/ultrasound_extn( 1036): dump_usecase_list: RX_CDC_DMA_RX_1 Channels		 One
+03-22 22:32:08.659 D/ultrasound_extn( 1036): dump_usecase_list: end ======================================
+03-22 22:32:08.659 D/audio_hw_primary( 1036): select_devices: done
+03-22 22:32:08.670 D/MIUIInput( 2053): [MotionEvent] publisher action=0x0, 213967355, channel '19faf4d GestureStubBottom (server)'
+03-22 22:32:08.670 D/MIUIInput( 2053): [MotionEvent] publisher action=0x0, 213967355, channel '[Gesture Monitor] miui-gesture (server)'
+03-22 22:32:08.672 D/GestureStubView( 2876): onTouch ACTION_DOWN sendMessageDelayed MSG_CHECK_GESTURE_STUB_TOUCHABLE
+03-22 22:32:08.672 D/GesturesBackController( 2876): onPointerEvent swipeStatus:16
+03-22 22:32:08.672 D/GesturesBackController( 2876): mSwipeStatus == SWIPE_STATUS_ANIMATING, processPointerEvent
+03-22 22:32:08.672 W/GestureStubView( 2876): adaptRotation   currentRotation=0   mRotation=0
+03-22 22:32:08.672 D/GestureStubView( 2876): resetRenderProperty: MSG_RESET_ANIMATING_STATUS   isLayoutParamChanged=false
+03-22 22:32:08.672 D/GestureStubView( 2876): reset animating status
+03-22 22:32:08.675 D/GesturesBackController( 2876): onPointerEvent swipeStatus:8
+03-22 22:32:08.675 D/GesturesBackController( 2876): mSwipeStatus != SWIPE_STATUS_ANIMATING, processPointerEvent
+03-22 22:32:08.678 D/GestureStubView( 2876): gatherTransparentRegion: need render w:54  h:1440
+03-22 22:32:08.679 D/AudioTrack( 1665):  pause(sessionID=33977)
+03-22 22:32:08.680 D/AudioTrack( 1665): pause(6260): prior state:STATE_STOPPED
+03-22 22:32:08.681 I/AppActiveChecker( 2883): uid:10320change to inactive
+03-22 22:32:08.687 E/vendor.qti.hardware.perf@2.2-service( 1072): Unknown params
+03-22 22:32:08.688 E/vendor.qti.hardware.perf@2.2-service( 1072): Unknown params
+03-22 22:32:08.689 E/vendor.qti.hardware.perf@2.2-service( 1072): Unknown params
+03-22 22:32:08.689 E/vendor.qti.hardware.perf@2.2-service( 1072): Unknown params
+03-22 22:32:08.696 I/NetworkSDKService( 5195): getQoEByAvailableIfaceName: wlan0
+03-22 22:32:08.696 D/MiuiWifiService( 2053): ending put WifiLinkLayerStats QOE to map
+03-22 22:32:08.697 D/GesturesBackController( 2876): onPointerEvent swipeStatus:8
+03-22 22:32:08.697 D/GestureStubView( 2876): onSwipeStart: needAnimation: true
+03-22 22:32:08.697 D/GestureStubView( 2876): renderView
+--------- beginning of system
+03-22 22:32:08.697 D/CoreBackPreview( 2053): Focused window found using getFocusedWindowToken
+03-22 22:32:08.698 D/CoreBackPreview( 2053): startBackNavigation currentTask=Task{bc2b627 #457 type=standard A=10320:com.whatsapp U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=1}, topRunningActivity=ActivityRecord{1ae50e6 u0 com.whatsapp/.Conversation} t457}, callbackInfo=OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@f9301f0, mPriority=0}, currentFocus=Window{12eeda2 u0 com.whatsapp/com.whatsapp.Conversation}
+03-22 22:32:08.698 D/ActivityManagerWrapper( 2876): invokeOnBackInvokedCallbackMethod: onBackStarted
+03-22 22:32:08.699 D/GesturesBackController( 2876): onPointerEvent MotionEvent.ACTION_MOVE processMiuiGestures
+03-22 22:32:08.699 D/GesturesBackController( 2876): mSwipeStatus != SWIPE_STATUS_ANIMATING, processPointerEvent
+03-22 22:32:08.699 I/SLM-SRV-SLAService( 5195): averageLostRatio: 0.0
+03-22 22:32:08.708 D/GesturesBackController( 2876): onPointerEvent swipeStatus:2
+03-22 22:32:08.708 D/GesturesBackController( 2876): onPointerEvent MotionEvent.ACTION_MOVE processMiuiGestures
+03-22 22:32:08.708 D/GesturesBackController( 2876): mSwipeStatus != SWIPE_STATUS_ANIMATING, processPointerEvent
+03-22 22:32:08.711 D/msm8974_platform( 1036): platform_set_channel_map mixer_ctl_name:Playback Channel Map13
+03-22 22:32:08.711 D/msm8974_platform( 1036): platform_set_channel_map: set mapping(1 2 0 0 0 0 0 0) for channel:2
+03-22 22:32:08.712 D/AudioTrack(14403): [audioTrackData][fine] 25s(f:25025 m:0 s:0 k:0) : pid 14403 uid 10206 sessionId 32009 sr 48000 ch 2 fmt 1
+03-22 22:32:08.712 D/audio_hw_primary( 1036): start_output_stream: exit
+03-22 22:32:08.712 D/adsp_utils( 1036): set_channel_reverse mode: 0
+03-22 22:32:08.712 D/msm8974_platform( 1036): platform_get_output_snd_device: enter: output devices(0x2), enable_voicerx 0
+03-22 22:32:08.712 D/msm8974_platform( 1036): Setting audio calibration for snd_device(2) acdb_id(10011)
+03-22 22:32:08.712 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] active device/stream not found (result=-100) for topology 0x1000a106 and apptype 0x11134
+03-22 22:32:08.712 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] set parameters failed with status -100
+03-22 22:32:08.712 D/audio_hw_hfp( 1036): hfp_set_parameters: enter
+03-22 22:32:08.712 D/msm8974_platform( 1036): platform_get_output_snd_device: enter: output devices(0x2), enable_voicerx 0
+03-22 22:32:08.712 D/msm8974_platform( 1036): Setting audio calibration for snd_device(2) acdb_id(10011)
+03-22 22:32:08.713 D/audio_hw_hfp( 1036): hfp_set_parameters: enter
+03-22 22:32:08.713 D/msm8974_platform( 1036): platform_get_output_snd_device: enter: output devices(0x2), enable_voicerx 0
+03-22 22:32:08.713 D/msm8974_platform( 1036): Setting audio calibration for snd_device(2) acdb_id(10011)
+03-22 22:32:08.713 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] active device/stream not found (result=-100) for topology 0x1000a106 and apptype 0x11131
+03-22 22:32:08.713 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] set parameters failed with status -100
+03-22 22:32:08.713 D/audio_hw_hfp( 1036): hfp_set_parameters: enter
+03-22 22:32:08.713 D/msm8974_platform( 1036): platform_get_output_snd_device: enter: output devices(0x2), enable_voicerx 0
+03-22 22:32:08.713 D/msm8974_platform( 1036): Setting audio calibration for snd_device(2) acdb_id(10011)
+03-22 22:32:08.713 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] active device/stream not found (result=-100) for topology 0x1000a100 and apptype 0x11131
+03-22 22:32:08.713 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] set parameters failed with status -100
+03-22 22:32:08.713 D/audio_hw_hfp( 1036): hfp_set_parameters: enter
+03-22 22:32:08.713 D/msm8974_platform( 1036): platform_get_output_snd_device: enter: output devices(0x2), enable_voicerx 0
+03-22 22:32:08.713 D/msm8974_platform( 1036): Setting audio calibration for snd_device(2) acdb_id(10011)
+03-22 22:32:08.713 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] active device/stream not found (result=-100) for topology 0x10010314 and apptype 0x11131
+03-22 22:32:08.713 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] set parameters failed with status -100
+03-22 22:32:08.713 D/audio_hw_hfp( 1036): hfp_set_parameters: enter
+03-22 22:32:08.713 D/msm8974_platform( 1036): platform_get_output_snd_device: enter: output devices(0x2), enable_voicerx 0
+03-22 22:32:08.713 D/msm8974_platform( 1036): Setting audio calibration for snd_device(2) acdb_id(10011)
+03-22 22:32:08.713 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] active device/stream not found (result=-100) for topology 0x10010314 and apptype 0x11134
+03-22 22:32:08.713 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] set parameters failed with status -100
+03-22 22:32:08.713 D/audio_hw_hfp( 1036): hfp_set_parameters: enter
+03-22 22:32:08.713 D/msm8974_platform( 1036): platform_get_output_snd_device: enter: output devices(0x2), enable_voicerx 0
+03-22 22:32:08.713 D/msm8974_platform( 1036): Setting audio calibration for snd_device(2) acdb_id(10011)
+03-22 22:32:08.713 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] active device/stream not found (result=-100) for topology 0x1000a106 and apptype 0x11131
+03-22 22:32:08.713 E/ACDB-LOADER( 1036): [acdb_loader_adsp_set_audio_cal] set parameters failed with status -100
+03-22 22:32:08.713 D/audio_hw_hfp( 1036): hfp_set_parameters: enter
+03-22 22:32:08.713 D/audio_hw_primary( 1036): check_and_set_karaok_parameters: is karaok rx device 0, is karaok tx device 0
+03-22 22:32:08.713 D/audio_hw_primary( 1036): out_write: retry previous failed cal level set
+03-22 22:32:08.713 W/msm8974_platform( 1036): platform_send_gain_dep_cal: Usecase list is empty
+03-22 22:32:08.713 D/msm8974_platform( 1036): platform_split_snd_device: snd_device(2) num devices(1) new_snd_devices(0)
+03-22 22:32:08.713 D/ACDB-LOADER( 1036): ACDB -> send_audvoltable
+03-22 22:32:08.713 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_GAIN_DEP_STEP_TABLE_SIZE
+03-22 22:32:08.713 D/android.hardware.audio.service( 1036): Failed to fetch the lookup information of the device 0000271B 
+03-22 22:32:08.713 D/ACDB-LOADER( 1036): Error: ACDB_CMD_GET_AUDPROC_INSTANCE_GAIN_DEP_STEP_TABLE_SIZE Returned = -19
+03-22 22:32:08.713 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_GAIN_DEP_STEP_TABLE, vol index 5
+03-22 22:32:08.713 D/android.hardware.audio.service( 1036): Failed to fetch the lookup information of the device 0000271B 
+03-22 22:32:08.713 D/ACDB-LOADER( 1036): Error: ACDB AudProc vol returned = -19
+03-22 22:32:08.713 D/ACDB-LOADER( 1036): ACDB -> AUDIO_SET_VOL_CAL cal type = 40
+03-22 22:32:08.713 W/msm8974_platform( 1036): platform_send_gain_dep_cal: Usecase list is empty
+03-22 22:32:08.713 D/msm8974_platform( 1036): platform_split_snd_device: snd_device(2) num devices(0) new_snd_devices(0)
+03-22 22:32:08.713 I/msm8974_platform( 1036): platform_get_custom_mtmx_params: no matching param with id 0 ip_ch 2 op_ch 2 uc_id 1 snd_dev 2
+03-22 22:32:08.720 D/GesturesBackController( 2876): onPointerEvent swipeStatus:2
+03-22 22:32:08.720 D/GesturesBackController( 2876): onPointerEvent MotionEvent.ACTION_MOVE processMiuiGestures
+03-22 22:32:08.720 D/GesturesBackController( 2876): mSwipeStatus != SWIPE_STATUS_ANIMATING, processPointerEvent
+03-22 22:32:08.722 D/SLM-SRV-SLAService( 5195): checktemp temperature = 37160 temperature_average = 37491 isPerformanceMode = false thermal_enable_slm = true
+03-22 22:32:08.730 D/GesturesBackController( 2876): onPointerEvent swipeStatus:2
+03-22 22:32:08.730 D/GesturesBackController( 2876): onPointerEvent MotionEvent.ACTION_MOVE processMiuiGestures
+03-22 22:32:08.730 D/GesturesBackController( 2876): mSwipeStatus != SWIPE_STATUS_ANIMATING, processPointerEvent
+03-22 22:32:08.732 D/MIUIInput( 2053): [MotionEvent] publisher action=0x1, 213967416, channel '19faf4d GestureStubBottom (server)'
+03-22 22:32:08.732 D/MIUIInput( 2053): [MotionEvent] publisher action=0x1, 213967416, channel '[Gesture Monitor] miui-gesture (server)'
+03-22 22:32:08.733 E/vendor.qti.hardware.perf@2.2-service( 1072): Unknown params
+03-22 22:32:08.734 W/msm8974_platform( 1036): platform_send_gain_dep_cal: Usecase list is empty
+03-22 22:32:08.734 D/msm8974_platform( 1036): platform_split_snd_device: snd_device(2) num devices(1) new_snd_devices(0)
+03-22 22:32:08.734 W/msm8974_platform( 1036): platform_send_gain_dep_cal: Usecase list is empty
+03-22 22:32:08.734 D/GesturesBackController( 2876): onPointerEvent swipeStatus:2
+03-22 22:32:08.734 D/GesturesBackController( 2876): onPointerEvent MotionEvent.ACTION_MOVE processMiuiGestures
+03-22 22:32:08.734 D/GesturesBackController( 2876): mSwipeStatus != SWIPE_STATUS_ANIMATING, processPointerEvent
+03-22 22:32:08.734 D/GestureStubView( 2876): ACTION_UP: mIsGestureStarted: true mIsGestureAnimationEnabled: true
+03-22 22:32:08.734 D/GesturesBackController( 2876): onPointerEvent swipeStatus:2
+03-22 22:32:08.734 D/GestureStubView( 2876): onSwipeStop
+03-22 22:32:08.734 D/GestureStubView( 2876): injectKeyEvent keyCode:4
+03-22 22:32:08.735 E/vendor.qti.hardware.perf@2.2-service( 1072): Unknown params
+03-22 22:32:08.735 D/ActivityManagerWrapper( 2876): invokeOnBackInvokedCallbackMethod: onBackInvoked
+03-22 22:32:08.736 D/GesturesBackController( 2876): onPointerEvent MotionEvent.ACTION_UP stopGestures isFinish:true speed:5
+03-22 22:32:08.736 D/GesturesBackController( 2876): mSwipeStatus != SWIPE_STATUS_ANIMATING, processPointerEvent
+03-22 22:32:08.738 D/MirrorManager( 2883):  sendAcceptInput 0 0
+03-22 22:32:08.739 E/vendor.qti.hardware.perf@2.2-service( 1072): Unknown params
+03-22 22:32:08.739 V/InputMethodService(25267): CALL: hideWindow
+03-22 22:32:08.740 I/GoogleInputMethodService(25267): GoogleInputMethodService.onFinishInputView():1602 onFinishInputView(false)
+03-22 22:32:08.740 D/MI-SF   ( 1170): updateScene: module = 270 (Input), value = 0, pkg = com.whatsapp, Vrr = 1
+03-22 22:32:08.740 D/MI-SF   ( 1170): updateScene mSetInputFlag status 0
+03-22 22:32:08.741 D/DisplayFeatureManager( 2883): setScreenEffect displayId=0 mode=41 value=0 cookie=244
+03-22 22:32:08.741 D/DisplayFeatureHal( 1080): setFeatureEnable: FeatureId=DITHER_STATE modeId=0 cookie=244
+03-22 22:32:08.741 D/DisplayFeatureHal( 1080): current wcg state 0, setting to 0
+03-22 22:32:08.741 D/DisplayFeatureHal( 1080): notifySFWcgState enable = 0
+03-22 22:32:08.742 I/SDM     ( 1046): CoreInterface::SetWCGStatus: SetWCGStatus wcg enable 0
+03-22 22:32:08.742 W/GestureStubView( 2876): adaptRotation   currentRotation=0   mRotation=0
+03-22 22:32:08.742 D/DisplayFeatureHal( 1080): notifyQservice cmd 47 value 0 ret 0
+03-22 22:32:08.742 W/TooltipLifecycleManager(25267): TooltipLifecycleManager.dismissTooltips():153 Tooltip with id SUGGESTION_VIEW_EDU_MINI_DIALOG not found in tooltipManager.
+03-22 22:32:08.742 I/GlobeKeyExtension(25267): GlobeKeyExtension.onDeactivate():153 
+03-22 22:32:08.742 D/DisplayFeatureHal( 1080): HandleDither modeId=0 cookie=244 mColorMode=1315926637 Enable=0 mDarkMode=0 mDitherState=0
+03-22 22:32:08.742 E/vendor.qti.hardware.perf@2.2-service( 1072): Unknown params
+03-22 22:32:08.743 D/GestureStubView( 2876): resetRenderProperty: MSG_RESET_ANIMATING_STATUS   isLayoutParamChanged=true
+03-22 22:32:08.743 D/GestureStubView( 2876): reset animating status
+03-22 22:32:08.743 W/TooltipLifecycleManager(25267): TooltipLifecycleManager.dismissTooltips():153 Tooltip with id spell_check_add_to_dictionary not found in tooltipManager.
+03-22 22:32:08.743 I/VoiceInputManagerWrapper(25267): VoiceInputManagerWrapper.shutdown():131 shutdown()
+03-22 22:32:08.743 E/vendor.qti.hardware.perf@2.2-service( 1072): Unknown params
+03-22 22:32:08.744 I/InputBundle(25267): InputBundle.consumeEvent():1041 Skip consuming an event as keyboard status is INACTIVE
+03-22 22:32:08.745 I/AndroidIME(25267): AbstractIme.onDeactivate():213 LatinIme.onDeactivate()
+03-22 22:32:08.746 I/NebulaeTrainingCacheMetricsProcessor(25267): NebulaeTrainingCacheMetricsProcessor.processEndSession():648 End training cache session: com.whatsapp_2131431481/
+03-22 22:32:08.746 I/PrimesLoggerHolder(25267): FrameMetricServiceImpl.stopAsFuture():213 Measurement not found: OnConfigurationChanged
+03-22 22:32:08.747 W/TooltipLifecycleManager(25267): TooltipLifecycleManager.dismissTooltips():153 Tooltip with id undo_access_point_promotion_banner not found in tooltipManager.
+03-22 22:32:08.747 I/InputMethodManagerService( 2053): IMMS.applyImeVisibility(), setVisible = false, mCurclient = ClientState{abe4194 uid=10320 pid=18842 displayId=0}
+03-22 22:32:08.749 D/TouchInteractionService( 2876): onSystemUiFlagsChanged, mSystemUiStateFlags=20000
+03-22 22:32:08.749 D/NavStubView_Touch( 2876): onSystemUiFlagsChanged  mIsShowStatusBar    old= true   new=true
+03-22 22:32:08.749 D/NavStubView_Touch( 2876): onSystemUiFlagsChanged  mIsShowNavBar    old= true   new=true
+03-22 22:32:08.749 I/NebulaeTrainingCacheMetricsProcessor(25267): NebulaeTrainingCacheMetricsProcessor.processEndSession():689 No input action collection in this session, skip logging.
+03-22 22:32:08.756 I/WindowManager( 2053): input method visible height changed 0
+03-22 22:32:08.757 D/MiuiFreeFormGestureController( 2053): handleFreeFormReceiver intent=Intent { act=miui.intent.action.INPUT_METHOD_VISIBLE_HEIGHT_CHANGED flg=0x10 (has extras) }
+03-22 22:32:08.764 D/GestureStubView( 2876): gatherTransparentRegion: need render w:54  h:1440
+03-22 22:32:08.768 D/VRI[InputMethod](25267): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:3779 android.view.ViewRootImpl.doTraversal:2543 android.view.ViewRootImpl$TraversalRunnable.run:9465 android.view.Choreographer$CallbackRecord.run:1451 android.view.Choreographer$CallbackRecord.run:1459 
+03-22 22:32:08.769 D/VRI[InputMethod](25267): vri.Setup new sync id=498 syncSeqId=0
+03-22 22:32:08.769 W/ActivityManager( 2053): Sending non-protected broadcast android.intent.action.APPLICATION_MESSAGE_UPDATE from system 3384:com.android.systemui/1000 pkg com.android.systemui. Callers=
+03-22 22:32:08.773 I/Launcher.ApplicationsMessage( 2876): onReceive false
+03-22 22:32:08.773 I/Launcher.ApplicationsMessage( 2876): update android/ to null
+03-22 22:32:08.776 D/VRI[InputMethod](25267): vri.reportDrawFinished syncSeqId=0 android.view.ViewRootImpl.lambda$createSyncIfNeeded$4$android-view-ViewRootImpl:3847 android.view.ViewRootImpl$$ExternalSyntheticLambda1.run:6 android.os.Handler.handleCallback:942 android.os.Handler.dispatchMessage:99 android.os.Looper.loopOnce:211 
+03-22 22:32:08.777 I/KeyboardModeUtils(25267): KeyboardModeUtils.getKeyboardBottomOffset():435 inch: 0.000000 ydpi: 401.845001 adjustKeyboardBottomByDisplaySize: false currentDensityDpi: 440 defaultDensityDpi: 440 keyboardBottomToScreenPx: 0 keyboardBottomToNavBarPx: -132 navBarHeight: 132
+03-22 22:32:08.777 I/BaseKeyboardSizeHelper(25267): BaseKeyboardSizeHelper.calculateMaxKeyboardBodyHeight():73 leave 267 height for app when ime window height:2164, header height:121 and isFullscreenMode:false, so the max keyboard body height is:1776
+03-22 22:32:08.777 I/BaseKeyboardSizeHelper(25267): BaseKeyboardSizeHelper.calculateMaxKeyboardBodyHeight():73 leave 267 height for app when ime window height:2164, header height:121 and isFullscreenMode:false, so the max keyboard body height is:1776
+03-22 22:32:08.778 D/GestureStubView( 2876): gatherTransparentRegion: need render w:54  h:1440
+03-22 22:32:08.849 D/AudioFlinger( 1150): updateWakeLockUids_l AudioOut_D uids:
+03-22 22:32:08.849 V/APM::EffectDescriptor( 1150): setEffectEnabled(false) total CPU 0
+03-22 22:32:08.849 D/ProcessManager( 2053): add temp remove audio inactive uid : 10320
+03-22 22:32:08.851 W/msm8974_platform( 1036): platform_send_gain_dep_cal: Usecase list is empty
+03-22 22:32:08.851 D/msm8974_platform( 1036): platform_split_snd_device: snd_device(2) num devices(1) new_snd_devices(0)
+03-22 22:32:08.851 D/ACDB-LOADER( 1036): ACDB -> send_audvoltable
+03-22 22:32:08.851 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_GAIN_DEP_STEP_TABLE_SIZE
+03-22 22:32:08.851 D/android.hardware.audio.service( 1036): Failed to fetch the lookup information of the device 0000271B 
+03-22 22:32:08.851 D/ACDB-LOADER( 1036): Error: ACDB_CMD_GET_AUDPROC_INSTANCE_GAIN_DEP_STEP_TABLE_SIZE Returned = -19
+03-22 22:32:08.851 D/ACDB-LOADER( 1036): ACDB -> ACDB_CMD_GET_AUDPROC_INSTANCE_GAIN_DEP_STEP_TABLE, vol index 0
+03-22 22:32:08.851 D/android.hardware.audio.service( 1036): Failed to fetch the lookup information of the device 0000271B 
+03-22 22:32:08.851 D/ACDB-LOADER( 1036): Error: ACDB AudProc vol returned = -19
+03-22 22:32:08.851 D/ACDB-LOADER( 1036): ACDB -> AUDIO_SET_VOL_CAL cal type = 40
+03-22 22:32:08.851 W/msm8974_platform( 1036): platform_send_gain_dep_cal: Usecase list is empty
+03-22 22:32:08.851 W/msm8974_platform( 1036): platform_send_gain_dep_cal: Usecase list is empty
+03-22 22:32:08.851 D/msm8974_platform( 1036): platform_split_snd_device: snd_device(2) num devices(1) new_snd_devices(0)
+03-22 22:32:08.851 W/msm8974_platform( 1036): platform_send_gain_dep_cal: Usecase list is empty
+03-22 22:32:08.851 V/APM::EffectDescriptor( 1150): unregisterEffect() effect Volume listener for notification, ID 33435, memory 1 total memory 1
+03-22 22:32:08.851 D/APM_AudioPolicyManager( 1150): stopOutput portId 6260
+03-22 22:32:08.851 D/APM_AudioPolicyManager( 1150): stopOutput() output 13, stream 5, session 33977
+03-22 22:32:08.851 D/APM_AudioPolicyManager( 1150): setOutputDevices output 13 device AUDIO_DEVICE_NONE delayMs 96 force 0 requiresMuteCheck 1
+03-22 22:32:08.852 D/APM_AudioPolicyManager( 1150): setOutputDevices() prevDevice {AUDIO_DEVICE_OUT_SPEAKER, @:}
+03-22 22:32:08.852 D/APM::AudioPolicyEngine( 1150): getDevicesForStrategyInt: STRATEGY_SONIFICATION_RESPECTFUL :Use STRATEGY_SONIFICATION to getDevice
+03-22 22:32:08.875 D/audio_hw_primary( 1036): out_set_parameters: enter: usecase(1: low-latency-playback) kvpairs: appname=-com.whatsapp
+03-22 22:32:08.875 D/audio_hw_extn( 1036): audio_extn_fm_set_parameters: Enter
+03-22 22:32:08.906 E/DisplayFeatureHal( 1080): setDisplayEffect enter
+03-22 22:32:08.906 E/DisplayFeatureHal( 1080): setDisplayEffect finish
+03-22 22:32:09.029 D/AlarmManager( 2053): mBroadcastRefCount -> 1
+03-22 22:32:09.030 I/PowerKeeperBackgroundService( 2883): onStartCommand()
+03-22 22:32:09.030 I/PowerKeeperService( 2883): onAlarm
+03-22 22:32:09.030 I/SmartPower.com.google.process.gapps/10155(22687)( 2053): idle->background(100514ms) R(alarm start) adj=945.
+03-22 22:32:09.031 D/AlarmManager( 2053): mBroadcastRefCount -> 2
+03-22 22:32:09.031 D/AlarmManager( 2053): mBroadcastRefCount -> 3
+03-22 22:32:09.031 I/SmartPower( 2053): com.google.android.gms/10155 state=hibernation adj=100 proc size=7 move to background alarm start
+03-22 22:32:09.031 I/SmartPower( 2053): com.google.android.gms/10155 state=background adj=100 proc size=7 move to inactive alarm start
+03-22 22:32:09.031 D/AlarmManager( 2053): mBroadcastRefCount -> 2
+03-22 22:32:09.031 D/AlarmManager( 2053): mPendingIntent -> PendingIntent{92e45: PendingIntentRecord{e5fe99a com.miui.powerkeeper startService}}
+03-22 22:32:09.034 D/AlarmManager( 2053): mBroadcastRefCount -> 1
+03-22 22:32:09.034 D/AlarmManager( 2053): mPendingIntent -> null
+03-22 22:32:09.037 D/CompatibilityInfo( 2053): mCompatibilityFlags - 0
+03-22 22:32:09.037 D/CompatibilityInfo( 2053): applicationDensity - 440
+03-22 22:32:09.037 D/CompatibilityInfo( 2053): applicationScale - 1.0
+03-22 22:32:09.040 I/MiuiNetworkPolicy( 2053): updateUidState uid = 10134, uidState = 8
+03-22 22:32:09.043 I/SmartPower.com.miui.weather2/10134(23049)( 2053): idle->background(95411ms) R(service create com.miui.weather2/.service.job.ScheduleCheckService) adj=0.
+03-22 22:32:09.043 I/SmartPower( 2053): com.miui.weather2/10134 state=hibernation adj=0 proc size=1 move to background service create com.miui.weather2/.service.job.ScheduleCheckService
+03-22 22:32:09.043 I/SmartPower( 2053): com.miui.weather2/10134 state=background adj=0 proc size=1 move to inactive service create com.miui.weather2/.service.job.ScheduleCheckService
+03-22 22:32:09.044 D/CompatibilityChangeReporter( 2053): Compat change id reported: 168419799; UID 10134; state: DISABLED
+03-22 22:32:09.044 D/CompatibilityInfo( 2053): mCompatibilityFlags - 0
+03-22 22:32:09.044 D/CompatibilityInfo( 2053): applicationDensity - 440
+03-22 22:32:09.044 D/CompatibilityInfo( 2053): applicationScale - 1.0
+03-22 22:32:09.047 D/CompatibilityInfo( 2053): mCompatibilityFlags - 0
+03-22 22:32:09.048 D/CompatibilityInfo( 2053): applicationDensity - 440
+03-22 22:32:09.048 D/CompatibilityInfo( 2053): applicationScale - 1.0
+03-22 22:32:09.052 D/AlarmManager( 2053): mBroadcastRefCount -> 0
+03-22 22:32:09.052 D/AlarmManager( 2053): mPendingIntent -> PendingIntent{e05d5b6: PendingIntentRecord{57f21e9 com.google.android.gms/com.google.android.gms.scheduler broadcastIntent}}
+03-22 22:32:09.076 D/BoundBrokerSvc(15026): onRebind: Intent { act=com.google.android.gms.esim.backup.EsimBackupTaskService.ACTION_TASK_READY dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentInternalBoundBrokerService }
+03-22 22:32:09.078 I/NetworkScheduler.Stats(15026): (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+03-22 22:32:09.078 I/EsimBackupTaskService(15026): (REDACTED) onRunTask for tag: %s
+03-22 22:32:09.090 D/CompatibilityInfo( 2053): mCompatibilityFlags - 0
+03-22 22:32:09.090 D/CompatibilityInfo( 2053): applicationDensity - 440
+03-22 22:32:09.090 D/CompatibilityInfo( 2053): applicationScale - 1.0
+03-22 22:32:09.103 D/CompatibilityInfo( 2053): mCompatibilityFlags - 0
+03-22 22:32:09.103 D/CompatibilityInfo( 2053): applicationDensity - 440
+03-22 22:32:09.103 D/CompatibilityInfo( 2053): applicationScale - 1.0
+03-22 22:32:09.138 I/EsimCloudBackupClient(15026): (REDACTED) Backing up %d subscriptions.
+03-22 22:32:09.138 I/EsimCloudBackupClient(15026): getBackupDataFromSubscriptionInfos [CONTEXT service_id=333 ]
+03-22 22:32:09.141 I/EsimCloudBackupClient(15026): (REDACTED) readBackupData for account: %s, secondaryId: %s
+03-22 22:32:09.150 E/jleh    (15026): *~*~*~ Previous channel {0} was garbage collected without being shut down! ~*~*~*
+03-22 22:32:09.150 E/jleh    (15026):     Make sure to call shutdown()/shutdownNow()
+03-22 22:32:09.150 E/jleh    (15026): java.lang.RuntimeException: ManagedChannel allocation site
+03-22 22:32:09.150 E/jleh    (15026): 	at jleg.<init>(:com.google.android.gms@261132029@26.11.32 (190400-885792908):21)
+03-22 22:32:09.150 E/jleh    (15026): 	at jleh.<init>(:com.google.android.gms@261132029@26.11.32 (190400-885792908):10)
+03-22 22:32:09.150 E/jleh    (15026): 	at jlef.a(:com.google.android.gms@261132029@26.11.32 (190400-885792908):296)
+03-22 22:32:09.150 E/jleh    (15026): 	at jkly.a(:com.google.android.gms@261132029@26.11.32 (190400-885792908):5)
+03-22 22:32:09.150 E/jleh    (15026): 	at cwhf.h(:com.google.android.gms@261132029@26.11.32 (190400-885792908):150)
+03-22 22:32:09.150 E/jleh    (15026): 	at hiao.a(:com.google.android.gms@261132029@26.11.32 (190400-885792908):142)
+03-22 22:32:09.150 E/jleh    (15026): 	at gvoh.a(:com.google.android.gms@261132029@26.11.32 (190400-885792908):13)
+03-22 22:32:09.150 E/jleh    (15026): 	at hemw.a(:com.google.android.gms@261132029@26.11.32 (190400-885792908):3)
+03-22 22:32:09.150 E/jleh    (15026): 	at helx.run(:com.google.android.gms@261132029@26.11.32 (190400-885792908):19)
+03-22 22:32:09.150 E/jleh    (15026): 	at hemy.run(:com.google.android.gms@261132029@26.11.32 (190400-885792908):5)
+03-22 22:32:09.150 E/jleh    (15026): 	at bhsz.c(:com.google.android.gms@261132029@26.11.32 (190400-885792908):50)
+03-22 22:32:09.150 E/jleh    (15026): 	at bhsz.run(:com.google.android.gms@261132029@26.11.32 (190400-885792908):73)
+03-22 22:32:09.150 E/jleh    (15026): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1154)
+03-22 22:32:09.150 E/jleh    (15026): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:652)
+03-22 22:32:09.150 E/jleh    (15026): 	at bhyq.run(:com.google.android.gms@261132029@26.11.32 (190400-885792908):8)
+03-22 22:32:09.150 E/jleh    (15026): 	at java.lang.Thread.run(Thread.java:1564)
+03-22 22:32:09.150 E/jleh    (15026): *~*~*~ Previous channel {0} was garbage collected without being shut down! ~*~*~*
+03-22 22:32:09.150 E/jleh    (15026):     Make sure to call shutdown()/shutdownNow()
+03-22 22:32:09.150 E/jleh    (15026): java.lang.RuntimeException: ManagedChannel allocation site
+03-22 22:32:09.150 E/jleh    (15026): 	at jleg.<init>(:com.google.android.gms@261132029@26.11.32 (190400-885792908):21)
+03-22 22:32:09.150 E/jleh    (15026): 	at jleh.<init>(:com.google.android.gms@261132029@26.11.32 (190400-885792908):10)
+03-22 22:32:09.150 E/jleh    (15026): 	at jlef.a(:com.google.android.gms@261132029@26.11.32 (190400-885792908):296)
+03-22 22:32:09.150 E/jleh    (15026): 	at jkly.a(:com.google.android.gms@261132029@26.11.32 (190400-885792908):5)
+03-22 22:32:09.150 E/jleh    (15026): 	at cwhf.h(:com.google.android.gms@261132029@26.11.32 (190400-885792908):150)
+03-22 22:32:09.150 E/jleh    (15026): 	at hiao.a(:com.google.android.gms@261132029@26.11.32 (190400-885792908):142)
+03-22 22:32:09.150 E/jleh    (15026): 	at gvoh.a(:com.google.android.gms@261132029@26.11.32 (190400-885792908):13)
+03-22 22:32:09.150 E/jleh    (15026): 	at hemw.a(:com.google.android.gms@261132029@26.11.32 (190400-885792908):3)
+03-22 22:32:09.150 E/jleh    (15026): 	at helx.run(:com.google.android.gms@261132029@26.11.32 (190400-885792908):19)
+03-22 22:32:09.150 E/jleh    (15026): 	at hemy.run(:com.google.android.gms@261132029@26.11.32 (190400-885792908):5)
+03-22 22:32:09.150 E/jleh    (15026): 	at bhsz.c(:com.google.android.gms@261132029@26.11.32 (190400-885792908):50)
+03-22 22:32:09.150 E/jleh    (15026): 	at bhsz.run(:com.google.android.gms@261132029@26.11.32 (190400-885792908):73)
+03-22 22:32:09.150 E/jleh    (15026): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1154)
+03-22 22:32:09.150 E/jleh    (15026): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:652)
+03-22 22:32:09.150 E/jleh    (15026): 	at bhyq.run(:com.google.android.gms@261132029@26.11.32 (190400-885792908):8)
+03-22 22:32:09.150 E/jleh    (15026): 	at java.lang.Thread.run(Thread.java:1564)
+03-22 22:32:09.163 D/CompatibilityInfo( 2053): mCompatibilityFlags - 0
+03-22 22:32:09.163 D/CompatibilityInfo( 2053): applicationDensity - 440
+03-22 22:32:09.164 D/CompatibilityInfo( 2053): applicationScale - 1.0

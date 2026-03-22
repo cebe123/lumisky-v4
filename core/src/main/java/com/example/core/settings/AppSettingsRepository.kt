@@ -1,6 +1,9 @@
 package com.example.core.settings
 
 import android.content.Context
+import com.example.core.location.LocationAccessLevel
+import com.example.core.location.LocationSnapshot
+import com.example.core.location.LocationSource
 
 class AppSettingsRepository(
 	context: Context
@@ -17,7 +20,8 @@ class AppSettingsRepository(
 			highRefreshEnabled = isHighRefreshEnabled(),
 			performanceMode = getPerformanceMode(),
 			locationMode = getLocationMode(),
-			manualCity = getManualCity()
+			manualCity = getManualCity(),
+			automaticLocation = getAutomaticLocation()
 		)
 	}
 
@@ -108,6 +112,81 @@ class AppSettingsRepository(
 			.apply()
 	}
 
+	fun getAutomaticLocation(): LocationSnapshot? {
+		val capturedAt = prefs.getLong(KEY_AUTO_LOCATION_CAPTURED_AT_MS, 0L)
+		if (capturedAt <= 0L) return null
+
+		val latitude = readDouble(KEY_AUTO_LOCATION_LAT, Double.NaN)
+		val longitude = readDouble(KEY_AUTO_LOCATION_LNG, Double.NaN)
+		if (!latitude.isFinite() || !longitude.isFinite()) return null
+
+		val timeZoneId = prefs.getString(KEY_AUTO_LOCATION_TIME_ZONE_ID, null)
+			?.takeIf { it.isNotBlank() }
+			?: return null
+
+		val accessLevel = prefs.getString(
+			KEY_AUTO_LOCATION_ACCESS_LEVEL,
+			LocationAccessLevel.APPROXIMATE.name
+		)?.let { raw ->
+			runCatching { LocationAccessLevel.valueOf(raw) }.getOrDefault(LocationAccessLevel.APPROXIMATE)
+		} ?: LocationAccessLevel.APPROXIMATE
+
+		val source = prefs.getString(KEY_AUTO_LOCATION_SOURCE, LocationSource.STORED.name)
+			?.let { raw ->
+				runCatching { LocationSource.valueOf(raw) }.getOrDefault(LocationSource.STORED)
+			} ?: LocationSource.STORED
+
+		val accuracyMeters = if (prefs.contains(KEY_AUTO_LOCATION_ACCURACY_METERS)) {
+			prefs.getFloat(KEY_AUTO_LOCATION_ACCURACY_METERS, 0f)
+		} else {
+			null
+		}
+
+		return LocationSnapshot(
+			latitude = latitude,
+			longitude = longitude,
+			timeZoneId = timeZoneId,
+			label = prefs.getString(KEY_AUTO_LOCATION_LABEL, null)?.takeIf { it.isNotBlank() },
+			accuracyMeters = accuracyMeters,
+			capturedAtEpochMs = capturedAt,
+			accessLevel = accessLevel,
+			source = source
+		)
+	}
+
+	fun setAutomaticLocation(location: LocationSnapshot) {
+		prefs.edit()
+			.putLong(KEY_AUTO_LOCATION_LAT, location.latitude.toRawBits())
+			.putLong(KEY_AUTO_LOCATION_LNG, location.longitude.toRawBits())
+			.putString(KEY_AUTO_LOCATION_TIME_ZONE_ID, location.timeZoneId)
+			.putString(KEY_AUTO_LOCATION_LABEL, location.label)
+			.putLong(KEY_AUTO_LOCATION_CAPTURED_AT_MS, location.capturedAtEpochMs)
+			.putString(KEY_AUTO_LOCATION_ACCESS_LEVEL, location.accessLevel.name)
+			.putString(KEY_AUTO_LOCATION_SOURCE, location.source.name)
+			.apply {
+				val accuracy = location.accuracyMeters
+				if (accuracy != null) {
+					putFloat(KEY_AUTO_LOCATION_ACCURACY_METERS, accuracy)
+				} else {
+					remove(KEY_AUTO_LOCATION_ACCURACY_METERS)
+				}
+			}
+			.apply()
+	}
+
+	fun clearAutomaticLocation() {
+		prefs.edit()
+			.remove(KEY_AUTO_LOCATION_LAT)
+			.remove(KEY_AUTO_LOCATION_LNG)
+			.remove(KEY_AUTO_LOCATION_TIME_ZONE_ID)
+			.remove(KEY_AUTO_LOCATION_LABEL)
+			.remove(KEY_AUTO_LOCATION_ACCURACY_METERS)
+			.remove(KEY_AUTO_LOCATION_CAPTURED_AT_MS)
+			.remove(KEY_AUTO_LOCATION_ACCESS_LEVEL)
+			.remove(KEY_AUTO_LOCATION_SOURCE)
+			.apply()
+	}
+
 	private fun readDouble(key: String, defaultValue: Double): Double {
 		if (!prefs.contains(key)) return defaultValue
 		return Double.fromBits(prefs.getLong(key, 0L))
@@ -127,6 +206,14 @@ class AppSettingsRepository(
 		private const val KEY_MANUAL_CITY_COUNTRY = "manual_city_country"
 		private const val KEY_MANUAL_CITY_LAT = "manual_city_lat"
 		private const val KEY_MANUAL_CITY_LNG = "manual_city_lng"
+		private const val KEY_AUTO_LOCATION_LAT = "auto_location_lat"
+		private const val KEY_AUTO_LOCATION_LNG = "auto_location_lng"
+		private const val KEY_AUTO_LOCATION_TIME_ZONE_ID = "auto_location_time_zone_id"
+		private const val KEY_AUTO_LOCATION_LABEL = "auto_location_label"
+		private const val KEY_AUTO_LOCATION_ACCURACY_METERS = "auto_location_accuracy_meters"
+		private const val KEY_AUTO_LOCATION_CAPTURED_AT_MS = "auto_location_captured_at_ms"
+		private const val KEY_AUTO_LOCATION_ACCESS_LEVEL = "auto_location_access_level"
+		private const val KEY_AUTO_LOCATION_SOURCE = "auto_location_source"
 
 		private const val DEFAULT_HIGH_REFRESH_ENABLED = false
 		private val DEFAULT_PERFORMANCE_MODE = PerformanceMode.AUTO

@@ -1,6 +1,7 @@
 package com.example.lumisky.viewmodel
 
 import android.content.Context
+import android.location.Location
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -14,6 +15,9 @@ import com.example.core.api.SunDaylight
 import com.example.core.api.SunLocation
 import com.example.core.api.SunTimesRepository
 import com.example.core.location.LastKnownLocationProvider
+import com.example.core.location.LocationAccessLevel
+import com.example.core.location.LocationSnapshot
+import com.example.core.location.LocationSource
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppSettingsSnapshot
@@ -52,8 +56,6 @@ class HomeViewModel(
 	private var refreshPipelineNeedsGpsRequest = false
 	private var startupBackupPrefetchScheduled = false
 	private var startupBackupPrefetchCompleted = false
-	private var lastLiveGpsProbeAtMs: Long = 0L
-	private var lastLastGpsProbeAtMs: Long = 0L
 	private var locationCandidatesCacheKey: String? = null
 	private var locationCandidatesCache: List<SunLocation> = emptyList()
 	private var locationCandidatesCacheAtMs: Long = 0L
@@ -88,19 +90,34 @@ class HomeViewModel(
 	var manualCity by mutableStateOf(initialSettings.manualCity)
 		private set
 
-	var locationLabel by mutableStateOf(manualCity.name)
+	var locationLabel by mutableStateOf(
+		if (initialSettings.locationMode == LocationMode.GPS) {
+			initialSettings.automaticLocation?.label ?: manualCity.name
+		} else {
+			manualCity.name
+		}
+	)
 		private set
 
-	var gpsLocationAvailable by mutableStateOf(false)
+	var gpsLocationAvailable by mutableStateOf(
+		initialSettings.locationMode == LocationMode.GPS && initialSettings.automaticLocation != null
+	)
 		private set
 
 	var systemLocationEnabled by mutableStateOf(false)
 		private set
 
+	var locationRefreshInProgress by mutableStateOf(false)
+		private set
+
 	private var liveGpsLocation: SunLocation? = null
-	private var lastKnownGpsLocation: SunLocation? = null
-	private var gpsPlaceLabel: String? = null
-	private var lastGpsPlaceKey: String? = null
+	private var automaticLocationSnapshot: LocationSnapshot? = initialSettings.automaticLocation
+	private var lastKnownGpsLocation: SunLocation? = automaticLocationSnapshot?.toSunLocation(labelFallback = "gps_last")
+	private var gpsPlaceLabel: String? = automaticLocationSnapshot?.label
+	private var lastGpsPlaceKey: String? = automaticLocationSnapshot
+		?.toSunLocation(labelFallback = "gps_last")
+		?.let(::gpsLocationKey)
+	private var passiveLocationUpdatesStarted: Boolean = false
 
 	private val sunTimesRefreshRunnable = object : Runnable {
 		override fun run() {
@@ -137,6 +154,9 @@ class HomeViewModel(
 	}
 	private val startupRefreshRunnable = Runnable {
 		refreshLocationState()
+		if (locationMode == LocationMode.GPS) {
+			requestImmediateGpsLocation()
+		}
 		refreshSunTimes()
 	}
 
@@ -173,6 +193,15 @@ class HomeViewModel(
 
 	fun onUserInteraction() {
 		scheduleStartupBackupPrefetchIfNeeded()
+	}
+
+	fun onForegroundStarted() {
+		refreshOnForegroundIfStale()
+		maybeStartPassiveLocationUpdates()
+	}
+
+	fun onForegroundStopped() {
+		stopPassiveLocationUpdates()
 	}
 
 	fun updateAppThemeMode(mode: AppThemeMode) {
@@ -214,11 +243,30 @@ class HomeViewModel(
 
 	fun updateLocationMode(mode: LocationMode) {
 		if (locationMode == mode) return
+		locationRefreshInProgress = false
 		locationMode = mode
 		settingsRepository.setLocationMode(mode)
 		scheduleCoalescedLocationAndSunTimesRefresh(
 			requestGpsLocation = (mode == LocationMode.GPS)
 		)
+	}
+
+	fun refreshLocationNow() {
+		if (locationMode != LocationMode.GPS) {
+			locationRefreshInProgress = false
+			refreshLocationState()
+			refreshSunTimes()
+			return
+		}
+		if (!lastKnownLocationProvider.hasLocationPermission()) {
+			locationRefreshInProgress = false
+			refreshLocationState()
+			return
+		}
+
+		locationRefreshInProgress = true
+		refreshLocationState()
+		requestImmediateGpsLocation(force = true)
 	}
 
 	fun updateManualCity(city: ManualCity) {
@@ -235,43 +283,44 @@ class HomeViewModel(
 		runCatching {
 			systemLocationEnabled = runCatching { lastKnownLocationProvider.isLocationEnabled() }
 				.getOrDefault(false)
+			val accessLevel = lastKnownLocationProvider.getLocationAccessLevel()
 
 			if (locationMode != LocationMode.GPS) {
 				liveGpsLocation = null
-				lastKnownGpsLocation = null
-				lastLiveGpsProbeAtMs = 0L
-				lastLastGpsProbeAtMs = 0L
 				gpsLocationAvailable = false
 				locationLabel = manualCity.name
+				locationRefreshInProgress = false
+				stopPassiveLocationUpdates()
 				return
 			}
 
-			if (!systemLocationEnabled) {
+			if (accessLevel == LocationAccessLevel.NONE) {
 				liveGpsLocation = null
-				lastKnownGpsLocation = null
-				lastLiveGpsProbeAtMs = 0L
-				lastLastGpsProbeAtMs = 0L
 				gpsLocationAvailable = false
 				locationLabel = manualCity.name
+				locationRefreshInProgress = false
+				stopPassiveLocationUpdates()
 				return
 			}
 
-			val liveGps = if (systemLocationEnabled) {
-				resolveCachedLiveGpsProbe(refreshAtMs)
+			automaticLocationSnapshot = settingsRepository.getAutomaticLocation()
+			lastKnownGpsLocation = automaticLocationSnapshot?.toSunLocation(labelFallback = "gps_last")
+			gpsPlaceLabel = automaticLocationSnapshot?.label
+			lastGpsPlaceKey = lastKnownGpsLocation?.let(::gpsLocationKey)
+			if (systemLocationEnabled) {
+				maybeStartPassiveLocationUpdates()
 			} else {
-				null
+				stopPassiveLocationUpdates()
 			}
-			val lastGps = resolveCachedLastGpsProbe(refreshAtMs)
-			liveGpsLocation = liveGps
-			lastKnownGpsLocation = lastGps
-			val preferredGps = liveGps ?: lastGps
+			val preferredGps = liveGpsLocation ?: lastKnownGpsLocation
 			preferredGps?.let { maybeResolveGpsPlaceLabel(it) }
 			updateLocationLabelFromCachedGpsState()
 		}.onFailure {
 			liveGpsLocation = null
-			lastKnownGpsLocation = null
 			gpsLocationAvailable = false
 			locationLabel = manualCity.name
+			locationRefreshInProgress = false
+			stopPassiveLocationUpdates()
 			Logger.w(tag, "refreshLocationState fallback", it)
 		}
 		lastLocationStateRefreshAtMs = refreshAtMs
@@ -281,8 +330,18 @@ class HomeViewModel(
 		maxStaleMs: Long = FOREGROUND_LOCATION_REFRESH_STALE_MS
 	) {
 		val elapsed = SystemClock.elapsedRealtime() - lastLocationStateRefreshAtMs
-		if (elapsed in 0 until maxStaleMs) return
-		onSystemLocationProviderChanged()
+		refreshLocationState()
+		if (locationMode != LocationMode.GPS) return
+		if (elapsed in 0 until maxStaleMs &&
+			automaticLocationSnapshot?.isFreshWithin(FOREGROUND_AUTOMATIC_LOCATION_MAX_AGE_MS) == true
+		) {
+			return
+		}
+		scheduleCoalescedLocationAndSunTimesRefresh(
+			requestGpsLocation = lastKnownLocationProvider.hasLocationPermission(),
+			refreshSunTimes = false,
+			debounceMs = LOCATION_REFRESH_COALESCE_DELAY_MS
+		)
 	}
 
 	fun onSystemLocationProviderChanged() {
@@ -290,7 +349,7 @@ class HomeViewModel(
 			val wasSystemLocationEnabled = systemLocationEnabled
 			refreshLocationState()
 			if (locationMode != LocationMode.GPS) return
-			val shouldRequestGps = systemLocationEnabled && (!wasSystemLocationEnabled || !gpsLocationAvailable)
+			val shouldRequestGps = systemLocationEnabled && lastKnownLocationProvider.hasLocationPermission()
 			val shouldRefreshSunTimes = wasSystemLocationEnabled != systemLocationEnabled
 			if (shouldRequestGps || shouldRefreshSunTimes) {
 				scheduleCoalescedLocationAndSunTimesRefresh(
@@ -311,6 +370,7 @@ class HomeViewModel(
 	}
 
 	fun release() {
+		stopPassiveLocationUpdates()
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
 		mainHandler.removeCallbacks(startupBackupPrefetchRunnable)
 		mainHandler.removeCallbacks(backupCityRefreshRunnable)
@@ -403,12 +463,9 @@ class HomeViewModel(
 				"${candidate.latitude}|${candidate.longitude}|${candidate.timeZoneId.orEmpty()}"
 			}
 			LocationMode.GPS -> buildList {
-				if (systemLocationEnabled) {
-					val probeNowMs = SystemClock.elapsedRealtime()
-					val liveGps = resolveCachedLiveGpsProbe(probeNowMs)
-					val lastGps = resolveCachedLastGpsProbe(probeNowMs)
-					liveGps?.let { add(it) }
-					lastGps?.let { add(it) }
+				if (lastKnownLocationProvider.hasLocationPermission()) {
+					liveGpsLocation?.let { add(it) }
+					lastKnownGpsLocation?.let { add(it) }
 				}
 				add(manual)
 				add(defaultCity)
@@ -422,26 +479,63 @@ class HomeViewModel(
 		return resolved
 	}
 
-	private fun requestImmediateGpsLocation() {
-		if (locationMode != LocationMode.GPS || !systemLocationEnabled) return
+	private fun requestImmediateGpsLocation(
+		force: Boolean = false
+	) {
+		if (locationMode != LocationMode.GPS || !lastKnownLocationProvider.hasLocationPermission()) {
+			locationRefreshInProgress = false
+			return
+		}
 		val now = SystemClock.elapsedRealtime()
-		if ((now - lastGpsRequestAtMs) < GPS_REQUEST_THROTTLE_MS) return
+		if (!force && (now - lastGpsRequestAtMs) < GPS_REQUEST_THROTTLE_MS) return
 		lastGpsRequestAtMs = now
-		lastKnownLocationProvider.requestCurrentLocation(label = "gps_live") { location ->
+		lastKnownLocationProvider.requestLastKnownLocation(
+			allowWhenLocationDisabled = true
+		) { location ->
 			mainHandler.post {
-				if (locationMode != LocationMode.GPS) return@post
-				if (location != null) {
-					liveGpsLocation = location
-					lastLiveGpsProbeAtMs = SystemClock.elapsedRealtime()
-				} else {
-					lastLiveGpsProbeAtMs = SystemClock.elapsedRealtime()
-					Logger.w(tag, "gps_live_result null")
+				if (locationMode != LocationMode.GPS) {
+					locationRefreshInProgress = false
+					return@post
 				}
-				scheduleCoalescedLocationAndSunTimesRefresh(
-					requestGpsLocation = false,
-					refreshSunTimes = (locationMode == LocationMode.GPS),
-					debounceMs = 0L
-				)
+				val applied = location?.let { applyAutomaticLocationSample(it, refreshSunTimes = true) } ?: false
+				if (!systemLocationEnabled) {
+					if (applied) {
+						refreshLocationState()
+					}
+					locationRefreshInProgress = false
+					return@post
+				}
+				if (shouldRequestCurrentLocation(location)) {
+					requestCurrentGpsLocation()
+				} else if (applied) {
+					refreshLocationState()
+					locationRefreshInProgress = false
+				} else {
+					locationRefreshInProgress = false
+				}
+			}
+		}
+	}
+
+	private fun requestCurrentGpsLocation() {
+		val preferLowPower = shouldPreferLowPowerCurrentLocation()
+		lastKnownLocationProvider.requestCurrentLocation(
+			preferLowPower = preferLowPower,
+			maxUpdateAgeMillis = CURRENT_LOCATION_MAX_AGE_MS,
+			timeoutMillis = CURRENT_LOCATION_TIMEOUT_MS
+		) { location ->
+			mainHandler.post {
+				if (locationMode != LocationMode.GPS) {
+					locationRefreshInProgress = false
+					return@post
+				}
+				if (location == null) {
+					Logger.w(tag, "gps_current_result null")
+					locationRefreshInProgress = false
+					return@post
+				}
+				applyAutomaticLocationSample(location, refreshSunTimes = true)
+				locationRefreshInProgress = false
 			}
 		}
 	}
@@ -469,6 +563,14 @@ class HomeViewModel(
 				if (key != lastGpsPlaceKey) return@post
 				if (gpsPlaceLabel == resolved) return@post
 				gpsPlaceLabel = resolved
+				automaticLocationSnapshot?.let { snapshot ->
+					if (gpsLocationKey(snapshot.toSunLocation(labelFallback = "gps_cached")) == key) {
+						val updated = snapshot.copy(label = resolved)
+						automaticLocationSnapshot = updated
+						settingsRepository.setAutomaticLocation(updated)
+						lastKnownGpsLocation = updated.toSunLocation(labelFallback = "gps_last")
+					}
+				}
 				if (locationMode == LocationMode.GPS) {
 					updateLocationLabelFromCachedGpsState()
 				}
@@ -482,9 +584,46 @@ class HomeViewModel(
 		gpsLocationAvailable = liveGps != null || lastGps != null
 		locationLabel = when {
 			liveGps != null -> gpsPlaceLabel ?: formatGpsLabel(liveGps)
-			lastGps != null -> "Last GPS ${gpsPlaceLabel ?: formatGpsLabel(lastGps)}"
+			lastGps != null -> "Last known ${gpsPlaceLabel ?: formatGpsLabel(lastGps)}"
 			else -> manualCity.name
 		}
+	}
+
+	private fun applyAutomaticLocationSample(
+		location: LocationSnapshot,
+		refreshSunTimes: Boolean
+	): Boolean {
+		val previous = automaticLocationSnapshot
+		if (previous != null && previous.capturedAtEpochMs > location.capturedAtEpochMs) {
+			return false
+		}
+
+		automaticLocationSnapshot = location
+		settingsRepository.setAutomaticLocation(location)
+		val resolvedSunLocation = location.toSunLocation(labelFallback = "gps_last")
+		val nextPlaceKey = gpsLocationKey(resolvedSunLocation)
+		if (nextPlaceKey != lastGpsPlaceKey) {
+			gpsPlaceLabel = location.label
+		}
+		lastGpsPlaceKey = nextPlaceKey
+		if (location.source == LocationSource.CURRENT || location.source == LocationSource.PASSIVE) {
+			liveGpsLocation = location.toSunLocation(labelFallback = "gps_live")
+		}
+		lastKnownGpsLocation = resolvedSunLocation
+		if (!location.label.isNullOrBlank()) {
+			gpsPlaceLabel = location.label
+		}
+		updateLocationLabelFromCachedGpsState()
+		maybeResolveGpsPlaceLabel(lastKnownGpsLocation ?: return true)
+
+		if (refreshSunTimes && shouldRefreshSunTimesForLocation(previous, location)) {
+			scheduleCoalescedLocationAndSunTimesRefresh(
+				requestGpsLocation = false,
+				refreshSunTimes = true,
+				debounceMs = 0L
+			)
+		}
+		return true
 	}
 
 	private fun gpsLocationKey(location: SunLocation): String {
@@ -528,29 +667,64 @@ class HomeViewModel(
 		scheduleStartupBackupPrefetch(delayMs)
 	}
 
-	private fun resolveCachedLiveGpsProbe(nowMs: Long): SunLocation? {
-		if ((nowMs - lastLiveGpsProbeAtMs) in 0 until LAST_KNOWN_GPS_PROBE_CACHE_TTL_MS) {
-			return liveGpsLocation
-		}
-		lastLiveGpsProbeAtMs = nowMs
-		liveGpsLocation = runCatching {
-			lastKnownLocationProvider.getLastKnownLocation(label = "gps_live")
-		}.getOrNull()
-		return liveGpsLocation
+	private fun shouldRequestCurrentLocation(
+		lastKnown: LocationSnapshot?
+	): Boolean {
+		if (!systemLocationEnabled) return false
+		if (lastKnown == null) return true
+		if (!lastKnown.isFreshWithin(LAST_KNOWN_LOCATION_MAX_AGE_MS)) return true
+		val accuracy = lastKnown.accuracyMeters ?: return false
+		return accuracy > MAX_ACCEPTABLE_LAST_LOCATION_ACCURACY_METERS
 	}
 
-	private fun resolveCachedLastGpsProbe(nowMs: Long): SunLocation? {
-		if ((nowMs - lastLastGpsProbeAtMs) in 0 until LAST_KNOWN_GPS_PROBE_CACHE_TTL_MS) {
-			return lastKnownGpsLocation
+	private fun shouldPreferLowPowerCurrentLocation(): Boolean {
+		if (lastKnownLocationProvider.getLocationAccessLevel() != LocationAccessLevel.PRECISE) {
+			return true
 		}
-		lastLastGpsProbeAtMs = nowMs
-		lastKnownGpsLocation = runCatching {
-			lastKnownLocationProvider.getLastKnownLocation(
-				label = "gps_last",
-				allowWhenLocationDisabled = true
-			)
-		}.getOrNull()
-		return lastKnownGpsLocation
+		return automaticLocationSnapshot?.isFreshWithin(LOW_POWER_CURRENT_LOCATION_WINDOW_MS) == true
+	}
+
+	private fun shouldRefreshSunTimesForLocation(
+		previous: LocationSnapshot?,
+		current: LocationSnapshot
+	): Boolean {
+		if (previous == null) return true
+		if (previous.timeZoneId != current.timeZoneId) return true
+		return distanceMeters(previous, current) >= SIGNIFICANT_LOCATION_CHANGE_METERS
+	}
+
+	private fun maybeStartPassiveLocationUpdates() {
+		if (passiveLocationUpdatesStarted) return
+		if (locationMode != LocationMode.GPS) return
+		if (!systemLocationEnabled || !lastKnownLocationProvider.hasLocationPermission()) return
+		passiveLocationUpdatesStarted = true
+		lastKnownLocationProvider.startPassiveLocationUpdates { location ->
+			mainHandler.post {
+				if (locationMode != LocationMode.GPS) return@post
+				applyAutomaticLocationSample(location, refreshSunTimes = true)
+			}
+		}
+	}
+
+	private fun stopPassiveLocationUpdates() {
+		if (!passiveLocationUpdatesStarted) return
+		passiveLocationUpdatesStarted = false
+		lastKnownLocationProvider.stopPassiveLocationUpdates()
+	}
+
+	private fun distanceMeters(
+		from: LocationSnapshot,
+		to: LocationSnapshot
+	): Float {
+		val result = FloatArray(1)
+		Location.distanceBetween(
+			from.latitude,
+			from.longitude,
+			to.latitude,
+			to.longitude,
+			result
+		)
+		return result.firstOrNull() ?: 0f
 	}
 
 	private fun buildLocationCandidatesCacheKey(
@@ -639,13 +813,19 @@ class HomeViewModel(
 		private const val SUN_TIMES_REFRESH_INTERVAL_MS = 3L * 60L * 60L * 1000L
 		private const val CATEGORY_PRIORITIZE_LIMIT = 24
 		private const val GPS_REQUEST_THROTTLE_MS = 1_500L
-		private const val FOREGROUND_LOCATION_REFRESH_STALE_MS = 1_500L
+		private const val FOREGROUND_LOCATION_REFRESH_STALE_MS = 30L * 1000L
+		private const val FOREGROUND_AUTOMATIC_LOCATION_MAX_AGE_MS = 30L * 60L * 1000L
 		private const val BACKUP_CITY_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
 		private const val BACKUP_PREFETCH_STARTUP_DELAY_MS = 30_000L
 		private const val BACKUP_PREFETCH_STARTUP_JITTER_MS = 10_000L
 		private const val BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT = 8
 		private const val LOCATION_REFRESH_COALESCE_DELAY_MS = 120L
-		private const val LAST_KNOWN_GPS_PROBE_CACHE_TTL_MS = 1_500L
 		private const val LOCATION_CANDIDATES_CACHE_TTL_MS = 1_500L
+		private const val LAST_KNOWN_LOCATION_MAX_AGE_MS = 30L * 60L * 1000L
+		private const val LOW_POWER_CURRENT_LOCATION_WINDOW_MS = 6L * 60L * 60L * 1000L
+		private const val CURRENT_LOCATION_MAX_AGE_MS = 10L * 60L * 1000L
+		private const val CURRENT_LOCATION_TIMEOUT_MS = 6_000L
+		private const val MAX_ACCEPTABLE_LAST_LOCATION_ACCURACY_METERS = 15_000f
+		private const val SIGNIFICANT_LOCATION_CHANGE_METERS = 25_000f
 	}
 }

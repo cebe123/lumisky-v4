@@ -1,0 +1,65 @@
+--------- beginning of system
+03-22 22:35:36.963 I/ActivityManager( 2053): Force stopping com.example.lumisky appid=10505 user=0: from process:26052
+03-22 22:35:37.047 I/ActivityTaskManager( 2053): START u0 {flg=0x10000000 cmp=com.example.lumisky/.MainActivity} from uid 2000 from pid 26058 callingPackage com.android.shell
+03-22 22:35:37.116 I/ActivityManager( 2053): Start proc 22587:com.example.lumisky/u0a505 for next-top-activity {com.example.lumisky/com.example.lumisky.MainActivity} caller=com.android.shell
+--------- beginning of main
+03-22 22:35:37.221 W/ActivityManager( 2053): Sending non-protected broadcast thermalManagerCurrentActivity from system 2883:com.miui.powerkeeper/1000 pkg com.miui.powerkeeper. Callers=
+03-22 22:35:37.221 W/ActivityManager( 2053): Sending non-protected broadcast thermalManagerCurrentActivity from system 2883:com.miui.powerkeeper/1000 pkg com.miui.powerkeeper. Callers=
+--------- beginning of crash
+03-22 22:35:37.841 E/AndroidRuntime(22587): FATAL EXCEPTION: main
+03-22 22:35:37.841 E/AndroidRuntime(22587): Process: com.example.lumisky, PID: 22587
+03-22 22:35:37.841 E/AndroidRuntime(22587): java.lang.NoClassDefFoundError: Failed resolution of: Landroidx/startup/R$string;
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at androidx.startup.AppInitializer.discoverAndInitialize(AppInitializer.java:216)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at androidx.startup.AppInitializer.discoverAndInitialize(AppInitializer.java:206)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at androidx.startup.InitializationProvider.onCreate(InitializationProvider.java:45)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.content.ContentProvider.attachInfo(ContentProvider.java:2468)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.content.ContentProvider.attachInfo(ContentProvider.java:2433)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.app.ActivityThread.installProvider(ActivityThread.java:7867)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.app.ActivityThread.installContentProviders(ActivityThread.java:7378)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:7111)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(Unknown Source:0)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2220)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.os.Looper.loopOnce(Looper.java:211)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.os.Looper.loop(Looper.java:300)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at android.app.ActivityThread.main(ActivityThread.java:8296)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at java.lang.reflect.Method.invoke(Native Method)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:559)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:954)
+03-22 22:35:37.841 E/AndroidRuntime(22587): Caused by: java.lang.ClassNotFoundException: Didn't find class "androidx.startup.R$string" on path: DexPathList[[zip file "/data/app/~~waLIAhLDUSXQBZZnmT1ymQ==/com.example.lumisky-P-yX580EH_2L5cYJOU9PcQ==/base.apk"],nativeLibraryDirectories=[/data/app/~~waLIAhLDUSXQBZZnmT1ymQ==/com.example.lumisky-P-yX580EH_2L5cYJOU9PcQ==/lib/arm64, /data/app/~~waLIAhLDUSXQBZZnmT1ymQ==/com.example.lumisky-P-yX580EH_2L5cYJOU9PcQ==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at dalvik.system.BaseDexClassLoader.findClass(BaseDexClassLoader.java:259)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at java.lang.ClassLoader.loadClass(ClassLoader.java:642)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	at java.lang.ClassLoader.loadClass(ClassLoader.java:578)
+03-22 22:35:37.841 E/AndroidRuntime(22587): 	... 17 more
+03-22 22:35:37.852 W/ActivityTaskManager( 2053):   Force finishing activity com.example.lumisky/.MainActivity
+03-22 22:35:37.881 I/ActivityManager( 2053): Showing crash dialog for package com.example.lumisky u0
+03-22 22:35:38.354 W/ActivityTaskManager( 2053): Activity top resumed state loss timeout for ActivityRecord{2b1839c u0 com.example.lumisky/.MainActivity} t468 f}}
+03-22 22:35:38.367 W/ActivityTaskManager( 2053): Activity pause timeout for ActivityRecord{2b1839c u0 com.example.lumisky/.MainActivity} t468 f}}
+03-22 22:35:38.374 W/ActivityManager( 2053): Sending non-protected broadcast thermalManagerCurrentActivity from system 2883:com.miui.powerkeeper/1000 pkg com.miui.powerkeeper. Callers=
+03-22 22:35:38.374 W/ActivityManager( 2053): Sending non-protected broadcast thermalManagerCurrentActivity from system 2883:com.miui.powerkeeper/1000 pkg com.miui.powerkeeper. Callers=
+03-22 22:35:39.831 W/ActivityTaskManager( 2053): Can't find TaskDisplayArea to determine support for multi window. Task id=468 attached=false
+03-22 22:35:39.841 I/ActivityManager( 2053): Killing 22587:com.example.lumisky/u0a505 (adj 900): crash
+03-22 22:35:41.127 I/ActivityManager( 2053): Start proc 26097:com.android.thememanager/6101 for content provider {com.android.thememanager/com.android.thememanager.service.ThemeProvider} caller=com.miui.home
+03-22 22:35:43.878 I/ActivityManager( 2053): Force stopping com.example.lumisky appid=10505 user=0: deletePackageX
+03-22 22:35:44.069 I/ActivityManager( 2053): Force stopping com.example.lumisky appid=10505 user=0: pkg removed
+03-22 22:35:44.933 W/ActivityManager( 2053): Sending non-protected broadcast com.miui.gamebooster.UNINSTALLAPP from system 5517:com.miui.securitycenter.remote/1000 pkg com.miui.securitycenter. Callers=
+03-22 22:35:45.074 W/ActivityManager( 2053): Slow operation: 51ms so far, now at startProcess: returned from zygote!
+03-22 22:35:45.075 W/ActivityManager( 2053): Slow operation: 52ms so far, now at startProcess: done updating battery stats
+03-22 22:35:45.076 W/ActivityManager( 2053): Slow operation: 52ms so far, now at startProcess: building log message
+03-22 22:35:45.076 I/ActivityManager( 2053): Start proc 26249:com.miui.cleaner/u0a135 for service {com.miui.cleaner/com.miui.optimizecenter.service.CleanerService} caller=com.miui.securitycenter
+03-22 22:35:45.076 W/ActivityManager( 2053): Slow operation: 52ms so far, now at startProcess: starting to update pids map
+03-22 22:35:45.076 W/ActivityManager( 2053): Slow operation: 53ms so far, now at startProcess: done updating pids map
+03-22 22:35:45.147 W/ActivityManager( 2053): Slow operation: 62ms so far, now at startProcess: returned from zygote!
+03-22 22:35:45.155 W/ActivityManager( 2053): Slow operation: 69ms so far, now at startProcess: done updating battery stats
+03-22 22:35:45.155 W/ActivityManager( 2053): Slow operation: 69ms so far, now at startProcess: building log message
+03-22 22:35:45.155 I/ActivityManager( 2053): Start proc 26258:com.miui.guardprovider/u0a191 for service {com.miui.guardprovider/com.miui.guardprovider.manager.SecurityService} caller=com.miui.securitycenter
+03-22 22:35:45.155 W/ActivityManager( 2053): Slow operation: 69ms so far, now at startProcess: starting to update pids map
+03-22 22:35:45.157 W/ActivityManager( 2053): Slow operation: 71ms so far, now at startProcess: done updating pids map
+03-22 22:35:45.638 W/ActivityManager( 2053): Slow operation: 63ms so far, now at startProcess: returned from zygote!
+03-22 22:35:45.638 W/ActivityManager( 2053): Slow operation: 63ms so far, now at startProcess: done updating battery stats
+03-22 22:35:45.639 W/ActivityManager( 2053): Slow operation: 63ms so far, now at startProcess: building log message
+03-22 22:35:45.639 I/ActivityManager( 2053): Start proc 26321:com.google.android.apps.wellbeing/u0a145 for broadcast {com.google.android.apps.wellbeing/com.google.android.apps.wellbeing.common.receiver.coalescedreceivers.PackageFullyRemovedCoalescedBroadcast_Receiver} caller=android
+03-22 22:35:45.639 W/ActivityManager( 2053): Slow operation: 63ms so far, now at startProcess: starting to update pids map
+03-22 22:35:45.639 W/ActivityManager( 2053): Slow operation: 63ms so far, now at startProcess: done updating pids map
+03-22 22:35:47.717 I/ActivityManager( 2053): Start proc 26445:com.google.android.documentsui/u0a94 for broadcast {com.google.android.documentsui/com.android.documentsui.PackageReceiver} caller=android
+03-22 22:35:48.742 W/ActivityManager( 2053): Unable to start service Intent { cmp=com.google.android.gms/raj } U=0: not found

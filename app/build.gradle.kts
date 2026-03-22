@@ -1,6 +1,7 @@
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.Sync
 import java.io.File
+import java.util.Properties
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 
@@ -22,6 +23,9 @@ plugins {
 val lintIncludeTestSources = providers.gradleProperty("lumisky.lint.includeTestSources")
 	.map { raw -> raw.equals("true", ignoreCase = true) }
 	.orElse(false)
+val appId = "com.example.lumisky"
+val appProjectDir = project.projectDir
+val rootProjectDir = rootProject.projectDir
 
 android {
 	namespace = "com.example.lumisky"
@@ -30,7 +34,7 @@ android {
 	}
 
 	defaultConfig {
-		applicationId = "com.example.lumisky"
+		applicationId = appId
 		minSdk = 28
 		targetSdk = 36
 		versionCode = 1
@@ -347,4 +351,120 @@ tasks.matching { task ->
 	task.name.startsWith("lint")
 }.configureEach {
 	dependsOn(prepareFilteredAssets)
+}
+
+tasks.register("deployDebugToConnectedDevice") {
+	group = "deployment"
+	description = "Assembles, installs, and launches the debug build on a connected device. Prefers a physical phone over an emulator."
+	dependsOn("assembleDebug")
+	notCompatibleWithConfigurationCache("Uses adb-driven deployment against a live device.")
+
+	doLast {
+		val adb = resolveAdbExecutable(rootProjectDir)
+		val selectedSerial = selectPreferredDeviceSerial(appProjectDir, adb)
+			?: throw GradleException(
+				"No connected Android device found. Connect a phone with USB debugging enabled or start an emulator."
+			)
+		val apk = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
+		if (!apk.isFile) {
+			throw GradleException("Debug APK not found at ${apk.path}. Run :app:assembleDebug first.")
+		}
+
+		runCommand(
+			workingDir = appProjectDir,
+			command = listOf(adb.absolutePath, "-s", selectedSerial, "wait-for-device")
+		)
+		runCommand(
+			workingDir = appProjectDir,
+			command = listOf(adb.absolutePath, "-s", selectedSerial, "install", "-r", "-d", apk.absolutePath)
+		)
+		runCommand(
+			workingDir = appProjectDir,
+			command = listOf(
+				adb.absolutePath,
+				"-s",
+				selectedSerial,
+				"shell",
+				"am",
+				"start",
+				"-n",
+				"$appId/.MainActivity"
+			)
+		)
+
+		logger.lifecycle("deployDebugToConnectedDevice: deployed to $selectedSerial")
+	}
+}
+
+private fun resolveAdbExecutable(rootDir: File): File {
+	val sdkDir = System.getenv("ANDROID_SDK_ROOT")
+		?.takeIf { it.isNotBlank() }
+		?.let(::File)
+		?: System.getenv("ANDROID_HOME")
+			?.takeIf { it.isNotBlank() }
+			?.let(::File)
+		?: run {
+			val localProperties = File(rootDir, "local.properties")
+			if (!localProperties.isFile) return@run null
+			val properties = Properties()
+			localProperties.inputStream().use(properties::load)
+			properties.getProperty("sdk.dir")
+				?.takeIf { it.isNotBlank() }
+				?.let(::File)
+		}
+		?: throw GradleException(
+			"Android SDK path not found. Set ANDROID_SDK_ROOT/ANDROID_HOME or define sdk.dir in local.properties."
+		)
+
+	val adbFileName = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
+		"adb.exe"
+	} else {
+		"adb"
+	}
+	return File(sdkDir, "platform-tools/$adbFileName").takeIf { it.isFile }
+		?: throw GradleException("adb not found under ${sdkDir.path}/platform-tools.")
+}
+
+private fun selectPreferredDeviceSerial(
+	workingDir: File,
+	adb: File
+): String? {
+	val connectedSerials = runCommand(
+		workingDir = workingDir,
+		command = listOf(adb.absolutePath, "devices", "-l")
+	)
+	.lineSequence()
+		.drop(1)
+		.map { it.trim() }
+		.filter { it.isNotBlank() }
+		.mapNotNull { line ->
+			val columns = line.split(Regex("\\s+"))
+			if (columns.size < 2 || columns[1] != "device") {
+				return@mapNotNull null
+			}
+			columns[0]
+		}
+		.toList()
+	if (connectedSerials.isEmpty()) return null
+
+	return connectedSerials.firstOrNull { serial -> !serial.startsWith("emulator-") }
+		?: connectedSerials.first()
+}
+
+private fun runCommand(
+	workingDir: File,
+	command: List<String>
+): String {
+	val process = ProcessBuilder(command)
+		.directory(workingDir)
+		.redirectErrorStream(true)
+		.start()
+	val output = process.inputStream.bufferedReader().use { it.readText() }
+	val exitCode = process.waitFor()
+	if (exitCode != 0) {
+		throw GradleException(
+			"Command failed (${command.joinToString(" ")}).\n$output"
+		)
+	}
+	return output
 }

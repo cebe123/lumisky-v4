@@ -1,5 +1,6 @@
 package com.example.core.settings
 
+import com.example.core.location.LocationSnapshot
 import java.util.Locale
 import kotlin.math.abs
 
@@ -41,7 +42,8 @@ data class AppSettingsSnapshot(
 	val highRefreshEnabled: Boolean,
 	val performanceMode: PerformanceMode,
 	val locationMode: LocationMode,
-	val manualCity: ManualCity
+	val manualCity: ManualCity,
+	val automaticLocation: LocationSnapshot?
 )
 
 private data class CityDefinition(

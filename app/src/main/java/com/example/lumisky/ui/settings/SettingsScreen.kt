@@ -29,10 +29,12 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -84,7 +86,9 @@ fun SettingsScreen(
 	daylight: SunDaylight,
 	gpsLocationAvailable: Boolean,
 	systemLocationEnabled: Boolean,
+	locationRefreshInProgress: Boolean,
 	onLocationModeChanged: (LocationMode) -> Unit,
+	onRefreshLocation: () -> Unit,
 	onRequestEnableSystemLocation: () -> Unit,
 	manualCity: ManualCity,
 	onManualCitySelected: (ManualCity) -> Unit,
@@ -103,6 +107,8 @@ fun SettingsScreen(
 	val currentSolarNoonLabel = stringResource(R.string.location_current_solar_noon)
 	val currentSunsetLabel = stringResource(R.string.location_current_sunset)
 	val currentMoonZenithLabel = stringResource(R.string.location_current_moon_zenith)
+	val refreshLocationLabel = stringResource(R.string.location_refresh)
+	val refreshingLocationLabel = stringResource(R.string.location_refreshing)
 	val sectionOrder = remember(sectionAppearance, sectionLocationTime, sectionWallpaper, sectionAbout) {
 		listOf(sectionAppearance, sectionLocationTime, sectionWallpaper, sectionAbout)
 	}
@@ -113,8 +119,10 @@ fun SettingsScreen(
 	val citySelectionEnabled = locationMode != LocationMode.GPS
 
 	val permissionLauncher = rememberLauncherForActivityResult(
-		contract = ActivityResultContracts.RequestPermission()
-	) { granted ->
+		contract = ActivityResultContracts.RequestMultiplePermissions()
+	) { result ->
+		val granted = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
+			result[Manifest.permission.ACCESS_FINE_LOCATION] == true
 		if (granted) {
 			onLocationModeChanged(LocationMode.GPS)
 			if (!systemLocationEnabled) {
@@ -183,6 +191,35 @@ fun SettingsScreen(
 									icon = Icons.Filled.LocationOn,
 									title = stringResource(R.string.location_enable),
 									checked = locationMode == LocationMode.GPS,
+									trailingAction = {
+										TextButton(
+											onClick = {
+												if (systemLocationEnabled) {
+													onRefreshLocation()
+												} else {
+													onRequestEnableSystemLocation()
+												}
+											},
+											enabled = locationMode == LocationMode.GPS && !locationRefreshInProgress
+										) {
+											if (locationRefreshInProgress) {
+												CircularProgressIndicator(
+													modifier = Modifier.size(16.dp),
+													strokeWidth = 2.dp
+												)
+												Spacer(modifier = Modifier.width(8.dp))
+												Text(refreshingLocationLabel)
+											} else {
+												Icon(
+													imageVector = Icons.Filled.Refresh,
+													contentDescription = null,
+													modifier = Modifier.size(18.dp)
+												)
+												Spacer(modifier = Modifier.width(6.dp))
+												Text(refreshLocationLabel)
+											}
+										}
+									},
 									onCheckedChange = { enabled ->
 										if (!enabled) {
 											onLocationModeChanged(LocationMode.MANUAL)
@@ -190,6 +227,9 @@ fun SettingsScreen(
 										}
 
 										val hasPermission = ContextCompat.checkSelfPermission(
+											context,
+											Manifest.permission.ACCESS_COARSE_LOCATION
+										) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
 											context,
 											Manifest.permission.ACCESS_FINE_LOCATION
 										) == PackageManager.PERMISSION_GRANTED
@@ -199,7 +239,12 @@ fun SettingsScreen(
 												onRequestEnableSystemLocation()
 											}
 										} else {
-											permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+											permissionLauncher.launch(
+												arrayOf(
+													Manifest.permission.ACCESS_COARSE_LOCATION,
+													Manifest.permission.ACCESS_FINE_LOCATION
+												)
+											)
 										}
 									}
 								)
@@ -422,6 +467,7 @@ private fun SettingSwitchRow(
 	icon: ImageVector,
 	title: String,
 	checked: Boolean,
+	trailingAction: (@Composable () -> Unit)? = null,
 	onCheckedChange: (Boolean) -> Unit
 ) {
 	Row(
@@ -453,10 +499,16 @@ private fun SettingSwitchRow(
 				style = MaterialTheme.typography.bodyLarge
 			)
 		}
-		Switch(
-			checked = checked,
-			onCheckedChange = onCheckedChange
-		)
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(8.dp)
+		) {
+			trailingAction?.invoke()
+			Switch(
+				checked = checked,
+				onCheckedChange = onCheckedChange
+			)
+		}
 	}
 }
 

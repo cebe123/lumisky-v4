@@ -1,0 +1,18 @@
+--------- beginning of system
+03-22 22:48:08.092 I/ActivityManager( 2053): Force stopping com.example.lumisky appid=10506 user=0: from process:31783
+03-22 22:48:08.097 I/ActivityManager( 2053): Killing 25854:com.example.lumisky/u0a506 (adj 0): stop com.example.lumisky due to from process:31783
+03-22 22:48:08.099 W/ActivityTaskManager( 2053): Force removing ActivityRecord{96c09fa u0 com.example.lumisky/.MainActivity} t476 f}}: app died, no saved state
+03-22 22:48:08.118 W/ActivityTaskManager( 2053): Can't find TaskDisplayArea to determine support for multi window. Task id=476 attached=false
+--------- beginning of main
+03-22 22:48:08.137 W/ActivityManager( 2053): Sending non-protected broadcast thermalManagerCurrentActivity from system 2883:com.miui.powerkeeper/1000 pkg com.miui.powerkeeper. Callers=
+03-22 22:48:08.137 W/ActivityManager( 2053): Sending non-protected broadcast thermalManagerCurrentActivity from system 2883:com.miui.powerkeeper/1000 pkg com.miui.powerkeeper. Callers=
+03-22 22:48:08.265 W/ActivityManager( 2053): setHasOverlayUi called on unknown pid: 25854
+03-22 22:48:08.279 I/ActivityTaskManager( 2053): START u0 {flg=0x10000000 cmp=com.example.lumisky/.MainActivity} from uid 2000 from pid 31797 callingPackage com.android.shell
+03-22 22:48:08.328 I/ActivityManager( 2053): Start proc 25857:com.example.lumisky/u0a506 for next-top-activity {com.example.lumisky/com.example.lumisky.MainActivity} caller=com.android.shell
+03-22 22:48:08.432 W/ActivityManager( 2053): Sending non-protected broadcast thermalManagerCurrentActivity from system 2883:com.miui.powerkeeper/1000 pkg com.miui.powerkeeper. Callers=
+03-22 22:48:08.432 W/ActivityManager( 2053): Sending non-protected broadcast thermalManagerCurrentActivity from system 2883:com.miui.powerkeeper/1000 pkg com.miui.powerkeeper. Callers=
+03-22 22:48:09.647 I/ActivityTaskManager( 2053): Displayed com.example.lumisky/.MainActivity: +1s361ms
+03-22 22:48:09.994 I/ActivityTaskManager( 2053): Fully drawn com.example.lumisky/.MainActivity: +1s720ms
+03-22 22:48:14.250 W/ActivityManager( 2053): Unable to start service Intent { cmp=com.miui.powerkeeper/.perfshielder.PerfShielderStatisticsService } U=0: not found
+03-22 22:48:20.352 I/ActivityManager( 2053): Killing 27525:com.google.process.gservices/u0a155 (adj 955): empty #22
+03-22 22:48:20.355 I/ActivityManager( 2053): Killing 26875:com.instagram.android/u0a307 (adj 955): empty #23

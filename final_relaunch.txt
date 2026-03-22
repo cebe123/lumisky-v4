@@ -1,0 +1,7 @@
+Starting: Intent { cmp=com.example.lumisky/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: com.example.lumisky/.MainActivity
+TotalTime: 1361
+WaitTime: 1370
+Complete
