@@ -40,6 +40,9 @@
     <string name="language_title">Dil</string>
     <string name="language_select">Dil Seçin</string>
     <string name="location_unknown">Bilinmiyor</string>
+    <string name="home_selected_wallpaper_label">Seçili duvar kağıdı</string>
+    <string name="home_select_wallpaper_hint">Uygulamak için bir duvar kağıdı seçin</string>
+    <string name="home_set_wallpaper">Ayarla</string>
     <string name="cat_special">Special</string>
     <string name="cat_landscapes">Landscapes</string>
     <string name="cat_cities">Cities</string>

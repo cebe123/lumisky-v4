@@ -149,8 +149,8 @@ class MainActivity : AppCompatActivity() {
 								onFocusCleared = {
 									homeViewModel.clearLivePreview()
 								},
-								onOpenPreview = { id ->
-									openWallpaperSetScreen(id)
+								onSetWallpaper = { id ->
+									requestWallpaperApply(id)
 								},
 								onNavigateSettings = {
 									currentScreen = SCREEN_SETTINGS
@@ -315,7 +315,7 @@ class MainActivity : AppCompatActivity() {
 		locationReceiverRegistered = false
 	}
 
-	private fun openWallpaperSetScreen(wallpaperId: String) {
+	private fun requestWallpaperApply(wallpaperId: String) {
 		val homeViewModel = homeViewModelOrNull() ?: return
 		val baseConfig = homeViewModel.configFor(wallpaperId)
 		applyWallpaperWithFreshSunTimes(baseConfig)

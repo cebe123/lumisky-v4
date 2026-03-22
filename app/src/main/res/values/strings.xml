@@ -39,6 +39,9 @@
     <string name="language_title">Language</string>
     <string name="language_select">Select Language</string>
     <string name="location_unknown">Unknown</string>
+    <string name="home_selected_wallpaper_label">Selected Wallpaper</string>
+    <string name="home_select_wallpaper_hint">Choose a wallpaper</string>
+    <string name="home_set_wallpaper">Set</string>
 
     <!-- Categories -->
     <string name="cat_special">Special</string>

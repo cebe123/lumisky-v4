@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.PowerManager
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -29,6 +31,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterHdr
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -63,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -132,16 +137,16 @@ fun HomeScreen(
 	onCategoryFocused: (List<String>) -> Unit,
 	onFocusReady: (String) -> Unit,
 	onFocusCleared: () -> Unit,
-	onOpenPreview: (String) -> Unit,
+	onSetWallpaper: (String) -> Unit,
 	onNavigateSettings: () -> Unit,
 	startupDeferNonCriticalContentOnFirstRender: Boolean = false,
 	startupAnimationsEnabled: Boolean = true
 ) {
-	val specialCategory = androidx.compose.ui.res.stringResource(R.string.cat_special)
-	val landscapesCategory = androidx.compose.ui.res.stringResource(R.string.cat_landscapes)
-	val citiesCategory = androidx.compose.ui.res.stringResource(R.string.cat_cities)
-	val animeCategory = androidx.compose.ui.res.stringResource(R.string.cat_abstract)
-	val gamesCategory = androidx.compose.ui.res.stringResource(R.string.cat_games)
+	val specialCategory = stringResource(R.string.cat_special)
+	val landscapesCategory = stringResource(R.string.cat_landscapes)
+	val citiesCategory = stringResource(R.string.cat_cities)
+	val animeCategory = stringResource(R.string.cat_abstract)
+	val gamesCategory = stringResource(R.string.cat_games)
 	val orderedCategories = listOf(
 		specialCategory,
 		landscapesCategory,
@@ -334,7 +339,7 @@ fun HomeScreen(
 				modifier = Modifier
 					.fillMaxSize()
 					.padding(innerPadding),
-				contentPadding = PaddingValues(bottom = 112.dp),
+				contentPadding = PaddingValues(bottom = HOME_CONTENT_BOTTOM_PADDING),
 				verticalArrangement = Arrangement.spacedBy(24.dp)
 			) {
 				itemsIndexed(
@@ -346,6 +351,7 @@ fun HomeScreen(
 					CategorySection(
 						categoryName = entry.title,
 						wallpapers = entry.wallpapers,
+						selectedWallpaperId = selectedWallpaperId,
 						liveWallpaperId = liveWallpaperId,
 						isCategoryActive = isCategoryActive,
 						parentScrollInProgress = verticalState.isScrollInProgress,
@@ -364,7 +370,9 @@ fun HomeScreen(
 						},
 						onWallpaperClick = { id ->
 							onWallpaperSelected(id)
-							onOpenPreview(id)
+						},
+						onSetWallpaper = { id ->
+							onSetWallpaper(id)
 						}
 					)
 				}
@@ -438,6 +446,7 @@ private fun HomeTopBar(simplified: Boolean) {
 private fun CategorySection(
 	categoryName: String,
 	wallpapers: List<StoreWallpaperModel>,
+	selectedWallpaperId: String?,
 	liveWallpaperId: String?,
 	isCategoryActive: Boolean,
 	parentScrollInProgress: Boolean,
@@ -450,7 +459,8 @@ private fun CategorySection(
 	previewHeightPx: Int,
 	simplifiedPlaceholderVisuals: Boolean,
 	onFocusCandidate: (String?) -> Unit,
-	onWallpaperClick: (String) -> Unit
+	onWallpaperClick: (String) -> Unit,
+	onSetWallpaper: (String) -> Unit
 ) {
 	val rowState = rememberLazyListState()
 	var centeredWallpaperId by remember(wallpapers) { mutableStateOf<String?>(null) }
@@ -521,19 +531,46 @@ private fun CategorySection(
 				contentType = { _, _ -> WALLPAPER_CARD_CONTENT_TYPE }
 			) { _, model ->
 				val isFocusedLive = isCategoryActive && model.id == activeLiveId
-				WallpaperCard(
-					title = model.name,
-					item = model.item,
-					isLive = isFocusedLive,
-					highRefreshEnabled = highRefreshEnabled,
-					performanceMode = performanceMode,
-					snapshotPreviewAssetLoader = snapshotPreviewAssetLoader,
-					previewWidthPx = previewWidthPx,
-					previewHeightPx = previewHeightPx,
-					simplifiedPlaceholderVisuals = simplifiedPlaceholderVisuals,
-					modifier = Modifier.size(width = cardWidth, height = cardHeight),
-					onClick = { onWallpaperClick(model.id) }
-				)
+				val isSelected = model.id == selectedWallpaperId
+				Column(
+					modifier = Modifier.width(cardWidth),
+					verticalArrangement = Arrangement.spacedBy(10.dp)
+				) {
+					WallpaperCard(
+						title = model.name,
+						item = model.item,
+						isLive = isFocusedLive,
+						isSelected = isSelected,
+						highRefreshEnabled = highRefreshEnabled,
+						performanceMode = performanceMode,
+						snapshotPreviewAssetLoader = snapshotPreviewAssetLoader,
+						previewWidthPx = previewWidthPx,
+						previewHeightPx = previewHeightPx,
+						simplifiedPlaceholderVisuals = simplifiedPlaceholderVisuals,
+						modifier = Modifier
+							.fillMaxWidth()
+							.height(cardHeight),
+						onClick = { onWallpaperClick(model.id) }
+					)
+					if (isSelected) {
+						Button(
+							modifier = Modifier.fillMaxWidth(),
+							onClick = { onSetWallpaper(model.id) },
+							shape = RoundedCornerShape(18.dp),
+							colors = ButtonDefaults.buttonColors(
+								containerColor = SelectedWallpaperBorderColor,
+								contentColor = Color(0xFF07121F)
+							)
+						) {
+							Text(
+								text = stringResource(R.string.home_set_wallpaper),
+								style = MaterialTheme.typography.labelLarge.copy(
+									fontWeight = FontWeight.Bold
+								)
+							)
+						}
+					}
+				}
 			}
 		}
 	}
@@ -544,6 +581,7 @@ private fun WallpaperCard(
 	title: String,
 	item: HomeWallpaperItem,
 	isLive: Boolean,
+	isSelected: Boolean,
 	highRefreshEnabled: Boolean,
 	performanceMode: PerformanceMode,
 	snapshotPreviewAssetLoader: SnapshotPreviewAssetLoader,
@@ -587,6 +625,11 @@ private fun WallpaperCard(
 			.padding(vertical = 3.dp)
 			.clickable(onClick = onClick),
 		shape = RoundedCornerShape(16.dp),
+		border = if (isSelected) {
+			BorderStroke(2.dp, SelectedWallpaperBorderColor)
+		} else {
+			null
+		},
 		elevation = CardDefaults.cardElevation(
 			defaultElevation = if (simplifiedPlaceholderVisuals) 2.dp else 8.dp
 		),
@@ -940,9 +983,11 @@ private const val CATEGORY_FOCUS_MAX_ITEMS = 1
 private const val FOCUS_INIT_DELAY_MS = 100L
 private const val CATEGORY_SECTION_CONTENT_TYPE = "category_section"
 private const val WALLPAPER_CARD_CONTENT_TYPE = "wallpaper_card"
+private val HOME_CONTENT_BOTTOM_PADDING = 112.dp
 
 private val PlaceholderOuterShape = RoundedCornerShape(16.dp)
 private val PlaceholderInnerShape = RoundedCornerShape(13.dp)
+private val SelectedWallpaperBorderColor = Color(0xFF9FD8FF)
 private val PlaceholderBaseBrush = Brush.linearGradient(
 	colors = listOf(
 		Color(0xFF07121F),

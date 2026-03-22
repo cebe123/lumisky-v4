@@ -25,6 +25,7 @@ import com.example.core.settings.LocationMode
 import com.example.core.settings.ManualCity
 import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
+import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.data.WallpaperCatalog
 import java.util.Locale
 import java.util.concurrent.ExecutorService
@@ -40,6 +41,7 @@ class HomeViewModel(
 	context: Context,
 	private val sunTimesRepository: SunTimesRepository = SunTimesRepository(),
 	private val settingsRepository: AppSettingsRepository = AppSettingsRepository(context),
+	private val wallpaperConfigStore: WallpaperConfigStore = WallpaperConfigStore(context),
 	private val lastKnownLocationProvider: LastKnownLocationProvider = LastKnownLocationProvider(context),
 	private val initialSettings: AppSettingsSnapshot = settingsRepository.snapshot()
 ) {
@@ -59,14 +61,15 @@ class HomeViewModel(
 	private var locationCandidatesCacheKey: String? = null
 	private var locationCandidatesCache: List<SunLocation> = emptyList()
 	private var locationCandidatesCacheAtMs: Long = 0L
+	private val storedWallpaperId: String? = wallpaperConfigStore.loadSelected()?.id
 
 	val items: List<HomeWallpaperItem>
 		get() = _items
 
-	var selectedWallpaperId by mutableStateOf<String?>(null)
+	var selectedWallpaperId by mutableStateOf(storedWallpaperId)
 		private set
 
-	var liveWallpaperId by mutableStateOf<String?>(null)
+	var liveWallpaperId by mutableStateOf(storedWallpaperId)
 		private set
 
 	var daylight by mutableStateOf(sunTimesRepository.currentOrFallback())
@@ -399,8 +402,11 @@ class HomeViewModel(
 			daylight = currentDaylight
 		)
 		publishItems(configs.map { config -> HomeWallpaperItem(config = config) })
-		if (selectedWallpaperId == null && _items.isNotEmpty()) {
-			selectedWallpaperId = _items.first().config.id
+		if (selectedWallpaperId != null && _items.none { it.config.id == selectedWallpaperId }) {
+			selectedWallpaperId = null
+		}
+		if (liveWallpaperId != null && _items.none { it.config.id == liveWallpaperId }) {
+			liveWallpaperId = null
 		}
 	}
 
@@ -417,10 +423,11 @@ class HomeViewModel(
 		val mapped = configs.map { config -> HomeWallpaperItem(config = config) }
 		mainHandler.post {
 			publishItems(mapped)
-			val selectedStillExists = selectedWallpaperId != null &&
-				_items.any { it.config.id == selectedWallpaperId }
-			if (!selectedStillExists && _items.isNotEmpty()) {
-				selectedWallpaperId = _items.first().config.id
+			if (selectedWallpaperId != null && _items.none { it.config.id == selectedWallpaperId }) {
+				selectedWallpaperId = null
+			}
+			if (liveWallpaperId != null && _items.none { it.config.id == liveWallpaperId }) {
+				liveWallpaperId = null
 			}
 		}
 	}
