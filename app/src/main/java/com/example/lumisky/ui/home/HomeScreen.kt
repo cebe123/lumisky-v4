@@ -620,7 +620,7 @@ private fun WallpaperCard(
 			if (snapshotBitmap != null) {
 				Image(
 					bitmap = snapshotBitmap.asImageBitmap(),
-					contentDescription = null,
+					contentDescription = title,
 					contentScale = ContentScale.FillBounds,
 					modifier = Modifier
 						.fillMaxSize()

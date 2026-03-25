@@ -212,7 +212,7 @@ fun SettingsScreen(
 											} else {
 												Icon(
 													imageVector = Icons.Filled.Refresh,
-													contentDescription = null,
+													contentDescription = refreshLocationLabel,
 													modifier = Modifier.size(18.dp)
 												)
 												Spacer(modifier = Modifier.width(6.dp))
@@ -394,7 +394,7 @@ private fun SettingActionRow(
 		Row(verticalAlignment = Alignment.CenterVertically) {
 			Icon(
 				imageVector = icon,
-				contentDescription = null,
+				contentDescription = title,
 				tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
 			)
 			Spacer(modifier = Modifier.width(12.dp))
@@ -413,7 +413,7 @@ private fun SettingActionRow(
 			Spacer(modifier = Modifier.width(8.dp))
 			Icon(
 				imageVector = Icons.Filled.ChevronRight,
-				contentDescription = null,
+				contentDescription = "Navigate to $title",
 				tint = if (enabled) MaterialTheme.colorScheme.outline else Color.Transparent
 			)
 		}
@@ -436,7 +436,7 @@ private fun SettingInfoRow(
 		Row(verticalAlignment = Alignment.CenterVertically) {
 			Icon(
 				imageVector = icon,
-				contentDescription = null,
+				contentDescription = title,
 				tint = MaterialTheme.colorScheme.primary
 			)
 			Spacer(modifier = Modifier.width(12.dp))
@@ -489,7 +489,7 @@ private fun SettingSwitchRow(
 			) {
 				Icon(
 					imageVector = icon,
-					contentDescription = null,
+					contentDescription = title,
 					tint = MaterialTheme.colorScheme.primary
 				)
 			}
