@@ -239,7 +239,10 @@ class WallpaperDaylightSyncCoordinator(
 			tag,
 			"stored_daylight_updated wallpaper=${latestConfig.id} sunrise=${daylight.sunriseMinute} sunset=${daylight.sunsetMinute} solarNoon=${daylight.solarNoonMinute} tz=${daylight.timeZoneId.orEmpty()}"
 		)
-		appContext.sendBroadcast(Intent(ACTION_APPLY_STORED_WALLPAPER_CONFIG))
+		appContext.sendBroadcast(
+			Intent(ACTION_APPLY_STORED_WALLPAPER_CONFIG)
+				.setPackage(appContext.packageName)
+		)
 	}
 
 	private fun buildSunTimesCandidates(
