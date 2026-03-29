@@ -169,7 +169,7 @@ class MainActivity : AppCompatActivity() {
 
 							SCREEN_SETTINGS -> SettingsScreen(
 								appThemeMode = homeViewModel.appThemeMode,
-								onCycleTheme = { homeViewModel.cycleAppThemeMode() },
+								onThemeModeSelected = { mode -> homeViewModel.updateAppThemeMode(mode) },
 								highRefreshEnabled = homeViewModel.highRefreshEnabled,
 								onHighRefreshChanged = { enabled ->
 									homeViewModel.updateHighRefreshEnabled(

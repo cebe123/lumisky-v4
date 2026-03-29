@@ -5,47 +5,49 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BatterySaver
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.FilterHdr
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,11 +55,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.core.api.SunDaylight
@@ -76,7 +80,7 @@ import java.util.Locale
 fun SettingsScreen(
 	onNavigateHome: () -> Unit,
 	appThemeMode: AppThemeMode,
-	onCycleTheme: () -> Unit,
+	onThemeModeSelected: (AppThemeMode) -> Unit,
 	highRefreshEnabled: Boolean,
 	onHighRefreshChanged: (Boolean) -> Unit,
 	performanceMode: PerformanceMode,
@@ -98,25 +102,17 @@ fun SettingsScreen(
 	val context = LocalContext.current
 	var showLanguageDialog by remember { mutableStateOf(false) }
 	var showCityDialog by remember { mutableStateOf(false) }
-	val sectionAppearance = stringResource(R.string.section_appearance)
-	val sectionLocationTime = stringResource(R.string.section_location_time)
-	val sectionWallpaper = stringResource(R.string.section_wallpaper_settings)
-	val sectionAbout = stringResource(R.string.section_about)
-	val currentSunTimesTitle = stringResource(R.string.location_current_sun_times)
-	val currentSunriseLabel = stringResource(R.string.location_current_sunrise)
-	val currentSolarNoonLabel = stringResource(R.string.location_current_solar_noon)
-	val currentSunsetLabel = stringResource(R.string.location_current_sunset)
-	val currentMoonZenithLabel = stringResource(R.string.location_current_moon_zenith)
-	val refreshLocationLabel = stringResource(R.string.location_refresh)
-	val refreshingLocationLabel = stringResource(R.string.location_refreshing)
-	val sectionOrder = remember(sectionAppearance, sectionLocationTime, sectionWallpaper, sectionAbout) {
-		listOf(sectionAppearance, sectionLocationTime, sectionWallpaper, sectionAbout)
+	val locationSummary = when {
+		locationMode != LocationMode.GPS -> manualCity.name
+		!systemLocationEnabled -> stringResource(R.string.location_service_disabled)
+		gpsLocationAvailable -> locationLabel
+		else -> stringResource(R.string.location_unknown)
 	}
-	val appVersionName = remember(context) { resolveAppVersionName(context) }
 	val moonZenithMinute = remember(daylight.solarNoonMinute) {
 		(daylight.solarNoonMinute + (12 * 60)) % (24 * 60)
 	}
 	val citySelectionEnabled = locationMode != LocationMode.GPS
+	val appVersionName = remember(context) { resolveAppVersionName(context) }
 
 	val permissionLauncher = rememberLauncherForActivityResult(
 		contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -131,180 +127,79 @@ fun SettingsScreen(
 		}
 	}
 
-	Scaffold(
-		topBar = {
-			TopAppBar(
-				title = {
-					Text(
-						text = stringResource(R.string.settings_title),
-						style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-					)
-				},
-				navigationIcon = {
-					IconButton(onClick = onNavigateHome) {
-						Icon(
-							imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-							contentDescription = stringResource(R.string.settings_title)
-						)
-					}
-				},
-				colors = TopAppBarDefaults.topAppBarColors(
-					containerColor = MaterialTheme.colorScheme.background,
-					scrolledContainerColor = MaterialTheme.colorScheme.background
-				)
-			)
-		}
-	) { innerPadding ->
+	Scaffold(containerColor = SettingsBackground) { innerPadding ->
 		Box(
 			modifier = Modifier
 				.fillMaxSize()
-				.padding(innerPadding),
+				.background(SettingsBackground)
+				.padding(innerPadding)
 		) {
-			LazyColumn(
-				modifier = Modifier.fillMaxSize(),
-				contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 112.dp),
-				verticalArrangement = Arrangement.spacedBy(16.dp)
+			SettingsBackdrop()
+
+			Column(
+				modifier = Modifier
+					.fillMaxSize()
+					.verticalScroll(rememberScrollState())
+					.padding(horizontal = 20.dp),
+				verticalArrangement = Arrangement.spacedBy(18.dp)
 			) {
-					items(sectionOrder) { section ->
-						when (section) {
-							sectionAppearance -> {
-							SectionCard(title = section) {
-								SettingActionRow(
-									icon = Icons.Filled.Palette,
-									title = stringResource(R.string.theme_title),
-									value = themeLabel(appThemeMode),
-									onClick = onCycleTheme
-								)
-								HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-								SettingActionRow(
-									icon = Icons.Filled.Language,
-									title = stringResource(R.string.language_title),
-									value = languageLabel(languageTag),
-									onClick = { showLanguageDialog = true }
-								)
-							}
+				SettingsTopBar(onNavigateHome = onNavigateHome)
+				SettingsHeader()
+				AppearanceSection(
+					appThemeMode = appThemeMode,
+					onThemeModeSelected = onThemeModeSelected,
+					languageTag = languageTag,
+					onShowLanguageDialog = { showLanguageDialog = true }
+				)
+				LocationSection(
+					locationMode = locationMode,
+					locationSummary = locationSummary,
+					manualCity = manualCity,
+					citySelectionEnabled = citySelectionEnabled,
+					locationRefreshInProgress = locationRefreshInProgress,
+					daylight = daylight,
+					moonZenithMinute = moonZenithMinute,
+					onToggleGps = { enabled ->
+						if (!enabled) {
+							onLocationModeChanged(LocationMode.MANUAL)
+							return@LocationSection
 						}
 
-							sectionLocationTime -> {
-							SectionCard(title = section) {
-								SettingSwitchRow(
-									icon = Icons.Filled.LocationOn,
-									title = stringResource(R.string.location_enable),
-									checked = locationMode == LocationMode.GPS,
-									trailingAction = {
-										TextButton(
-											onClick = {
-												if (systemLocationEnabled) {
-													onRefreshLocation()
-												} else {
-													onRequestEnableSystemLocation()
-												}
-											},
-											enabled = locationMode == LocationMode.GPS && !locationRefreshInProgress
-										) {
-											if (locationRefreshInProgress) {
-												CircularProgressIndicator(
-													modifier = Modifier.size(16.dp),
-													strokeWidth = 2.dp
-												)
-												Spacer(modifier = Modifier.width(8.dp))
-												Text(refreshingLocationLabel)
-											} else {
-												Icon(
-													imageVector = Icons.Filled.Refresh,
-													contentDescription = refreshLocationLabel,
-													modifier = Modifier.size(18.dp)
-												)
-												Spacer(modifier = Modifier.width(6.dp))
-												Text(refreshLocationLabel)
-											}
-										}
-									},
-									onCheckedChange = { enabled ->
-										if (!enabled) {
-											onLocationModeChanged(LocationMode.MANUAL)
-											return@SettingSwitchRow
-										}
-
-										val hasPermission = ContextCompat.checkSelfPermission(
-											context,
-											Manifest.permission.ACCESS_COARSE_LOCATION
-										) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
-											context,
-											Manifest.permission.ACCESS_FINE_LOCATION
-										) == PackageManager.PERMISSION_GRANTED
-										if (hasPermission) {
-											onLocationModeChanged(LocationMode.GPS)
-											if (!systemLocationEnabled) {
-												onRequestEnableSystemLocation()
-											}
-										} else {
-											permissionLauncher.launch(
-												arrayOf(
-													Manifest.permission.ACCESS_COARSE_LOCATION,
-													Manifest.permission.ACCESS_FINE_LOCATION
-												)
-											)
-										}
-									}
-								)
-								HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-								SettingActionRow(
-									icon = Icons.Filled.LocationCity,
-									title = stringResource(R.string.location_select_city),
-									value = if (locationMode == LocationMode.GPS) {
-										if (gpsLocationAvailable && systemLocationEnabled) {
-											locationLabel
-										} else {
-											"$locationLabel / GPS unavailable"
-										}
-									} else {
-										locationLabel
-									},
-									onClick = {
-										showCityDialog = true
-									},
-									enabled = citySelectionEnabled
-								)
-								HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-								SettingInfoRow(
-									icon = Icons.Filled.LocationOn,
-									title = currentSunTimesTitle,
-									valueLines = listOf(
-										"${currentSunriseLabel} ${formatMinuteLabel(daylight.sunriseMinute)}",
-										"${currentSolarNoonLabel} ${formatMinuteLabel(daylight.solarNoonMinute)}",
-										"${currentSunsetLabel} ${formatMinuteLabel(daylight.sunsetMinute)}",
-										"${currentMoonZenithLabel} ${formatMinuteLabel(moonZenithMinute)}"
-									)
-								)
+						val hasPermission = ContextCompat.checkSelfPermission(
+							context,
+							Manifest.permission.ACCESS_COARSE_LOCATION
+						) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+							context,
+							Manifest.permission.ACCESS_FINE_LOCATION
+						) == PackageManager.PERMISSION_GRANTED
+						if (hasPermission) {
+							onLocationModeChanged(LocationMode.GPS)
+							if (!systemLocationEnabled) {
+								onRequestEnableSystemLocation()
 							}
-						}
-
-							sectionWallpaper -> {
-							SectionCard(title = section) {
-								SettingActionRow(
-									icon = Icons.Filled.Tune,
-									title = stringResource(R.string.performance_mode_title),
-									value = performanceModeLabel(performanceMode),
-									onClick = { onPerformanceModeChanged(nextPerformanceMode(performanceMode)) }
+						} else {
+							permissionLauncher.launch(
+								arrayOf(
+									Manifest.permission.ACCESS_COARSE_LOCATION,
+									Manifest.permission.ACCESS_FINE_LOCATION
 								)
-							}
+							)
 						}
-
-							else -> {
-								SectionCard(title = section) {
-										SettingActionRow(
-											icon = Icons.Filled.Tune,
-											title = stringResource(R.string.app_version),
-											value = appVersionName,
-											onClick = {},
-											enabled = false
-										)
-								}
-							}
-						}
-					}
-				}
+					},
+					onRefreshLocation = {
+						if (systemLocationEnabled) onRefreshLocation() else onRequestEnableSystemLocation()
+					},
+					onSelectCity = { showCityDialog = true }
+				)
+				WallpaperSection(
+					highRefreshEnabled = highRefreshEnabled,
+					onHighRefreshChanged = onHighRefreshChanged,
+					performanceMode = performanceMode,
+					onPerformanceModeChanged = onPerformanceModeChanged
+				)
+				AboutSection(appVersionName = appVersionName)
+				Spacer(modifier = Modifier.height(118.dp))
+			}
 
 			Box(
 				modifier = Modifier
@@ -349,167 +244,691 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SectionCard(
-	title: String,
-	content: @Composable () -> Unit
-) {
-	Column(
-		verticalArrangement = Arrangement.spacedBy(8.dp)
+private fun SettingsBackdrop() {
+	Box(
+		modifier = Modifier
+			.fillMaxSize()
+			.background(
+				brush = Brush.verticalGradient(
+					colors = listOf(Color(0xFF080A10), SettingsBackground, Color(0xFF0A0F18))
+				)
+			)
 	) {
-		Text(
-			text = title,
-			style = MaterialTheme.typography.labelLarge.copy(
-				color = MaterialTheme.colorScheme.primary,
-				fontWeight = FontWeight.Bold
-			)
+		Box(
+			modifier = Modifier
+				.align(Alignment.TopStart)
+				.offset(x = (-120).dp, y = (-90).dp)
+				.size(300.dp)
+				.clip(CircleShape)
+				.background(Brush.radialGradient(listOf(SettingsPrimary.copy(alpha = 0.20f), Color.Transparent)))
 		)
-		Card(
-			modifier = Modifier.fillMaxWidth(),
-			shape = RoundedCornerShape(16.dp),
-			colors = CardDefaults.cardColors(
-				containerColor = MaterialTheme.colorScheme.surfaceContainer
-			)
+		Box(
+			modifier = Modifier
+				.align(Alignment.TopEnd)
+				.offset(x = 100.dp, y = 90.dp)
+				.size(250.dp)
+				.clip(CircleShape)
+				.background(Brush.radialGradient(listOf(SettingsSecondary.copy(alpha = 0.14f), Color.Transparent)))
+		)
+	}
+}
+
+@Composable
+private fun SettingsTopBar(
+	onNavigateHome: () -> Unit
+) {
+	Row(
+		modifier = Modifier
+			.fillMaxWidth()
+			.statusBarsPadding()
+			.padding(top = 12.dp, bottom = 8.dp),
+		verticalAlignment = Alignment.CenterVertically
+	) {
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(10.dp)
 		) {
-			content()
+			Box(
+				modifier = Modifier
+					.size(30.dp)
+					.clip(CircleShape)
+					.background(SettingsPrimary.copy(alpha = 0.14f)),
+				contentAlignment = Alignment.Center
+			) {
+				Icon(
+					imageVector = Icons.Filled.FilterHdr,
+					contentDescription = null,
+					tint = SettingsPrimary,
+					modifier = Modifier.size(18.dp)
+				)
+			}
+			Text(
+				text = stringResource(R.string.app_name),
+				style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+				color = SettingsOnSurface
+			)
+		}
+		Spacer(modifier = Modifier.weight(1f))
+		IconButton(
+			onClick = onNavigateHome,
+			modifier = Modifier
+				.size(42.dp)
+				.clip(CircleShape)
+				.background(SettingsSurfaceHighest.copy(alpha = 0.45f))
+				.border(1.dp, SettingsGhostBorder, CircleShape)
+		) {
+			Icon(
+				imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+				contentDescription = stringResource(R.string.nav_home),
+				tint = SettingsOnSurfaceVariant
+			)
 		}
 	}
 }
 
 @Composable
-private fun SettingActionRow(
-	icon: ImageVector,
+private fun SettingsHeader() {
+	Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+		Text(
+			text = stringResource(R.string.settings_title),
+			style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+			color = SettingsOnSurface
+		)
+		Text(
+			text = stringResource(R.string.wallpaper_description),
+			style = MaterialTheme.typography.bodyMedium,
+			color = SettingsOnSurfaceVariant,
+			maxLines = 2,
+			overflow = TextOverflow.Ellipsis
+		)
+	}
+}
+
+@Composable
+private fun AppearanceSection(
+	appThemeMode: AppThemeMode,
+	onThemeModeSelected: (AppThemeMode) -> Unit,
+	languageTag: String,
+	onShowLanguageDialog: () -> Unit
+) {
+	GlassCard {
+		Row(
+			modifier = Modifier.fillMaxWidth(),
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(14.dp)
+		) {
+			Text(
+				text = stringResource(R.string.theme_title),
+				style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+				color = SettingsOnSurface,
+				modifier = Modifier.weight(1f)
+			)
+			ThemeSelector(
+				selectedMode = appThemeMode,
+				onModeSelected = onThemeModeSelected
+			)
+		}
+		SectionDivider()
+		InfoActionRow(
+			title = stringResource(R.string.language_title),
+			value = languageLabel(languageTag),
+			leadingIcon = Icons.Filled.Language,
+			onClick = onShowLanguageDialog
+		)
+	}
+}
+
+@Composable
+private fun LocationSection(
+	locationMode: LocationMode,
+	locationSummary: String,
+	manualCity: ManualCity,
+	citySelectionEnabled: Boolean,
+	locationRefreshInProgress: Boolean,
+	daylight: SunDaylight,
+	moonZenithMinute: Int,
+	onToggleGps: (Boolean) -> Unit,
+	onRefreshLocation: () -> Unit,
+	onSelectCity: () -> Unit
+) {
+	GlassCard(kicker = stringResource(R.string.section_location_time)) {
+		LocationToggleRow(
+			locationMode = locationMode,
+			locationSummary = locationSummary,
+			locationRefreshInProgress = locationRefreshInProgress,
+			onRefreshLocation = onRefreshLocation,
+			onToggleGps = onToggleGps
+		)
+		Spacer(modifier = Modifier.height(14.dp))
+		CitySelectionField(
+			label = stringResource(R.string.location_select_city),
+			value = manualCity.name,
+			enabled = citySelectionEnabled,
+			onClick = onSelectCity
+		)
+		Spacer(modifier = Modifier.height(16.dp))
+		SunTimesPanel(
+			title = stringResource(R.string.location_current_sun_times),
+			subtitle = locationSummary,
+			entries = listOf(
+				SunTimeEntry(
+					label = stringResource(R.string.location_current_sunrise),
+					value = formatMinuteLabel(daylight.sunriseMinute),
+					accent = SettingsSecondary
+				),
+				SunTimeEntry(
+					label = stringResource(R.string.location_current_solar_noon),
+					value = formatMinuteLabel(daylight.solarNoonMinute),
+					accent = SettingsPrimary
+				),
+				SunTimeEntry(
+					label = stringResource(R.string.location_current_sunset),
+					value = formatMinuteLabel(daylight.sunsetMinute),
+					accent = SettingsTertiary
+				),
+				SunTimeEntry(
+					label = stringResource(R.string.location_current_moon_zenith),
+					value = formatMinuteLabel(moonZenithMinute),
+					accent = SettingsSecondary.copy(alpha = 0.82f)
+				)
+			)
+		)
+	}
+}
+
+@Composable
+private fun WallpaperSection(
+	highRefreshEnabled: Boolean,
+	onHighRefreshChanged: (Boolean) -> Unit,
+	performanceMode: PerformanceMode,
+	onPerformanceModeChanged: (PerformanceMode) -> Unit
+) {
+	GlassCard(kicker = stringResource(R.string.section_wallpaper_settings)) {
+		SectionTitle(text = stringResource(R.string.quality_title))
+		Spacer(modifier = Modifier.height(10.dp))
+		BooleanSelector(
+			enabled = highRefreshEnabled,
+			enabledLabel = stringResource(R.string.quality_high),
+			disabledLabel = stringResource(R.string.quality_low),
+			onValueChanged = onHighRefreshChanged
+		)
+		Spacer(modifier = Modifier.height(16.dp))
+		SectionDivider()
+		Spacer(modifier = Modifier.height(16.dp))
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(12.dp)
+		) {
+			Box(
+				modifier = Modifier
+					.size(40.dp)
+					.clip(RoundedCornerShape(14.dp))
+					.background(SettingsPrimary.copy(alpha = 0.12f)),
+				contentAlignment = Alignment.Center
+			) {
+				Icon(
+					imageVector = Icons.Filled.Tune,
+					contentDescription = null,
+					tint = SettingsPrimary
+				)
+			}
+			Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+				Text(
+					text = stringResource(R.string.performance_mode_title),
+					style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+					color = SettingsOnSurface
+				)
+				Text(
+					text = stringResource(R.string.wallpaper_description),
+					style = MaterialTheme.typography.bodySmall,
+					color = SettingsOnSurfaceVariant,
+					maxLines = 1,
+					overflow = TextOverflow.Ellipsis
+				)
+			}
+		}
+		Spacer(modifier = Modifier.height(14.dp))
+		PerformanceOptionRow(
+			title = stringResource(R.string.performance_mode_battery),
+			icon = Icons.Filled.BatterySaver,
+			selected = performanceMode == PerformanceMode.BATTERY,
+			onClick = { onPerformanceModeChanged(PerformanceMode.BATTERY) }
+		)
+		Spacer(modifier = Modifier.height(10.dp))
+		PerformanceOptionRow(
+			title = stringResource(R.string.performance_mode_auto),
+			icon = Icons.Filled.Tune,
+			selected = performanceMode == PerformanceMode.AUTO,
+			onClick = { onPerformanceModeChanged(PerformanceMode.AUTO) }
+		)
+		Spacer(modifier = Modifier.height(10.dp))
+		PerformanceOptionRow(
+			title = stringResource(R.string.performance_mode_smooth),
+			icon = Icons.Filled.Speed,
+			selected = performanceMode == PerformanceMode.SMOOTH,
+			onClick = { onPerformanceModeChanged(PerformanceMode.SMOOTH) }
+		)
+	}
+}
+
+@Composable
+private fun AboutSection(
+	appVersionName: String
+) {
+	GlassCard(kicker = stringResource(R.string.section_about)) {
+		InfoActionRow(
+			title = stringResource(R.string.app_version),
+			value = appVersionName,
+			leadingIcon = null,
+			onClick = {},
+			enabled = false
+		)
+	}
+}
+
+@Composable
+private fun GlassCard(
+	kicker: String? = null,
+	content: @Composable ColumnScope.() -> Unit
+) {
+	Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+		if (!kicker.isNullOrBlank()) {
+			Text(
+				text = kicker.uppercase(Locale.ROOT),
+				style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+				color = SettingsPrimary.copy(alpha = 0.70f)
+			)
+		}
+		Column(
+			modifier = Modifier
+				.fillMaxWidth()
+				.clip(RoundedCornerShape(28.dp))
+				.background(SettingsGlassBrush)
+				.border(1.dp, SettingsGhostBorder, RoundedCornerShape(28.dp))
+				.padding(20.dp),
+			content = content
+		)
+	}
+}
+
+@Composable
+private fun ThemeSelector(
+	selectedMode: AppThemeMode,
+	onModeSelected: (AppThemeMode) -> Unit
+) {
+	Row(
+		modifier = Modifier
+			.clip(RoundedCornerShape(16.dp))
+			.background(SettingsSurfaceHighest.copy(alpha = 0.70f))
+			.border(1.dp, SettingsGhostBorder, RoundedCornerShape(16.dp))
+			.padding(4.dp),
+		horizontalArrangement = Arrangement.spacedBy(4.dp)
+	) {
+		listOf(AppThemeMode.SYSTEM, AppThemeMode.LIGHT, AppThemeMode.DARK).forEach { mode ->
+			SelectorChip(
+				label = themeLabel(mode),
+				selected = selectedMode == mode,
+				onClick = { onModeSelected(mode) }
+			)
+		}
+	}
+}
+
+@Composable
+private fun BooleanSelector(
+	enabled: Boolean,
+	enabledLabel: String,
+	disabledLabel: String,
+	onValueChanged: (Boolean) -> Unit
+) {
+	Row(
+		modifier = Modifier
+			.fillMaxWidth()
+			.clip(RoundedCornerShape(18.dp))
+			.background(SettingsSurfaceLow.copy(alpha = 0.92f))
+			.border(1.dp, SettingsGhostBorder, RoundedCornerShape(18.dp))
+			.padding(4.dp),
+		horizontalArrangement = Arrangement.spacedBy(6.dp)
+	) {
+		SelectorChip(
+			label = disabledLabel,
+			selected = !enabled,
+			modifier = Modifier.weight(1f),
+			onClick = { onValueChanged(false) }
+		)
+		SelectorChip(
+			label = enabledLabel,
+			selected = enabled,
+			modifier = Modifier.weight(1f),
+			onClick = { onValueChanged(true) }
+		)
+	}
+}
+
+@Composable
+private fun SelectorChip(
+	label: String,
+	selected: Boolean,
+	modifier: Modifier = Modifier,
+	onClick: () -> Unit
+) {
+	Box(
+		modifier = modifier
+			.clip(RoundedCornerShape(12.dp))
+			.background(if (selected) SettingsPrimary.copy(alpha = 0.18f) else Color.Transparent)
+			.clickable(onClick = onClick)
+			.padding(horizontal = 12.dp, vertical = 9.dp),
+		contentAlignment = Alignment.Center
+	) {
+		Text(
+			text = label,
+			style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+			color = if (selected) SettingsPrimary else SettingsOnSurfaceVariant,
+			maxLines = 1
+		)
+	}
+}
+
+@Composable
+private fun InfoActionRow(
 	title: String,
 	value: String,
+	leadingIcon: androidx.compose.ui.graphics.vector.ImageVector?,
 	onClick: () -> Unit,
 	enabled: Boolean = true
 ) {
 	Row(
 		modifier = Modifier
 			.fillMaxWidth()
+			.clip(RoundedCornerShape(18.dp))
 			.clickable(enabled = enabled, onClick = onClick)
-			.padding(horizontal = 16.dp, vertical = 14.dp),
-		verticalAlignment = Alignment.CenterVertically,
-		horizontalArrangement = Arrangement.SpaceBetween
+			.padding(vertical = 2.dp),
+		verticalAlignment = Alignment.CenterVertically
 	) {
-		Row(verticalAlignment = Alignment.CenterVertically) {
+		if (leadingIcon != null) {
 			Icon(
-				imageVector = icon,
-				contentDescription = title,
-				tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+				imageVector = leadingIcon,
+				contentDescription = null,
+				tint = SettingsOnSurfaceVariant,
+				modifier = Modifier.size(18.dp)
 			)
-			Spacer(modifier = Modifier.width(12.dp))
-			Text(
-				text = title,
-				style = MaterialTheme.typography.bodyLarge,
-				color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
-			)
+			Spacer(modifier = Modifier.width(10.dp))
 		}
-		Row(verticalAlignment = Alignment.CenterVertically) {
-			Text(
-				text = value,
-				style = MaterialTheme.typography.bodyMedium,
-				color = MaterialTheme.colorScheme.onSurfaceVariant
-			)
+		Text(
+			text = title,
+			style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+			color = if (enabled) SettingsOnSurface else SettingsOnSurfaceVariant,
+			modifier = Modifier.weight(1f)
+		)
+		Text(
+			text = value,
+			style = MaterialTheme.typography.bodyMedium,
+			color = SettingsOnSurfaceVariant
+		)
+		if (enabled) {
 			Spacer(modifier = Modifier.width(8.dp))
 			Icon(
 				imageVector = Icons.Filled.ChevronRight,
-				contentDescription = "Navigate to $title",
-				tint = if (enabled) MaterialTheme.colorScheme.outline else Color.Transparent
+				contentDescription = null,
+				tint = SettingsOnSurfaceVariant,
+				modifier = Modifier.size(18.dp)
 			)
 		}
 	}
 }
 
 @Composable
-private fun SettingInfoRow(
-	icon: ImageVector,
-	title: String,
-	valueLines: List<String>
+private fun LocationToggleRow(
+	locationMode: LocationMode,
+	locationSummary: String,
+	locationRefreshInProgress: Boolean,
+	onRefreshLocation: () -> Unit,
+	onToggleGps: (Boolean) -> Unit
 ) {
 	Row(
-		modifier = Modifier
-			.fillMaxWidth()
-			.padding(horizontal = 16.dp, vertical = 14.dp),
-		verticalAlignment = Alignment.Top,
-		horizontalArrangement = Arrangement.SpaceBetween
+		modifier = Modifier.fillMaxWidth(),
+		verticalAlignment = Alignment.CenterVertically
 	) {
-		Row(verticalAlignment = Alignment.CenterVertically) {
-			Icon(
-				imageVector = icon,
-				contentDescription = title,
-				tint = MaterialTheme.colorScheme.primary
-			)
-			Spacer(modifier = Modifier.width(12.dp))
-			Text(
-				text = title,
-				style = MaterialTheme.typography.bodyLarge,
-				color = MaterialTheme.colorScheme.onSurface
-			)
-		}
 		Column(
-			horizontalAlignment = Alignment.End,
-			verticalArrangement = Arrangement.spacedBy(2.dp)
-		)
-		{
-			valueLines.forEach { line ->
+			modifier = Modifier.weight(1f),
+			verticalArrangement = Arrangement.spacedBy(4.dp)
+		) {
+			Row(
+				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.spacedBy(8.dp)
+			) {
 				Text(
-					text = line,
-					style = MaterialTheme.typography.bodyMedium,
-					color = MaterialTheme.colorScheme.onSurfaceVariant
+					text = stringResource(R.string.location_enable),
+					style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+					color = SettingsOnSurface
 				)
+				IconButton(
+					onClick = onRefreshLocation,
+					enabled = locationMode == LocationMode.GPS && !locationRefreshInProgress,
+					modifier = Modifier
+						.size(28.dp)
+						.clip(CircleShape)
+						.background(SettingsSurfaceLow.copy(alpha = 0.78f))
+				) {
+					if (locationRefreshInProgress) {
+						CircularProgressIndicator(
+							modifier = Modifier.size(14.dp),
+							color = SettingsPrimary,
+							strokeWidth = 1.8.dp
+						)
+					} else {
+						Icon(
+							imageVector = Icons.Filled.Refresh,
+							contentDescription = stringResource(R.string.location_refresh),
+							tint = if (locationMode == LocationMode.GPS) SettingsOnSurfaceVariant else SettingsOnSurfaceVariant.copy(alpha = 0.35f),
+							modifier = Modifier.size(16.dp)
+						)
+					}
+				}
+			}
+			Text(
+				text = locationSummary,
+				style = MaterialTheme.typography.bodySmall,
+				color = SettingsOnSurfaceVariant,
+				maxLines = 2,
+				overflow = TextOverflow.Ellipsis
+			)
+		}
+		Switch(
+			checked = locationMode == LocationMode.GPS,
+			onCheckedChange = onToggleGps,
+			colors = SwitchDefaults.colors(
+				checkedThumbColor = SettingsOnPrimaryFixed,
+				checkedTrackColor = SettingsPrimary,
+				uncheckedThumbColor = SettingsOnSurfaceVariant,
+				uncheckedTrackColor = SettingsSurfaceHighest,
+				uncheckedBorderColor = SettingsGhostBorder,
+				checkedBorderColor = Color.Transparent
+			)
+		)
+	}
+}
+
+@Composable
+private fun CitySelectionField(
+	label: String,
+	value: String,
+	enabled: Boolean,
+	onClick: () -> Unit
+) {
+	Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+		Text(
+			text = label.uppercase(Locale.ROOT),
+			style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+			color = SettingsOnSurfaceVariant
+		)
+		Row(
+			modifier = Modifier
+				.fillMaxWidth()
+				.clip(RoundedCornerShape(18.dp))
+				.background(SettingsSurfaceLow.copy(alpha = 0.78f))
+				.border(1.dp, SettingsGhostBorder, RoundedCornerShape(18.dp))
+				.clickable(enabled = enabled, onClick = onClick)
+				.padding(horizontal = 16.dp, vertical = 14.dp),
+			verticalAlignment = Alignment.CenterVertically
+		) {
+			Text(
+				text = value,
+				style = MaterialTheme.typography.bodyMedium,
+				color = if (enabled) SettingsOnSurface else SettingsOnSurfaceVariant.copy(alpha = 0.55f),
+				modifier = Modifier.weight(1f)
+			)
+			Icon(
+				imageVector = Icons.Filled.LocationOn,
+				contentDescription = null,
+				tint = if (enabled) SettingsOnSurfaceVariant else SettingsOnSurfaceVariant.copy(alpha = 0.35f),
+				modifier = Modifier.size(18.dp)
+			)
+		}
+	}
+}
+
+@Composable
+private fun SunTimesPanel(
+	title: String,
+	subtitle: String,
+	entries: List<SunTimeEntry>
+) {
+	Column(
+		modifier = Modifier
+			.fillMaxWidth()
+			.clip(RoundedCornerShape(24.dp))
+			.background(SettingsSurfaceLow.copy(alpha = 0.94f))
+			.border(1.dp, SettingsGhostBorder, RoundedCornerShape(24.dp))
+			.padding(16.dp),
+		verticalArrangement = Arrangement.spacedBy(14.dp)
+	) {
+		Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+			Text(
+				text = title,
+				style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+				color = SettingsOnSurface
+			)
+			Text(
+				text = subtitle,
+				style = MaterialTheme.typography.bodySmall,
+				color = SettingsOnSurfaceVariant,
+				maxLines = 1,
+				overflow = TextOverflow.Ellipsis
+			)
+		}
+		entries.chunked(2).forEach { rowEntries ->
+			Row(
+				modifier = Modifier.fillMaxWidth(),
+				horizontalArrangement = Arrangement.spacedBy(10.dp)
+			) {
+				rowEntries.forEach { entry ->
+					SunTimeCell(
+						entry = entry,
+						modifier = Modifier.weight(1f)
+					)
+				}
+				if (rowEntries.size == 1) {
+					Spacer(modifier = Modifier.weight(1f))
+				}
 			}
 		}
 	}
 }
 
 @Composable
-private fun SettingSwitchRow(
-	icon: ImageVector,
-	title: String,
-	checked: Boolean,
-	trailingAction: (@Composable () -> Unit)? = null,
-	onCheckedChange: (Boolean) -> Unit
+private fun SunTimeCell(
+	entry: SunTimeEntry,
+	modifier: Modifier = Modifier
 ) {
-	Row(
-		modifier = Modifier
-			.fillMaxWidth()
-			.padding(horizontal = 16.dp, vertical = 12.dp),
-		verticalAlignment = Alignment.CenterVertically,
-		horizontalArrangement = Arrangement.SpaceBetween
+	Column(
+		modifier = modifier
+			.clip(RoundedCornerShape(18.dp))
+			.background(SettingsSurfaceHighest.copy(alpha = 0.55f))
+			.padding(horizontal = 12.dp, vertical = 12.dp),
+		verticalArrangement = Arrangement.spacedBy(6.dp)
 	) {
-		Row(verticalAlignment = Alignment.CenterVertically) {
-			Box(
-				modifier = Modifier
-					.size(34.dp)
-					.background(
-						color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
-						shape = RoundedCornerShape(10.dp)
-					),
-				contentAlignment = Alignment.Center
-			) {
-				Icon(
-					imageVector = icon,
-					contentDescription = title,
-					tint = MaterialTheme.colorScheme.primary
-				)
-			}
-			Spacer(modifier = Modifier.width(12.dp))
-			Text(
-				text = title,
-				style = MaterialTheme.typography.bodyLarge
-			)
-		}
 		Row(
 			verticalAlignment = Alignment.CenterVertically,
-			horizontalArrangement = Arrangement.spacedBy(8.dp)
+			horizontalArrangement = Arrangement.spacedBy(6.dp)
 		) {
-			trailingAction?.invoke()
-			Switch(
-				checked = checked,
-				onCheckedChange = onCheckedChange
+			Box(
+				modifier = Modifier
+					.size(8.dp)
+					.clip(CircleShape)
+					.background(entry.accent)
+			)
+			Text(
+				text = entry.label.uppercase(Locale.ROOT),
+				style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+				color = SettingsOnSurfaceVariant,
+				maxLines = 1,
+				overflow = TextOverflow.Ellipsis
 			)
 		}
+		Text(
+			text = entry.value,
+			style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+			color = SettingsOnSurface
+		)
 	}
+}
+
+@Composable
+private fun SectionTitle(
+	text: String
+) {
+	Text(
+		text = text.uppercase(Locale.ROOT),
+		style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+		color = SettingsOnSurfaceVariant
+	)
+}
+
+@Composable
+private fun PerformanceOptionRow(
+	title: String,
+	icon: androidx.compose.ui.graphics.vector.ImageVector,
+	selected: Boolean,
+	onClick: () -> Unit
+) {
+	Row(
+		modifier = Modifier
+			.fillMaxWidth()
+			.clip(RoundedCornerShape(18.dp))
+			.background(if (selected) SettingsPrimary.copy(alpha = 0.10f) else SettingsSurfaceLow.copy(alpha = 0.58f))
+			.border(
+				1.dp,
+				if (selected) SettingsPrimary.copy(alpha = 0.26f) else SettingsGhostBorder,
+				RoundedCornerShape(18.dp)
+			)
+			.clickable(onClick = onClick)
+			.padding(horizontal = 14.dp, vertical = 14.dp),
+		verticalAlignment = Alignment.CenterVertically
+	) {
+		Icon(
+			imageVector = icon,
+			contentDescription = null,
+			tint = if (selected) SettingsPrimary else SettingsOnSurfaceVariant,
+			modifier = Modifier.size(18.dp)
+		)
+		Spacer(modifier = Modifier.width(12.dp))
+		Text(
+			text = title,
+			style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium),
+			color = SettingsOnSurface,
+			modifier = Modifier.weight(1f)
+		)
+		RadioButton(
+			selected = selected,
+			onClick = null
+		)
+	}
+}
+
+@Composable
+private fun SectionDivider() {
+	HorizontalDivider(color = SettingsGhostBorder)
 }
 
 @Composable
@@ -522,45 +941,34 @@ private fun ChoiceDialog(
 ) {
 	AlertDialog(
 		onDismissRequest = onDismiss,
+		containerColor = SettingsSurfaceHigh,
 		title = {
 			Text(
 				text = title,
-				style = MaterialTheme.typography.titleMedium
+				style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+				color = SettingsOnSurface
 			)
 		},
 		text = {
 			Column(
 				modifier = Modifier.verticalScroll(rememberScrollState()),
-				verticalArrangement = Arrangement.spacedBy(4.dp)
+				verticalArrangement = Arrangement.spacedBy(6.dp)
 			) {
 				options.forEach { (value, label) ->
-					Row(
-						modifier = Modifier
-							.fillMaxWidth()
-							.clickable { onSelect(value) }
-							.padding(vertical = 10.dp),
-						verticalAlignment = Alignment.CenterVertically,
-						horizontalArrangement = Arrangement.SpaceBetween
-					) {
-						Text(
-							text = label,
-							style = MaterialTheme.typography.bodyLarge
-						)
-						if (selectedValue == value) {
-							Text(
-								text = "•",
-								style = MaterialTheme.typography.titleMedium,
-								color = MaterialTheme.colorScheme.primary
-							)
-						}
-					}
-					HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+					DialogOptionRow(
+						label = label,
+						selected = selectedValue == value,
+						onClick = { onSelect(value) }
+					)
 				}
 			}
 		},
 		confirmButton = {
 			TextButton(onClick = onDismiss) {
-				Text(stringResource(R.string.btn_cancel))
+				Text(
+					text = stringResource(R.string.btn_cancel),
+					color = SettingsPrimary
+				)
 			}
 		}
 	)
@@ -576,57 +984,77 @@ private fun CountryCityDialog(
 ) {
 	AlertDialog(
 		onDismissRequest = onDismiss,
+		containerColor = SettingsSurfaceHigh,
 		title = {
 			Text(
 				text = title,
-				style = MaterialTheme.typography.titleMedium
+				style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+				color = SettingsOnSurface
 			)
 		},
 		text = {
 			Column(
 				modifier = Modifier.verticalScroll(rememberScrollState()),
-				verticalArrangement = Arrangement.spacedBy(6.dp)
+				verticalArrangement = Arrangement.spacedBy(10.dp)
 			) {
 				groups.forEach { group ->
 					Text(
-						text = group.countryName,
-						style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-						color = MaterialTheme.colorScheme.primary,
-						modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+						text = group.countryName.uppercase(Locale.ROOT),
+						style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+						color = SettingsPrimary.copy(alpha = 0.72f)
 					)
 					group.cities.forEach { city ->
-						Row(
-							modifier = Modifier
-								.fillMaxWidth()
-								.clickable { onSelect(city) }
-								.padding(vertical = 8.dp),
-							verticalAlignment = Alignment.CenterVertically,
-							horizontalArrangement = Arrangement.SpaceBetween
-						) {
-							Text(
-								text = city.name,
-								style = MaterialTheme.typography.bodyLarge,
-								modifier = Modifier.padding(start = 10.dp)
-							)
-							if (selectedCityId == city.id) {
-								Text(
-									text = "•",
-									style = MaterialTheme.typography.titleMedium,
-									color = MaterialTheme.colorScheme.primary
-								)
-							}
-						}
+						DialogOptionRow(
+							label = city.name,
+							selected = selectedCityId == city.id,
+							onClick = { onSelect(city) }
+						)
 					}
-					HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 				}
 			}
 		},
 		confirmButton = {
 			TextButton(onClick = onDismiss) {
-				Text(stringResource(R.string.btn_cancel))
+				Text(
+					text = stringResource(R.string.btn_cancel),
+					color = SettingsPrimary
+				)
 			}
 		}
 	)
+}
+
+@Composable
+private fun DialogOptionRow(
+	label: String,
+	selected: Boolean,
+	onClick: () -> Unit
+) {
+	Row(
+		modifier = Modifier
+			.fillMaxWidth()
+			.clip(RoundedCornerShape(16.dp))
+			.background(if (selected) SettingsPrimary.copy(alpha = 0.12f) else SettingsSurfaceLow.copy(alpha = 0.52f))
+			.border(
+				1.dp,
+				if (selected) SettingsPrimary.copy(alpha = 0.22f) else SettingsGhostBorder,
+				RoundedCornerShape(16.dp)
+			)
+			.clickable(onClick = onClick)
+			.padding(horizontal = 14.dp, vertical = 12.dp),
+		verticalAlignment = Alignment.CenterVertically
+	) {
+		Text(
+			text = label,
+			style = MaterialTheme.typography.bodyMedium,
+			color = SettingsOnSurface,
+			modifier = Modifier.weight(1f)
+		)
+		RadioButton(
+			selected = selected,
+			onClick = null
+		)
+	}
 }
 
 @Composable
@@ -640,23 +1068,6 @@ private fun themeLabel(mode: AppThemeMode): String {
 
 private fun languageLabel(tag: String): String {
 	return languageOptions()[tag] ?: languageOptions()[AppSettingsLanguage.SYSTEM] ?: "System"
-}
-
-@Composable
-private fun performanceModeLabel(mode: PerformanceMode): String {
-	return when (mode) {
-		PerformanceMode.AUTO -> stringResource(R.string.performance_mode_auto)
-		PerformanceMode.SMOOTH -> stringResource(R.string.performance_mode_smooth)
-		PerformanceMode.BATTERY -> stringResource(R.string.performance_mode_battery)
-	}
-}
-
-private fun nextPerformanceMode(mode: PerformanceMode): PerformanceMode {
-	return when (mode) {
-		PerformanceMode.AUTO -> PerformanceMode.SMOOTH
-		PerformanceMode.SMOOTH -> PerformanceMode.BATTERY
-		PerformanceMode.BATTERY -> PerformanceMode.AUTO
-	}
 }
 
 private object AppSettingsLanguage {
@@ -693,10 +1104,6 @@ private fun languageOptions(): Map<String, String> {
 	)
 }
 
-private fun cityOptions(): List<ManualCity> {
-	return AppSettingsDefaults.SUPPORTED_CITIES
-}
-
 private fun cityGroups(languageTag: String): List<CityGroup> {
 	return AppSettingsDefaults.supportedCityGroups(languageTag)
 }
@@ -710,10 +1117,29 @@ private fun resolveAppVersionName(context: android.content.Context): String {
 
 private fun formatMinuteLabel(minute: Int): String {
 	val normalized = minute.coerceIn(0, (24 * 60) - 1)
-	return String.format(
-		Locale.US,
-		"%02d:%02d",
-		normalized / 60,
-		normalized % 60
-	)
+	return String.format(Locale.US, "%02d:%02d", normalized / 60, normalized % 60)
 }
+
+private data class SunTimeEntry(
+	val label: String,
+	val value: String,
+	val accent: Color
+)
+
+private val SettingsBackground = Color(0xFF0D0E13)
+private val SettingsSurfaceLow = Color(0xFF121319)
+private val SettingsSurfaceHigh = Color(0xFF1E1F26)
+private val SettingsSurfaceHighest = Color(0xFF24252D)
+private val SettingsPrimary = Color(0xFF81ECFF)
+private val SettingsSecondary = Color(0xFFB884FF)
+private val SettingsTertiary = Color(0xFFFF84AA)
+private val SettingsOnPrimaryFixed = Color(0xFF003840)
+private val SettingsOnSurface = Color(0xFFF7F5FD)
+private val SettingsOnSurfaceVariant = Color(0xFFABAAB1)
+private val SettingsGhostBorder = Color(0xFF47474E).copy(alpha = 0.42f)
+private val SettingsGlassBrush = Brush.verticalGradient(
+	colors = listOf(
+		SettingsSurfaceHighest.copy(alpha = 0.84f),
+		SettingsSurfaceHigh.copy(alpha = 0.96f)
+	)
+)
