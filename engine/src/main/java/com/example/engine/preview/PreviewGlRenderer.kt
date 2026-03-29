@@ -91,12 +91,12 @@ class PreviewGlRenderer(
 		if (released) return
 		skyEngine.init(config)
 		skyEngine.setRenderMode(mode)
-		previewStartMillis = nowProvider()
 		movingAvgDrawMillis = 16f
-		initializeFocusState()
 		initializeAdaptiveQualityState()
 		skyProgram.configure(config, textureBytesLoader, adaptiveQualityScale)
 		skyProgram.init(fragmentShaderOverride)
+		previewStartMillis = nowProvider()
+		initializeFocusState()
 		GLES20.glClearColor(0f, 0f, 0f, 1f)
 		stats.reset()
 	}

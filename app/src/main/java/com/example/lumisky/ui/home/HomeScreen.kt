@@ -81,6 +81,7 @@ import com.example.lumisky.ui.common.PreviewRendererSurfaceView
 import com.example.lumisky.ui.common.resolveDisplayRefreshRate
 import com.example.lumisky.ui.components.BottomNavBar
 import com.example.lumisky.viewmodel.HomeWallpaperItem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -462,7 +463,9 @@ private fun CategorySection(
 	onSetWallpaper: (String) -> Unit
 ) {
 	val rowState = rememberLazyListState()
-	var centeredWallpaperId by remember(wallpapers) { mutableStateOf<String?>(null) }
+	var centeredWallpaperId by remember(wallpapers) {
+		mutableStateOf(wallpapers.firstOrNull()?.id)
+	}
 	val wallpaperIdSet by remember(wallpapers) {
 		derivedStateOf { wallpapers.asSequence().map { it.id }.toHashSet() }
 	}
@@ -504,7 +507,7 @@ private fun CategorySection(
 	}
 	val shouldPauseLivePreview = parentScrollInProgress || rowState.isScrollInProgress
 	val activeLiveId = if (isCategoryActive && !shouldPauseLivePreview) {
-		centeredWallpaperId ?: liveWallpaperId
+		centeredWallpaperId ?: liveWallpaperId ?: wallpapers.firstOrNull()?.id
 	} else {
 		null
 	}
@@ -619,6 +622,7 @@ private fun WallpaperCard(
 					config = item.config,
 					highRefreshEnabled = highRefreshEnabled,
 					performanceMode = performanceMode,
+					preferFullQuality = isSelected,
 					playbackEnabled = isLive,
 					modifier = Modifier.fillMaxSize(),
 					onFirstFrameRendered = {
@@ -718,52 +722,51 @@ private fun FocusedWallpaperPreview(
 	config: WallpaperConfig,
 	highRefreshEnabled: Boolean,
 	performanceMode: PerformanceMode,
+	preferFullQuality: Boolean,
 	playbackEnabled: Boolean,
 	modifier: Modifier = Modifier,
 	onFirstFrameRendered: () -> Unit
 ) {
 	val appContext = LocalContext.current.applicationContext
+	val previewQualityScale = if (preferFullQuality) {
+		1.0f
+	} else {
+		HOME_PREVIEW_RENDER_QUALITY_SCALE
+	}
 	val previewConfig = remember(config) {
 		config.copy(focusCatchUpDurationSeconds = HOME_FOCUS_CATCHUP_SECONDS)
 	}
 	val fragmentAssetPath = previewConfig.shader.fragmentAssetPath?.takeIf { it.isNotBlank() }
-	val cachedFragmentOverride = remember(fragmentAssetPath) {
-		RenderAssetCache.cachedFragment(fragmentAssetPath)
-	}
-	val fragmentShaderState by produceState(
+	val renderAssetState by produceState(
 		initialValue = FragmentShaderLoadState(
-			isReady = fragmentAssetPath == null || cachedFragmentOverride != null,
-			fragmentOverride = cachedFragmentOverride
+			isReady = false,
+			fragmentOverride = RenderAssetCache.cachedFragment(fragmentAssetPath)
 		),
 		appContext,
+		previewConfig,
 		fragmentAssetPath
 	) {
-		if (fragmentAssetPath == null) {
-			value = FragmentShaderLoadState(
-				isReady = true,
-				fragmentOverride = null
-			)
-			return@produceState
-		}
-		val loadedOverride = withContext(kotlinx.coroutines.Dispatchers.IO) {
-			RenderAssetCache.loadFragment(
+		val loadedOverride = withContext(Dispatchers.IO) {
+			RenderAssetCache.prewarmWallpaper(
 				context = appContext,
-				assetPath = fragmentAssetPath
+				config = previewConfig
 			)
+			RenderAssetCache.cachedFragment(fragmentAssetPath)
 		}
 		value = FragmentShaderLoadState(
 			isReady = true,
 			fragmentOverride = loadedOverride
 		)
 	}
-	if (!fragmentShaderState.isReady) {
+	if (!renderAssetState.isReady) {
 		return
 	}
 	key(
 		previewConfig,
 		highRefreshEnabled,
 		performanceMode,
-		fragmentShaderState.fragmentOverride
+		previewQualityScale,
+		renderAssetState.fragmentOverride
 	) {
 		AndroidView(
 			modifier = modifier,
@@ -782,8 +785,8 @@ private fun FocusedWallpaperPreview(
 					isPowerSaveModeProvider = {
 						context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
 					},
-					qualityScale = 0.7f,
-					fragmentShaderOverride = fragmentShaderState.fragmentOverride,
+					qualityScale = previewQualityScale,
+					fragmentShaderOverride = renderAssetState.fragmentOverride,
 					textureBytesLoader = { assetPath ->
 						RenderAssetCache.loadTextureBytes(context, assetPath)
 					},
@@ -793,9 +796,7 @@ private fun FocusedWallpaperPreview(
 							firstFrameDispatched.compareAndSet(false, true)
 						) {
 							mainHandler.post {
-								mainHandler.post {
-									onFirstFrameRendered()
-								}
+								onFirstFrameRendered()
 							}
 						}
 					}
@@ -968,9 +969,10 @@ private fun findCenteredIndex(listState: LazyListState): Int {
 }
 
 private const val HOME_FOCUS_CATCHUP_SECONDS = 4f
+private const val HOME_PREVIEW_RENDER_QUALITY_SCALE = 0.7f
 private const val HOME_PREVIEW_ENABLE_WARMUP_FRAMES = 2
 private const val SNAPSHOT_OVERLAY_FADE_DURATION_MS = 160
-private const val LIVE_PREVIEW_READY_FRAME_COUNT = 3
+private const val LIVE_PREVIEW_READY_FRAME_COUNT = 1
 private const val CATEGORY_FOCUS_MAX_ITEMS = 1
 private const val FOCUS_INIT_DELAY_MS = 100L
 private const val CATEGORY_SECTION_CONTENT_TYPE = "category_section"

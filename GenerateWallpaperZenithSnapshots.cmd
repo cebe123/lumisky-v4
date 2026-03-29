@@ -10,7 +10,7 @@ set "APK_FILE=%SCRIPT_DIR%app\build\outputs\apk\debug\app-debug.apk"
 set "DEVICE_OUTPUT_DIR=/sdcard/Android/data/com.example.lumisky/files/Pictures/zenith-snapshots"
 set "DEVICE_MARKER_FILE=%DEVICE_OUTPUT_DIR%/completed.txt"
 set "TARGET_ACTIVITY=com.example.lumisky/.snapshot.ZenithSnapshotActivity"
-set "MAX_WAIT_SECONDS=180"
+set "MAX_WAIT_SECONDS=300"
 set "ADB_EXE="
 set "GIT_BASH_EXE="
 

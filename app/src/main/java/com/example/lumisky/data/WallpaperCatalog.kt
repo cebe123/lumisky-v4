@@ -235,6 +235,23 @@ object WallpaperCatalog {
 				sunTexture = "anime/anime_sun.webp",
 				moonTexture = "anime/anime_moon.webp"
 			)
+		),
+		ThemePreset(
+			id = "game_teemo",
+			displayName = "Teemo",
+			fragmentAssetPath = "shaders/teemo/fragment.glsl",
+			horizonOffset = 0.30f,
+			peakY = 0.94f,
+			features = SkyFeatureFlags(
+				atmosphereEnabled = true,
+				lensFlareEnabled = false,
+				starsEnabled = false
+			),
+			textures = WallpaperTextures(
+				backgroundTexture = "teemo/teemo.webp",
+				sunTexture = "teemo/teemo_sun.webp",
+				moonTexture = "teemo/teemo_moon.webp"
+			)
 		)
 	)
 	private val PRESET_BY_ID = ORDERED_PRESETS.associateBy { it.id }
