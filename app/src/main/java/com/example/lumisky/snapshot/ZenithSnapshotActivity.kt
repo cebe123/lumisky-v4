@@ -409,10 +409,11 @@ class ZenithSnapshotActivity : AppCompatActivity() {
 	}
 
 	private fun resolveDaylight(): SunDaylight {
-		var daylight = sunTimesRepository.currentOrFallback()
+		val candidates = buildSunTimesCandidates()
+		var daylight = sunTimesRepository.currentOrFallbackForCandidates(candidates)
 		val latch = CountDownLatch(1)
 		sunTimesRepository.refreshAsyncWithCandidates(
-			candidates = buildSunTimesCandidates()
+			candidates = candidates
 		) { fetched ->
 			daylight = fetched
 			latch.countDown()

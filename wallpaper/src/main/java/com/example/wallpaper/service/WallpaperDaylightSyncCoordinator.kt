@@ -23,6 +23,7 @@ import com.example.core.location.matchesCoordinates
 import com.example.core.location.withResolvedTimeZone
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
+import com.example.core.settings.AppSettingsSnapshot
 import com.example.core.settings.LocationMode
 import com.example.engine.config.DaylightConfig
 import com.example.engine.config.WallpaperConfigStore
@@ -42,6 +43,8 @@ class WallpaperDaylightSyncCoordinator(
 	private var passiveLocationUpdatesStarted: Boolean = false
 	private var locationModeReceiverRegistered: Boolean = false
 	private var lastGpsRequestAtMs: Long = 0L
+	private var settingsChangeListenerHandle: AutoCloseable? = null
+	private var lastObservedSettingsLocationSignature: String? = null
 	private var automaticLocationSnapshot: LocationSnapshot? = settingsRepository.getAutomaticLocation()
 	private var liveGpsLocation: SunLocation? = automaticLocationSnapshot
 		?.takeIf { it.source == LocationSource.CURRENT || it.source == LocationSource.PASSIVE }
@@ -62,10 +65,19 @@ class WallpaperDaylightSyncCoordinator(
 	}
 
 	fun onCreate() {
+		val initialSettings = settingsRepository.snapshot()
+		lastObservedSettingsLocationSignature = buildSettingsLocationSignature(initialSettings)
+		settingsChangeListenerHandle = settingsRepository.addChangeListener { snapshot ->
+			mainHandler.post {
+				handleSettingsSnapshot(snapshot)
+			}
+		}
 		registerLocationModeReceiver()
 	}
 
 	fun onDestroy() {
+		settingsChangeListenerHandle?.close()
+		settingsChangeListenerHandle = null
 		mainHandler.removeCallbacks(periodicRefreshRunnable)
 		stopPassiveLocationUpdates()
 		unregisterLocationModeReceiver()
@@ -113,6 +125,22 @@ class WallpaperDaylightSyncCoordinator(
 		refreshDaylight(
 			requestGpsLocation = lastKnownLocationProvider.hasLocationPermission()
 		)
+	}
+
+	private fun handleSettingsSnapshot(settings: AppSettingsSnapshot) {
+		val signature = buildSettingsLocationSignature(settings)
+		if (signature == lastObservedSettingsLocationSignature) return
+		lastObservedSettingsLocationSignature = signature
+		refreshAutomaticLocationSnapshot()
+
+		if (settings.locationMode != LocationMode.GPS) {
+			stopPassiveLocationUpdates()
+		} else if (!previewMode && visible && lastKnownLocationProvider.isLocationEnabled()) {
+			maybeStartPassiveLocationUpdates()
+		}
+
+		if (previewMode) return
+		resolveAndStoreDaylight(settings)
 	}
 
 	private fun refreshDaylight(requestGpsLocation: Boolean) {
@@ -261,7 +289,7 @@ class WallpaperDaylightSyncCoordinator(
 			timeZoneId = AppSettingsDefaults.DEFAULT_CITY.timeZoneId
 		)
 		return buildList {
-			if (settings.locationMode == LocationMode.GPS && lastKnownLocationProvider.hasLocationPermission()) {
+			if (settings.locationMode == LocationMode.GPS) {
 				liveGpsLocation?.let { add(it.asGpsApiCandidate()) }
 				automaticLocationSnapshot
 					?.toSunLocation(labelFallback = "wallpaper_gps_cached")
@@ -281,6 +309,27 @@ class WallpaperDaylightSyncCoordinator(
 			automaticLocationSnapshot?.source != LocationSource.PASSIVE
 		) {
 			liveGpsLocation = null
+		}
+	}
+
+	private fun buildSettingsLocationSignature(settings: AppSettingsSnapshot): String {
+		val automaticLocation = settings.automaticLocation
+		return buildString {
+			append(settings.locationMode.name)
+			append('|')
+			append(settings.manualCity.id)
+			append('|')
+			append(settings.manualCity.latitude)
+			append('|')
+			append(settings.manualCity.longitude)
+			append('|')
+			append(settings.manualCity.timeZoneId)
+			append('|')
+			append(automaticLocation?.latitude ?: "null")
+			append('|')
+			append(automaticLocation?.longitude ?: "null")
+			append('|')
+			append(automaticLocation?.timeZoneId ?: "null")
 		}
 	}
 

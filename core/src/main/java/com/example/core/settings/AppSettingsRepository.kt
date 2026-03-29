@@ -25,15 +25,30 @@ class AppSettingsRepository(
 		)
 	}
 
+	fun addChangeListener(
+		listener: (AppSettingsSnapshot) -> Unit
+	): AutoCloseable {
+		synchronized(changeListeners) {
+			changeListeners.add(listener)
+		}
+		return AutoCloseable {
+			synchronized(changeListeners) {
+				changeListeners.remove(listener)
+			}
+		}
+	}
+
 	fun getAppThemeMode(): AppThemeMode {
 		val raw = prefs.getString(KEY_APP_THEME_MODE, AppThemeMode.SYSTEM.name) ?: AppThemeMode.SYSTEM.name
 		return runCatching { AppThemeMode.valueOf(raw) }.getOrElse { AppThemeMode.SYSTEM }
 	}
 
 	fun setAppThemeMode(mode: AppThemeMode) {
+		if (getAppThemeMode() == mode) return
 		prefs.edit()
 			.putString(KEY_APP_THEME_MODE, mode.name)
 			.apply()
+		dispatchSnapshotChanged()
 	}
 
 	fun getLanguageTag(): String {
@@ -43,9 +58,11 @@ class AppSettingsRepository(
 
 	fun setLanguageTag(tag: String) {
 		val normalized = tag.ifBlank { AppSettingsDefaults.LANGUAGE_SYSTEM }
+		if (getLanguageTag() == normalized) return
 		prefs.edit()
 			.putString(KEY_LANGUAGE_TAG, normalized)
 			.apply()
+		dispatchSnapshotChanged()
 	}
 
 	fun isHighRefreshEnabled(): Boolean {
@@ -53,9 +70,11 @@ class AppSettingsRepository(
 	}
 
 	fun setHighRefreshEnabled(enabled: Boolean) {
+		if (isHighRefreshEnabled() == enabled) return
 		prefs.edit()
 			.putBoolean(KEY_HIGH_REFRESH_ENABLED, enabled)
 			.apply()
+		dispatchSnapshotChanged()
 	}
 
 	fun getPerformanceMode(): PerformanceMode {
@@ -65,9 +84,11 @@ class AppSettingsRepository(
 	}
 
 	fun setPerformanceMode(mode: PerformanceMode) {
+		if (getPerformanceMode() == mode) return
 		prefs.edit()
 			.putString(KEY_PERFORMANCE_MODE, mode.name)
 			.apply()
+		dispatchSnapshotChanged()
 	}
 
 	fun getLocationMode(): LocationMode {
@@ -76,9 +97,11 @@ class AppSettingsRepository(
 	}
 
 	fun setLocationMode(mode: LocationMode) {
+		if (getLocationMode() == mode) return
 		prefs.edit()
 			.putString(KEY_LOCATION_MODE, mode.name)
 			.apply()
+		dispatchSnapshotChanged()
 	}
 
 	fun getManualCity(): ManualCity {
@@ -103,6 +126,17 @@ class AppSettingsRepository(
 	}
 
 	fun setManualCity(city: ManualCity) {
+		val storedCityId = prefs.getString(KEY_MANUAL_CITY_ID, null)
+		val storedCityName = prefs.getString(KEY_MANUAL_CITY_NAME, null)
+		val storedCountryCode = prefs.getString(KEY_MANUAL_CITY_COUNTRY, null)
+		val storedLatitude = readDouble(KEY_MANUAL_CITY_LAT, Double.NaN)
+		val storedLongitude = readDouble(KEY_MANUAL_CITY_LNG, Double.NaN)
+		val sameStoredCity = storedCityId == city.id &&
+			storedCityName == city.name &&
+			storedCountryCode == city.countryCode &&
+			storedLatitude == city.latitude &&
+			storedLongitude == city.longitude
+		if (sameStoredCity) return
 		prefs.edit()
 			.putString(KEY_MANUAL_CITY_ID, city.id)
 			.putString(KEY_MANUAL_CITY_NAME, city.name)
@@ -110,6 +144,7 @@ class AppSettingsRepository(
 			.putLong(KEY_MANUAL_CITY_LAT, city.latitude.toRawBits())
 			.putLong(KEY_MANUAL_CITY_LNG, city.longitude.toRawBits())
 			.apply()
+		dispatchSnapshotChanged()
 	}
 
 	fun getAutomaticLocation(): LocationSnapshot? {
@@ -155,6 +190,7 @@ class AppSettingsRepository(
 	}
 
 	fun setAutomaticLocation(location: LocationSnapshot) {
+		if (getAutomaticLocation() == location) return
 		prefs.edit()
 			.putLong(KEY_AUTO_LOCATION_LAT, location.latitude.toRawBits())
 			.putLong(KEY_AUTO_LOCATION_LNG, location.longitude.toRawBits())
@@ -172,9 +208,11 @@ class AppSettingsRepository(
 				}
 			}
 			.apply()
+		dispatchSnapshotChanged()
 	}
 
 	fun clearAutomaticLocation() {
+		if (getAutomaticLocation() == null) return
 		prefs.edit()
 			.remove(KEY_AUTO_LOCATION_LAT)
 			.remove(KEY_AUTO_LOCATION_LNG)
@@ -185,6 +223,15 @@ class AppSettingsRepository(
 			.remove(KEY_AUTO_LOCATION_ACCESS_LEVEL)
 			.remove(KEY_AUTO_LOCATION_SOURCE)
 			.apply()
+		dispatchSnapshotChanged()
+	}
+
+	private fun dispatchSnapshotChanged() {
+		val snapshot = snapshot()
+		val listeners = synchronized(changeListeners) { changeListeners.toList() }
+		listeners.forEach { listener ->
+			runCatching { listener(snapshot) }
+		}
 	}
 
 	private fun readDouble(key: String, defaultValue: Double): Double {
@@ -218,5 +265,6 @@ class AppSettingsRepository(
 		private const val DEFAULT_HIGH_REFRESH_ENABLED = false
 		private val DEFAULT_PERFORMANCE_MODE = PerformanceMode.AUTO
 		private val DEFAULT_LOCATION_MODE = LocationMode.GPS
+		private val changeListeners = LinkedHashSet<(AppSettingsSnapshot) -> Unit>()
 	}
 }

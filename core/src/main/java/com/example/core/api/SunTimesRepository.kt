@@ -57,6 +57,12 @@ class SunTimesRepository(
 		return resolveFallback().first
 	}
 
+	fun currentOrFallbackForCandidates(
+		candidates: List<SunLocation>
+	): SunDaylight {
+		return resolveFallback(buildCandidates(candidates)).first
+	}
+
 	fun refreshAsync(
 		latitude: Double,
 		longitude: Double,
@@ -360,7 +366,20 @@ class SunTimesRepository(
 				}
 			}
 		}
-		return SunDaylight.fallback() to "default_fallback"
+		val preferredTimeZoneId = preferredCandidates.firstNotNullOfOrNull { candidate ->
+			normalizeTimeZoneId(candidate.timeZoneId).takeIf { it.isNotBlank() }
+		}
+		val fallback = if (preferredTimeZoneId.isNullOrBlank()) {
+			SunDaylight.fallback()
+		} else {
+			SunDaylight.fallback().copy(timeZoneId = preferredTimeZoneId)
+		}
+		val source = if (preferredTimeZoneId.isNullOrBlank()) {
+			"default_fallback"
+		} else {
+			"preferred_timezone_fallback:$preferredTimeZoneId"
+		}
+		return fallback to source
 	}
 
 	private fun buildCandidates(

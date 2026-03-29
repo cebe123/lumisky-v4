@@ -65,10 +65,12 @@ class HomeViewModel(
 	private var locationCandidatesCacheKey: String? = null
 	private var locationCandidatesCache: List<SunLocation> = emptyList()
 	private var locationCandidatesCacheAtMs: Long = 0L
+	private var settingsChangeListenerHandle: AutoCloseable? = null
 	private val storedWallpaperId: String? = wallpaperConfigStore.loadSelected()?.id
+	private val initialDaylight = resolveInitialDaylight(initialSettings)
 
 	val items: List<HomeWallpaperItem>
-		get() = _items
+		get() = _items.toList()
 
 	var selectedWallpaperId by mutableStateOf(storedWallpaperId)
 		private set
@@ -76,7 +78,7 @@ class HomeViewModel(
 	var liveWallpaperId by mutableStateOf(storedWallpaperId)
 		private set
 
-	var daylight by mutableStateOf(sunTimesRepository.currentOrFallback())
+	var daylight by mutableStateOf(initialDaylight)
 		private set
 
 	var appThemeMode by mutableStateOf(initialSettings.appThemeMode)
@@ -168,6 +170,11 @@ class HomeViewModel(
 	}
 
 	init {
+		settingsChangeListenerHandle = settingsRepository.addChangeListener { snapshot ->
+			mainHandler.post {
+				applySettingsSnapshot(snapshot)
+			}
+		}
 		seedInitialCatalog(daylight)
 		mainHandler.post(startupRefreshRunnable)
 		schedulePeriodicSunTimesRefresh()
@@ -296,19 +303,18 @@ class HomeViewModel(
 				return
 			}
 
-			if (accessLevel == LocationAccessLevel.NONE) {
-				liveGpsLocation = null
-				gpsLocationAvailable = false
-				locationLabel = manualCity.name
-				locationRefreshInProgress = false
-				stopPassiveLocationUpdates()
-				return
-			}
-
 			automaticLocationSnapshot = settingsRepository.getAutomaticLocation()
 			lastKnownGpsLocation = automaticLocationSnapshot?.toSunLocation(labelFallback = "gps_last")
 			gpsPlaceLabel = automaticLocationSnapshot?.label
 			lastGpsPlaceKey = lastKnownGpsLocation?.let(::gpsLocationKey)
+
+			if (accessLevel == LocationAccessLevel.NONE) {
+				liveGpsLocation = null
+				locationRefreshInProgress = false
+				stopPassiveLocationUpdates()
+				updateLocationLabelFromCachedGpsState()
+				return
+			}
 			if (systemLocationEnabled) {
 				maybeStartPassiveLocationUpdates()
 			} else {
@@ -373,6 +379,8 @@ class HomeViewModel(
 	}
 
 	fun release() {
+		settingsChangeListenerHandle?.close()
+		settingsChangeListenerHandle = null
 		stopPassiveLocationUpdates()
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
 		mainHandler.removeCallbacks(startupBackupPrefetchRunnable)
@@ -382,6 +390,96 @@ class HomeViewModel(
 		catalogExecutor.shutdownNow()
 		locationLabelExecutor.shutdownNow()
 		sunTimesRepository.release()
+	}
+
+	private fun applySettingsSnapshot(snapshot: AppSettingsSnapshot) {
+		var shouldRefreshLocationState = false
+		var shouldRefreshSunTimes = false
+
+		if (appThemeMode != snapshot.appThemeMode) {
+			appThemeMode = snapshot.appThemeMode
+		}
+		if (languageTag != snapshot.languageTag) {
+			languageTag = snapshot.languageTag
+			shouldRefreshLocationState = true
+			shouldRefreshSunTimes = true
+		}
+		if (highRefreshEnabled != snapshot.highRefreshEnabled) {
+			highRefreshEnabled = snapshot.highRefreshEnabled
+		}
+		if (performanceMode != snapshot.performanceMode) {
+			performanceMode = snapshot.performanceMode
+		}
+		if (locationMode != snapshot.locationMode) {
+			locationMode = snapshot.locationMode
+			locationRefreshInProgress = false
+			shouldRefreshLocationState = true
+			shouldRefreshSunTimes = true
+		}
+		if (manualCity != snapshot.manualCity) {
+			manualCity = snapshot.manualCity
+			shouldRefreshLocationState = true
+			shouldRefreshSunTimes = true
+		}
+		if (automaticLocationSnapshot != snapshot.automaticLocation) {
+			automaticLocationSnapshot = snapshot.automaticLocation
+			lastKnownGpsLocation = automaticLocationSnapshot?.toSunLocation(labelFallback = "gps_last")
+			liveGpsLocation = automaticLocationSnapshot
+				?.takeIf { it.source == LocationSource.CURRENT || it.source == LocationSource.PASSIVE }
+				?.toSunLocation(labelFallback = "gps_live")
+			gpsPlaceLabel = automaticLocationSnapshot?.label
+			lastGpsPlaceKey = lastKnownGpsLocation?.let(::gpsLocationKey)
+			shouldRefreshLocationState = true
+			shouldRefreshSunTimes = true
+		}
+
+		if (shouldRefreshLocationState) {
+			refreshLocationState()
+		}
+		if (shouldRefreshSunTimes) {
+			scheduleCoalescedLocationAndSunTimesRefresh(
+				requestGpsLocation = false,
+				refreshSunTimes = true,
+				debounceMs = 0L
+			)
+		}
+	}
+
+	private fun resolveInitialDaylight(
+		settings: AppSettingsSnapshot
+	): SunDaylight {
+		return sunTimesRepository.currentOrFallbackForCandidates(
+			buildInitialLocationCandidates(settings)
+		)
+	}
+
+	private fun buildInitialLocationCandidates(
+		settings: AppSettingsSnapshot
+	): List<SunLocation> {
+		val manual = SunLocation(
+			label = settings.manualCity.name,
+			latitude = settings.manualCity.latitude,
+			longitude = settings.manualCity.longitude,
+			timeZoneId = settings.manualCity.timeZoneId
+		)
+		val localizedDefault = AppSettingsDefaults.defaultCity(settings.languageTag)
+		val defaultCity = SunLocation(
+			label = localizedDefault.name,
+			latitude = localizedDefault.latitude,
+			longitude = localizedDefault.longitude,
+			timeZoneId = localizedDefault.timeZoneId
+		)
+		val gpsLocation = settings.automaticLocation
+			?.takeIf { settings.locationMode == LocationMode.GPS }
+			?.toSunLocation(labelFallback = "gps_initial")
+
+		return buildList {
+			gpsLocation?.let { add(it.asGpsApiCandidate()) }
+			add(manual)
+			add(defaultCity)
+		}.distinctBy { candidate ->
+			"${candidate.latitude}|${candidate.longitude}|${candidate.timeZoneId.orEmpty()}"
+		}
 	}
 
 	private fun refreshSunTimes() {
@@ -472,10 +570,8 @@ class HomeViewModel(
 				"${candidate.latitude}|${candidate.longitude}|${candidate.timeZoneId.orEmpty()}"
 			}
 			LocationMode.GPS -> buildList {
-				if (lastKnownLocationProvider.hasLocationPermission()) {
-					liveGpsLocation?.let { add(it.asGpsApiCandidate()) }
-					lastKnownGpsLocation?.let { add(it.asGpsApiCandidate()) }
-				}
+				liveGpsLocation?.let { add(it.asGpsApiCandidate()) }
+				lastKnownGpsLocation?.let { add(it.asGpsApiCandidate()) }
 				add(manual)
 				add(defaultCity)
 			}.distinctBy { candidate ->

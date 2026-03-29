@@ -86,6 +86,48 @@ class SunTimesRepositoryTest {
 	}
 
 	@Test
+	fun candidateAwareFallbackIgnoresUnrelatedLocationCache() {
+		val cachedDaylight = SunDaylight(
+			sunriseMinute = 7 * 60 + 2,
+			sunsetMinute = 19 * 60 + 14,
+			solarNoonMinute = 13 * 60 + 8,
+			timeZoneId = "Europe/Paris"
+		)
+		val apiClient = FakeSunTimesApiClient(
+			responses = listOf(cachedDaylight)
+		)
+		val repository = SunTimesRepository(apiClient = apiClient)
+		val cachedCandidate = SunLocation(
+			label = "paris_manual",
+			latitude = 48.8566,
+			longitude = 2.3522,
+			timeZoneId = "Europe/Paris"
+		)
+		val requestedCandidate = SunLocation(
+			label = "los_angeles_manual",
+			latitude = 34.0522,
+			longitude = -118.2437,
+			timeZoneId = "America/Los_Angeles"
+		)
+
+		try {
+			assertEquals(cachedDaylight, awaitRefresh(repository, cachedCandidate))
+
+			assertEquals(
+				SunDaylight.fallback().copy(timeZoneId = "America/Los_Angeles"),
+				repository.currentOrFallbackForCandidates(listOf(requestedCandidate))
+			)
+			assertEquals(
+				cachedDaylight,
+				repository.currentOrFallbackForCandidates(listOf(cachedCandidate))
+			)
+			assertEquals(1, apiClient.fetchCount)
+		} finally {
+			repository.release()
+		}
+	}
+
+	@Test
 	fun resolvedRefreshReportsSourceCandidate() {
 		val daylight = SunDaylight(
 			sunriseMinute = 6 * 60 + 18,
