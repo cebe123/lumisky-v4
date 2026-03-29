@@ -93,6 +93,44 @@ tasks.register("lintDebugFull") {
 	dependsOn("lintDebug")
 }
 
+val validateShaderCelestialMotionContinuity by tasks.registering {
+	group = "verification"
+	description = "Fails the build when a shader reintroduces noon-only celestial position locks that cause visible jumps."
+
+	val shaderFiles = fileTree(layout.projectDirectory.dir("src/main/assets/shaders")) {
+		include("**/*.glsl")
+	}
+
+	inputs.files(shaderFiles)
+
+	doLast {
+		val disallowedPatterns = listOf(
+			Regex("""\bsunZenithLock\b""") to "sunZenithLock marker",
+			Regex("""abs\s*\(\s*u_Minute\s*-\s*u_SolarNoon\s*\)""") to "minute-to-solarNoon lock window"
+		)
+		val violations = buildList {
+			shaderFiles.files
+				.sortedBy { it.invariantSeparatorsPath.lowercase() }
+				.forEach { shaderFile ->
+					val shaderSource = shaderFile.readText()
+					disallowedPatterns.forEach { (pattern, reason) ->
+						if (pattern.containsMatchIn(shaderSource)) {
+							add("${shaderFile.relativeTo(projectDir).invariantSeparatorsPath}: $reason")
+						}
+					}
+				}
+		}
+		if (violations.isNotEmpty()) {
+			throw GradleException(
+				buildString {
+					appendLine("Detected discontinuous celestial-motion shader logic:")
+					violations.forEach { violation -> appendLine("- $violation") }
+				}
+			)
+		}
+	}
+}
+
 val syncZenithPreviewAssets by tasks.registering {
 	group = "assets"
 	description = "Normalizes local zenith snapshot PNGs and converts them to WebP preview assets."
@@ -324,6 +362,7 @@ val filteredAssetsDir = layout.buildDirectory.dir("generated/filteredAssets/main
 val prepareFilteredAssets by tasks.registering(Sync::class) {
 	group = "assets"
 	description = "Copies app assets for packaging without source raster textures."
+	dependsOn(validateShaderCelestialMotionContinuity)
 	dependsOn(convertWallpaperTexturesToWebp)
 	// Prefer checked-in .webp assets when both source and generated outputs exist.
 	duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
