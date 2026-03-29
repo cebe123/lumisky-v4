@@ -198,13 +198,3 @@ data class DayCycleState(
 	val sunsetProgress: Float
 )
 
-class DayCycleCalculator {
-	fun normalize(progress: Float): Float = progress.coerceIn(0f, 1f)
-}
-
-class TimeInterpolator {
-	fun lerp(start: Float, end: Float, t: Float): Float {
-		val value = t.coerceIn(0f, 1f)
-		return start + (end - start) * value
-	}
-}
