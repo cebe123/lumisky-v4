@@ -20,9 +20,13 @@
     <string name="location_current_gps">Current Location (GPS)</string>
     <string name="location_select_city">Select City</string>
     <string name="location_current_sun_times">Current Sun Times</string>
+    <string name="location_current_celestial_cycle">Celestial Cycle</string>
+    <string name="location_current_timeline">24H Timeline</string>
     <string name="location_current_sunrise">Sunrise</string>
     <string name="location_current_solar_noon">Solar Noon (Sun Zenith)</string>
     <string name="location_current_sunset">Sunset</string>
+    <string name="location_current_moonrise">Moonrise</string>
+    <string name="location_current_moonset">Moonset</string>
     <string name="location_current_moon_zenith">Moon Zenith</string>
     <string name="location_refresh">Refresh</string>
     <string name="location_refreshing">Refreshing</string>
@@ -34,6 +38,11 @@
     <string name="performance_mode_auto">Auto</string>
     <string name="performance_mode_smooth">Smooth</string>
     <string name="performance_mode_battery">Battery</string>
+    <string name="home_scroll_speed_title">Home Scroll Speed</string>
+    <string name="home_scroll_speed_description">Adjust how quickly the wallpaper lists glide on the home screen.</string>
+    <string name="home_scroll_speed_normal">Normal</string>
+    <string name="home_scroll_speed_fast">Fast</string>
+    <string name="home_scroll_speed_very_fast">Very Fast</string>
     <string name="section_about">ABOUT</string>
     <string name="app_version">App Version</string>
     <string name="language_title">Language</string>

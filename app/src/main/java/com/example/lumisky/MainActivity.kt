@@ -154,6 +154,7 @@ class MainActivity : AppCompatActivity() {
 								liveWallpaperId = homeViewModel.liveWallpaperId,
 								highRefreshEnabled = homeViewModel.highRefreshEnabled,
 								performanceMode = homeViewModel.performanceMode,
+								homeScrollSpeed = homeViewModel.homeScrollSpeed,
 								onCategoryFocused = { ids ->
 									homeViewModel.onCategoryFocused(ids)
 								},
@@ -187,6 +188,10 @@ class MainActivity : AppCompatActivity() {
 									homeViewModel.updatePerformanceMode(
 										mode
 									)
+								},
+								homeScrollSpeed = homeViewModel.homeScrollSpeed,
+								onHomeScrollSpeedChanged = { speed ->
+									homeViewModel.updateHomeScrollSpeed(speed)
 								},
 								locationMode = homeViewModel.locationMode,
 								locationLabel = homeViewModel.locationLabel,

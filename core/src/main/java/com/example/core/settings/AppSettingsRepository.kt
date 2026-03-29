@@ -19,6 +19,7 @@ class AppSettingsRepository(
 			languageTag = getLanguageTag(),
 			highRefreshEnabled = isHighRefreshEnabled(),
 			performanceMode = getPerformanceMode(),
+			homeScrollSpeed = getHomeScrollSpeed(),
 			locationMode = getLocationMode(),
 			manualCity = getManualCity(),
 			automaticLocation = getAutomaticLocation()
@@ -87,6 +88,20 @@ class AppSettingsRepository(
 		if (getPerformanceMode() == mode) return
 		prefs.edit()
 			.putString(KEY_PERFORMANCE_MODE, mode.name)
+			.apply()
+		dispatchSnapshotChanged()
+	}
+
+	fun getHomeScrollSpeed(): HomeScrollSpeed {
+		val raw = prefs.getString(KEY_HOME_SCROLL_SPEED, DEFAULT_HOME_SCROLL_SPEED.name)
+			?: DEFAULT_HOME_SCROLL_SPEED.name
+		return runCatching { HomeScrollSpeed.valueOf(raw) }.getOrElse { DEFAULT_HOME_SCROLL_SPEED }
+	}
+
+	fun setHomeScrollSpeed(speed: HomeScrollSpeed) {
+		if (getHomeScrollSpeed() == speed) return
+		prefs.edit()
+			.putString(KEY_HOME_SCROLL_SPEED, speed.name)
 			.apply()
 		dispatchSnapshotChanged()
 	}
@@ -247,6 +262,7 @@ class AppSettingsRepository(
 		private const val KEY_LANGUAGE_TAG = "language_tag"
 		private const val KEY_HIGH_REFRESH_ENABLED = "high_refresh_enabled"
 		private const val KEY_PERFORMANCE_MODE = "performance_mode"
+		private const val KEY_HOME_SCROLL_SPEED = "home_scroll_speed"
 		private const val KEY_LOCATION_MODE = "location_mode"
 		private const val KEY_MANUAL_CITY_ID = "manual_city_id"
 		private const val KEY_MANUAL_CITY_NAME = "manual_city_name"
@@ -264,6 +280,7 @@ class AppSettingsRepository(
 
 		private const val DEFAULT_HIGH_REFRESH_ENABLED = false
 		private val DEFAULT_PERFORMANCE_MODE = PerformanceMode.AUTO
+		private val DEFAULT_HOME_SCROLL_SPEED = HomeScrollSpeed.FAST
 		private val DEFAULT_LOCATION_MODE = LocationMode.GPS
 		private val changeListeners = LinkedHashSet<(AppSettingsSnapshot) -> Unit>()
 	}

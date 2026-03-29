@@ -24,6 +24,7 @@ import com.example.core.location.withResolvedTimeZone
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.AppSettingsSnapshot
+import com.example.core.settings.HomeScrollSpeed
 import com.example.core.settings.AppThemeMode
 import com.example.core.settings.LocationMode
 import com.example.core.settings.ManualCity
@@ -91,6 +92,9 @@ class HomeViewModel(
 		private set
 
 	var performanceMode by mutableStateOf(initialSettings.performanceMode)
+		private set
+
+	var homeScrollSpeed by mutableStateOf(initialSettings.homeScrollSpeed)
 		private set
 
 	var locationMode by mutableStateOf(initialSettings.locationMode)
@@ -248,6 +252,12 @@ class HomeViewModel(
 		if (performanceMode == mode) return
 		performanceMode = mode
 		settingsRepository.setPerformanceMode(mode)
+	}
+
+	fun updateHomeScrollSpeed(speed: HomeScrollSpeed) {
+		if (homeScrollSpeed == speed) return
+		homeScrollSpeed = speed
+		settingsRepository.setHomeScrollSpeed(speed)
 	}
 
 	fun updateLocationMode(mode: LocationMode) {
@@ -409,6 +419,9 @@ class HomeViewModel(
 		}
 		if (performanceMode != snapshot.performanceMode) {
 			performanceMode = snapshot.performanceMode
+		}
+		if (homeScrollSpeed != snapshot.homeScrollSpeed) {
+			homeScrollSpeed = snapshot.homeScrollSpeed
 		}
 		if (locationMode != snapshot.locationMode) {
 			locationMode = snapshot.locationMode

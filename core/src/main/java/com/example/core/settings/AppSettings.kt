@@ -21,6 +21,12 @@ enum class PerformanceMode {
 	BATTERY
 }
 
+enum class HomeScrollSpeed {
+	NORMAL,
+	FAST,
+	VERY_FAST
+}
+
 data class ManualCity(
 	val id: String,
 	val name: String,
@@ -41,6 +47,7 @@ data class AppSettingsSnapshot(
 	val languageTag: String,
 	val highRefreshEnabled: Boolean,
 	val performanceMode: PerformanceMode,
+	val homeScrollSpeed: HomeScrollSpeed,
 	val locationMode: LocationMode,
 	val manualCity: ManualCity,
 	val automaticLocation: LocationSnapshot?
