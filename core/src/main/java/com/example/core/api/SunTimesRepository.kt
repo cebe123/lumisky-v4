@@ -7,6 +7,8 @@ import java.time.ZoneId
 import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.Executors
+import java.util.concurrent.Callable
+import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.roundToInt
@@ -48,6 +50,7 @@ class SunTimesRepository(
 	private val cachedEntry = AtomicReference<CachedDaylightEntry?>(null)
 	private val refreshExecutor = Executors.newSingleThreadExecutor()
 	private val backupPrefetchExecutor = Executors.newSingleThreadExecutor()
+	private val networkExecutor = Executors.newCachedThreadPool()
 	private val requestVersion = AtomicInteger(0)
 
 	fun currentOrFallback(): SunDaylight {
@@ -160,13 +163,22 @@ class SunTimesRepository(
 				}
 			}
 
-			for (candidate in latestCandidates) {
-				if (requestId != requestVersion.get()) return@execute
-				val fetched = apiClient.fetchDaylight(
-					latitude = candidate.latitude,
-					longitude = candidate.longitude,
-					timeZoneId = candidate.timeZoneId
-				)
+			val futures = latestCandidates.map { candidate ->
+				candidate to networkExecutor.submit(Callable {
+					apiClient.fetchDaylight(
+						latitude = candidate.latitude,
+						longitude = candidate.longitude,
+						timeZoneId = candidate.timeZoneId
+					)
+				})
+			}
+
+			for ((candidate, future) in futures) {
+				if (requestId != requestVersion.get()) {
+					futures.forEach { it.second.cancel(true) }
+					return@execute
+				}
+				val fetched = try { future.get() } catch (e: Exception) { null }
 				if (fetched == null) {
 					Logger.w(
 						TAG,
@@ -177,6 +189,7 @@ class SunTimesRepository(
 
 				val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.ACTIVE)
 				cacheResolvedEntry(entry)
+				futures.forEach { it.second.cancel(true) }
 				onUpdated(
 					SunDaylightResolution(
 						daylight = fetched,
@@ -212,16 +225,22 @@ class SunTimesRepository(
 		}
 		if (dueCandidates.isEmpty()) return
 		backupPrefetchExecutor.execute {
-			dueCandidates.forEach { candidate ->
+			val futures = dueCandidates.mapNotNull { candidate ->
 				val attemptAt = System.currentTimeMillis()
 				if (!shouldRefreshBackup(candidate, attemptAt, minRefreshIntervalMs)) {
-					return@forEach
-				}
-				val fetched = apiClient.fetchDaylight(
-					latitude = candidate.latitude,
-					longitude = candidate.longitude,
-					timeZoneId = candidate.timeZoneId
-				)
+					null
+				} else {
+				    candidate to networkExecutor.submit(Callable {
+					    apiClient.fetchDaylight(
+						    latitude = candidate.latitude,
+						    longitude = candidate.longitude,
+						    timeZoneId = candidate.timeZoneId
+					    )
+				    })
+                }
+			}
+			futures.forEach { (candidate, future) ->
+				val fetched = try { future.get() } catch (e: Exception) { null }
 				if (fetched == null) {
 					Logger.w(
 						TAG,
@@ -239,6 +258,7 @@ class SunTimesRepository(
 		requestVersion.incrementAndGet()
 		refreshExecutor.shutdownNow()
 		backupPrefetchExecutor.shutdownNow()
+		networkExecutor.shutdownNow()
 	}
 
 	private fun findDailyHitByCandidatePriority(
