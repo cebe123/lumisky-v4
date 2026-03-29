@@ -22,7 +22,7 @@ internal fun resolveCelestialTimeline(
 	val normalizedCurrentMinute = normalizeMinute(currentMinute)
 	val moonWindow = deriveMoonWindow(daylight)
 	val sunActive = sunset > sunrise && normalizedCurrentMinute in sunrise..sunset
-	val moonActive = isInWrappedRange(
+	val moonActive = !sunActive && isInWrappedRange(
 		minute = normalizedCurrentMinute,
 		startMinute = moonWindow.startMinute,
 		endMinute = moonWindow.endMinute
@@ -57,23 +57,9 @@ private data class MoonWindow(
 private fun deriveMoonWindow(daylight: SunDaylight): MoonWindow {
 	val sunrise = normalizeMinute(daylight.sunriseMinute)
 	val sunset = normalizeMinute(daylight.sunsetMinute)
-	val solarNoon = normalizeMinute(daylight.solarNoonMinute)
-	val nightDuration = minutesForward(
+	return MoonWindow(
 		startMinute = sunset,
 		endMinute = sunrise
-	).coerceAtLeast(1)
-	// Settings currently receives daylight only, so lunar rise/set stay as a stable UI approximation around moon zenith.
-	val visibleDuration = nightDuration.coerceAtMost(DEFAULT_MOON_VISIBILITY_WINDOW_MINUTES)
-	val moonZenithForward = normalizeMinuteForward(
-		minute = (solarNoon + HALF_DAY_MINUTES) % MINUTES_PER_DAY,
-		anchorMinute = sunset
-	)
-	val latestStart = sunset + (nightDuration - visibleDuration)
-	val startForward = (moonZenithForward - (visibleDuration / 2)).coerceIn(sunset, latestStart)
-	val endForward = startForward + visibleDuration
-	return MoonWindow(
-		startMinute = normalizeMinute(startForward),
-		endMinute = normalizeMinute(endForward)
 	)
 }
 
@@ -132,21 +118,8 @@ private fun minutesForward(
 	}
 }
 
-private fun normalizeMinuteForward(
-	minute: Int,
-	anchorMinute: Int
-): Int {
-	var normalized = normalizeMinute(minute)
-	while (normalized < anchorMinute) {
-		normalized += MINUTES_PER_DAY
-	}
-	return normalized
-}
-
 private fun normalizeMinute(minute: Int): Int {
 	return ((minute % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY
 }
 
 private const val MINUTES_PER_DAY = 24 * 60
-private const val HALF_DAY_MINUTES = 12 * 60
-private const val DEFAULT_MOON_VISIBILITY_WINDOW_MINUTES = 10 * 60

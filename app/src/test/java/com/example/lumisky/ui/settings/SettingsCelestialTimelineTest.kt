@@ -32,29 +32,29 @@ class SettingsCelestialTimelineTest {
 	}
 
 	@Test
-	fun moon_window_centers_on_zenith_and_moves_right_to_left() {
+	fun moon_window_covers_full_night_without_gap() {
 		val daylight = SunDaylight(
 			sunriseMinute = 6 * 60 + 34,
 			sunsetMinute = 19 * 60 + 51,
 			solarNoonMinute = 13 * 60 + 13
 		)
 
-		val moonriseSnapshot = resolveCelestialTimeline(daylight = daylight, currentMinute = 20 * 60 + 13)
-		val moonZenithSnapshot = resolveCelestialTimeline(daylight = daylight, currentMinute = 1 * 60 + 13)
-		val moonsetSnapshot = resolveCelestialTimeline(daylight = daylight, currentMinute = 6 * 60 + 13)
+		val justAfterSunset = resolveCelestialTimeline(daylight = daylight, currentMinute = daylight.sunsetMinute + 1)
+		val middleOfNight = resolveCelestialTimeline(daylight = daylight, currentMinute = 1 * 60 + 12)
+		val justBeforeSunrise = resolveCelestialTimeline(daylight = daylight, currentMinute = daylight.sunriseMinute - 1)
 
-		assertEquals(20 * 60 + 13, moonriseSnapshot.moonriseMinute)
-		assertEquals(6 * 60 + 13, moonriseSnapshot.moonsetMinute)
-		assertEquals(1f, moonriseSnapshot.moonProgress, 0.0001f)
-		assertTrue(moonriseSnapshot.moonActive)
-		assertEquals(0.5f, moonZenithSnapshot.moonProgress, 0.0001f)
-		assertTrue(moonZenithSnapshot.moonActive)
-		assertEquals(0f, moonsetSnapshot.moonProgress, 0.0001f)
-		assertTrue(moonsetSnapshot.moonActive)
+		assertEquals(daylight.sunsetMinute, justAfterSunset.moonriseMinute)
+		assertEquals(daylight.sunriseMinute, justAfterSunset.moonsetMinute)
+		assertTrue(justAfterSunset.moonActive)
+		assertTrue(justAfterSunset.moonProgress < 1f)
+		assertEquals(0.5008f, middleOfNight.moonProgress, 0.001f)
+		assertTrue(middleOfNight.moonActive)
+		assertTrue(justBeforeSunrise.moonActive)
+		assertTrue(justBeforeSunrise.moonProgress > 0f)
 	}
 
 	@Test
-	fun short_nights_use_full_night_for_moon_window() {
+	fun moon_window_uses_full_night_even_when_night_is_short() {
 		val daylight = SunDaylight(
 			sunriseMinute = 5 * 60,
 			sunsetMinute = 21 * 60,
