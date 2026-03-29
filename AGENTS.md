@@ -21,6 +21,7 @@
 ## Validation before finishing
 
 - Run at least the affected module's validation via `.\gradlew` (PowerShell).
+- Unless the user explicitly says not to, deploy and launch the latest app build on the preferred connected phone after each task using `.\gradlew :app:deployDebugToConnectedDevice`; do not wait for the user to remind you again.
 - Common commands:
 ```powershell
 .\gradlew :core:testDebugUnitTest
@@ -29,6 +30,7 @@
 .\gradlew :app:testDebugUnitTest
 .\gradlew :app:assembleDebug
 .\gradlew :app:lintDebug
+.\gradlew :app:deployDebugToConnectedDevice
 ```
 
 ## Change safety rules

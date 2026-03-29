@@ -167,22 +167,6 @@ object WallpaperCatalog {
 			)
 		),
 		ThemePreset(
-			id = "game_teemo",
-			displayName = "Teemo",
-			fragmentAssetPath = "shaders/game_teemo/fragment.glsl",
-			horizonOffset = 0.34f,
-			sunPath = PathType.VERTICAL,
-			moonPath = PathType.VERTICAL,
-			features = SkyFeatureFlags(
-				atmosphereEnabled = true,
-				lensFlareEnabled = false,
-				starsEnabled = true
-			),
-			textures = WallpaperTextures(
-				backgroundTexture = "backgrounds/teemo.png"
-			)
-		),
-		ThemePreset(
 			id = "tablo",
 			displayName = "Canvas",
 			fragmentAssetPath = "shaders/tablo/fragment.glsl",

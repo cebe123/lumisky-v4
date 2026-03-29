@@ -338,7 +338,7 @@
 * Test cases to ensure correctness is preserved
 * GPS/manual location mode switching still updates labels/daylight correctly
 * Sunrise/sunset fallback behavior still works when network fails/timeouts occur
-* Preview and wallpaper visuals remain unchanged for representative themes (`tablo`, `warrior`, `game_teemo`, city themes)
+* Preview and wallpaper visuals remain unchanged for representative themes (`tablo`, `warrior`, city themes)
 * Continuous/minute-tick rendering behavior remains correct after render-policy changes
 * Asset loading still prefers `.webp` and no missing textures/shaders occur
 * Wallpaper service wrapper manifest binding remains intact (`com.example.wallpaper.SkyWallpaperService`)
