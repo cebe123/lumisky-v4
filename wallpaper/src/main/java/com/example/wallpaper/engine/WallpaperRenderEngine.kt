@@ -7,7 +7,6 @@ import com.example.core.Logger
 import com.example.core.perf.RenderStatsTracker
 import com.example.engine.SkyEngine
 import com.example.engine.config.RenderPolicy
-import com.example.engine.config.ShaderDefaults
 import com.example.engine.config.ShaderProfile
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderMode
@@ -25,8 +24,8 @@ class WallpaperRenderEngine(
 	private var holder: SurfaceHolder? = null
 	private var config: WallpaperConfig = WallpaperConfig.default(id = "wallpaper_default").copy(
 		shader = ShaderProfile(
-			fragmentAssetPath = ShaderDefaults.DEFAULT_FRAGMENT_ASSET_PATH,
-			mode = ShaderDefaults.DEFAULT_SHADER_MODE
+			fragmentAssetPath = "shaders/opticalsunset/fragment.glsl",
+			mode = "lighthouse_like"
 		)
 	)
 	private var sceneFingerprintCache: String = buildSceneFingerprint(config)
