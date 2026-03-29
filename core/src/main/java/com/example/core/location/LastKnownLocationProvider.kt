@@ -36,7 +36,11 @@ class LastKnownLocationProvider(
 		LocationServices.getFusedLocationProviderClient(appContext)
 	private val geocoderLock = Any()
 	private val passiveListenerLock = Any()
-	private val localityCache = LinkedHashMap<String, String>(32, 0.75f, true)
+	private val localityCache = object : LinkedHashMap<String, String>(32, 0.75f, true) {
+		override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean {
+			return size > MAX_LOCALITY_CACHE_SIZE
+		}
+	}
 	private var passiveLocationCallback: LocationCallback? = null
 
 	fun hasLocationPermission(): Boolean {
@@ -221,7 +225,6 @@ class LastKnownLocationProvider(
 
 		synchronized(geocoderLock) {
 			localityCache[key] = label
-			trimCacheLocked()
 		}
 		return label
 	}
@@ -276,15 +279,6 @@ class LastKnownLocationProvider(
 
 	private fun locationKey(location: SunLocation): String {
 		return String.format(Locale.US, "%.3f|%.3f", location.latitude, location.longitude)
-	}
-
-	private fun trimCacheLocked() {
-		if (localityCache.size <= MAX_LOCALITY_CACHE_SIZE) return
-		val iterator = localityCache.entries.iterator()
-		while (localityCache.size > MAX_LOCALITY_CACHE_SIZE && iterator.hasNext()) {
-			iterator.next()
-			iterator.remove()
-		}
 	}
 
 	private companion object {
