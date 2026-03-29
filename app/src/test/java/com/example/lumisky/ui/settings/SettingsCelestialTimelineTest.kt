@@ -68,4 +68,21 @@ class SettingsCelestialTimelineTest {
 		assertEquals(0.5f, snapshot.moonProgress, 0.0001f)
 		assertTrue(snapshot.moonActive)
 	}
+
+	@Test
+	fun markers_are_mutually_exclusive_between_day_and_night() {
+		val daylight = SunDaylight(
+			sunriseMinute = 6 * 60 + 34,
+			sunsetMinute = 19 * 60 + 51,
+			solarNoonMinute = 13 * 60 + 13
+		)
+
+		val daytime = resolveCelestialTimeline(daylight = daylight, currentMinute = 12 * 60)
+		val nighttime = resolveCelestialTimeline(daylight = daylight, currentMinute = 23 * 60)
+
+		assertTrue(daytime.sunActive)
+		assertFalse(daytime.moonActive)
+		assertFalse(nighttime.sunActive)
+		assertTrue(nighttime.moonActive)
+	}
 }

@@ -1,7 +1,12 @@
 package com.example.lumisky.ui.settings
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -52,9 +57,10 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,7 +80,6 @@ import com.example.core.api.SunDaylight
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppThemeMode
 import com.example.core.settings.CityGroup
-import com.example.core.settings.HomeScrollSpeed
 import com.example.core.settings.LocationMode
 import com.example.core.settings.ManualCity
 import com.example.core.settings.PerformanceMode
@@ -95,8 +100,6 @@ fun SettingsScreen(
 	onHighRefreshChanged: (Boolean) -> Unit,
 	performanceMode: PerformanceMode,
 	onPerformanceModeChanged: (PerformanceMode) -> Unit,
-	homeScrollSpeed: HomeScrollSpeed,
-	onHomeScrollSpeedChanged: (HomeScrollSpeed) -> Unit,
 	locationMode: LocationMode,
 	locationLabel: String,
 	daylight: SunDaylight,
@@ -221,9 +224,7 @@ fun SettingsScreen(
 					highRefreshEnabled = highRefreshEnabled,
 					onHighRefreshChanged = onHighRefreshChanged,
 					performanceMode = performanceMode,
-					onPerformanceModeChanged = onPerformanceModeChanged,
-					homeScrollSpeed = homeScrollSpeed,
-					onHomeScrollSpeedChanged = onHomeScrollSpeedChanged
+					onPerformanceModeChanged = onPerformanceModeChanged
 				)
 				AboutSection(appVersionName = appVersionName)
 				Spacer(modifier = Modifier.height(118.dp))
@@ -443,9 +444,7 @@ private fun WallpaperSection(
 	highRefreshEnabled: Boolean,
 	onHighRefreshChanged: (Boolean) -> Unit,
 	performanceMode: PerformanceMode,
-	onPerformanceModeChanged: (PerformanceMode) -> Unit,
-	homeScrollSpeed: HomeScrollSpeed,
-	onHomeScrollSpeedChanged: (HomeScrollSpeed) -> Unit
+	onPerformanceModeChanged: (PerformanceMode) -> Unit
 ) {
 	GlassCard(kicker = stringResource(R.string.section_wallpaper_settings)) {
 		SectionTitle(text = stringResource(R.string.quality_title))
@@ -455,60 +454,6 @@ private fun WallpaperSection(
 			enabledLabel = stringResource(R.string.quality_high),
 			disabledLabel = stringResource(R.string.quality_low),
 			onValueChanged = onHighRefreshChanged
-		)
-		Spacer(modifier = Modifier.height(16.dp))
-		SectionDivider()
-		Spacer(modifier = Modifier.height(16.dp))
-		Row(
-			verticalAlignment = Alignment.CenterVertically,
-			horizontalArrangement = Arrangement.spacedBy(12.dp)
-		) {
-			Box(
-				modifier = Modifier
-					.size(40.dp)
-					.clip(RoundedCornerShape(14.dp))
-					.background(SettingsPrimary.copy(alpha = 0.12f)),
-				contentAlignment = Alignment.Center
-			) {
-				Icon(
-					imageVector = Icons.Filled.Speed,
-					contentDescription = null,
-					tint = SettingsPrimary
-				)
-			}
-			Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-				Text(
-					text = stringResource(R.string.home_scroll_speed_title),
-					style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-					color = SettingsOnSurface
-				)
-				Text(
-					text = stringResource(R.string.home_scroll_speed_description),
-					style = MaterialTheme.typography.bodySmall,
-					color = SettingsOnSurfaceVariant
-				)
-			}
-		}
-		Spacer(modifier = Modifier.height(14.dp))
-		SelectableOptionRow(
-			title = stringResource(R.string.home_scroll_speed_normal),
-			icon = Icons.Filled.Tune,
-			selected = homeScrollSpeed == HomeScrollSpeed.NORMAL,
-			onClick = { onHomeScrollSpeedChanged(HomeScrollSpeed.NORMAL) }
-		)
-		Spacer(modifier = Modifier.height(10.dp))
-		SelectableOptionRow(
-			title = stringResource(R.string.home_scroll_speed_fast),
-			icon = Icons.Filled.Speed,
-			selected = homeScrollSpeed == HomeScrollSpeed.FAST,
-			onClick = { onHomeScrollSpeedChanged(HomeScrollSpeed.FAST) }
-		)
-		Spacer(modifier = Modifier.height(10.dp))
-		SelectableOptionRow(
-			title = stringResource(R.string.home_scroll_speed_very_fast),
-			icon = Icons.Filled.Refresh,
-			selected = homeScrollSpeed == HomeScrollSpeed.VERY_FAST,
-			onClick = { onHomeScrollSpeedChanged(HomeScrollSpeed.VERY_FAST) }
 		)
 		Spacer(modifier = Modifier.height(16.dp))
 		SectionDivider()
@@ -1000,26 +945,28 @@ private fun CelestialTimelineTrack(
 				.background(CelestialTimelineBrush)
 				.border(1.dp, SettingsGhostBorder.copy(alpha = 0.34f), CircleShape)
 		)
-		CelestialMarker(
-			icon = Icons.Filled.LightMode,
-			fillColor = Color(0xFFFFC14D),
-			iconTint = Color(0xFF6F3B00),
-			glowColor = Color(0xFFFFC14D),
-			active = celestialTimeline.sunActive,
-			modifier = Modifier
-				.align(Alignment.CenterStart)
-				.offset(x = markerTravel * celestialTimeline.sunProgress)
-		)
-		CelestialMarker(
-			icon = Icons.Filled.DarkMode,
-			fillColor = Color(0xFFE9EEF8),
-			iconTint = Color(0xFF384467),
-			glowColor = SettingsSecondary,
-			active = celestialTimeline.moonActive,
-			modifier = Modifier
-				.align(Alignment.CenterStart)
-				.offset(x = markerTravel * celestialTimeline.moonProgress)
-		)
+		if (celestialTimeline.sunActive) {
+			CelestialMarker(
+				icon = Icons.Filled.LightMode,
+				fillColor = Color(0xFFFFC14D),
+				iconTint = Color(0xFF6F3B00),
+				glowColor = Color(0xFFFFC14D),
+				modifier = Modifier
+					.align(Alignment.CenterStart)
+					.offset(x = markerTravel * celestialTimeline.sunProgress)
+			)
+		}
+		if (celestialTimeline.moonActive) {
+			CelestialMarker(
+				icon = Icons.Filled.DarkMode,
+				fillColor = Color(0xFFE9EEF8),
+				iconTint = Color(0xFF384467),
+				glowColor = SettingsSecondary,
+				modifier = Modifier
+					.align(Alignment.CenterStart)
+					.offset(x = markerTravel * celestialTimeline.moonProgress)
+			)
+		}
 	}
 }
 
@@ -1029,7 +976,6 @@ private fun CelestialMarker(
 	fillColor: Color,
 	iconTint: Color,
 	glowColor: Color,
-	active: Boolean,
 	modifier: Modifier = Modifier
 ) {
 	Box(
@@ -1040,13 +986,13 @@ private fun CelestialMarker(
 			modifier = Modifier
 				.size(26.dp)
 				.clip(CircleShape)
-				.background(glowColor.copy(alpha = if (active) 0.22f else 0.08f))
+				.background(glowColor.copy(alpha = 0.22f))
 		)
 		Box(
 			modifier = Modifier
 				.size(18.dp)
 				.clip(CircleShape)
-				.background(fillColor.copy(alpha = if (active) 1f else 0.84f))
+				.background(fillColor)
 				.border(1.dp, SettingsOnSurface.copy(alpha = 0.14f), CircleShape),
 			contentAlignment = Alignment.Center
 		) {
@@ -1355,14 +1301,38 @@ private fun resolveAppVersionName(context: android.content.Context): String {
 
 @Composable
 private fun rememberCurrentMinute(timeZoneId: String?): Int {
+	val context = LocalContext.current
+	val appContext = remember(context) { context.applicationContext }
 	val zoneId = remember(timeZoneId) { resolveTimelineZoneId(timeZoneId) }
-	val currentMinute by produceState(
-		initialValue = currentMinuteOfDay(zoneId),
-		key1 = zoneId
-	) {
+	var currentMinute by remember(appContext, zoneId) {
+		mutableStateOf(currentMinuteOfDay(zoneId))
+	}
+	DisposableEffect(appContext, zoneId) {
+		val receiver = object : BroadcastReceiver() {
+			override fun onReceive(context: Context?, intent: Intent?) {
+				currentMinute = currentMinuteOfDay(zoneId)
+			}
+		}
+		val filter = IntentFilter().apply {
+			addAction(Intent.ACTION_TIME_TICK)
+			addAction(Intent.ACTION_TIME_CHANGED)
+			addAction(Intent.ACTION_TIMEZONE_CHANGED)
+			addAction(Intent.ACTION_DATE_CHANGED)
+		}
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+			appContext.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+		} else {
+			@Suppress("DEPRECATION")
+			appContext.registerReceiver(receiver, filter)
+		}
+		onDispose {
+			runCatching { appContext.unregisterReceiver(receiver) }
+		}
+	}
+	LaunchedEffect(zoneId) {
 		while (true) {
 			val now = ZonedDateTime.now(zoneId)
-			value = now.hour * 60 + now.minute
+			currentMinute = now.hour * 60 + now.minute
 			delay(delayUntilNextMinute(now))
 		}
 	}
@@ -1409,10 +1379,8 @@ private val SettingsGlassBrush = Brush.verticalGradient(
 )
 private val CelestialTimelineBrush = Brush.horizontalGradient(
 	colorStops = arrayOf(
-		0.00f to Color(0xFF0F172A),
-		0.18f to Color(0xFFF59E0B),
-		0.48f to SettingsPrimary,
-		0.78f to SettingsSecondary,
-		1.00f to Color(0xFF0F172A)
+		0.00f to Color(0xFFD05434),
+		0.46f to Color(0xFFF3C64E),
+		1.00f to Color(0xFF07090D)
 	)
 )

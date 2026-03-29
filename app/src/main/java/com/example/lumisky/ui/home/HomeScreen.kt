@@ -9,9 +9,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.FlingBehavior
-import androidx.compose.foundation.gestures.ScrollScope
-import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,7 +68,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.core.settings.HomeScrollSpeed
 import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.preview.PreviewGlRenderer
@@ -134,7 +130,6 @@ fun HomeScreen(
 	liveWallpaperId: String?,
 	highRefreshEnabled: Boolean,
 	performanceMode: PerformanceMode,
-	homeScrollSpeed: HomeScrollSpeed,
 	onCategoryFocused: (List<String>) -> Unit,
 	onFocusReady: (String) -> Unit,
 	onFocusCleared: () -> Unit,
@@ -230,7 +225,6 @@ fun HomeScreen(
 			groupedWallpapers.take(visibleCategoryCount.coerceAtLeast(0))
 		}
 	}
-	val homeFlingBehavior = rememberHomeFlingBehavior(homeScrollSpeed)
 
 	val verticalState = rememberLazyListState()
 	val centerCategoryIndex by remember {
@@ -338,7 +332,6 @@ fun HomeScreen(
 		) {
 			LazyColumn(
 				state = verticalState,
-				flingBehavior = homeFlingBehavior,
 				modifier = Modifier
 					.fillMaxSize()
 					.padding(innerPadding),
@@ -358,7 +351,6 @@ fun HomeScreen(
 						liveWallpaperId = liveWallpaperId,
 						isCategoryActive = isCategoryActive,
 						parentScrollInProgress = verticalState.isScrollInProgress,
-						homeFlingBehavior = homeFlingBehavior,
 						highRefreshEnabled = highRefreshEnabled,
 						performanceMode = performanceMode,
 						cardWidth = cardWidth,
@@ -451,7 +443,6 @@ private fun CategorySection(
 	liveWallpaperId: String?,
 	isCategoryActive: Boolean,
 	parentScrollInProgress: Boolean,
-	homeFlingBehavior: FlingBehavior,
 	highRefreshEnabled: Boolean,
 	performanceMode: PerformanceMode,
 	cardWidth: Dp,
@@ -523,7 +514,6 @@ private fun CategorySection(
 
 		LazyRow(
 			state = rowState,
-			flingBehavior = homeFlingBehavior,
 			modifier = Modifier.fillMaxWidth(),
 			contentPadding = PaddingValues(horizontal = 16.dp),
 			horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -943,23 +933,6 @@ private fun resolveCategory(
 
 internal val HomeScreenBackgroundColor = Color(0xFF07121F)
 
-@Composable
-private fun rememberHomeFlingBehavior(
-	homeScrollSpeed: HomeScrollSpeed
-): FlingBehavior {
-	val baseFlingBehavior = ScrollableDefaults.flingBehavior()
-	val velocityMultiplier = homeScrollSpeed.velocityMultiplier
-	return remember(baseFlingBehavior, velocityMultiplier) {
-		object : FlingBehavior {
-			override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-				return with(baseFlingBehavior) {
-					performFling(initialVelocity * velocityMultiplier)
-				}
-			}
-		}
-	}
-}
-
 private fun findCenteredIndex(listState: LazyListState): Int {
 	val layoutInfo = listState.layoutInfo
 	val visibleItems = layoutInfo.visibleItemsInfo
@@ -981,13 +954,6 @@ private const val FOCUS_INIT_DELAY_MS = 100L
 private const val CATEGORY_SECTION_CONTENT_TYPE = "category_section"
 private const val WALLPAPER_CARD_CONTENT_TYPE = "wallpaper_card"
 private val HOME_CONTENT_BOTTOM_PADDING = 112.dp
-
-private val HomeScrollSpeed.velocityMultiplier: Float
-	get() = when (this) {
-		HomeScrollSpeed.NORMAL -> 1f
-		HomeScrollSpeed.FAST -> 1.25f
-		HomeScrollSpeed.VERY_FAST -> 1.5f
-	}
 
 private val PlaceholderOuterShape = RoundedCornerShape(16.dp)
 private val PlaceholderInnerShape = RoundedCornerShape(13.dp)

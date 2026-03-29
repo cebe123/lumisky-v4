@@ -36,11 +36,6 @@
     <string name="performance_mode_auto">Otomatik</string>
     <string name="performance_mode_smooth">Akıcı</string>
     <string name="performance_mode_battery">Batarya</string>
-    <string name="home_scroll_speed_title">Ana Ekran Kaydırma Hızı</string>
-    <string name="home_scroll_speed_description">Ana ekrandaki duvar kağıdı listelerinin ne kadar hızlı kayacağını ayarlayın.</string>
-    <string name="home_scroll_speed_normal">Normal</string>
-    <string name="home_scroll_speed_fast">Hızlı</string>
-    <string name="home_scroll_speed_very_fast">Çok Hızlı</string>
     <string name="section_about">HAKKINDA</string>
     <string name="app_version">Uygulama Sürümü</string>
     <string name="language_title">Dil</string>
