@@ -87,10 +87,6 @@ void main() {
     if (effectiveSunPos.y < horizonY) {
         effectiveSunPos.y += (horizonY - effectiveSunPos.y) * 0.20;
     }
-    float sunZenithDelta = abs(u_Minute - u_SolarNoon);
-    float sunZenithLock = 1.0 - smoothstep(0.0, 45.0, sunZenithDelta);
-    effectiveSunPos.y = mix(effectiveSunPos.y, u_SunPos.y, sunZenithLock);
-
     vec2 effectiveMoonPos = u_MoonPos;
     effectiveMoonPos.x -= 0.18;
     effectiveMoonPos.y -= 0.07;

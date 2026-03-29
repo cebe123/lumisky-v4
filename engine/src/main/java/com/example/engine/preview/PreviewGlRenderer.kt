@@ -15,6 +15,37 @@ import kotlin.math.abs
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
+internal data class FocusCatchUpWindow(
+	val startProgress: Float,
+	val targetProgress: Float
+)
+
+internal fun resolveFocusCatchUpWindow(
+	nowProgress: Float,
+	sunriseMinute: Int,
+	sunsetMinute: Int
+): FocusCatchUpWindow {
+	val normalizedNow = nowProgress.coerceIn(0f, 1f)
+	val normalizedSunriseMinute = sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
+	val normalizedSunsetMinute = sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
+	val sunriseProgress = (normalizedSunriseMinute / MINUTES_PER_DAY.toFloat()).coerceIn(0f, 1f)
+	val nowMinute = (normalizedNow * MINUTES_PER_DAY).toInt().coerceIn(0, MINUTES_PER_DAY)
+	val isDaytime = if (normalizedSunsetMinute >= normalizedSunriseMinute) {
+		nowMinute in normalizedSunriseMinute..normalizedSunsetMinute
+	} else {
+		nowMinute >= normalizedSunriseMinute || nowMinute <= normalizedSunsetMinute
+	}
+	val targetProgress = when {
+		isDaytime -> 1f + normalizedNow
+		normalizedNow >= sunriseProgress -> normalizedNow
+		else -> normalizedNow + 1f
+	}
+	return FocusCatchUpWindow(
+		startProgress = sunriseProgress,
+		targetProgress = targetProgress
+	)
+}
+
 class PreviewGlRenderer(
 	private val skyEngine: SkyEngine = SkyEngine(),
 	private val config: WallpaperConfig = WallpaperConfig.default(id = "preview_default"),
@@ -251,23 +282,13 @@ class PreviewGlRenderer(
 			return
 		}
 
-		val now = currentDayProgress()
-		val sunriseMinute = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
-		val sunsetMinute = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
-		val sunrise = (sunriseMinute / MINUTES_PER_DAY.toFloat()).coerceIn(0f, 1f)
-		val nowMinute = (now * MINUTES_PER_DAY).toInt().coerceIn(0, MINUTES_PER_DAY)
-		val isDaytime = if (sunsetMinute >= sunriseMinute) {
-			nowMinute in sunriseMinute..sunsetMinute
-		} else {
-			nowMinute >= sunriseMinute || nowMinute <= sunsetMinute
-		}
-		if (isDaytime) {
-			focusStartProgress = sunrise
-			focusTargetProgress = 1f + now
-		} else {
-			focusStartProgress = sunrise
-			focusTargetProgress = if (now >= sunrise) now else now + 1f
-		}
+		val window = resolveFocusCatchUpWindow(
+			nowProgress = currentDayProgress(),
+			sunriseMinute = config.daylight.sunriseMinute,
+			sunsetMinute = config.daylight.sunsetMinute
+		)
+		focusStartProgress = window.startProgress
+		focusTargetProgress = window.targetProgress
 		focusAnimationCompleted = false
 		focusFinalState = null
 	}
@@ -355,7 +376,6 @@ class PreviewGlRenderer(
 	}
 
 	companion object {
-		private const val MINUTES_PER_DAY = 24 * 60
 		private const val NANOS_PER_DAY = 24L * 60L * 60L * 1_000_000_000L
 		private const val MIN_LOOP_DURATION_MS = 1_000L
 		private const val MIN_FOCUS_DURATION_MS = 300L
@@ -391,3 +411,5 @@ class PreviewGlRenderer(
 		private const val QUALITY_STEP_UP_BATTERY = 0.010f
 	}
 }
+
+private const val MINUTES_PER_DAY = 24 * 60

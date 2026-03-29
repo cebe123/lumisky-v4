@@ -26,6 +26,9 @@ val lintIncludeTestSources = providers.gradleProperty("lumisky.lint.includeTestS
 val appId = "com.example.lumisky"
 val appProjectDir = project.projectDir
 val rootProjectDir = rootProject.projectDir
+val phoneRunPreferencesFile = rootProject.layout.projectDirectory
+	.file(".codex-local/phone-runner.properties")
+	.asFile
 
 android {
 	namespace = "com.example.lumisky"
@@ -361,7 +364,12 @@ tasks.register("deployDebugToConnectedDevice") {
 
 	doLast {
 		val adb = resolveAdbExecutable(rootProjectDir)
-		val selectedSerial = selectPreferredDeviceSerial(appProjectDir, adb)
+		val preferences = loadPhoneRunPreferences(phoneRunPreferencesFile)
+		val selectedSerial = selectPreferredDeviceSerial(
+			workingDir = appProjectDir,
+			adb = adb,
+			preferredSerial = preferences.preferredSerial
+		)
 			?: throw GradleException(
 				"No connected Android device found. Connect a phone with USB debugging enabled or start an emulator."
 			)
@@ -392,7 +400,51 @@ tasks.register("deployDebugToConnectedDevice") {
 			)
 		)
 
+		savePhoneRunPreferences(
+			file = phoneRunPreferencesFile,
+			preferences = preferences.copy(preferredSerial = selectedSerial)
+		)
 		logger.lifecycle("deployDebugToConnectedDevice: deployed to $selectedSerial")
+	}
+}
+
+tasks.register("enablePhoneAutoRun") {
+	group = "deployment"
+	description = "Turns on persisted phone auto-run preference for local Codex sessions."
+
+	doLast {
+		val preferences = loadPhoneRunPreferences(phoneRunPreferencesFile)
+		savePhoneRunPreferences(
+			file = phoneRunPreferencesFile,
+			preferences = preferences.copy(autoRunOnPhone = true)
+		)
+		logger.lifecycle("enablePhoneAutoRun: autoRunOnPhone=true preferredSerial=${preferences.preferredSerial.orEmpty()}")
+	}
+}
+
+tasks.register("disablePhoneAutoRun") {
+	group = "deployment"
+	description = "Turns off persisted phone auto-run preference for local Codex sessions."
+
+	doLast {
+		val preferences = loadPhoneRunPreferences(phoneRunPreferencesFile)
+		savePhoneRunPreferences(
+			file = phoneRunPreferencesFile,
+			preferences = preferences.copy(autoRunOnPhone = false)
+		)
+		logger.lifecycle("disablePhoneAutoRun: autoRunOnPhone=false preferredSerial=${preferences.preferredSerial.orEmpty()}")
+	}
+}
+
+tasks.register("showPhoneRunPreferences") {
+	group = "deployment"
+	description = "Prints the persisted preferred device serial and phone auto-run flag."
+
+	doLast {
+		val preferences = loadPhoneRunPreferences(phoneRunPreferencesFile)
+		logger.lifecycle(
+			"showPhoneRunPreferences: autoRunOnPhone=${preferences.autoRunOnPhone} preferredSerial=${preferences.preferredSerial.orEmpty()}"
+		)
 	}
 }
 
@@ -427,7 +479,8 @@ private fun resolveAdbExecutable(rootDir: File): File {
 
 private fun selectPreferredDeviceSerial(
 	workingDir: File,
-	adb: File
+	adb: File,
+	preferredSerial: String? = null
 ): String? {
 	val connectedSerials = runCommand(
 		workingDir = workingDir,
@@ -447,8 +500,37 @@ private fun selectPreferredDeviceSerial(
 		.toList()
 	if (connectedSerials.isEmpty()) return null
 
-	return connectedSerials.firstOrNull { serial -> !serial.startsWith("emulator-") }
+	return connectedSerials.firstOrNull { serial -> serial == preferredSerial }
+		?: connectedSerials.firstOrNull { serial -> !serial.startsWith("emulator-") }
 		?: connectedSerials.first()
+}
+
+private fun loadPhoneRunPreferences(file: File): PhoneRunPreferences {
+	if (!file.isFile) return PhoneRunPreferences()
+	val properties = Properties()
+	file.inputStream().use(properties::load)
+	return PhoneRunPreferences(
+		preferredSerial = properties.getProperty("preferredSerial")
+			?.trim()
+			?.takeIf { it.isNotEmpty() },
+		autoRunOnPhone = properties.getProperty("autoRunOnPhone")
+			?.trim()
+			?.equals("true", ignoreCase = true)
+			?: false
+	)
+}
+
+private fun savePhoneRunPreferences(
+	file: File,
+	preferences: PhoneRunPreferences
+) {
+	file.parentFile?.mkdirs()
+	val properties = Properties()
+	preferences.preferredSerial?.let { properties.setProperty("preferredSerial", it) }
+	properties.setProperty("autoRunOnPhone", preferences.autoRunOnPhone.toString())
+	file.outputStream().use { output ->
+		properties.store(output, "Local phone deployment preferences for Codex")
+	}
 }
 
 private fun runCommand(
@@ -468,3 +550,8 @@ private fun runCommand(
 	}
 	return output
 }
+
+private data class PhoneRunPreferences(
+	val preferredSerial: String? = null,
+	val autoRunOnPhone: Boolean = false
+)
