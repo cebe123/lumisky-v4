@@ -78,10 +78,16 @@ class MainActivity : AppCompatActivity() {
 	) { result ->
 		handleLiveWallpaperPreviewResult(result.resultCode)
 	}
+	private val systemLocationPanelLauncher = registerForActivityResult(
+		ActivityResultContracts.StartActivityForResult()
+	) {
+		handleSystemLocationPanelClosed()
+	}
 
 	@Volatile
 	private var applyingWallpaper: Boolean = false
 	private var locationReceiverRegistered: Boolean = false
+	private var awaitingSystemLocationEnableResult: Boolean = false
 	private var launchThemeMode: AppThemeMode = AppThemeMode.SYSTEM
 	private val locationModeReceiver = object : BroadcastReceiver() {
 		override fun onReceive(context: Context?, intent: Intent?) {
@@ -487,9 +493,21 @@ class MainActivity : AppCompatActivity() {
 	private fun openSystemLocationPanel() {
 		val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
 		runCatching {
-			startActivity(intent)
+			awaitingSystemLocationEnableResult = true
+			systemLocationPanelLauncher.launch(intent)
 		}.onFailure {
+			awaitingSystemLocationEnableResult = false
 			Logger.w(TAG, "failed to open system location panel", it)
+		}
+	}
+
+	private fun handleSystemLocationPanelClosed() {
+		if (!awaitingSystemLocationEnableResult) return
+		awaitingSystemLocationEnableResult = false
+		val homeViewModel = homeViewModelOrNull() ?: return
+		homeViewModel.onSystemLocationProviderChanged()
+		if (!homeViewModel.systemLocationEnabled && homeViewModel.locationMode == LocationMode.GPS) {
+			homeViewModel.updateLocationMode(LocationMode.MANUAL)
 		}
 	}
 

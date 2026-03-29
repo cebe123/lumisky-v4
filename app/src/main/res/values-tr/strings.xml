@@ -1,8 +1,5 @@
 <resources>
     <string name="app_name">Lumisky</string>
-
-    <string name="wallpaper_description">Güneşin konumuna göre değişen dinamik canlı duvar kağıdı.</string>
-
     <!-- Settings Screen -->
     <string name="nav_home">Ana Sayfa</string>
     <string name="nav_settings">Ayarlar</string>

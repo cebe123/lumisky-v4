@@ -1,11 +1,23 @@
 package com.example.engine.sky
 
-data class Vec2(val x: Float, val y: Float)
+class Vec2(
+	var x: Float = 0f,
+	var y: Float = 0f
+) {
+	fun set(
+		x: Float,
+		y: Float
+	): Vec2 {
+		this.x = x
+		this.y = y
+		return this
+	}
+}
 
-data class SkyScene(
-	val sun: Vec2 = Vec2(0f, 0f),
-	val moon: Vec2 = Vec2(0f, 0f),
-	val skyColor: Int = 0xFF000000.toInt()
+class SkyScene(
+	val sun: Vec2 = Vec2(),
+	val moon: Vec2 = Vec2(),
+	var skyColor: Int = 0xFF000000.toInt()
 )
 
 class SkyGradient {

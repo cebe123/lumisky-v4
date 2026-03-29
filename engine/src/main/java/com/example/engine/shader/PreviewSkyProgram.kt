@@ -82,6 +82,7 @@ class PreviewSkyProgram {
 	private var sunTextureHandle: Int = 0
 	private var moonTextureHandle: Int = 0
 	private var flareTextureHandle: Int = 0
+	private val scratchSunColor = FloatArray(3)
 
 	fun configure(
 		value: WallpaperConfig,
@@ -504,11 +505,11 @@ class PreviewSkyProgram {
 
 	private fun resolveCityTuning(configId: String): CityTuning {
 		return when {
-			configId.contains("city_istanbul") -> CityTuning(zoom = 0.60f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
-			configId.contains("city_newyork") -> CityTuning(zoom = 0.70f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
-			configId.contains("city_tokyo") -> CityTuning(zoom = 0.75f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
-			configId.contains("city_paris") -> CityTuning(zoom = 0.70f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
-			else -> CityTuning(zoom = 0.85f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
+			configId.contains("city_istanbul") -> CITY_TUNING_ISTANBUL
+			configId.contains("city_newyork") -> CITY_TUNING_NEW_YORK
+			configId.contains("city_tokyo") -> CITY_TUNING_TOKYO
+			configId.contains("city_paris") -> CITY_TUNING_PARIS
+			else -> CITY_TUNING_DEFAULT
 		}
 	}
 
@@ -517,11 +518,15 @@ class PreviewSkyProgram {
 	}
 
 	private fun resolveLegacySunColor(state: RenderFrameState): FloatArray {
+		val color = scratchSunColor
 		val minute = (state.dayProgress * MINUTES_PER_DAY).coerceIn(0f, MINUTES_PER_DAY.toFloat())
 		val sunrise = state.sunriseMinute.toFloat()
 		val sunset = state.sunsetMinute.toFloat()
 		if (sunset <= sunrise || minute < sunrise || minute > sunset) {
-			return floatArrayOf(1.0f, 0.9f, 0.8f)
+			color[0] = 1.0f
+			color[1] = 0.9f
+			color[2] = 0.8f
+			return color
 		}
 		val dayProgress = ((minute - sunrise) / (sunset - sunrise)).coerceIn(0f, 1f)
 		var colorProgress = if (dayProgress < 0.5f) {
@@ -534,7 +539,10 @@ class PreviewSkyProgram {
 		}
 		val green = 0.9f - (0.4f * colorProgress)
 		val blue = 0.8f - (0.6f * colorProgress)
-		return floatArrayOf(1.0f, green, blue)
+		color[0] = 1.0f
+		color[1] = green
+		color[2] = blue
+		return color
 	}
 
 	private fun resolveLegacyTimeOfDay(state: RenderFrameState): Float {
@@ -753,6 +761,11 @@ class PreviewSkyProgram {
 		private const val ALPHA_TRIM_MIN_VISIBLE_ALPHA = 8
 		private const val ALPHA_TRIM_MIN_TOP_PIXELS = 24
 		private const val ALPHA_TRIM_MAX_RATIO = 0.45f
+		private val CITY_TUNING_ISTANBUL = CityTuning(zoom = 0.60f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
+		private val CITY_TUNING_NEW_YORK = CityTuning(zoom = 0.70f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
+		private val CITY_TUNING_TOKYO = CityTuning(zoom = 0.75f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
+		private val CITY_TUNING_PARIS = CityTuning(zoom = 0.70f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
+		private val CITY_TUNING_DEFAULT = CityTuning(zoom = 0.85f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
 
 		private val FULLSCREEN_VERTICES = floatArrayOf(
 			-1f, -1f,

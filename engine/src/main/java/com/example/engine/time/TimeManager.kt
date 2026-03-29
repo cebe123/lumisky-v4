@@ -58,7 +58,8 @@ class TimeManager(
 		atMillis: Long = nowMillis(),
 		sunriseMinute: Int,
 		sunsetMinute: Int,
-		timeZoneId: String? = null
+		timeZoneId: String? = null,
+		outState: DayCycleState = DayCycleState()
 	): DayCycleState {
 		val progress = dayProgress(atMillis, timeZoneId)
 		val sunrise = normalizeMinute(sunriseMinute)
@@ -76,7 +77,7 @@ class TimeManager(
 			progress > sunset && progress < sunrise
 		}
 
-		return DayCycleState(
+		return outState.set(
 			progressDay = progress,
 			isNight = isNight,
 			dayLengthMinutes = dayLength,
@@ -189,12 +190,29 @@ class TimeManager(
 	}
 }
 
-data class DayCycleState(
-	val progressDay: Float,
-	val isNight: Boolean,
-	val dayLengthMinutes: Int,
-	val nightLengthMinutes: Int,
-	val sunriseProgress: Float,
-	val sunsetProgress: Float
-)
+class DayCycleState(
+	var progressDay: Float = 0f,
+	var isNight: Boolean = false,
+	var dayLengthMinutes: Int = 0,
+	var nightLengthMinutes: Int = 0,
+	var sunriseProgress: Float = 0f,
+	var sunsetProgress: Float = 0f
+) {
+	fun set(
+		progressDay: Float,
+		isNight: Boolean,
+		dayLengthMinutes: Int,
+		nightLengthMinutes: Int,
+		sunriseProgress: Float,
+		sunsetProgress: Float
+	): DayCycleState {
+		this.progressDay = progressDay
+		this.isNight = isNight
+		this.dayLengthMinutes = dayLengthMinutes
+		this.nightLengthMinutes = nightLengthMinutes
+		this.sunriseProgress = sunriseProgress
+		this.sunsetProgress = sunsetProgress
+		return this
+	}
+}
 

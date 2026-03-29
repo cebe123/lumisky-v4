@@ -26,7 +26,10 @@ open class SkyWallpaperService : WallpaperService() {
 		private val renderController = WallpaperRenderController(
 			renderEngine = WallpaperRenderEngine(this@SkyWallpaperService.applicationContext),
 			scheduler = MinuteTickScheduler(),
-			hasher = SceneStateHasher()
+			hasher = SceneStateHasher(),
+			displayRefreshRateProvider = {
+				resolveWallpaperDisplayRefreshRateHz(this@SkyWallpaperService.applicationContext)
+			}
 		)
 		private var configRefreshReceiverRegistered: Boolean = false
 		private var lastAppliedConfigSignature: String? = null

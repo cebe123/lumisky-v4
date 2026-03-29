@@ -8,7 +8,11 @@ import kotlin.math.sin
 
 class CelestialCalculator {
 
-	fun computeSunPosition(progress: Float, config: WallpaperConfig): Vec2 {
+	fun computeSunPosition(
+		progress: Float,
+		config: WallpaperConfig,
+		out: Vec2 = Vec2()
+	): Vec2 {
 		val minute = minuteOfDay(progress)
 		val sunrise = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
 		val sunset = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
@@ -18,7 +22,7 @@ class CelestialCalculator {
 
 		if (sunset <= sunrise) {
 			val fallbackProgress = progress.coerceIn(0f, 1f)
-			return Vec2(
+			return out.set(
 				x = resolveX(config.celestial.sunPathType, fallbackProgress),
 				y = arcY(horizonY, peakY, fallbackProgress)
 			)
@@ -35,19 +39,23 @@ class CelestialCalculator {
 				),
 				endMinute = sunset
 			)
-			Vec2(
+			out.set(
 				x = resolveX(config.celestial.sunPathType, dayProgress),
 				y = arcY(horizonY, peakY, dayProgress)
 			)
 		} else {
-			Vec2(
+			out.set(
 				x = resolveX(config.celestial.sunPathType, 0.5f),
 				y = hiddenY
 			)
 		}
 	}
 
-	fun computeMoonPosition(progress: Float, config: WallpaperConfig): Vec2 {
+	fun computeMoonPosition(
+		progress: Float,
+		config: WallpaperConfig,
+		out: Vec2 = Vec2()
+	): Vec2 {
 		val minute = minuteOfDay(progress)
 		val sunrise = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
 		val sunset = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
@@ -57,14 +65,14 @@ class CelestialCalculator {
 
 		if (sunset <= sunrise) {
 			val fallbackProgress = progress.coerceIn(0f, 1f)
-			return Vec2(
+			return out.set(
 				x = resolveX(config.celestial.moonPathType, fallbackProgress),
 				y = arcY(horizonY, peakY, fallbackProgress)
 			)
 		}
 
 		return if (minute in sunrise..sunset) {
-			Vec2(
+			out.set(
 				x = resolveX(config.celestial.moonPathType, 0.5f),
 				y = hiddenY
 			)
@@ -80,7 +88,7 @@ class CelestialCalculator {
 				peakMinute = (sunZenithMinute + HALF_DAY_MINUTES) % MINUTES_PER_DAY,
 				endMinute = sunrise
 			)
-			Vec2(
+			out.set(
 				x = resolveX(config.celestial.moonPathType, nightProgress),
 				y = arcY(horizonY, peakY, nightProgress)
 			)
@@ -169,14 +177,22 @@ class CelestialCalculator {
 }
 
 class SunController(private val calculator: CelestialCalculator) {
-	fun resolve(progress: Float, config: WallpaperConfig): Vec2 {
-		return calculator.computeSunPosition(progress, config)
+	fun resolve(
+		progress: Float,
+		config: WallpaperConfig,
+		out: Vec2 = Vec2()
+	): Vec2 {
+		return calculator.computeSunPosition(progress, config, out)
 	}
 }
 
 class MoonController(private val calculator: CelestialCalculator) {
-	fun resolve(progress: Float, config: WallpaperConfig): Vec2 {
-		return calculator.computeMoonPosition(progress, config)
+	fun resolve(
+		progress: Float,
+		config: WallpaperConfig,
+		out: Vec2 = Vec2()
+	): Vec2 {
+		return calculator.computeMoonPosition(progress, config, out)
 	}
 }
 

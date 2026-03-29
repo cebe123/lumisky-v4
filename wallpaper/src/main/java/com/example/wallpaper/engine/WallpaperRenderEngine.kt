@@ -12,7 +12,7 @@ import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderMode
 import com.example.engine.renderer.RenderFrameState
 import com.example.wallpaper.render.WallpaperEglSession
-import com.example.wallpaper.render.SceneStateInput
+import com.example.wallpaper.render.SceneStateHasher
 import com.example.wallpaper.render.WallpaperShaderAssetLoader
 import kotlin.math.max
 
@@ -31,7 +31,7 @@ class WallpaperRenderEngine(
 	private var sceneFingerprintCache: String = buildSceneFingerprint(config)
 	private var renderMode: RenderMode = RenderMode.WALLPAPER_SERVICE
 	private var fragmentShaderOverride: String? = null
-	private var previewLoopStartMillis: Long = 0L
+	private var previewLoopStartNanos: Long = 0L
 	private var previewLoopConfigId: String = config.id
 	private val textureBytesCache = object : LruCache<String, ByteArray>(MAX_TEXTURE_CACHE_BYTES) {
 		override fun sizeOf(key: String, value: ByteArray): Int = value.size
@@ -58,7 +58,7 @@ class WallpaperRenderEngine(
 		config = value
 		sceneFingerprintCache = buildSceneFingerprint(value)
 		skyEngine.setConfig(value)
-		previewLoopStartMillis = 0L
+		previewLoopStartNanos = 0L
 		previewLoopConfigId = value.id
 		fragmentShaderOverride = WallpaperShaderAssetLoader.loadFragment(
 			context = appContext,
@@ -105,7 +105,8 @@ class WallpaperRenderEngine(
 
 	fun renderFrame(
 		force: Boolean = false,
-		previewLoop: Boolean = false
+		previewLoop: Boolean = false,
+		frameTimeNanos: Long? = null
 	): RenderFrameState? {
 		if (holder == null) {
 			stats.onSkip("holder_null")
@@ -113,14 +114,17 @@ class WallpaperRenderEngine(
 		}
 		val frameStartNs = System.nanoTime()
 		val state = if (previewLoop) {
-			val now = System.currentTimeMillis()
-			if (previewLoopStartMillis == 0L || previewLoopConfigId != config.id) {
-				previewLoopStartMillis = now
+			val now = frameTimeNanos ?: System.nanoTime()
+			if (previewLoopStartNanos == 0L || previewLoopConfigId != config.id) {
+				previewLoopStartNanos = now
 				previewLoopConfigId = config.id
 			}
-			val loopDurationMs = max((config.previewLoopDurationSeconds * 1000f).toLong(), MIN_PREVIEW_LOOP_MS)
-			val elapsedMs = (now - previewLoopStartMillis).coerceAtLeast(0L)
-			val loopProgress = (elapsedMs % loopDurationMs).toFloat() / loopDurationMs.toFloat()
+			val loopDurationNs = max(
+				(config.previewLoopDurationSeconds * NANOS_PER_SECOND.toFloat()).toLong(),
+				MIN_PREVIEW_LOOP_NS
+			)
+			val elapsedNs = (now - previewLoopStartNanos).coerceAtLeast(0L)
+			val loopProgress = (elapsedNs % loopDurationNs).toFloat() / loopDurationNs.toFloat()
 			skyEngine.sampleAtDayProgress(
 				dayProgress = loopProgress,
 				mode = renderMode,
@@ -143,16 +147,17 @@ class WallpaperRenderEngine(
 		return state
 	}
 
-	fun snapshotSceneStateInput(
+	fun computeSceneHash(
 		visible: Boolean,
 		surfaceAttached: Boolean,
+		hasher: SceneStateHasher,
 		snapshot: RenderFrameState? = null
-	): SceneStateInput {
+	): Int {
 		val resolvedSnapshot = snapshot ?: skyEngine.peekState(mode = renderMode)
-		return SceneStateInput(
+		return hasher.compute(
 			visible = visible,
 			surfaceAttached = surfaceAttached,
-			configFingerprint = sceneFingerprint(),
+			configFingerprint = sceneFingerprintCache,
 			renderMode = renderMode.name,
 			sunX = quantize(resolvedSnapshot?.sun?.x),
 			sunY = quantize(resolvedSnapshot?.sun?.y),
@@ -236,6 +241,18 @@ class WallpaperRenderEngine(
 		return config.runtimeRenderPolicy.continuousFrameIntervalMs.coerceAtLeast(1L)
 	}
 
+	fun previewFrameIntervalNanos(displayRefreshRateHz: Int): Long {
+		return displayVsyncPeriodNanos(displayRefreshRateHz)
+	}
+
+	fun continuousFrameIntervalNanos(displayRefreshRateHz: Int): Long {
+		val requestedNanos = continuousFrameIntervalMs() * NANOS_PER_MILLISECOND
+		return quantizeToDisplayVsync(
+			requestedNanos = requestedNanos,
+			displayRefreshRateHz = displayRefreshRateHz
+		)
+	}
+
 	fun release() {
 		eglSession.release()
 		skyEngine.release()
@@ -248,8 +265,13 @@ class WallpaperRenderEngine(
 		private const val TAG = "WallpaperRenderEngine"
 		private const val QUANTIZE_SCALE = 1000f
 		private const val ACTIVE_FLARE_THRESHOLD = 0.02f
-		private const val MIN_PREVIEW_LOOP_MS = 1000L
+		private const val MIN_PREVIEW_LOOP_NS = 1_000_000_000L
 		private const val MAX_TEXTURE_CACHE_BYTES = 12 * 1024 * 1024
+		private const val NANOS_PER_MILLISECOND = 1_000_000L
+		private const val NANOS_PER_SECOND = 1_000_000_000L
+		private const val SIXTY_HZ_INTERVAL_NS = 16_666_667L
+		private const val MIN_REFRESH_RATE_HZ = 60
+		private const val MAX_REFRESH_RATE_HZ = 120
 	}
 
 	private fun quantize(value: Float?): Int {
@@ -272,5 +294,23 @@ class WallpaperRenderEngine(
 	private fun isFlareActive(state: RenderFrameState?): Boolean {
 		if (state == null) return false
 		return state.lensFlareEnabled && state.flareIntensity > ACTIVE_FLARE_THRESHOLD
+	}
+
+	private fun quantizeToDisplayVsync(
+		requestedNanos: Long,
+		displayRefreshRateHz: Int
+	): Long {
+		val displayVsyncNanos = displayVsyncPeriodNanos(displayRefreshRateHz)
+		if (requestedNanos <= SIXTY_HZ_INTERVAL_NS) {
+			return displayVsyncNanos
+		}
+		val multiples = ((requestedNanos + displayVsyncNanos - 1L) / displayVsyncNanos)
+			.coerceAtLeast(1L)
+		return multiples * displayVsyncNanos
+	}
+
+	private fun displayVsyncPeriodNanos(displayRefreshRateHz: Int): Long {
+		val refreshRate = displayRefreshRateHz.coerceIn(MIN_REFRESH_RATE_HZ, MAX_REFRESH_RATE_HZ)
+		return (NANOS_PER_SECOND / refreshRate.toLong()).coerceAtLeast(1L)
 	}
 }

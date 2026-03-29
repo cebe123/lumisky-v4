@@ -1,6 +1,0 @@
-Starting: Intent { cmp=com.example.lumisky/.MainActivity }
-Status: ok
-LaunchState: UNKNOWN (0)
-Activity: com.example.lumisky/.MainActivity
-WaitTime: 1043
-Complete

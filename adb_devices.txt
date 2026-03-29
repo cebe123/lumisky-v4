@@ -1,3 +1,0 @@
-List of devices attached
-6563c026               device product:courbet_tr model:M2101K9AG device:courbet transport_id:5
-

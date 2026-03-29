@@ -5,8 +5,11 @@ import com.example.engine.celestial.CelestialCalculator
 import com.example.engine.celestial.MoonController
 import com.example.engine.celestial.SunController
 import com.example.engine.config.WallpaperConfig
+import com.example.engine.sky.Vec2
 import com.example.engine.sky.SkyColorBlender
 import com.example.engine.time.TimeManager
+import com.example.engine.time.DayCycleState
+import com.example.engine.atmosphere.AtmosphereState
 
 class SkyRenderer(
 	private val timeManager: TimeManager,
@@ -17,8 +20,14 @@ class SkyRenderer(
 	private val sunController = SunController(celestialCalculator)
 	private val moonController = MoonController(celestialCalculator)
 	private val colorBlender = SkyColorBlender()
+	private val scratchDayCycle = DayCycleState()
+	private val scratchSun = Vec2()
+	private val scratchMoon = Vec2()
+	private val scratchAtmosphere = AtmosphereState()
+	private val frameStateBuffers = Array(FRAME_BUFFER_COUNT) { RenderFrameState() }
 
 	private var config: WallpaperConfig = WallpaperConfig.default()
+	private var frameStateBufferIndex: Int = 0
 
 	var latestState: RenderFrameState? = null
 		private set
@@ -32,57 +41,57 @@ class SkyRenderer(
 			atMillis = frameTimeMillis,
 			sunriseMinute = config.daylight.sunriseMinute,
 			sunsetMinute = config.daylight.sunsetMinute,
-			timeZoneId = config.daylight.timeZoneId
+			timeZoneId = config.daylight.timeZoneId,
+			outState = scratchDayCycle
 		)
 		val progress = dayCycle.progressDay
-		val sun = sunController.resolve(progress, config)
-		val moon = moonController.resolve(progress, config)
+		val sun = sunController.resolve(progress, config, scratchSun)
+		val moon = moonController.resolve(progress, config, scratchMoon)
 		val atmosphere = atmosphereController.resolveState(
 			progress = progress,
 			sunY = sun.y,
 			moonY = moon.y,
-			config = config
+			config = config,
+			outState = scratchAtmosphere
 		)
 		val finalColor = colorBlender.blend(atmosphere.skyColor, 0)
 		val sunAltitude = normalizedAltitude(y = sun.y)
 		val moonAltitude = normalizedAltitude(y = moon.y)
 		val nightBlend = atmosphere.nightBlendFactor.coerceIn(0f, 1f)
 		val flareIntensity = computeFlareIntensity(sunAltitude = sunAltitude)
-
-		val state = RenderFrameState(
-			frameTimeMillis = frameTimeMillis,
+		val state = nextFrameStateBuffer()
+		state.frameTimeMillis = frameTimeMillis
+		state.mode = mode
+		state.dayProgress = progress
+		state.isNight = dayCycle.isNight
+		state.dayLengthMinutes = dayCycle.dayLengthMinutes
+		state.nightLengthMinutes = dayCycle.nightLengthMinutes
+		state.sun.set(sun.x, sun.y)
+		state.moon.set(moon.x, moon.y)
+		state.skyColor = finalColor
+		state.skyTopColor = atmosphere.skyTopColor
+		state.skyHorizonColor = atmosphere.skyHorizonColor
+		state.sunAltitude = sunAltitude
+		state.moonAltitude = moonAltitude
+		state.nightBlend = nightBlend
+		state.preSunriseGlow = atmosphere.preSunriseGlowFactor
+		state.atmosphereEnabled = config.features.atmosphereEnabled
+		state.lensFlareEnabled = config.features.lensFlareEnabled
+		state.starsEnabled = config.features.starsEnabled
+		state.flareIntensity = flareIntensity
+		state.sunriseMinute = config.daylight.sunriseMinute
+		state.sunsetMinute = config.daylight.sunsetMinute
+		state.stateHash = buildStateHash(
 			mode = mode,
-			dayProgress = progress,
-			isNight = dayCycle.isNight,
-			dayLengthMinutes = dayCycle.dayLengthMinutes,
-			nightLengthMinutes = dayCycle.nightLengthMinutes,
-			sun = sun,
-			moon = moon,
+			progress = progress,
+			sunX = sun.x,
+			sunY = sun.y,
+			moonX = moon.x,
+			moonY = moon.y,
 			skyColor = finalColor,
-			skyTopColor = atmosphere.skyTopColor,
-			skyHorizonColor = atmosphere.skyHorizonColor,
-			sunAltitude = sunAltitude,
-			moonAltitude = moonAltitude,
 			nightBlend = nightBlend,
-			preSunriseGlow = atmosphere.preSunriseGlowFactor,
-			atmosphereEnabled = config.features.atmosphereEnabled,
-			lensFlareEnabled = config.features.lensFlareEnabled,
-			starsEnabled = config.features.starsEnabled,
 			flareIntensity = flareIntensity,
-			sunriseMinute = config.daylight.sunriseMinute,
-			sunsetMinute = config.daylight.sunsetMinute,
-			stateHash = buildStateHash(
-				mode = mode,
-				progress = progress,
-				sunX = sun.x,
-				sunY = sun.y,
-				moonX = moon.x,
-				moonY = moon.y,
-				skyColor = finalColor,
-				nightBlend = nightBlend,
-				flareIntensity = flareIntensity,
-				preSunriseGlow = atmosphere.preSunriseGlowFactor
-			)
+			preSunriseGlow = atmosphere.preSunriseGlowFactor
 		)
 		latestState = state
 		return state
@@ -139,7 +148,14 @@ class SkyRenderer(
 		return (value * 1000f).toInt()
 	}
 
+	private fun nextFrameStateBuffer(): RenderFrameState {
+		val index = frameStateBufferIndex
+		frameStateBufferIndex = (frameStateBufferIndex + 1) % FRAME_BUFFER_COUNT
+		return frameStateBuffers[index]
+	}
+
 	companion object {
+		private const val FRAME_BUFFER_COUNT = 3
 		private const val MIN_PEAK_DELTA = 0.05f
 		private const val FLARE_ALTITUDE_THRESHOLD = 0.18f
 		private const val FLARE_INTENSITY_SCALE = 0.9f

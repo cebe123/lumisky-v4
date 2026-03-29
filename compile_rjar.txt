@@ -1,6 +1,0 @@
-com/example/lumisky/R$color.class
-com/example/lumisky/R$mipmap.class
-com/example/lumisky/R$string.class
-com/example/lumisky/R$style.class
-com/example/lumisky/R$xml.class
-com/example/lumisky/R.class

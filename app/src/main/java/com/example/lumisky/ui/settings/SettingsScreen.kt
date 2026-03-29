@@ -124,6 +124,8 @@ fun SettingsScreen(
 			if (!systemLocationEnabled) {
 				onRequestEnableSystemLocation()
 			}
+		} else {
+			onLocationModeChanged(LocationMode.MANUAL)
 		}
 	}
 
@@ -328,18 +330,11 @@ private fun SettingsTopBar(
 
 @Composable
 private fun SettingsHeader() {
-	Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+	Column {
 		Text(
 			text = stringResource(R.string.settings_title),
 			style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
 			color = SettingsOnSurface
-		)
-		Text(
-			text = stringResource(R.string.wallpaper_description),
-			style = MaterialTheme.typography.bodyMedium,
-			color = SettingsOnSurfaceVariant,
-			maxLines = 2,
-			overflow = TextOverflow.Ellipsis
 		)
 	}
 }
@@ -351,30 +346,33 @@ private fun AppearanceSection(
 	languageTag: String,
 	onShowLanguageDialog: () -> Unit
 ) {
-	GlassCard {
-		Row(
-			modifier = Modifier.fillMaxWidth(),
-			verticalAlignment = Alignment.CenterVertically,
-			horizontalArrangement = Arrangement.spacedBy(14.dp)
-		) {
-			Text(
-				text = stringResource(R.string.theme_title),
-				style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-				color = SettingsOnSurface,
-				modifier = Modifier.weight(1f)
-			)
-			ThemeSelector(
-				selectedMode = appThemeMode,
-				onModeSelected = onThemeModeSelected
+	Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+		GlassCard(kicker = stringResource(R.string.section_appearance)) {
+			Row(
+				modifier = Modifier.fillMaxWidth(),
+				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.spacedBy(14.dp)
+			) {
+				Text(
+					text = stringResource(R.string.theme_title),
+					style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+					color = SettingsOnSurface,
+					modifier = Modifier.weight(1f)
+				)
+				ThemeSelector(
+					selectedMode = appThemeMode,
+					onModeSelected = onThemeModeSelected
+				)
+			}
+		}
+		GlassCard {
+			InfoActionRow(
+				title = stringResource(R.string.language_title),
+				value = languageLabel(languageTag),
+				leadingIcon = Icons.Filled.Language,
+				onClick = onShowLanguageDialog
 			)
 		}
-		SectionDivider()
-		InfoActionRow(
-			title = stringResource(R.string.language_title),
-			value = languageLabel(languageTag),
-			leadingIcon = Icons.Filled.Language,
-			onClick = onShowLanguageDialog
-		)
 	}
 }
 
@@ -687,45 +685,18 @@ private fun LocationToggleRow(
 ) {
 	Row(
 		modifier = Modifier.fillMaxWidth(),
-		verticalAlignment = Alignment.CenterVertically
+		verticalAlignment = Alignment.CenterVertically,
+		horizontalArrangement = Arrangement.spacedBy(16.dp)
 	) {
 		Column(
 			modifier = Modifier.weight(1f),
-			verticalArrangement = Arrangement.spacedBy(4.dp)
+			verticalArrangement = Arrangement.spacedBy(6.dp)
 		) {
-			Row(
-				verticalAlignment = Alignment.CenterVertically,
-				horizontalArrangement = Arrangement.spacedBy(8.dp)
-			) {
-				Text(
-					text = stringResource(R.string.location_enable),
-					style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-					color = SettingsOnSurface
-				)
-				IconButton(
-					onClick = onRefreshLocation,
-					enabled = locationMode == LocationMode.GPS && !locationRefreshInProgress,
-					modifier = Modifier
-						.size(28.dp)
-						.clip(CircleShape)
-						.background(SettingsSurfaceLow.copy(alpha = 0.78f))
-				) {
-					if (locationRefreshInProgress) {
-						CircularProgressIndicator(
-							modifier = Modifier.size(14.dp),
-							color = SettingsPrimary,
-							strokeWidth = 1.8.dp
-						)
-					} else {
-						Icon(
-							imageVector = Icons.Filled.Refresh,
-							contentDescription = stringResource(R.string.location_refresh),
-							tint = if (locationMode == LocationMode.GPS) SettingsOnSurfaceVariant else SettingsOnSurfaceVariant.copy(alpha = 0.35f),
-							modifier = Modifier.size(16.dp)
-						)
-					}
-				}
-			}
+			Text(
+				text = stringResource(R.string.location_enable),
+				style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+				color = SettingsOnSurface
+			)
 			Text(
 				text = locationSummary,
 				style = MaterialTheme.typography.bodySmall,
@@ -734,18 +705,82 @@ private fun LocationToggleRow(
 				overflow = TextOverflow.Ellipsis
 			)
 		}
-		Switch(
-			checked = locationMode == LocationMode.GPS,
-			onCheckedChange = onToggleGps,
-			colors = SwitchDefaults.colors(
-				checkedThumbColor = SettingsOnPrimaryFixed,
-				checkedTrackColor = SettingsPrimary,
-				uncheckedThumbColor = SettingsOnSurfaceVariant,
-				uncheckedTrackColor = SettingsSurfaceHighest,
-				uncheckedBorderColor = SettingsGhostBorder,
-				checkedBorderColor = Color.Transparent
+
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(12.dp)
+		) {
+			RefreshLocationButton(
+				enabled = locationMode == LocationMode.GPS && !locationRefreshInProgress,
+				inProgress = locationRefreshInProgress,
+				onClick = onRefreshLocation
+			)
+			Switch(
+				checked = locationMode == LocationMode.GPS,
+				onCheckedChange = onToggleGps,
+				colors = SwitchDefaults.colors(
+					checkedThumbColor = SettingsOnPrimaryFixed,
+					checkedTrackColor = SettingsPrimary,
+					uncheckedThumbColor = SettingsOnSurfaceVariant,
+					uncheckedTrackColor = SettingsSurfaceHighest,
+					uncheckedBorderColor = SettingsGhostBorder,
+					checkedBorderColor = Color.Transparent
+				)
+			)
+		}
+	}
+}
+
+@Composable
+private fun RefreshLocationButton(
+	enabled: Boolean,
+	inProgress: Boolean,
+	onClick: () -> Unit
+) {
+	val shape = RoundedCornerShape(16.dp)
+	val containerBrush = if (enabled) {
+		Brush.linearGradient(
+			listOf(
+				SettingsPrimary.copy(alpha = 0.18f),
+				SettingsSurfaceHigh.copy(alpha = 0.94f)
 			)
 		)
+	} else {
+		Brush.linearGradient(
+			listOf(
+				SettingsSurfaceLow.copy(alpha = 0.90f),
+				SettingsSurfaceHighest.copy(alpha = 0.86f)
+			)
+		)
+	}
+	val borderColor = if (enabled) {
+		SettingsPrimary.copy(alpha = 0.26f)
+	} else {
+		SettingsGhostBorder
+	}
+	Box(
+		modifier = Modifier
+			.size(44.dp)
+			.clip(shape)
+			.background(containerBrush)
+			.border(1.dp, borderColor, shape)
+			.clickable(enabled = enabled, onClick = onClick),
+		contentAlignment = Alignment.Center
+	) {
+		if (inProgress) {
+			CircularProgressIndicator(
+				modifier = Modifier.size(18.dp),
+				color = SettingsPrimary,
+				strokeWidth = 2.dp
+			)
+		} else {
+			Icon(
+				imageVector = Icons.Filled.Refresh,
+				contentDescription = stringResource(R.string.location_refresh),
+				tint = if (enabled) SettingsPrimary else SettingsOnSurfaceVariant.copy(alpha = 0.45f),
+				modifier = Modifier.size(18.dp)
+			)
+		}
 	}
 }
 

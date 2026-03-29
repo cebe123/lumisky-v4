@@ -14,40 +14,30 @@ import java.util.concurrent.TimeUnit
 class WallpaperRenderController(
 	private val renderEngine: WallpaperRenderEngine,
 	private val scheduler: MinuteTickScheduler,
-	private val hasher: SceneStateHasher
+	private val hasher: SceneStateHasher,
+	private val displayRefreshRateProvider: () -> Int = { DEFAULT_DISPLAY_REFRESH_RATE_HZ }
 ) {
 	@Volatile
 	private var lastStateHash: Int? = null
 	@Volatile
 	private var pendingStateHash: Int? = null
 
+	@Volatile
 	private var visible: Boolean = false
+	@Volatile
 	private var surfaceAttached: Boolean = false
+	@Volatile
 	private var previewMode: Boolean = false
+	@Volatile
+	private var displayRefreshRateHz: Int = DEFAULT_DISPLAY_REFRESH_RATE_HZ
 	private var renderThread: HandlerThread? = null
 	private var renderHandler: Handler? = null
+	private var renderThreadVsyncLoop: RenderThreadVsyncLoop? = null
 	private var pendingConfig: WallpaperConfig? = null
 	private var currentConfig: WallpaperConfig? = null
 	private var pendingFullRedraw: Boolean = true
 	private var lastRenderElapsedMs: Long = 0L
-	private val previewFrameTicker = object : Runnable {
-		override fun run() {
-			if (!visible || !surfaceAttached || !previewMode) return
-			renderCurrentScene(force = true)
-			renderHandler?.postDelayed(this, PREVIEW_FRAME_INTERVAL_MS)
-		}
-	}
-	private val continuousFrameTicker = object : Runnable {
-		override fun run() {
-			if (!visible || !surfaceAttached || previewMode) return
-			if (!renderEngine.requiresContinuousRendering()) return
-			renderContinuousScene()
-			renderHandler?.postDelayed(
-				this,
-				renderEngine.continuousFrameIntervalMs().coerceAtLeast(1L)
-			)
-		}
-	}
+	private val framePacingClock = FramePacingClock()
 
 	fun onCreate() {
 		if (renderThread != null) return
@@ -55,6 +45,10 @@ class WallpaperRenderController(
 		renderThread = thread
 		renderHandler = Handler(thread.looper)
 		postRenderTask {
+			renderThreadVsyncLoop = RenderThreadVsyncLoop(
+				onFrame = ::onVsyncFrame,
+				shouldContinue = ::shouldDriveVsyncLoop
+			)
 			pendingConfig?.let { config ->
 				renderEngine.setConfig(config)
 				pendingConfig = null
@@ -65,6 +59,7 @@ class WallpaperRenderController(
 
 	fun onSurfaceCreated(holder: SurfaceHolder) {
 		surfaceAttached = true
+		displayRefreshRateHz = displayRefreshRateProvider()
 		pendingFullRedraw = true
 		updateSchedulerState()
 		postRenderTask {
@@ -78,6 +73,9 @@ class WallpaperRenderController(
 
 	fun onVisibilityChanged(value: Boolean) {
 		visible = value
+		if (value) {
+			displayRefreshRateHz = displayRefreshRateProvider()
+		}
 		updateSchedulerState()
 		if (value) {
 			if (surfaceAttached) {
@@ -137,6 +135,7 @@ class WallpaperRenderController(
 		scheduler.stop()
 		postRenderTaskBlocking {
 			stopRenderLoopsLocked()
+			renderThreadVsyncLoop = null
 			renderEngine.release()
 		}
 		renderHandler?.removeCallbacksAndMessages(null)
@@ -187,12 +186,14 @@ class WallpaperRenderController(
 
 	private fun renderCurrentScene(
 		force: Boolean,
-		expectedHash: Int? = null
+		expectedHash: Int? = null,
+		frameTimeNanos: Long? = null
 	) {
 		if (previewMode) {
 			val renderedState = renderEngine.renderFrame(
 				force = true,
-				previewLoop = true
+				previewLoop = true,
+				frameTimeNanos = frameTimeNanos
 			) ?: return
 			lastRenderElapsedMs = SystemClock.elapsedRealtime()
 			pendingFullRedraw = false
@@ -211,7 +212,7 @@ class WallpaperRenderController(
 			return
 		}
 
-		renderEngine.renderFrame(force = force) ?: return
+		renderEngine.renderFrame(force = force, frameTimeNanos = frameTimeNanos) ?: return
 		lastStateHash = targetHash
 		lastRenderElapsedMs = SystemClock.elapsedRealtime()
 		pendingFullRedraw = false
@@ -220,12 +221,20 @@ class WallpaperRenderController(
 		}
 	}
 
-	private fun renderContinuousScene() {
-		val renderedState = renderEngine.renderFrame(force = true) ?: return
-		lastRenderElapsedMs = SystemClock.elapsedRealtime()
-		pendingFullRedraw = false
-		lastStateHash = computeSceneHash(renderedState)
-		pendingStateHash = null
+	private fun onVsyncFrame(frameTimeNanos: Long) {
+		if (!shouldDriveVsyncLoop()) return
+		val targetIntervalNanos = when {
+			previewMode -> renderEngine.previewFrameIntervalNanos(displayRefreshRateHz)
+			renderEngine.requiresContinuousRendering() -> renderEngine.continuousFrameIntervalNanos(displayRefreshRateHz)
+			else -> return
+		}
+		if (!framePacingClock.shouldRender(frameTimeNanos, targetIntervalNanos)) {
+			return
+		}
+		renderCurrentScene(
+			force = true,
+			frameTimeNanos = frameTimeNanos
+		)
 	}
 
 	private fun shouldSkipRender(force: Boolean, hash: Int): Boolean {
@@ -243,12 +252,11 @@ class WallpaperRenderController(
 	}
 
 	private fun computeSceneHash(snapshot: RenderFrameState? = null): Int {
-		return hasher.compute(
-			renderEngine.snapshotSceneStateInput(
-				visible = visible,
-				surfaceAttached = surfaceAttached,
-				snapshot = snapshot
-			)
+		return renderEngine.computeSceneHash(
+			visible = visible,
+			surfaceAttached = surfaceAttached,
+			hasher = hasher,
+			snapshot = snapshot
 		)
 	}
 
@@ -273,46 +281,22 @@ class WallpaperRenderController(
 	}
 
 	private fun updateRenderLoopsLocked() {
-		if (!visible || !surfaceAttached) {
+		if (!shouldDriveVsyncLoop()) {
 			stopRenderLoopsLocked()
 			return
 		}
-		if (previewMode) {
-			stopContinuousLoopLocked()
-			startPreviewLoopLocked()
-			return
-		}
-		stopPreviewLoopLocked()
-		if (renderEngine.requiresContinuousRendering()) {
-			startContinuousLoopLocked()
-		} else {
-			stopContinuousLoopLocked()
-		}
+		framePacingClock.reset()
+		renderThreadVsyncLoop?.postIfNeeded()
 	}
 
-	private fun startPreviewLoopLocked() {
-		val handler = renderHandler ?: return
-		handler.removeCallbacks(previewFrameTicker)
-		handler.post(previewFrameTicker)
-	}
-
-	private fun stopPreviewLoopLocked() {
-		renderHandler?.removeCallbacks(previewFrameTicker)
-	}
-
-	private fun startContinuousLoopLocked() {
-		val handler = renderHandler ?: return
-		handler.removeCallbacks(continuousFrameTicker)
-		handler.post(continuousFrameTicker)
-	}
-
-	private fun stopContinuousLoopLocked() {
-		renderHandler?.removeCallbacks(continuousFrameTicker)
+	private fun shouldDriveVsyncLoop(): Boolean {
+		if (!visible || !surfaceAttached) return false
+		return previewMode || renderEngine.requiresContinuousRendering()
 	}
 
 	private fun stopRenderLoopsLocked() {
-		stopPreviewLoopLocked()
-		stopContinuousLoopLocked()
+		renderThreadVsyncLoop?.remove()
+		framePacingClock.reset()
 	}
 
 	private fun postRenderTaskBlocking(task: () -> Unit) {
@@ -333,6 +317,6 @@ class WallpaperRenderController(
 		private const val RELEASE_WAIT_TIMEOUT_MS = 1500L
 		private const val THREAD_JOIN_TIMEOUT_MS = 1500L
 		private const val FORCE_RENDER_DEBOUNCE_MS = 500L
-		private const val PREVIEW_FRAME_INTERVAL_MS = 16L
+		private const val DEFAULT_DISPLAY_REFRESH_RATE_HZ = 60
 	}
 }

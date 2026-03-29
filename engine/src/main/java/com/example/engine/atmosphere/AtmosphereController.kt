@@ -13,7 +13,8 @@ class AtmosphereController {
 		progress: Float,
 		sunY: Float,
 		moonY: Float,
-		config: WallpaperConfig
+		config: WallpaperConfig,
+		outState: AtmosphereState = AtmosphereState()
 	): AtmosphereState {
 		val palette = config.customSkyColors ?: DEFAULT_COLORS
 		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
@@ -27,7 +28,7 @@ class AtmosphereController {
 
 		val dayBlend = lerpColor(palette.nightColor, palette.dayColor, sunAltitude)
 		if (!config.features.atmosphereEnabled) {
-			return AtmosphereState(
+			return outState.set(
 				skyTopColor = dayBlend,
 				skyHorizonColor = dayBlend,
 				skyColor = dayBlend,
@@ -43,7 +44,7 @@ class AtmosphereController {
 		val skyColor = lerpColor(skyTopColor, skyHorizonColor, HORIZON_BIAS)
 		val nightBlend = (1f - maxOf(sunAltitude, moonAltitude * MOON_LIFT_SCALE)).coerceIn(0f, 1f)
 
-		return AtmosphereState(
+		return outState.set(
 			skyTopColor = skyTopColor,
 			skyHorizonColor = skyHorizonColor,
 			skyColor = skyColor,
@@ -102,13 +103,28 @@ class AtmosphereController {
 	}
 }
 
-data class AtmosphereState(
-	val skyTopColor: Int,
-	val skyHorizonColor: Int,
-	val skyColor: Int,
-	val nightBlendFactor: Float,
-	val preSunriseGlowFactor: Float
-)
+class AtmosphereState(
+	var skyTopColor: Int = 0,
+	var skyHorizonColor: Int = 0,
+	var skyColor: Int = 0,
+	var nightBlendFactor: Float = 0f,
+	var preSunriseGlowFactor: Float = 0f
+) {
+	fun set(
+		skyTopColor: Int,
+		skyHorizonColor: Int,
+		skyColor: Int,
+		nightBlendFactor: Float,
+		preSunriseGlowFactor: Float
+	): AtmosphereState {
+		this.skyTopColor = skyTopColor
+		this.skyHorizonColor = skyHorizonColor
+		this.skyColor = skyColor
+		this.nightBlendFactor = nightBlendFactor
+		this.preSunriseGlowFactor = preSunriseGlowFactor
+		return this
+	}
+}
 
 class HorizonLight {
 	fun intensity(progress: Float): Float {

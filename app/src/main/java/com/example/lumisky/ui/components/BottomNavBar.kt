@@ -56,19 +56,19 @@ fun BottomNavBar(
 	val isHomeBackdrop = selectedItem == HOME_INDEX
 	val frameShape = RoundedCornerShape(999.dp)
 	val frameBorderColor = if (isHomeBackdrop) {
-		Color.White.copy(alpha = 0.18f)
+		Color.White.copy(alpha = 0.22f)
 	} else {
-		MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)
+		MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
 	}
 	val frameBackground = if (isHomeBackdrop) {
 		listOf(
-			Color.White.copy(alpha = 0.09f),
-			Color(0xFF0C1A2C).copy(alpha = 0.28f)
+			Color.White.copy(alpha = 0.14f),
+			Color(0xFF0C1A2C).copy(alpha = 0.40f)
 		)
 	} else {
 		listOf(
-			Color.White.copy(alpha = 0.12f),
-			MaterialTheme.colorScheme.surface.copy(alpha = 0.20f)
+			Color.White.copy(alpha = 0.16f),
+			MaterialTheme.colorScheme.surface.copy(alpha = 0.30f)
 		)
 	}
 
@@ -136,10 +136,10 @@ private fun GlassNavItem(
 		targetContentColor
 	}
 	val targetBorderColor = when {
-		selected && isHomeBackdrop -> Color.White.copy(alpha = 0.16f)
-		selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-		isHomeBackdrop -> Color.White.copy(alpha = 0.08f)
-		else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+		selected && isHomeBackdrop -> Color.White.copy(alpha = 0.20f)
+		selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.19f)
+		isHomeBackdrop -> Color.White.copy(alpha = 0.11f)
+		else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)
 	}
 	val borderColor = if (animationsEnabled) {
 		animateColorAsState(
@@ -152,24 +152,24 @@ private fun GlassNavItem(
 	}
 	val glassGradient = if (isHomeBackdrop) {
 		listOf(
-			Color.White.copy(alpha = if (selected) 0.20f else 0.14f),
-			Color(0xFF102238).copy(alpha = if (selected) 0.46f else 0.34f)
+			Color.White.copy(alpha = if (selected) 0.24f else 0.18f),
+			Color(0xFF102238).copy(alpha = if (selected) 0.58f else 0.44f)
 		)
 	} else if (selected) {
 		listOf(
-			Color.White.copy(alpha = 0.26f),
-			MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
+			Color.White.copy(alpha = 0.30f),
+			MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.40f)
 		)
 	} else {
 		listOf(
-			Color.White.copy(alpha = 0.18f),
-			MaterialTheme.colorScheme.surface.copy(alpha = 0.24f)
+			Color.White.copy(alpha = 0.22f),
+			MaterialTheme.colorScheme.surface.copy(alpha = 0.32f)
 		)
 	}
 	val topGlow = if (isHomeBackdrop) {
-		Color.White.copy(alpha = if (selected) 0.11f else 0.06f)
+		Color.White.copy(alpha = if (selected) 0.14f else 0.08f)
 	} else {
-		MaterialTheme.colorScheme.primary.copy(alpha = if (selected) 0.08f else 0.04f)
+		MaterialTheme.colorScheme.primary.copy(alpha = if (selected) 0.10f else 0.05f)
 	}
 	val targetPillWidth = if (selected) 147.dp else 62.dp
 	val pillWidth = if (animationsEnabled) {

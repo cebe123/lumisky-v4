@@ -24,6 +24,8 @@ android {
 }
 
 dependencies {
+	testImplementation(libs.junit)
+
 	implementation(project(":core"))
 	implementation(project(":engine"))
 }
