@@ -1,9 +1,13 @@
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.Sync
+import java.awt.Graphics2D
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
 import java.io.File
 import java.util.Properties
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
+import kotlin.math.roundToInt
 
 buildscript {
 	repositories {
@@ -29,6 +33,254 @@ val rootProjectDir = rootProject.projectDir
 val phoneRunPreferencesFile = rootProject.layout.projectDirectory
 	.file(".codex-local/phone-runner.properties")
 	.asFile
+
+val teemoDerivedAssetPaths = listOf(
+	"teemo/teemo.webp",
+	"teemo/teemo_sun.webp",
+	"teemo/teemo_moon.webp"
+)
+
+fun String.withPreviewSuffix(): String {
+	val dotIndex = lastIndexOf('.')
+	if (dotIndex <= 0) return "${this}_preview"
+	return "${substring(0, dotIndex)}_preview${substring(dotIndex)}"
+}
+
+fun BufferedImage.ensureArgbCopy(): BufferedImage {
+	if (type == BufferedImage.TYPE_INT_ARGB) {
+		return BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB).also { copy ->
+			val graphics = copy.createGraphics()
+			try {
+				graphics.drawImage(this, 0, 0, null)
+			} finally {
+				graphics.dispose()
+			}
+		}
+	}
+	return BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB).also { copy ->
+		val graphics = copy.createGraphics()
+		try {
+			graphics.drawImage(this, 0, 0, null)
+		} finally {
+			graphics.dispose()
+		}
+	}
+}
+
+fun writeWebpImage(
+	image: BufferedImage,
+	target: File,
+	quality: Float
+) {
+	val writer = ImageIO.getImageWritersByMIMEType("image/webp").asSequence().firstOrNull()
+		?: ImageIO.getImageWritersBySuffix("webp").asSequence().firstOrNull()
+		?: throw GradleException(
+			"WebP writer not found. Ensure org.sejda.imageio:webp-imageio is available."
+		)
+	target.parentFile?.mkdirs()
+	try {
+		ImageIO.createImageOutputStream(target).use { output ->
+			writer.output = output
+			val params = writer.defaultWriteParam.apply {
+				if (canWriteCompressed()) {
+					compressionMode = javax.imageio.ImageWriteParam.MODE_EXPLICIT
+					compressionTypes?.firstOrNull()?.let { type ->
+						compressionType = type
+					}
+					compressionQuality = quality
+				}
+			}
+			writer.write(null, IIOImage(image, null, null), params)
+			output.flush()
+		}
+	} finally {
+		writer.dispose()
+	}
+}
+
+fun scaleBufferedImage(
+	image: BufferedImage,
+	scale: Float
+): BufferedImage {
+	val targetWidth = (image.width * scale).roundToInt().coerceAtLeast(1)
+	val targetHeight = (image.height * scale).roundToInt().coerceAtLeast(1)
+	return BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB).also { scaled ->
+		val graphics: Graphics2D = scaled.createGraphics()
+		try {
+			graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+			graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+			graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+			graphics.drawImage(image, 0, 0, targetWidth, targetHeight, null)
+		} finally {
+			graphics.dispose()
+		}
+	}
+}
+
+fun bleedTransparentEdgeColorsBuild(
+	image: BufferedImage,
+	minOpaqueAlpha: Int,
+	passes: Int
+): BufferedImage {
+	val width = image.width
+	val height = image.height
+	if (width <= 1 || height <= 1 || passes <= 0) return image
+
+	val sourcePixels = IntArray(width * height)
+	image.getRGB(0, 0, width, height, sourcePixels, 0, width)
+	if (sourcePixels.none { ((it ushr 24) and 0xFF) in 1 until minOpaqueAlpha }) {
+		return image
+	}
+
+	var current = sourcePixels
+	var working = IntArray(sourcePixels.size)
+	var changed = false
+
+	repeat(passes) {
+		System.arraycopy(current, 0, working, 0, current.size)
+		var passChanged = false
+		for (y in 0 until height) {
+			val rowOffset = y * width
+			for (x in 0 until width) {
+				val index = rowOffset + x
+				val pixel = current[index]
+				val alpha = (pixel ushr 24) and 0xFF
+				if (alpha >= minOpaqueAlpha) continue
+
+				var redTotal = 0
+				var greenTotal = 0
+				var blueTotal = 0
+				var neighborCount = 0
+
+				for (offsetY in -1..1) {
+					val neighborY = y + offsetY
+					if (neighborY !in 0 until height) continue
+					val neighborRow = neighborY * width
+					for (offsetX in -1..1) {
+						if (offsetX == 0 && offsetY == 0) continue
+						val neighborX = x + offsetX
+						if (neighborX !in 0 until width) continue
+						val neighbor = current[neighborRow + neighborX]
+						val neighborAlpha = (neighbor ushr 24) and 0xFF
+						if (neighborAlpha < minOpaqueAlpha) continue
+						redTotal += (neighbor ushr 16) and 0xFF
+						greenTotal += (neighbor ushr 8) and 0xFF
+						blueTotal += neighbor and 0xFF
+						neighborCount++
+					}
+				}
+
+				if (neighborCount == 0) continue
+				val red = redTotal / neighborCount
+				val green = greenTotal / neighborCount
+				val blue = blueTotal / neighborCount
+				working[index] = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
+				passChanged = true
+			}
+		}
+
+		if (!passChanged) return@repeat
+		changed = true
+		val swap = current
+		current = working
+		working = swap
+	}
+
+	if (!changed) return image
+	return BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB).also { result ->
+		result.setRGB(0, 0, width, height, current, 0, width)
+	}
+}
+
+fun featherTransparentTopBoundaryBuild(
+	image: BufferedImage,
+	minVisibleAlpha: Int,
+	colorCarryPixels: Int,
+	fadePixels: Int,
+	samplePixels: Int
+): BufferedImage {
+	val width = image.width
+	val height = image.height
+	if (width <= 1 || height <= 1 || fadePixels <= 0) return image
+
+	val sourcePixels = IntArray(width * height)
+	image.getRGB(0, 0, width, height, sourcePixels, 0, width)
+	val result = sourcePixels.copyOf()
+	var changed = false
+
+	for (x in 0 until width) {
+		var boundaryY = -1
+		for (y in 0 until height) {
+			val alpha = (sourcePixels[(y * width) + x] ushr 24) and 0xFF
+			if (alpha >= minVisibleAlpha) {
+				boundaryY = y
+				break
+			}
+		}
+		if (boundaryY <= 0) continue
+
+		var redTotal = 0
+		var greenTotal = 0
+		var blueTotal = 0
+		var weightTotal = 0
+		val sampleEnd = (boundaryY + samplePixels).coerceAtMost(height - 1)
+		for (sampleY in boundaryY..sampleEnd) {
+			val pixel = sourcePixels[(sampleY * width) + x]
+			val alpha = (pixel ushr 24) and 0xFF
+			if (alpha < minVisibleAlpha) continue
+			redTotal += ((pixel ushr 16) and 0xFF) * alpha
+			greenTotal += ((pixel ushr 8) and 0xFF) * alpha
+			blueTotal += (pixel and 0xFF) * alpha
+			weightTotal += alpha
+		}
+		if (weightTotal == 0) continue
+
+		val boundaryRed = (redTotal / weightTotal).coerceIn(0, 255)
+		val boundaryGreen = (greenTotal / weightTotal).coerceIn(0, 255)
+		val boundaryBlue = (blueTotal / weightTotal).coerceIn(0, 255)
+
+		val carryStart = (boundaryY - colorCarryPixels).coerceAtLeast(0)
+		for (carryY in carryStart until boundaryY) {
+			val index = (carryY * width) + x
+			val pixel = result[index]
+			val alpha = (pixel ushr 24) and 0xFF
+			val carriedPixel = (alpha shl 24) or (boundaryRed shl 16) or (boundaryGreen shl 8) or boundaryBlue
+			if (carriedPixel != pixel) {
+				result[index] = carriedPixel
+				changed = true
+			}
+		}
+
+		val fadeEnd = (boundaryY + fadePixels).coerceAtMost(height - 1)
+		for (fadeY in boundaryY..fadeEnd) {
+			val index = (fadeY * width) + x
+			val pixel = sourcePixels[index]
+			val alpha = (pixel ushr 24) and 0xFF
+			if (alpha == 0) continue
+
+			val rawProgress = (fadeY - boundaryY).toFloat() / fadePixels.toFloat()
+			val clampedProgress = rawProgress.coerceIn(0f, 1f)
+			val progress = clampedProgress * clampedProgress * (3f - (2f * clampedProgress))
+			val sourceRed = (pixel ushr 16) and 0xFF
+			val sourceGreen = (pixel ushr 8) and 0xFF
+			val sourceBlue = pixel and 0xFF
+			val fadedAlpha = (alpha * progress).roundToInt().coerceIn(0, 255)
+			val mixedRed = (boundaryRed + ((sourceRed - boundaryRed) * progress)).roundToInt().coerceIn(0, 255)
+			val mixedGreen = (boundaryGreen + ((sourceGreen - boundaryGreen) * progress)).roundToInt().coerceIn(0, 255)
+			val mixedBlue = (boundaryBlue + ((sourceBlue - boundaryBlue) * progress)).roundToInt().coerceIn(0, 255)
+			val featheredPixel = (fadedAlpha shl 24) or (mixedRed shl 16) or (mixedGreen shl 8) or mixedBlue
+			if (featheredPixel != result[index]) {
+				result[index] = featheredPixel
+				changed = true
+			}
+		}
+	}
+
+	if (!changed) return image
+	return BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB).also { output ->
+		output.setRGB(0, 0, width, height, result, 0, width)
+	}
+}
 
 android {
 	namespace = "com.example.lumisky"
@@ -360,17 +612,80 @@ val convertWallpaperTexturesToWebp by tasks.registering {
 	}
 }
 
+val generateDerivedWallpaperAssets by tasks.registering {
+	group = "assets"
+	description = "Preprocesses heavy wallpaper textures at build-time and emits preview texture variants."
+
+	val sourceAssetsDir = layout.projectDirectory.dir("src/main/assets").asFile
+	val derivedAssetsDir = layout.buildDirectory.dir("generated/derivedWallpaperAssets/main").get().asFile
+	val sourceFiles = teemoDerivedAssetPaths.map { relativePath -> File(sourceAssetsDir, relativePath) }
+
+	inputs.files(sourceFiles)
+	outputs.dir(derivedAssetsDir)
+
+	doLast {
+		if (derivedAssetsDir.exists()) {
+			derivedAssetsDir.deleteRecursively()
+		}
+		derivedAssetsDir.mkdirs()
+
+		sourceFiles.forEachIndexed { index, source ->
+			if (!source.isFile) {
+				throw GradleException("Derived wallpaper source not found: ${source.path}")
+			}
+			val relativePath = teemoDerivedAssetPaths[index]
+			val loaded = ImageIO.read(source)
+				?: throw GradleException("Failed to read ${source.path} for derived wallpaper generation.")
+			var processed = loaded.ensureArgbCopy()
+			processed = bleedTransparentEdgeColorsBuild(
+				image = processed,
+				minOpaqueAlpha = 96,
+				passes = 8
+			)
+			if (relativePath == "teemo/teemo.webp") {
+				processed = featherTransparentTopBoundaryBuild(
+					image = processed,
+					minVisibleAlpha = 8,
+					colorCarryPixels = 24,
+					fadePixels = 40,
+					samplePixels = 12
+				)
+			}
+
+			val runtimeTarget = File(derivedAssetsDir, relativePath)
+			writeWebpImage(
+				image = processed,
+				target = runtimeTarget,
+				quality = 0.90f
+			)
+			runtimeTarget.setLastModified(source.lastModified())
+
+			val previewTarget = File(derivedAssetsDir, relativePath.withPreviewSuffix())
+			val previewImage = scaleBufferedImage(processed, 0.5f)
+			writeWebpImage(
+				image = previewImage,
+				target = previewTarget,
+				quality = 0.84f
+			)
+			previewTarget.setLastModified(source.lastModified())
+		}
+	}
+}
+
 val filteredAssetsDir = layout.buildDirectory.dir("generated/filteredAssets/main").get().asFile
 val prepareFilteredAssets by tasks.registering(Sync::class) {
 	group = "assets"
 	description = "Copies app assets for packaging without source raster textures."
 	dependsOn(validateShaderCelestialMotionContinuity)
 	dependsOn(convertWallpaperTexturesToWebp)
+	dependsOn(generateDerivedWallpaperAssets)
 	// Prefer checked-in .webp assets when both source and generated outputs exist.
 	duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
 	from(layout.projectDirectory.dir("src/main/assets")) {
 		exclude("**/*.png", "**/*.jpg", "**/*.jpeg")
+		exclude(*teemoDerivedAssetPaths.toTypedArray())
 	}
+	from(layout.buildDirectory.dir("generated/derivedWallpaperAssets/main"))
 	from(layout.buildDirectory.dir("generated/convertedWallpaperTextures/main"))
 	into(filteredAssetsDir)
 }

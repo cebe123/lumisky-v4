@@ -728,6 +728,7 @@ private fun FocusedWallpaperPreview(
 	onFirstFrameRendered: () -> Unit
 ) {
 	val appContext = LocalContext.current.applicationContext
+	val preferPreviewVariant = !preferFullQuality
 	val previewQualityScale = if (preferFullQuality) {
 		1.0f
 	} else {
@@ -744,12 +745,14 @@ private fun FocusedWallpaperPreview(
 		),
 		appContext,
 		previewConfig,
-		fragmentAssetPath
+		fragmentAssetPath,
+		preferPreviewVariant
 	) {
 		val loadedOverride = withContext(Dispatchers.IO) {
 			RenderAssetCache.prewarmWallpaper(
 				context = appContext,
-				config = previewConfig
+				config = previewConfig,
+				preferPreviewVariant = preferPreviewVariant
 			)
 			RenderAssetCache.cachedFragment(fragmentAssetPath)
 		}
@@ -788,7 +791,11 @@ private fun FocusedWallpaperPreview(
 					qualityScale = previewQualityScale,
 					fragmentShaderOverride = renderAssetState.fragmentOverride,
 					textureBytesLoader = { assetPath ->
-						RenderAssetCache.loadTextureBytes(context, assetPath)
+						RenderAssetCache.loadTextureBytes(
+							context = context,
+							assetPath = assetPath,
+							preferPreviewVariant = preferPreviewVariant
+						)
 					},
 					onFrameDrawn = {
 						if (

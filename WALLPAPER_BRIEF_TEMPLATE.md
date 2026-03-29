@@ -46,6 +46,33 @@ Yeni bir wallpaper oluştur.
 - Zenith snapshot güncellensin.
 - Snapshot standart pipeline boyutunda olsun; oversized tekil preview bırakılmasın.
 
+## Performans Template'i
+
+Bu bölüm opsiyoneldir. Sadece istediğim wallpaperlarda uygula.
+
+Kısa komut:
+
+- Bu wallpaperda `preview texture set + build-time preprocess` template'ini uygula.
+
+Ne anlama gelir:
+
+- Home kart preview'inde ayrı `_preview` texture seti üret ve kullan.
+- Wallpaper seçilince / focus olunca full texture setine geç.
+- Runtime'da ağır texture düzeltmesi yapma; gerekiyorsa build-time'da üret.
+- Build-time preprocess sadece gerçekten border / alpha / üst sınır sorunu olan wallpaperlarda açılsın.
+- Sorun yoksa sadece preview texture seti uygula, preprocess ekleme.
+
+Uygun kullanım:
+
+- Büyük texture kullanan wallpaperlar
+- İlk preview frame'i geç gelen wallpaperlar
+- Şeffaf kenar veya üst sınır border sorunu olan foreground texture'lar
+
+Uygun olmayan kullanım:
+
+- Küçük ve zaten hızlı yüklenen wallpaperlar
+- Preprocess uygulanınca kenar rengi veya detay kaybı riski olan temiz asset'ler
+
 ## Teknik Kurallar
 
 - Yeni preset `WallpaperCatalog.kt` içine eklensin.
@@ -87,5 +114,6 @@ Yeni bir wallpaper oluştur.
 - Texture sınırı görünmesin, siyah border oluşursa kaldır.
 - Home preview gündoğumundan başlasın.
 - Home preview hızlı açılsın; preview-quality yükle, seçilince full-quality çalıştır.
+- Bu wallpaperda `preview texture set + build-time preprocess` template'ini uygula.
 - Zenith snapshot güncelle.
 - Build al ve telefona deploy et.

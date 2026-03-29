@@ -475,10 +475,7 @@ class PreviewSkyProgram {
 	}
 
 	private fun shouldBleedTransparentEdgeColors(assetPath: String): Boolean {
-		val normalized = assetPath.lowercase()
-		return normalized == TEEMO_BACKGROUND_TEXTURE_PATH ||
-			normalized == TEEMO_SUN_TEXTURE_PATH ||
-			normalized == TEEMO_MOON_TEXTURE_PATH
+		return false
 	}
 
 	private fun shouldUsePreviewTextureSampling(assetPath: String): Boolean {
@@ -489,7 +486,7 @@ class PreviewSkyProgram {
 	}
 
 	private fun shouldFeatherTransparentTopBoundary(assetPath: String): Boolean {
-		return assetPath.lowercase() == TEEMO_BACKGROUND_TEXTURE_PATH
+		return false
 	}
 
 	private fun trimTransparentTop(

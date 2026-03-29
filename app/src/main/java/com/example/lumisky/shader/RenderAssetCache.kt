@@ -46,16 +46,25 @@ object RenderAssetCache {
 
 	fun loadTextureBytes(
 		context: Context,
-		assetPath: String?
+		assetPath: String?,
+		preferPreviewVariant: Boolean = false
 	): ByteArray? {
 		val normalized = assetPath?.takeIf { it.isNotBlank() } ?: return null
-		val cachedResolvedPath = getCachedResolvedTexturePath(normalized)
+		val cacheLookupKey = cacheLookupKey(
+			originalPath = normalized,
+			preferPreviewVariant = preferPreviewVariant
+		)
+		val cachedResolvedPath = getCachedResolvedTexturePath(cacheLookupKey)
 		if (cachedResolvedPath != null) {
 			return loadTextureBytesForResolvedPath(context, cachedResolvedPath)
 		}
 
-		val resolvedTexture = resolvePreferredTextureBytes(context, normalized) ?: return null
-		putCachedResolvedTexturePath(normalized, resolvedTexture.path)
+		val resolvedTexture = resolvePreferredTextureBytes(
+			context = context,
+			originalPath = normalized,
+			preferPreviewVariant = preferPreviewVariant
+		) ?: return null
+		putCachedResolvedTexturePath(cacheLookupKey, resolvedTexture.path)
 		synchronized(textureCache) {
 			textureCache.put(resolvedTexture.path, resolvedTexture.bytes)
 		}
@@ -64,19 +73,30 @@ object RenderAssetCache {
 
 	fun prewarmWallpaper(
 		context: Context,
-		config: WallpaperConfig
+		config: WallpaperConfig,
+		preferPreviewVariant: Boolean = false
 	) {
 		loadFragment(context, config.shader.fragmentAssetPath)
-		loadTextureBytes(context, config.textures.backgroundTexture)
-		loadTextureBytes(context, config.textures.sunTexture)
-		loadTextureBytes(context, config.textures.moonTexture)
-		loadTextureBytes(context, config.textures.flareTexture)
+		loadTextureBytes(context, config.textures.backgroundTexture, preferPreviewVariant)
+		loadTextureBytes(context, config.textures.sunTexture, preferPreviewVariant)
+		loadTextureBytes(context, config.textures.moonTexture, preferPreviewVariant)
+		loadTextureBytes(context, config.textures.flareTexture, preferPreviewVariant)
 	}
 
 	private fun resolvePreferredTextureBytes(
 		context: Context,
-		originalPath: String
+		originalPath: String,
+		preferPreviewVariant: Boolean
 	): ResolvedTextureBytes? {
+		if (preferPreviewVariant) {
+			previewVariantCandidates(originalPath).forEach { previewVariantPath ->
+				val previewBytes = loadTextureBytesForResolvedPath(context, previewVariantPath)
+				if (previewBytes != null) {
+					return ResolvedTextureBytes(previewVariantPath, previewBytes)
+				}
+			}
+		}
+
 		val lower = originalPath.lowercase()
 		if (lower.endsWith(".webp")) {
 			val bytes = loadTextureBytesForResolvedPath(context, originalPath) ?: return null
@@ -117,6 +137,33 @@ object RenderAssetCache {
 				textureCache.put(assetPath, loaded)
 			}
 			return@withLoadLock loaded
+		}
+	}
+
+	private fun previewVariantPath(originalPath: String): String? {
+		val dotIndex = originalPath.lastIndexOf('.')
+		if (dotIndex <= 0) return null
+		return "${originalPath.substring(0, dotIndex)}_preview${originalPath.substring(dotIndex)}"
+	}
+
+	private fun previewVariantCandidates(originalPath: String): List<String> {
+		val candidates = LinkedHashSet<String>(2)
+		previewVariantPath(originalPath)?.let(candidates::add)
+		val dotIndex = originalPath.lastIndexOf('.')
+		if (dotIndex > 0) {
+			candidates.add("${originalPath.substring(0, dotIndex)}_preview.webp")
+		}
+		return candidates.toList()
+	}
+
+	private fun cacheLookupKey(
+		originalPath: String,
+		preferPreviewVariant: Boolean
+	): String {
+		return if (preferPreviewVariant) {
+			"preview::$originalPath"
+		} else {
+			"full::$originalPath"
 		}
 	}
 
