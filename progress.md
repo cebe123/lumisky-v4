@@ -548,6 +548,13 @@ Performans ve kalite hedeflerini güvence altına alıp release’e hazır hale 
 - jank/battery smoke test checklist
 - crash/ANR odaklı hardening
 - Faz bazlı doğrulama komutlarının standardizasyonu (AGENTS.md komutları)
+- Play Store release uyumluluğu:
+  - privacy policy URL ve metni hazırlama
+  - location permission disclosure akışı ekleme
+  - Data safety formunda konum/veri paylaşımı beyanını netleştirme
+  - minimum gerekli permission kapsamını gözden geçirme (`COARSE` / `FINE`)
+  - store listing / app content / content rating checklist'i oluşturma
+  - gerekiyorsa yeni kişisel hesap için closed testing (`12 tester / 14 gün`) hazırlığı
 
 ### Çıktılar
 
@@ -555,17 +562,20 @@ Performans ve kalite hedeflerini güvence altına alıp release’e hazır hale 
 - release checklist
 - known issues listesi
 - modül bazlı build/test komut listesi (PowerShell) release checklist içine ekli
+- Play Store submission checklist ve policy-risk notları
 
 ### Riskler
 
 - Görsel render hataları testte yakalanması zor olabilir
 - OEM bazlı wallpaper service davranış farkları
+- Gizlilik/policy beyanı eksik veya yanlış olursa teknik olarak sağlam build bile review'da red alabilir
 
 ### Kabul Kriterleri
 
 - Kritik kullanıcı akışları test edilmiş
 - Düşük/orta/yüksek cihaz profillerinde smoke test geçmiş
 - Bilinen blocker bug kalmamış
+- Play Console gönderimi için privacy policy, disclosure ve data safety girişleri hazır
 
 ### Tahmini Süre
 

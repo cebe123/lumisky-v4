@@ -183,6 +183,26 @@ object WallpaperCatalog {
 			)
 		),
 		ThemePreset(
+			id = "flower",
+			displayName = "flower",
+			fragmentAssetPath = "shaders/flower/fragment.glsl",
+			horizonOffset = 0.02f,
+			peakY = 0.94f,
+			features = SkyFeatureFlags(
+				atmosphereEnabled = true,
+				lensFlareEnabled = false,
+				starsEnabled = true
+			),
+			textures = WallpaperTextures(
+				backgroundTexture = "flower/flower.webp",
+				moonTexture = "flower/flower_moon.webp"
+			),
+			runtimeRenderPolicy = RuntimeRenderPolicy(
+				policy = RenderPolicy.CONTINUOUS,
+				continuousFrameIntervalMs = 66L
+			)
+		),
+		ThemePreset(
 			id = "city_istanbul",
 			displayName = "Istanbul",
 			fragmentAssetPath = "shaders/city/fragment_shader.glsl",

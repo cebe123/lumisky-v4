@@ -6,28 +6,25 @@ Bu metni yeni bir wallpaper isterken doğrudan kullan.
 
 Yeni bir wallpaper oluştur.
 
-- Wallpaper id: `[ornek_id]`
-- Görünen isim: `[Ornek Isim]`
-- Kategori: `[special / landscapes / cities / abstract / games]`
-- Arkaplan texture: `[dosya_adi.webp]`
-- Güneş texture: `[dosya_adi.webp]`
-- Ay texture: `[dosya_adi.webp]`
-- İsteniyorsa ek texture: `[flare/cloud vb]`
+- Wallpaper id: `[]`
+- Görünen isim: `[flower]`
+- Kategori: `[special]`
+- Arkaplan texture: `[D:\Lumisky\images\flower.webp]`
 
 ## Görsel Davranış
 
-- Ufuk çizgisi: `[yukarı / aşağı / mevcut / yaklaşık offset]`
-- Gökyüzü stili: `[warrior / tablo / city / özel açıklama]`
+- Ufuk çizgisi: `[ekranın en tabanı]`
+- Gökyüzü stili: `[sabah kızıl , öğlen 26a2f8 renginde,akşam da kızıl ]`
 - Güneş davranışı:
-  `[normal / arkada kalsın / dışa glow versin / iç parlaklık düşük olsun]`
+  `[solar ile aynı]`
 - Ay davranışı:
-  `[normal / arkada kalsın / glow düşük olsun / daha soluk olsun]`
+  `[temaya uygun yeni]`
 - Gece gökyüzü:
-  `[daha koyu / biraz koyu / mevcut]`
+  `[biraz koyu]`
 - Foreground gece kararması:
-  `[yok / hafif / üstten aşağı / tüm texture hafif kararsın]`
+  `[hafif]`
 - Yıldızlar:
-  `[yok / istanbul mantığı / sabit / %20 twinkle / daha belirgin]`
+  `[daha belirgin]`
 
 ## Texture ve Geçiş Kuralları
 
@@ -52,7 +49,7 @@ Bu bölüm opsiyoneldir. Sadece istediğim wallpaperlarda uygula.
 
 Kısa komut:
 
-- Bu wallpaperda `preview texture set + build-time preprocess` template'ini uygula.
+- Bu wallpaperda `preview texture set + build-time preprocess` template'ini uygulama.
 
 Ne anlama gelir:
 
@@ -90,30 +87,3 @@ Uygun olmayan kullanım:
   - `.\gradlew :app:testDebugUnitTest`
   - `.\gradlew :app:assembleDebug`
   - `.\gradlew :app:deployDebugToConnectedDevice`
-
-## Doldurulmuş İstek Örneği
-
-Yeni bir wallpaper oluştur.
-
-- Wallpaper id: `game_example`
-- Görünen isim: `Example`
-- Kategori: `games`
-- Arkaplan texture: `example/example.webp`
-- Güneş texture: `example/example_sun.webp`
-- Ay texture: `example/example_moon.webp`
-
-İstekler:
-
-- Warrior tipi gökyüzü render kullan.
-- Ufuk çizgisini biraz aşağı al.
-- Güneş ve ay foreground’un arkasında kalsın.
-- Güneş hafif dış glow versin, ay glow daha zayıf olsun.
-- Gece gökyüzü biraz daha koyu olsun.
-- Foreground gece olduğunda hafif kararsın.
-- Yıldızlar sabit kalsın ama yaklaşık `%20` kadarı yanıp sönsün.
-- Texture sınırı görünmesin, siyah border oluşursa kaldır.
-- Home preview gündoğumundan başlasın.
-- Home preview hızlı açılsın; preview-quality yükle, seçilince full-quality çalıştır.
-- Bu wallpaperda `preview texture set + build-time preprocess` template'ini uygula.
-- Zenith snapshot güncelle.
-- Build al ve telefona deploy et.

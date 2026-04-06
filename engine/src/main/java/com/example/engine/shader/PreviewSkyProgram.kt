@@ -870,10 +870,24 @@ class PreviewSkyProgram {
 		return configId.lowercase().contains("warrior")
 	}
 
+	private fun isFlower(configId: String): Boolean {
+		return configId.lowercase().contains("flower")
+	}
+
 	private fun resolveLegacyTimeSeconds(state: RenderFrameState): Float {
 		val id = config.id.lowercase()
 		if (!isWarrior(id)) {
-			return (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f
+			val baseSeconds = when (state.mode) {
+				RenderMode.WALLPAPER_SERVICE -> {
+					(SystemClock.elapsedRealtime() % LEGACY_REALTIME_WINDOW_MS).toFloat() / 1000f
+				}
+				else -> (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f
+			}
+			return when {
+				isFlower(id) && state.mode == RenderMode.WALLPAPER_SERVICE ->
+					quantizeTimeSeconds(baseSeconds * FLOWER_WALLPAPER_TWINKLE_TIME_SCALE, FLOWER_WALLPAPER_TWINKLE_FPS)
+				else -> baseSeconds
+			}
 		}
 
 		return when (state.mode) {
@@ -1013,6 +1027,8 @@ class PreviewSkyProgram {
 		private const val TEEMO_TOP_BOUNDARY_COLOR_CARRY_PIXELS = 24
 		private const val TEEMO_TOP_BOUNDARY_ALPHA_FADE_PIXELS = 40
 		private const val TEEMO_TOP_BOUNDARY_COLOR_SAMPLE_PIXELS = 12
+		private const val FLOWER_WALLPAPER_TWINKLE_TIME_SCALE = 2.2f
+		private const val FLOWER_WALLPAPER_TWINKLE_FPS = 18f
 		private val CITY_TUNING_ISTANBUL = CityTuning(zoom = 0.60f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
 		private val CITY_TUNING_NEW_YORK = CityTuning(zoom = 0.70f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
 		private val CITY_TUNING_TOKYO = CityTuning(zoom = 0.75f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
