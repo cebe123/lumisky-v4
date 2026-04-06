@@ -673,10 +673,10 @@ class ZenithSnapshotActivity : AppCompatActivity() {
 		private const val EXPORT_BRIGHTNESS_OFFSET = 6f
 		private const val EXPORT_WARMTH_ALPHA = 8
 		private const val SUN_TIMES_TIMEOUT_MS = 6_000L
-		private const val CAPTURE_DELAY_MS = 90L
+		private const val CAPTURE_DELAY_MS = 2_000L
 		private const val CAPTURE_RETRY_DELAY_MS = 140L
 		private const val MAX_CAPTURE_ATTEMPTS = 4
-		private const val RENDER_TIMEOUT_MS = 4_000L
+		private const val RENDER_TIMEOUT_MS = 7_000L
 		private val TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern(
 			"yyyy-MM-dd HH:mm:ss z",
 			Locale.US

@@ -199,7 +199,7 @@ object WallpaperCatalog {
 			),
 			runtimeRenderPolicy = RuntimeRenderPolicy(
 				policy = RenderPolicy.CONTINUOUS,
-				continuousFrameIntervalMs = 66L
+				continuousFrameIntervalMs = 50L
 			)
 		),
 		ThemePreset(

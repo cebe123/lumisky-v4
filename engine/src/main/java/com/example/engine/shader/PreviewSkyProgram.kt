@@ -1027,8 +1027,8 @@ class PreviewSkyProgram {
 		private const val TEEMO_TOP_BOUNDARY_COLOR_CARRY_PIXELS = 24
 		private const val TEEMO_TOP_BOUNDARY_ALPHA_FADE_PIXELS = 40
 		private const val TEEMO_TOP_BOUNDARY_COLOR_SAMPLE_PIXELS = 12
-		private const val FLOWER_WALLPAPER_TWINKLE_TIME_SCALE = 2.2f
-		private const val FLOWER_WALLPAPER_TWINKLE_FPS = 18f
+		private const val FLOWER_WALLPAPER_TWINKLE_TIME_SCALE = 3.4f
+		private const val FLOWER_WALLPAPER_TWINKLE_FPS = 24f
 		private val CITY_TUNING_ISTANBUL = CityTuning(zoom = 0.60f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
 		private val CITY_TUNING_NEW_YORK = CityTuning(zoom = 0.70f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
 		private val CITY_TUNING_TOKYO = CityTuning(zoom = 0.75f, verticalOffset = 0.04f, horizontalOffset = 0.0f)

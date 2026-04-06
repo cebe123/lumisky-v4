@@ -93,7 +93,7 @@ float getStars(vec2 uv) {
 		hash(starCell + vec2(17.0, 3.0))
 	) - 0.5;
 	vec2 delta = starLocal - randomOffset * 0.82;
-	float presence = step(0.60, hash(starCell + vec2(29.0, 31.0)));
+	float presence = step(0.54, hash(starCell + vec2(29.0, 31.0)));
 	float core = smoothstep(0.12, 0.0, length(delta));
 	float cross = max(
 		smoothstep(0.055, 0.0, abs(delta.x)) * smoothstep(0.18, 0.0, abs(delta.y)),
@@ -101,10 +101,10 @@ float getStars(vec2 uv) {
 	);
 	float shape = max(core, cross * 0.42);
 	float phase = hash(starCell + vec2(7.0, 19.0)) * 6.28318;
-	float speed = 0.35 + hash(starCell + vec2(13.0, 5.0)) * 0.75;
-	float pulse = pow(sin(u_Time * speed + phase) * 0.5 + 0.5, 4.0);
-	float steady = 0.68 + hash(starCell + vec2(3.0, 11.0)) * 0.30;
-	float shimmer = 0.24 + pulse * 1.92;
+	float speed = 0.52 + hash(starCell + vec2(13.0, 5.0)) * 1.18;
+	float pulse = pow(sin(u_Time * speed + phase) * 0.5 + 0.5, 5.0);
+	float steady = 0.74 + hash(starCell + vec2(3.0, 11.0)) * 0.34;
+	float shimmer = 0.20 + pulse * 2.35;
 	float selector = step(0.5, hash(starCell + vec2(23.0, 29.0)));
 	return presence * shape * mix(steady, shimmer, selector);
 }
@@ -150,9 +150,9 @@ void main() {
 	float moonHorizonGlow = exp(-moonDistanceX * 4.8) * smoothstep(horizonY - 0.34, horizonY, u_MoonPos.y);
 	sky += MOON_HALO * moonHorizonGlow * u_NightAmount * 0.08;
 
-	float starVisibility = smoothstep(skyHorizonY + 0.02, skyHorizonY + 0.34, skyUv.y);
+	float starVisibility = smoothstep(skyHorizonY + 0.01, skyHorizonY + 0.26, skyUv.y);
 	float stars = getStars(skyUv);
-	sky += vec3(0.96, 0.98, 1.0) * stars * u_NightAmount * starVisibility * u_HasStars * 0.92;
+	sky += vec3(0.96, 0.98, 1.0) * stars * u_NightAmount * starVisibility * u_HasStars * 1.18;
 
 	if (u_DrawSun > 0.5 && u_IsNight < 0.5) {
 		vec2 sunDelta = uv - u_SunPos;
