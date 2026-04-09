@@ -628,3 +628,278 @@ Not:
 1. Override şeması JSON tabanlı mı başlasın, yoksa önce Kotlin data class + codec ile mi?
 2. Modüler efekt sistemi shader-pass tabanlı mı olsun, yoksa CPU update + sprite layer karışık mı?
 3. Weather entegrasyonu için ilk sağlayıcı stratejisi ne olacak (tam local mock / gerçek API / opsiyonel modül)?
+
+# Lumisky Progress (Updated for Play Store Compliance)
+
+## Current Status (Reality Check)
+
+* Total presets: ~14
+* True unique experiences: ~9–10 (due to shared shaders)
+* Risk level: ⚠️ Medium (borderline Play Store rejection risk)
+
+Main issue:
+
+> Some wallpapers are perceived as variations (same shader + different textures)
+
+---
+
+## 🎯 Goal Before Re-Submission
+
+### Target Metrics
+
+* Total presets: **16–18+**
+* Truly unique experiences: **12+**
+* Categories: **5+ strong distinct categories**
+
+---
+
+## 🔴 Critical Problems Identified
+
+### 1. City Wallpapers Are Too Similar
+
+Current:
+
+* Istanbul
+* New York
+* Tokyo
+* Paris
+
+Problem:
+
+* Same shader (`city/fragment_shader.glsl`)
+* Only texture changes
+
+➡️ Play Store may treat these as **1 wallpaper, not 4**
+
+---
+
+### 2. Perceived Content Value Is Low
+
+Even with 14 presets:
+
+* Not all feel unique
+* Lacks strong differentiation signals
+
+---
+
+### 3. Features Not Visible Enough to User
+
+We have:
+
+* Location-based sun
+* Performance modes
+* Render strategies
+
+BUT:
+
+* User does not clearly see these as value
+
+---
+
+## ✅ Action Plan (Must Complete)
+
+### 🔧 1. Fix City Wallpapers (HIGH PRIORITY)
+
+Make each city **behaviorally unique**:
+
+* Istanbul → Fog layer + birds
+* Tokyo → Neon + rain animation
+* New York → Moving clouds + light flicker
+* Paris → Warm sunset haze
+
+Goal:
+
+> Each city = unique shader behavior
+
+---
+
+### 🎨 2. Add 4–6 New Unique Wallpapers
+
+Add these categories:
+
+#### Weather-based
+
+* Snow (falling particles)
+* Rain (dynamic drops + ripple)
+* Fog (depth fade)
+
+#### Space-based
+
+* Galaxy (parallax stars)
+* Nebula (color shifting)
+
+#### Premium Minimal
+
+* Gradient horizon
+* Glass glow effect
+
+---
+
+### ⚙️ 3. Add Metadata Per Wallpaper
+
+Each wallpaper must expose:
+
+* Battery mode (Saver / Smooth)
+* Animation type (Continuous / Static)
+* Effects (Stars, Fog, Rain, etc.)
+
+UI Example:
+
+```
+🌙 Night Sky
+⭐ Stars Enabled
+🔋 Battery Saver
+```
+
+---
+
+### 🧠 4. Improve First Screen Experience
+
+Add sections:
+
+* Featured
+* Dynamic Wallpapers
+* Battery Friendly
+* Location-Based
+
+Goal:
+
+> Avoid "empty list" feeling
+
+---
+
+### 🧩 5. Strengthen Categories
+
+Required categories:
+
+* Nature
+* Cities
+* Space
+* Minimal
+* Special / Effects
+
+---
+
+### ⚡ 6. Surface Engine Power to User
+
+Expose clearly:
+
+* Real-time day/night cycle
+* Location-based sun
+* Performance modes
+
+These should be visible in:
+
+* UI
+* Store listing
+
+---
+
+### 🧱 7. Improve WallpaperCatalog Structure
+
+Current problem:
+
+* Hardcoded
+* Not scalable
+
+Next step:
+
+* Move to structured data (JSON / DB / config)
+
+---
+
+### 🔄 8. Show Render Mode Differences
+
+Expose visually:
+
+* "Smooth Animation"
+* "Battery Saver"
+
+This increases perceived value
+
+---
+
+### 🧪 9. Ensure Each Wallpaper Feels Different
+
+Checklist per wallpaper:
+
+* Different shader logic
+* Different animation
+* Different color mood
+* Different foreground composition
+
+If NOT → it does NOT count as new content
+
+---
+
+### 📱 10. Store Listing Optimization
+
+Must show:
+
+* Different wallpapers visually
+* Feature highlights
+
+Use phrases:
+
+* Dynamic OpenGL wallpapers
+* Real-time day/night cycle
+* Battery optimized
+* Location-aware lighting
+
+---
+
+## 🚀 Final Target State
+
+When ALL completed:
+
+* 16–18 wallpapers
+* 12+ unique behaviors
+* Strong UI categories
+* Clear feature communication
+
+➡️ Result:
+
+> High chance of Play Store approval
+
+---
+
+## ⚠️ Final Rule
+
+> Texture change ≠ new wallpaper
+
+Only count if:
+
+* Behavior changes
+* Visual logic changes
+* Experience changes
+
+---
+
+## 📌 Summary
+
+Current:
+
+* Good architecture ✅
+* Decent UI ✅
+* Weak content differentiation ❌
+
+After update:
+
+* Strong product perception
+* High approval probability
+
+---
+
+## Next Step
+
+Implement in this order:
+
+1. Fix city shaders
+2. Add 4 new wallpapers
+3. Add metadata system
+4. Improve home screen sections
+5. Update store listing
+
+---
+
+END

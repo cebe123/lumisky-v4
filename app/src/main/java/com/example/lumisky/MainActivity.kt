@@ -62,6 +62,9 @@ import com.example.lumisky.ui.settings.SettingsScreen
 import com.example.lumisky.ui.theme.LumiskyTheme
 import com.example.lumisky.viewmodel.HomeViewModel
 import com.example.wallpaper.service.ACTION_APPLY_STORED_WALLPAPER_CONFIG
+import com.example.wallpaper.service.clearLockWallpaperOverrideIfNeeded
+import com.example.wallpaper.service.isLumiskyHomeWallpaperActive
+import com.example.wallpaper.service.queryLockWallpaperId
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -88,6 +91,7 @@ class MainActivity : AppCompatActivity() {
 	private var applyingWallpaper: Boolean = false
 	private var locationReceiverRegistered: Boolean = false
 	private var awaitingSystemLocationEnableResult: Boolean = false
+	private var pendingLockWallpaperIdBeforeSet: Int? = null
 	private var launchThemeMode: AppThemeMode = AppThemeMode.SYSTEM
 	private val locationModeReceiver = object : BroadcastReceiver() {
 		override fun onReceive(context: Context?, intent: Intent?) {
@@ -274,6 +278,7 @@ class MainActivity : AppCompatActivity() {
 
 	override fun onStart() {
 		super.onStart()
+		restoreLockScreenWallpaperSharingOnForegroundIfNeeded()
 		registerLocationModeReceiver()
 		homeViewModelOrNull()?.onForegroundStarted()
 	}
@@ -428,10 +433,20 @@ class MainActivity : AppCompatActivity() {
 			Activity.RESULT_OK -> {
 				val promoted = wallpaperConfigStore.promotePreviewToSelected()
 				if (promoted != null) {
+					val shouldRestoreOnLockScreen = resolveRestoreLiveWallpaperOnLockScreenPreference()
+					appSettingsRepository.setRestoreLiveWallpaperOnLockScreen(shouldRestoreOnLockScreen)
+					if (shouldRestoreOnLockScreen) {
+						restoreLockScreenWallpaperSharingIfNeeded()
+					}
 					notifyWallpaperConfigChanged()
+				} else {
+					pendingLockWallpaperIdBeforeSet = null
 				}
 			}
-			else -> wallpaperConfigStore.clearPreview()
+			else -> {
+				pendingLockWallpaperIdBeforeSet = null
+				wallpaperConfigStore.clearPreview()
+			}
 		}
 	}
 
@@ -458,6 +473,7 @@ class MainActivity : AppCompatActivity() {
 	}
 
 	private fun launchSystemWallpaperSetFlow() {
+		pendingLockWallpaperIdBeforeSet = queryLockWallpaperId(applicationContext)
 		val directIntent = Intent(ACTION_CHANGE_LIVE_WALLPAPER).apply {
 			putExtra(
 				EXTRA_LIVE_WALLPAPER_COMPONENT,
@@ -470,12 +486,55 @@ class MainActivity : AppCompatActivity() {
 		runCatching {
 			liveWallpaperPreviewLauncher.launch(directIntent)
 		}.onFailure {
+			pendingLockWallpaperIdBeforeSet = null
 			wallpaperConfigStore.clearPreview()
 			Logger.w(TAG, "direct live wallpaper intent failed, falling back chooser", it)
 			runCatching {
 				startActivity(Intent(ACTION_LIVE_WALLPAPER_CHOOSER))
 				overridePendingTransition(0, 0)
 			}
+		}
+	}
+
+	private fun resolveRestoreLiveWallpaperOnLockScreenPreference(): Boolean {
+		val previousLockWallpaperId = pendingLockWallpaperIdBeforeSet
+		val currentLockWallpaperId = queryLockWallpaperId(applicationContext)
+		pendingLockWallpaperIdBeforeSet = null
+		return when {
+			currentLockWallpaperId == null -> {
+				appSettingsRepository.getRestoreLiveWallpaperOnLockScreen() ?: false
+			}
+			currentLockWallpaperId < 0 -> true
+			previousLockWallpaperId == null -> false
+			else -> currentLockWallpaperId != previousLockWallpaperId
+		}
+	}
+
+	private fun restoreLockScreenWallpaperSharingIfNeeded() {
+		if (!isLumiskyHomeWallpaperActive(applicationContext)) return
+		clearLockWallpaperOverrideIfNeeded(applicationContext)
+	}
+
+	private fun restoreLockScreenWallpaperSharingOnForegroundIfNeeded() {
+		if (!isLumiskyHomeWallpaperActive(applicationContext)) return
+		val preference = appSettingsRepository.getRestoreLiveWallpaperOnLockScreen()
+		if (preference == false) return
+
+		val lockWallpaperId = queryLockWallpaperId(applicationContext) ?: return
+		if (preference == null) {
+			if (wallpaperConfigStore.loadSelected() == null) return
+			if (lockWallpaperId < 0) {
+				appSettingsRepository.setRestoreLiveWallpaperOnLockScreen(true)
+				return
+			}
+			if (clearLockWallpaperOverrideIfNeeded(applicationContext)) {
+				appSettingsRepository.setRestoreLiveWallpaperOnLockScreen(true)
+			}
+			return
+		}
+
+		if (lockWallpaperId >= 0) {
+			clearLockWallpaperOverrideIfNeeded(applicationContext)
 		}
 	}
 

@@ -1,6 +1,9 @@
 package com.example.core.settings
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.os.Build
+import android.os.UserManager
 import com.example.core.location.LocationAccessLevel
 import com.example.core.location.LocationSnapshot
 import com.example.core.location.LocationSource
@@ -11,6 +14,12 @@ class AppSettingsRepository(
 	private val appContext = context.applicationContext
 	private val prefs by lazy {
 		appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+	}
+	private val deviceProtectedPrefs by lazy {
+		runCatching {
+			appContext.createDeviceProtectedStorageContext()
+				.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+		}.getOrNull()
 	}
 
 	fun snapshot(): AppSettingsSnapshot {
@@ -226,6 +235,25 @@ class AppSettingsRepository(
 		dispatchSnapshotChanged()
 	}
 
+	fun getRestoreLiveWallpaperOnLockScreen(): Boolean? {
+		readOptionalBoolean(
+			preferences = deviceProtectedPrefs,
+			key = KEY_RESTORE_LIVE_WALLPAPER_ON_LOCK_SCREEN
+		)?.let { return it }
+		if (!canAccessCredentialProtectedStorage()) return null
+		return readOptionalBoolean(
+			preferences = prefs,
+			key = KEY_RESTORE_LIVE_WALLPAPER_ON_LOCK_SCREEN
+		)
+	}
+
+	fun setRestoreLiveWallpaperOnLockScreen(enabled: Boolean?) {
+		val currentValue = getRestoreLiveWallpaperOnLockScreen()
+		if (currentValue == enabled) return
+		writeRestoreLiveWallpaperOnLockScreenFlag(prefs, enabled)
+		writeRestoreLiveWallpaperOnLockScreenFlag(deviceProtectedPrefs, enabled)
+	}
+
 	private fun dispatchSnapshotChanged() {
 		val snapshot = snapshot()
 		val listeners = synchronized(changeListeners) { changeListeners.toList() }
@@ -237,6 +265,42 @@ class AppSettingsRepository(
 	private fun readDouble(key: String, defaultValue: Double): Double {
 		if (!prefs.contains(key)) return defaultValue
 		return Double.fromBits(prefs.getLong(key, 0L))
+	}
+
+	private fun writeRestoreLiveWallpaperOnLockScreenFlag(
+		targetPrefs: SharedPreferences?,
+		enabled: Boolean?
+	) {
+		targetPrefs ?: return
+		runCatching {
+			targetPrefs.edit().apply {
+				if (enabled == null) {
+					remove(KEY_RESTORE_LIVE_WALLPAPER_ON_LOCK_SCREEN)
+				} else {
+					putBoolean(KEY_RESTORE_LIVE_WALLPAPER_ON_LOCK_SCREEN, enabled)
+				}
+			}.apply()
+		}
+	}
+
+	private fun canAccessCredentialProtectedStorage(): Boolean {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return true
+		val userManager = appContext.getSystemService(UserManager::class.java) ?: return true
+		return runCatching { userManager.isUserUnlocked }.getOrDefault(false)
+	}
+
+	private fun readOptionalBoolean(
+		preferences: SharedPreferences?,
+		key: String
+	): Boolean? {
+		preferences ?: return null
+		return runCatching {
+			if (!preferences.contains(key)) {
+				null
+			} else {
+				preferences.getBoolean(key, false)
+			}
+		}.getOrNull()
 	}
 
 	private fun Double.toRawBits(): Long = java.lang.Double.doubleToRawLongBits(this)
@@ -261,6 +325,8 @@ class AppSettingsRepository(
 		private const val KEY_AUTO_LOCATION_CAPTURED_AT_MS = "auto_location_captured_at_ms"
 		private const val KEY_AUTO_LOCATION_ACCESS_LEVEL = "auto_location_access_level"
 		private const val KEY_AUTO_LOCATION_SOURCE = "auto_location_source"
+		private const val KEY_RESTORE_LIVE_WALLPAPER_ON_LOCK_SCREEN =
+			"restore_live_wallpaper_on_lock_screen"
 
 		private const val DEFAULT_HIGH_REFRESH_ENABLED = false
 		private val DEFAULT_PERFORMANCE_MODE = PerformanceMode.AUTO
