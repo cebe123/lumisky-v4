@@ -1,0 +1,24 @@
+{
+  "wallpapers": [
+    {
+      "id": "pixel_forest",
+      "manifest": "wallpapers/pixel_forest/manifest.json"
+    },
+    {
+      "id": "city_istanbul",
+      "manifest": "wallpapers/city_istanbul/manifest.json"
+    },
+    {
+      "id": "city_newyork",
+      "manifest": "wallpapers/city_newyork/manifest.json"
+    },
+    {
+      "id": "city_tokyo",
+      "manifest": "wallpapers/city_tokyo/manifest.json"
+    },
+    {
+      "id": "city_paris",
+      "manifest": "wallpapers/city_paris/manifest.json"
+    }
+  ]
+}

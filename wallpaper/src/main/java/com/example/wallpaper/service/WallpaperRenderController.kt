@@ -11,10 +11,11 @@ import com.example.wallpaper.render.SceneStateHasher
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-class WallpaperRenderController(
+internal class WallpaperRenderController(
 	private val renderEngine: WallpaperRenderEngine,
 	private val scheduler: MinuteTickScheduler,
 	private val hasher: SceneStateHasher,
+	private val policyResolver: ServiceRenderPolicyResolver = ServiceRenderPolicyResolver(),
 	private val displayRefreshRateProvider: () -> Int = { DEFAULT_DISPLAY_REFRESH_RATE_HZ }
 ) {
 	@Volatile
@@ -163,7 +164,7 @@ class WallpaperRenderController(
 
 	private fun onMinuteTick() {
 		if (!visible || !surfaceAttached) return
-		if (previewMode || shouldUseContinuousRendering()) return
+		if (resolvedLoopMode() != WallpaperLoopMode.MINUTE_TICK) return
 		postRenderTask {
 			renderMinuteTickIfNeeded()
 		}
@@ -171,7 +172,7 @@ class WallpaperRenderController(
 
 	private fun renderMinuteTickIfNeeded() {
 		if (!visible || !surfaceAttached) return
-		if (previewMode || shouldUseContinuousRendering()) return
+		if (resolvedLoopMode() != WallpaperLoopMode.MINUTE_TICK) return
 		val hash = computeSceneHash()
 		if (hash == lastStateHash || hash == pendingStateHash) return
 		pendingStateHash = hash
@@ -222,11 +223,15 @@ class WallpaperRenderController(
 	}
 
 	private fun onVsyncFrame(frameTimeNanos: Long) {
-		if (!shouldDriveVsyncLoop()) return
+		val resolvedPolicy = resolveServiceRenderPolicy()
+		if (resolvedPolicy.loopMode != WallpaperLoopMode.VSYNC) return
 		val targetIntervalNanos = when {
 			previewMode -> renderEngine.previewFrameIntervalNanos(displayRefreshRateHz)
-			renderEngine.requiresContinuousRendering() -> renderEngine.continuousFrameIntervalNanos(displayRefreshRateHz)
-			else -> return
+			resolvedPolicy.frameIntervalMs != null -> renderEngine.frameIntervalNanos(
+				frameIntervalMs = resolvedPolicy.frameIntervalMs,
+				displayRefreshRateHz = displayRefreshRateHz
+			)
+			else -> renderEngine.previewFrameIntervalNanos(displayRefreshRateHz)
 		}
 		if (!framePacingClock.shouldRender(frameTimeNanos, targetIntervalNanos)) {
 			return
@@ -269,19 +274,32 @@ class WallpaperRenderController(
 			scheduler.stop()
 			return
 		}
-		if (previewMode || shouldUseContinuousRendering()) {
-			scheduler.stop()
-		} else {
-			scheduler.start { onMinuteTick() }
+		when (resolvedLoopMode()) {
+			WallpaperLoopMode.MINUTE_TICK -> {
+				scheduler.start { onMinuteTick() }
+			}
+			else -> {
+				scheduler.stop()
+			}
 		}
 	}
 
-	private fun shouldUseContinuousRendering(): Boolean {
-		return renderEngine.requiresContinuousRendering()
+	private fun resolvedLoopMode(): WallpaperLoopMode {
+		return resolveServiceRenderPolicy().loopMode
+	}
+
+	private fun resolveServiceRenderPolicy(): ResolvedServiceRenderPolicy {
+		val config = currentConfig ?: pendingConfig ?: WallpaperConfig.default(id = "wallpaper_default")
+		return policyResolver.resolve(
+			config = config,
+			previewMode = previewMode,
+			visible = visible,
+			surfaceAttached = surfaceAttached
+		)
 	}
 
 	private fun updateRenderLoopsLocked() {
-		if (!shouldDriveVsyncLoop()) {
+		if (resolvedLoopMode() != WallpaperLoopMode.VSYNC) {
 			stopRenderLoopsLocked()
 			return
 		}
@@ -290,8 +308,7 @@ class WallpaperRenderController(
 	}
 
 	private fun shouldDriveVsyncLoop(): Boolean {
-		if (!visible || !surfaceAttached) return false
-		return previewMode || renderEngine.requiresContinuousRendering()
+		return resolvedLoopMode() == WallpaperLoopMode.VSYNC
 	}
 
 	private fun stopRenderLoopsLocked() {

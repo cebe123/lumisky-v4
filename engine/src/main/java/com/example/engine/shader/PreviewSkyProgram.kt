@@ -5,15 +5,12 @@ import android.graphics.BitmapFactory
 import android.opengl.EGL14
 import android.opengl.GLES20
 import android.opengl.GLUtils
-import android.os.SystemClock
 import com.example.engine.config.WallpaperConfig
-import com.example.engine.renderer.RenderMode
 import com.example.engine.renderer.RenderFrameState
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.PI
-import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -84,7 +81,9 @@ class PreviewSkyProgram {
 	private var sunTextureHandle: Int = 0
 	private var moonTextureHandle: Int = 0
 	private var flareTextureHandle: Int = 0
-	private val scratchSunColor = FloatArray(3)
+	private val legacyThemeAdapter = LegacyThemeAdapter()
+	private val effectAdapter = PreviewEffectAdapter()
+	private val textureBinder = PreviewTextureBinder()
 
 	fun configure(
 		value: WallpaperConfig,
@@ -182,35 +181,23 @@ class PreviewSkyProgram {
 		val sunAlpha = sin((state.dayProgress.coerceIn(0f, 1f)) * PI.toFloat()).coerceAtLeast(0f)
 		val minute = (state.dayProgress * MINUTES_PER_DAY).coerceIn(0f, MINUTES_PER_DAY.toFloat())
 		val aspect = viewportWidth.toFloat() / viewportHeight.toFloat()
-		val seconds = resolveLegacyTimeSeconds(state)
-		val cityTuning = resolveCityTuning(config.id)
+		val legacyThemeState = legacyThemeAdapter.resolve(config = config, state = state)
+		val effectState = effectAdapter.resolve(config = config, state = state)
 		val shaderSunX = state.sun.x.coerceIn(0f, 1f)
 		val shaderSunY = mapToLegacyShaderY(state.sun.y)
 		val shaderMoonX = state.moon.x.coerceIn(0f, 1f)
 		val shaderMoonY = mapToLegacyShaderY(state.moon.y)
 		val shaderHorizonY = mapToLegacyShaderY(config.horizon.offset.coerceIn(0f, 1f))
-		val sunColor = resolveLegacySunColor(state)
 		val drawSun = if (minute >= state.sunriseMinute && minute <= state.sunsetMinute) 1f else 0f
-		val solarNoonMinute = resolveLegacySunZenithMinute(
-			sunrise = state.sunriseMinute,
-			sunset = state.sunsetMinute
-		).toFloat()
-		val legacyTimeOfDay = resolveLegacyTimeOfDay(state)
-		val windSpeed = 1.0f + kotlin.math.sin(seconds * 0.1f) * 0.5f
-		val legacyNightAmount = calculateLegacyNightAmount(
-			minute = minute,
-			sunrise = state.sunriseMinute.toFloat(),
-			sunset = state.sunsetMinute.toFloat()
-		)
+		val windSpeed = 1.0f + kotlin.math.sin(legacyThemeState.timeSeconds * 0.1f) * 0.5f
 		val effectiveAtmosphere = state.atmosphereEnabled && qualityScale >= QUALITY_ATMOSPHERE_THRESHOLD
 		val effectiveFlare = state.lensFlareEnabled && qualityScale >= QUALITY_FLARE_THRESHOLD
-		val effectiveStars = state.starsEnabled && qualityScale >= QUALITY_STARS_THRESHOLD
+		val effectiveStars = effectState.starsEnabled && qualityScale >= QUALITY_STARS_THRESHOLD
 		val qualityScaledFlare = if (effectiveFlare) {
 			(state.flareIntensity * qualityScale.coerceAtLeast(0.35f)).coerceIn(0f, 1f)
 		} else {
 			0f
 		}
-		val isWarriorTheme = isWarrior(config.id)
 
 		setVec3(skyColorHandle, skyR, skyG, skyB)
 		setVec2(sunHandle, shaderSunX, shaderSunY)
@@ -219,51 +206,55 @@ class PreviewSkyProgram {
 		setFloat(moonAlphaHandle, if (state.isNight) 1f else 0f)
 
 		setVec2(uSunPosHandle, shaderSunX, shaderSunY)
-		setVec3(uSunColorHandle, sunColor[0], sunColor[1], sunColor[2])
+		setVec3(
+			uSunColorHandle,
+			legacyThemeState.sunColor.red,
+			legacyThemeState.sunColor.green,
+			legacyThemeState.sunColor.blue
+		)
 		setFloat(uAspectRatioHandle, aspect)
 		setFloat(uDrawSunHandle, drawSun)
 		setVec2(uMoonPosHandle, shaderMoonX, shaderMoonY)
 		setFloat(uIsNightHandle, if (state.isNight) 1f else 0f)
 		setFloat(uMinuteHandle, minute)
-		setFloat(uCloudOffsetHandle, 0f)
-		setFloat(uCloudAlphaHandle, 0f)
+		setFloat(uCloudOffsetHandle, effectState.cloudOffset)
+		setFloat(uCloudAlphaHandle, effectState.cloudAlpha)
 		setFloat(uSunriseHandle, state.sunriseMinute.toFloat())
 		setFloat(uSunsetHandle, state.sunsetMinute.toFloat())
-		setFloat(uSolarNoonHandle, solarNoonMinute)
-		setFloat(uNightAmountHandle, legacyNightAmount)
+		setFloat(uSolarNoonHandle, legacyThemeState.solarNoonMinute)
+		setFloat(uNightAmountHandle, legacyThemeState.nightAmount)
 		setFloat(uHorizonYHandle, shaderHorizonY)
 		setFloat(uHasAtmosphereHandle, if (effectiveAtmosphere) 1f else 0f)
 		setFloat(uHasFlareHandle, if (effectiveFlare) 1f else 0f)
 		setFloat(uHasStarsHandle, if (effectiveStars) 1f else 0f)
 		setFloat(uFlareIntensityHandle, qualityScaledFlare)
 		setVec2(uResolutionHandle, viewportWidth.toFloat(), viewportHeight.toFloat())
-		setFloat(uTimeHandle, seconds)
-		setFloat(uTimeOfDayHandle, legacyTimeOfDay)
+		setFloat(uTimeHandle, legacyThemeState.timeSeconds)
+		setFloat(uTimeOfDayHandle, legacyThemeState.timeOfDay)
 		setVec2(uTouchPositionHandle, 0f, 0f)
 		setFloat(uTouchTimeHandle, 0f)
 		setFloat(uWindSpeedHandle, windSpeed)
-		setFloat(uCityZoomHandle, cityTuning.zoom)
-		setFloat(uCityVerticalOffsetHandle, cityTuning.verticalOffset)
-		setFloat(uCityHorizontalOffsetHandle, cityTuning.horizontalOffset)
+		setFloat(uCityZoomHandle, legacyThemeState.cityTuning.zoom)
+		setFloat(uCityVerticalOffsetHandle, legacyThemeState.cityTuning.verticalOffset)
+		setFloat(uCityHorizontalOffsetHandle, legacyThemeState.cityTuning.horizontalOffset)
 
-		val background = textureOrFallback(backgroundTextureHandle, fallbackTransparentTextureHandle)
-		val sunTexture = textureOrFallback(sunTextureHandle, fallbackSolidTextureHandle)
-		val moonTexture = textureOrFallback(moonTextureHandle, fallbackSolidTextureHandle)
-		val flareTexture = textureOrFallback(flareTextureHandle, fallbackTransparentTextureHandle)
-		val texture1 = if (isWarriorTheme) background else flareTexture
-		val texture2 = if (isWarriorTheme) {
-			textureOrFallback(flareTextureHandle, background)
-		} else {
-			background
-		}
+		val textures = textureBinder.resolve(
+			swapForegroundPair = legacyThemeState.swapForegroundPair,
+			backgroundTextureHandle = backgroundTextureHandle,
+			sunTextureHandle = sunTextureHandle,
+			moonTextureHandle = moonTextureHandle,
+			flareTextureHandle = flareTextureHandle,
+			fallbackSolidTextureHandle = fallbackSolidTextureHandle,
+			fallbackTransparentTextureHandle = fallbackTransparentTextureHandle
+		)
 
-		bindTextureUnit(uSunTextureHandle, 0, sunTexture)
-		bindTextureUnit(uForegroundTextureHandle, 1, background)
-		bindTextureUnit(uMoonTextureHandle, 2, moonTexture)
-		bindTextureUnit(uCloudTextureHandle, 3, flareTexture)
-		bindTextureUnit(uTextureHandle, 0, background)
-		bindTextureUnit(uTexture1Handle, 0, texture1)
-		bindTextureUnit(uTexture2Handle, 1, texture2)
+		textureBinder.bindTextureUnit(uSunTextureHandle, 0, textures.sun)
+		textureBinder.bindTextureUnit(uForegroundTextureHandle, 1, textures.background)
+		textureBinder.bindTextureUnit(uMoonTextureHandle, 2, textures.moon)
+		textureBinder.bindTextureUnit(uCloudTextureHandle, 3, textures.flare)
+		textureBinder.bindTextureUnit(uTextureHandle, 0, textures.background)
+		textureBinder.bindTextureUnit(uTexture1Handle, 0, textures.texture1)
+		textureBinder.bindTextureUnit(uTexture2Handle, 1, textures.texture2)
 
 		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_COUNT)
 		GLES20.glDisableVertexAttribArray(positionHandle)
@@ -722,17 +713,6 @@ class PreviewSkyProgram {
 		return ResolvedTexture(path = originalPath, bytes = originalBytes)
 	}
 
-	private fun textureOrFallback(handle: Int, fallback: Int): Int {
-		return if (handle != 0) handle else fallback
-	}
-
-	private fun bindTextureUnit(uniformHandle: Int, textureUnit: Int, textureHandle: Int) {
-		if (uniformHandle < 0 || textureHandle == 0) return
-		GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + textureUnit)
-		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureHandle)
-		GLES20.glUniform1i(uniformHandle, textureUnit)
-	}
-
 	private fun setVec2(handle: Int, x: Float, y: Float) {
 		if (handle >= 0) GLES20.glUniform2f(handle, x, y)
 	}
@@ -745,175 +725,8 @@ class PreviewSkyProgram {
 		if (handle >= 0) GLES20.glUniform1f(handle, value)
 	}
 
-	private fun resolveCityTuning(configId: String): CityTuning {
-		return when {
-			configId.contains("city_istanbul") -> CITY_TUNING_ISTANBUL
-			configId.contains("city_newyork") -> CITY_TUNING_NEW_YORK
-			configId.contains("city_tokyo") -> CITY_TUNING_TOKYO
-			configId.contains("city_paris") -> CITY_TUNING_PARIS
-			else -> CITY_TUNING_DEFAULT
-		}
-	}
-
 	private fun mapToLegacyShaderY(value: Float): Float {
 		return 1f - value
-	}
-
-	private fun resolveLegacySunColor(state: RenderFrameState): FloatArray {
-		val color = scratchSunColor
-		val minute = (state.dayProgress * MINUTES_PER_DAY).coerceIn(0f, MINUTES_PER_DAY.toFloat())
-		val sunrise = state.sunriseMinute.toFloat()
-		val sunset = state.sunsetMinute.toFloat()
-		if (sunset <= sunrise || minute < sunrise || minute > sunset) {
-			color[0] = 1.0f
-			color[1] = 0.9f
-			color[2] = 0.8f
-			return color
-		}
-		val dayProgress = ((minute - sunrise) / (sunset - sunrise)).coerceIn(0f, 1f)
-		var colorProgress = if (dayProgress < 0.5f) {
-			dayProgress * 2f
-		} else {
-			2f - (dayProgress * 2f)
-		}
-		if (usesNaturalSunColor(config.id)) {
-			colorProgress = 1f - colorProgress
-		}
-		val green = 0.9f - (0.4f * colorProgress)
-		val blue = 0.8f - (0.6f * colorProgress)
-		color[0] = 1.0f
-		color[1] = green
-		color[2] = blue
-		return color
-	}
-
-	private fun resolveLegacyTimeOfDay(state: RenderFrameState): Float {
-		val id = config.id.lowercase()
-		return when {
-			id.contains("mars") || id.contains("warrior") -> resolveMarsWarriorTimeOfDay(state)
-			id.contains("optical_sunset") -> resolveOpticalSunsetTimeOfDay(state)
-			else -> state.dayProgress.coerceIn(0f, 1f)
-		}
-	}
-
-	private fun resolveLegacySunZenithMinute(sunrise: Int, sunset: Int): Int {
-		val fallback = sunrise + ((sunset - sunrise) / 2)
-		val configured = config.daylight.solarNoonMinute
-		return if (configured in sunrise..sunset) configured else fallback
-	}
-
-	private fun resolveMarsWarriorTimeOfDay(state: RenderFrameState): Float {
-		val sunrise = state.sunriseMinute
-		val sunset = state.sunsetMinute
-		if (sunset <= sunrise) return state.dayProgress.coerceIn(0f, 1f)
-		val minute = ((state.dayProgress * MINUTES_PER_DAY).toInt() % MINUTES_PER_DAY + MINUTES_PER_DAY) % MINUTES_PER_DAY
-		val zenithMinute = resolveLegacySunZenithMinute(sunrise = sunrise, sunset = sunset)
-		val horizon = 0.40f
-		val result = when {
-			minute in sunrise..zenithMinute && zenithMinute > sunrise -> {
-				val progress = (minute - sunrise).toFloat() / (zenithMinute - sunrise).toFloat()
-				horizon * (1.0f - progress)
-			}
-			minute in zenithMinute..sunset && sunset > zenithMinute -> {
-				val progress = (minute - zenithMinute).toFloat() / (sunset - zenithMinute).toFloat()
-				horizon * progress
-			}
-			else -> {
-				var minutesSinceSunset = minute - sunset
-				if (minutesSinceSunset < 0) minutesSinceSunset += MINUTES_PER_DAY
-				val nightDuration = ((MINUTES_PER_DAY - sunset) + sunrise).coerceAtLeast(1)
-				val progress = minutesSinceSunset.toFloat() / nightDuration.toFloat()
-				horizon + (progress * (1.0f - horizon))
-			}
-		}
-		return result.coerceIn(0f, 1f)
-	}
-
-	private fun resolveOpticalSunsetTimeOfDay(state: RenderFrameState): Float {
-		val sunrise = state.sunriseMinute
-		val sunset = state.sunsetMinute
-		if (sunset <= sunrise) return state.dayProgress.coerceIn(0f, 1f)
-		val minute = ((state.dayProgress * MINUTES_PER_DAY).toInt() % MINUTES_PER_DAY + MINUTES_PER_DAY) % MINUTES_PER_DAY
-		val zenithMinute = resolveLegacySunZenithMinute(sunrise = sunrise, sunset = sunset)
-		val horizon = 0.2666f
-		val result = when {
-			minute in sunrise..zenithMinute && zenithMinute > sunrise -> {
-				val progress = (minute - sunrise).toFloat() / (zenithMinute - sunrise).toFloat()
-				horizon * (1.0f - progress)
-			}
-			minute in zenithMinute..sunset && sunset > zenithMinute -> {
-				val progress = (minute - zenithMinute).toFloat() / (sunset - zenithMinute).toFloat()
-				horizon * progress
-			}
-			else -> {
-				var minutesSinceSunset = minute - sunset
-				if (minutesSinceSunset < 0) minutesSinceSunset += MINUTES_PER_DAY
-				val nightDuration = ((MINUTES_PER_DAY - sunset) + sunrise).coerceAtLeast(1)
-				val progress = minutesSinceSunset.toFloat() / nightDuration.toFloat()
-				if (progress < 0.5f) {
-					val p = progress * 2.0f
-					horizon + (p * (1.0f - horizon))
-				} else {
-					val p = (progress - 0.5f) * 2.0f
-					1.0f - (p * (1.0f - horizon))
-				}
-			}
-		}
-		return result.coerceIn(0f, 1f)
-	}
-
-	private fun usesNaturalSunColor(configId: String): Boolean {
-		return configId.lowercase().contains("pixel_forest")
-	}
-
-	private fun isWarrior(configId: String): Boolean {
-		return configId.lowercase().contains("warrior")
-	}
-
-	private fun isFlower(configId: String): Boolean {
-		return configId.lowercase().contains("flower")
-	}
-
-	private fun resolveLegacyTimeSeconds(state: RenderFrameState): Float {
-		val id = config.id.lowercase()
-		if (!isWarrior(id)) {
-			val baseSeconds = when (state.mode) {
-				RenderMode.WALLPAPER_SERVICE -> {
-					(SystemClock.elapsedRealtime() % LEGACY_REALTIME_WINDOW_MS).toFloat() / 1000f
-				}
-				else -> (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f
-			}
-			return when {
-				isFlower(id) && state.mode == RenderMode.WALLPAPER_SERVICE ->
-					quantizeTimeSeconds(baseSeconds * FLOWER_WALLPAPER_TWINKLE_TIME_SCALE, FLOWER_WALLPAPER_TWINKLE_FPS)
-				else -> baseSeconds
-			}
-		}
-
-		return when (state.mode) {
-			RenderMode.FOCUS -> {
-				// Home screen: warrior textures run on real wall-clock time (no compressed timeline).
-				(System.currentTimeMillis() % MILLIS_PER_DAY).toFloat() / 1000f
-			}
-			RenderMode.PREVIEW -> {
-				// Set screen: match accelerated day progression and sample textures at 10 FPS.
-				val acceleratedSeconds = (state.frameTimeMillis % MILLIS_PER_DAY).toFloat() / 1000f
-				quantizeTimeSeconds(acceleratedSeconds, WARRIOR_TEXTURE_FPS)
-			}
-			RenderMode.WALLPAPER_SERVICE -> {
-				// Applied wallpaper: keep texture animation at fixed 10 FPS.
-				val realtimeSeconds =
-					(SystemClock.elapsedRealtime() % LEGACY_REALTIME_WINDOW_MS).toFloat() / 1000f
-				quantizeTimeSeconds(realtimeSeconds, WARRIOR_TEXTURE_FPS)
-			}
-			else -> (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f
-		}
-	}
-
-	private fun quantizeTimeSeconds(seconds: Float, fps: Float): Float {
-		if (fps <= 0f) return seconds
-		val frameStep = 1f / fps
-		return floor(seconds / frameStep) * frameStep
 	}
 
 	private fun isPixelArtTexture(path: String): Boolean {
@@ -923,34 +736,6 @@ class PreviewSkyProgram {
 
 	private fun isPowerOfTwo(value: Int): Boolean {
 		return value > 0 && (value and (value - 1)) == 0
-	}
-
-	private fun calculateLegacyNightAmount(minute: Float, sunrise: Float, sunset: Float): Float {
-		if (minute >= sunset && minute < sunset + NIGHT_TRANSITION_AFTER_SUNSET_MIN) {
-			return smoothstep(sunset, sunset + NIGHT_TRANSITION_AFTER_SUNSET_MIN, minute)
-		}
-		if ((minute >= sunset + NIGHT_TRANSITION_AFTER_SUNSET_MIN && minute < MINUTES_PER_DAY.toFloat()) ||
-			minute < sunrise - NIGHT_TRANSITION_BEFORE_SUNRISE_MIN
-		) {
-			return 1f
-		}
-		if (minute >= sunrise - NIGHT_TRANSITION_BEFORE_SUNRISE_WIDE_MIN &&
-			minute <= sunrise + NIGHT_TRANSITION_AFTER_SUNRISE_MIN
-		) {
-			val t = smoothstep(
-				sunrise - NIGHT_TRANSITION_BEFORE_SUNRISE_WIDE_MIN,
-				sunrise + NIGHT_TRANSITION_AFTER_SUNRISE_MIN,
-				minute
-			)
-			return 1f - t
-		}
-		return 0f
-	}
-
-	private fun smoothstep(edge0: Float, edge1: Float, value: Float): Float {
-		if (edge0 == edge1) return if (value < edge0) 0f else 1f
-		val t = ((value - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
-		return t * t * (3f - (2f * t))
 	}
 
 	private fun buildProgram(vertexShader: String, fragmentShader: String): Int {
@@ -1002,14 +787,6 @@ class PreviewSkyProgram {
 		private const val FLOAT_SIZE_BYTES = 4
 		private const val VERTEX_COUNT = 4
 		private const val MINUTES_PER_DAY = 1440
-		private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
-		private const val LEGACY_TIME_WINDOW_MS = 100_000L
-		private const val LEGACY_REALTIME_WINDOW_MS = 1_000_000L
-		private const val WARRIOR_TEXTURE_FPS = 10f
-		private const val NIGHT_TRANSITION_AFTER_SUNSET_MIN = 20f
-		private const val NIGHT_TRANSITION_BEFORE_SUNRISE_MIN = 20f
-		private const val NIGHT_TRANSITION_BEFORE_SUNRISE_WIDE_MIN = 30f
-		private const val NIGHT_TRANSITION_AFTER_SUNRISE_MIN = 10f
 		private const val QUALITY_ATMOSPHERE_THRESHOLD = 0.45f
 		private const val QUALITY_FLARE_THRESHOLD = 0.55f
 		private const val QUALITY_STARS_THRESHOLD = 0.70f
@@ -1027,13 +804,6 @@ class PreviewSkyProgram {
 		private const val TEEMO_TOP_BOUNDARY_COLOR_CARRY_PIXELS = 24
 		private const val TEEMO_TOP_BOUNDARY_ALPHA_FADE_PIXELS = 40
 		private const val TEEMO_TOP_BOUNDARY_COLOR_SAMPLE_PIXELS = 12
-		private const val FLOWER_WALLPAPER_TWINKLE_TIME_SCALE = 3.4f
-		private const val FLOWER_WALLPAPER_TWINKLE_FPS = 24f
-		private val CITY_TUNING_ISTANBUL = CityTuning(zoom = 0.60f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
-		private val CITY_TUNING_NEW_YORK = CityTuning(zoom = 0.70f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
-		private val CITY_TUNING_TOKYO = CityTuning(zoom = 0.75f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
-		private val CITY_TUNING_PARIS = CityTuning(zoom = 0.70f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
-		private val CITY_TUNING_DEFAULT = CityTuning(zoom = 0.85f, verticalOffset = 0.04f, horizontalOffset = 0.0f)
 
 		private val FULLSCREEN_VERTICES = floatArrayOf(
 			-1f, -1f,
@@ -1072,12 +842,6 @@ class PreviewSkyProgram {
 			}
 		"""
 	}
-
-	private data class CityTuning(
-		val zoom: Float,
-		val verticalOffset: Float,
-		val horizontalOffset: Float
-	)
 
 	private data class ResolvedTexture(
 		val path: String,

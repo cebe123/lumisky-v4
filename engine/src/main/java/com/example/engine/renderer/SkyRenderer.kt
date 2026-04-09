@@ -5,6 +5,7 @@ import com.example.engine.celestial.CelestialCalculator
 import com.example.engine.celestial.MoonController
 import com.example.engine.celestial.SunController
 import com.example.engine.config.WallpaperConfig
+import com.example.engine.config.resolvePeakYForAtmosphere
 import com.example.engine.sky.Vec2
 import com.example.engine.sky.SkyColorBlender
 import com.example.engine.time.TimeManager
@@ -133,7 +134,7 @@ class SkyRenderer(
 
 	private fun normalizedAltitude(y: Float): Float {
 		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
-		val peakY = config.peakY.coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
+		val peakY = config.resolvePeakYForAtmosphere().coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
 		return ((y - horizonY) / (peakY - horizonY)).coerceIn(0f, 1f)
 	}
 

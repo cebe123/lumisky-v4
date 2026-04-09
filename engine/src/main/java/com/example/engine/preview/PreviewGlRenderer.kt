@@ -15,12 +15,12 @@ import kotlin.math.abs
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-internal data class FocusCatchUpWindow(
+data class FocusCatchUpWindow(
 	val startProgress: Float,
 	val targetProgress: Float
 )
 
-internal fun resolveFocusCatchUpWindow(
+fun resolveFocusCatchUpWindow(
 	nowProgress: Float,
 	sunriseMinute: Int,
 	sunsetMinute: Int

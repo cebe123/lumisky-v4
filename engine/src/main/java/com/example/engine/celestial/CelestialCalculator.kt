@@ -1,7 +1,11 @@
 package com.example.engine.celestial
 
+import com.example.engine.config.CelestialOrbitConfig
+import com.example.engine.config.OrbitCurve
 import com.example.engine.config.PathType
 import com.example.engine.config.WallpaperConfig
+import com.example.engine.config.resolveMoonOrbit
+import com.example.engine.config.resolveSunOrbit
 import com.example.engine.sky.Vec2
 import kotlin.math.PI
 import kotlin.math.sin
@@ -17,14 +21,18 @@ class CelestialCalculator {
 		val sunrise = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
 		val sunset = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
 		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
-		val peakY = config.peakY.coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
-		val hiddenY = hiddenY(horizonY)
+		val orbit = config.resolveSunOrbit()
+		val peakY = resolvePeakY(horizonY, orbit, config)
+		val hiddenY = resolveHiddenY(horizonY, orbit)
 
 		if (sunset <= sunrise) {
 			val fallbackProgress = progress.coerceIn(0f, 1f)
-			return out.set(
-				x = resolveX(config.celestial.sunPathType, fallbackProgress),
-				y = arcY(horizonY, peakY, fallbackProgress)
+			return resolveVisiblePosition(
+				orbit = orbit,
+				horizonY = horizonY,
+				peakY = peakY,
+				phaseProgress = fallbackProgress,
+				out = out
 			)
 		}
 
@@ -39,13 +47,16 @@ class CelestialCalculator {
 				),
 				endMinute = sunset
 			)
-			out.set(
-				x = resolveX(config.celestial.sunPathType, dayProgress),
-				y = arcY(horizonY, peakY, dayProgress)
+			resolveVisiblePosition(
+				orbit = orbit,
+				horizonY = horizonY,
+				peakY = peakY,
+				phaseProgress = dayProgress,
+				out = out
 			)
 		} else {
 			out.set(
-				x = resolveX(config.celestial.sunPathType, 0.5f),
+				x = resolveHiddenX(orbit),
 				y = hiddenY
 			)
 		}
@@ -60,20 +71,24 @@ class CelestialCalculator {
 		val sunrise = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
 		val sunset = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
 		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
-		val peakY = config.peakY.coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
-		val hiddenY = hiddenY(horizonY)
+		val orbit = config.resolveMoonOrbit()
+		val peakY = resolvePeakY(horizonY, orbit, config)
+		val hiddenY = resolveHiddenY(horizonY, orbit)
 
 		if (sunset <= sunrise) {
 			val fallbackProgress = progress.coerceIn(0f, 1f)
-			return out.set(
-				x = resolveX(config.celestial.moonPathType, fallbackProgress),
-				y = arcY(horizonY, peakY, fallbackProgress)
+			return resolveVisiblePosition(
+				orbit = orbit,
+				horizonY = horizonY,
+				peakY = peakY,
+				phaseProgress = fallbackProgress,
+				out = out
 			)
 		}
 
 		return if (minute in sunrise..sunset) {
 			out.set(
-				x = resolveX(config.celestial.moonPathType, 0.5f),
+				x = resolveHiddenX(orbit),
 				y = hiddenY
 			)
 		} else {
@@ -88,17 +103,81 @@ class CelestialCalculator {
 				peakMinute = (sunZenithMinute + HALF_DAY_MINUTES) % MINUTES_PER_DAY,
 				endMinute = sunrise
 			)
-			out.set(
-				x = resolveX(config.celestial.moonPathType, nightProgress),
-				y = arcY(horizonY, peakY, nightProgress)
+			resolveVisiblePosition(
+				orbit = orbit,
+				horizonY = horizonY,
+				peakY = peakY,
+				phaseProgress = nightProgress,
+				out = out
 			)
 		}
 	}
 
-	private fun resolveX(pathType: PathType, phaseProgress: Float): Float {
-		return when (pathType) {
-			PathType.VERTICAL -> VERTICAL_PATH_X
-			PathType.ARC -> phaseProgress.coerceIn(0f, 1f)
+	private fun resolveVisiblePosition(
+		orbit: CelestialOrbitConfig,
+		horizonY: Float,
+		peakY: Float,
+		phaseProgress: Float,
+		out: Vec2
+	): Vec2 {
+		val shapedProgress = applyCurve(phaseProgress, orbit.curve)
+		return out.set(
+			x = resolveVisibleX(orbit, shapedProgress),
+			y = arcY(horizonY, peakY, shapedProgress)
+		)
+	}
+
+	private fun resolveVisibleX(
+		orbit: CelestialOrbitConfig,
+		phaseProgress: Float
+	): Float {
+		return when (orbit.pathType) {
+			PathType.VERTICAL -> {
+				val fixedX = orbit.startX ?: orbit.endX ?: VERTICAL_PATH_X
+				fixedX.coerceIn(0f, 1f)
+			}
+			PathType.ARC -> {
+				val startX = orbit.startX ?: ARC_PATH_START_X
+				val endX = orbit.endX ?: ARC_PATH_END_X
+				lerp(startX, endX, phaseProgress.coerceIn(0f, 1f)).coerceIn(0f, 1f)
+			}
+		}
+	}
+
+	private fun resolveHiddenX(orbit: CelestialOrbitConfig): Float {
+		return when (orbit.pathType) {
+			PathType.VERTICAL -> (orbit.startX ?: orbit.endX ?: VERTICAL_PATH_X).coerceIn(0f, 1f)
+			PathType.ARC -> {
+				val startX = orbit.startX ?: ARC_PATH_START_X
+				val endX = orbit.endX ?: ARC_PATH_END_X
+				((startX + endX) * 0.5f).coerceIn(0f, 1f)
+			}
+		}
+	}
+
+	private fun resolvePeakY(
+		horizonY: Float,
+		orbit: CelestialOrbitConfig,
+		config: WallpaperConfig
+	): Float {
+		return (orbit.peakY ?: config.peakY).coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
+	}
+
+	private fun resolveHiddenY(
+		horizonY: Float,
+		orbit: CelestialOrbitConfig
+	): Float {
+		return orbit.hiddenY ?: hiddenY(horizonY)
+	}
+
+	private fun applyCurve(
+		phaseProgress: Float,
+		curve: OrbitCurve
+	): Float {
+		val clamped = phaseProgress.coerceIn(0f, 1f)
+		return when (curve) {
+			OrbitCurve.LINEAR -> clamped
+			OrbitCurve.EASE_IN_OUT -> clamped * clamped * (3f - (2f * clamped))
 		}
 	}
 
@@ -166,10 +245,16 @@ class CelestialCalculator {
 		return normalized
 	}
 
+	private fun lerp(start: Float, end: Float, t: Float): Float {
+		return start + ((end - start) * t.coerceIn(0f, 1f))
+	}
+
 	companion object {
 		private const val MINUTES_PER_DAY = 24 * 60
 		private const val HALF_DAY_MINUTES = 12 * 60
 		private const val VERTICAL_PATH_X = 0.5f
+		private const val ARC_PATH_START_X = 0f
+		private const val ARC_PATH_END_X = 1f
 		private const val MIN_PEAK_DELTA = 0.05f
 		private const val HIDDEN_DEPTH = 0.75f
 		private const val HIDDEN_Y_MAX = -0.15f

@@ -177,57 +177,35 @@ class WallpaperRenderEngine(
 		return buildString {
 			append(config.id)
 			append('|')
-			append(config.horizon.offset)
+			append(config.horizon.hashCode())
 			append('|')
-			append(config.peakY)
+			append(config.celestial.hashCode())
 			append('|')
-			append(config.belowHorizonOffset)
+			append(config.features.hashCode())
 			append('|')
-			append(config.celestial.sunPathType)
+			append(config.effects.hashCode())
 			append('|')
-			append(config.celestial.moonPathType)
+			append(config.textures.hashCode())
 			append('|')
-			append(config.features.atmosphereEnabled)
+			append(config.shader.hashCode())
 			append('|')
-			append(config.features.lensFlareEnabled)
+			append(config.runtimeRenderPolicy.hashCode())
 			append('|')
-			append(config.features.starsEnabled)
+			append(config.capabilities.hashCode())
 			append('|')
-			append(config.textures.sunTexture)
+			append(config.serviceRenderPolicy.hashCode())
 			append('|')
-			append(config.textures.moonTexture)
-			append('|')
-			append(config.textures.flareTexture ?: "")
-			append('|')
-			append(config.textures.backgroundTexture ?: "")
-			append('|')
-			append(config.shader.fragmentAssetPath ?: "")
-			append('|')
-			append(config.shader.mode)
-			append('|')
-			append(config.runtimeRenderPolicy.policy)
-			append('|')
-			append(config.runtimeRenderPolicy.continuousFrameIntervalMs)
-			append('|')
-			append(config.daylight.sunriseMinute)
-			append('|')
-			append(config.daylight.sunsetMinute)
-			append('|')
-			append(config.daylight.solarNoonMinute)
-			append('|')
-			append(config.daylight.timeZoneId ?: "")
+			append(config.daylight.hashCode())
 			append('|')
 			append(config.previewLoopDurationSeconds)
 			append('|')
 			append(config.focusCatchUpDurationSeconds)
 			append('|')
-			append(config.customSkyColors?.sunriseColor ?: 0)
+			append(config.peakY)
 			append('|')
-			append(config.customSkyColors?.dayColor ?: 0)
+			append(config.belowHorizonOffset)
 			append('|')
-			append(config.customSkyColors?.sunsetColor ?: 0)
-			append('|')
-			append(config.customSkyColors?.nightColor ?: 0)
+			append(config.customSkyColors?.hashCode() ?: 0)
 		}
 	}
 
@@ -246,7 +224,17 @@ class WallpaperRenderEngine(
 	}
 
 	fun continuousFrameIntervalNanos(displayRefreshRateHz: Int): Long {
-		val requestedNanos = continuousFrameIntervalMs() * NANOS_PER_MILLISECOND
+		return frameIntervalNanos(
+			frameIntervalMs = continuousFrameIntervalMs(),
+			displayRefreshRateHz = displayRefreshRateHz
+		)
+	}
+
+	fun frameIntervalNanos(
+		frameIntervalMs: Long,
+		displayRefreshRateHz: Int
+	): Long {
+		val requestedNanos = frameIntervalMs.coerceAtLeast(1L) * NANOS_PER_MILLISECOND
 		return quantizeToDisplayVsync(
 			requestedNanos = requestedNanos,
 			displayRefreshRateHz = displayRefreshRateHz

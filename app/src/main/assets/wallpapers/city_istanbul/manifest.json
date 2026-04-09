@@ -1,0 +1,68 @@
+{
+  "id": "city_istanbul",
+  "name": "Istanbul",
+  "horizon": {
+    "offset": 0.48
+  },
+  "celestial": {
+    "sunPathType": "ARC",
+    "moonPathType": "ARC",
+    "sunOrbit": {
+      "pathType": "ARC",
+      "startX": 0.14,
+      "endX": 0.76,
+      "peakY": 0.84,
+      "curve": "EASE_IN_OUT"
+    },
+    "moonOrbit": {
+      "pathType": "ARC",
+      "startX": 0.82,
+      "endX": 0.24,
+      "peakY": 0.81,
+      "curve": "EASE_IN_OUT"
+    }
+  },
+  "features": {
+    "atmosphereEnabled": true,
+    "lensFlareEnabled": true,
+    "starsEnabled": true
+  },
+  "effects": {
+    "stars": {
+      "enabled": true,
+      "density": 0.72,
+      "intensity": 0.78
+    }
+  },
+  "textures": {
+    "backgroundTexture": "backgrounds/city_istanbul.webp"
+  },
+  "shader": {
+    "fragmentAssetPath": "shaders/city/fragment_shader.glsl",
+    "mode": "external_theme",
+    "uniformOverrides": {
+      "cityZoom": 0.6,
+      "cityVerticalOffset": 0.04,
+      "cityHorizontalOffset": -0.02
+    }
+  },
+  "previewLoopDurationSeconds": 8.0,
+  "focusCatchUpDurationSeconds": 2.0,
+  "peakY": 0.84,
+  "belowHorizonOffset": 0.1,
+  "runtimeRenderPolicy": {
+    "policy": "MINUTE_TICK",
+    "continuousFrameIntervalMs": 16
+  },
+  "capabilities": {
+    "dynamicMotion": false,
+    "dynamicTextures": false,
+    "locationAwareLighting": true,
+    "supportsCloudLayer": false,
+    "supportsStarLayer": true
+  },
+  "serviceRenderPolicy": {
+    "usePowerSaverThrottle": true,
+    "useThermalThrottle": true
+  }
+}

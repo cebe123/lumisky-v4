@@ -139,25 +139,75 @@ Not:
 ## Mevcut Kritik Boşluklar (Hedefe Gitmek İçin Refactor Gerekenler)
 
 1. `WallpaperCatalog` ölçeklenebilir değil (preset kod içinde)
-- `DEFAULT_COUNT = 120` olsa da gerçek preset sayısı sınırlı.
-- Yüzlerce wallpaper hedefi için manifest/index tabanlı katalog gerekiyor.
+- Gerçek durum: katalog `app/src/main/java/com/example/lumisky/data/WallpaperCatalog.kt` içinde `ThemePreset` listesi olarak tutuluyor.
+- Kodla doğrulanan preset sayısı `14`; local manifest/index loader yok.
+- Yüzlerce wallpaper hedefi için katalog kaynağı koddan ayrılmalı.
 
 2. Wallpaper bazlı override sınırlı
 - `WallpaperConfig` güçlü ama güneşin yatay doğuş konumunu serbestçe değiştirecek alan yok.
-- `CelestialCalculator` içinde `VERTICAL -> x=0.5`, `ARC -> x=phaseProgress`.
+- `CelestialCalculator` içinde yatay orbit hesabı hala `VERTICAL -> x=0.5`, `ARC -> x=phaseProgress` mantığıyla çözülüyor.
 - Senin verdiğin “tek wallpaper’da güneş daha sağdan doğsun” örneği için yeni orbit/offset parametreleri şart.
+- Şehir wallpaper'larında davranış farkı halen çoğunlukla texture + shader tuning seviyesinde.
 
 3. Efekt sistemi modüler değil
 - `PreviewSkyProgram` çok fazla sorumluluk taşıyor (shader uniform, texture tuning, legacy theme davranışları vb.)
 - Yeni efekt eklemek (bulut/yağmur/kar) şu an diğer temaları etkileme riski taşıyor.
 
-4. Continuous render kararı data-driven değil
-- Şu an `requiresContinuousRendering()` sadece `config.id` string match ile çalışıyor (`warrior` gibi).
-- Bu karar config capability / effect runtime policy üzerinden verilmelidir.
+4. Render policy kısmen data-driven ama capability-driven değil
+- `runtimeRenderPolicy` artık mevcut ve service tarafında kullanılıyor.
+- Buna rağmen policy/effect/capability bilgisi katalog seviyesinde normalize değil; `PreviewSkyProgram` içindeki theme özel davranışlar ve config-id koşulları devam ediyor.
+- Hedef, render kararını wallpaper kimliğinden değil manifest/config capability setinden üretmek.
 
 5. Wallpaper service performans politikası preview kadar gelişmiş değil
-- Preview tarafında adaptive FPS/quality var, wallpaper service tarafında daha basit bir model var.
+- Preview tarafında adaptive FPS/quality kararları var, wallpaper service tarafında ise temel pacing + minute-tick yaklaşımı var.
 - Uzun vadede service için de thermal/battery-aware policy gerekli.
+
+### Kritik Boşluklar İçin Geliştirme Planı
+
+1. Sprint A - Contract'ları kilitle (`engine` ağırlıklı, `app` adaptörü)
+- `WallpaperConfig` etrafına `CelestialOrbitConfig`, `EffectConfig`, `WallpaperCapabilities`, `ServiceRenderPolicy` gibi net modeller ekle.
+- `CelestialCalculator` için yeni orbit evaluator seam'i aç; mevcut `PathType` alanlarını compatibility fallback olarak tut.
+- `WallpaperCatalog` tüketicileri için `WallpaperCatalogSource` benzeri bir soyutlama tanımla; mevcut `ThemePreset` listesi geçici kaynak olarak kalsın.
+- Çıkış kriteri: yeni veri modeli eklenmiş, `WallpaperConfigStore` decode/encode akışı ve apply flow bozulmamış olmalı.
+
+2. Sprint B - Local manifest pipeline'ı devreye al (`app` sahipliği, `engine` sadece schema)
+- `assets/wallpapers/index.json` ve `assets/wallpapers/<id>/manifest.json` formatını tanımla.
+- `WallpaperManifestParser` ve `WallpaperCatalogRepository` ile bozuk manifest skip/fallback akışını kur.
+- İlk geçişte `2-3` wallpaper'ı manifestten, kalan presetleri legacy kaynak üzerinden yükle.
+- Çıkış kriteri: yeni wallpaper kod değiştirmeden asset + manifest ile listeye girebilmeli.
+
+3. Sprint C - Override sistemini gerçek kullanım senaryosuna taşı (`engine` + `app`)
+- `CelestialCalculator` içinde `resolveX()` yerine orbit descriptor üzerinden `startX/endX/peakY/curve/hiddenY` değerlendirmesi yap.
+- `WallpaperCatalog` veya manifest üzerinden en az iki wallpaper'a farklı güneş ve ay rotası ver.
+- `PreviewSkyProgram` içindeki şehir tuning sabitlerini config/manifest alanına taşı.
+- Çıkış kriteri: aynı shader'ı kullanan iki wallpaper sadece override ile görünür şekilde ayrışmalı.
+
+4. Sprint D - Service policy resolver'ı ayır (`wallpaper` sahipliği)
+- `WallpaperRenderEngine` ve `WallpaperRenderController` içine gömülü policy kararlarını `ServiceRenderPolicyResolver` benzeri tek noktaya taşı.
+- Girdiler: `runtimeRenderPolicy`, wallpaper capabilities, görünürlük, power saver, termal durum, refresh rate.
+- `MinuteTickScheduler` ve mevcut receiver/lifecycle patternleri aynen korunmalı.
+- Çıkış kriteri: `static/minute-tick/dynamic` ayrımı service tarafında tek resolver üzerinden çalışmalı.
+
+5. Sprint E - Monolitik shader programı parçala (`engine` sahipliği)
+- `PreviewSkyProgram` içinden texture binding, legacy time mapping, city/theme tuning ve optional effect binding sorumluluklarını ayır.
+- İlk aşamada tam efekt framework yerine `LegacyThemeAdapter` + `EffectSlot` yapısı kur; `clouds` ve `stars` için giriş noktası aç.
+- `ZenithSnapshotActivity`, preview ve wallpaper render akışları aynı yeni abstraction'ı tüketmeli.
+- Çıkış kriteri: yeni bir efekt veya tuning eklemek için tek bir `1000+` satırlık sınıfı merkezden düzenleme zorunluluğu kalkmalı.
+
+### Uygulama Sırası ve Bağımlılık
+
+- `Sprint A` tamamlanmadan `Sprint B` başlamamalı; manifest şeması yanlış contract üstüne kurulursa ikinci kez migration gerekir.
+- `Sprint C`, `Sprint B` ile paralel ilerleyebilir ama yeni override alanları manifest şemasına yansıtılmadan tamamlanmış sayılmamalı.
+- `Sprint D`, `Sprint C` sonrasında yapılmalı; service policy kararlarının doğru olması için capability bilgisi önce config tarafında tanımlanmalı.
+- `Sprint E`, ilk üç sprintten sonra başlatılmalı; aksi halde monolit parçalanırken schema ve katalog tekrar değişir.
+
+### Her Sprint Sonunda Zorunlu Kontrol Listesi
+
+- `WallpaperConfigStore` encode/decode geriye uyumluluk testi geçti mi
+- `ACTION_APPLY_STORED_WALLPAPER_CONFIG` akışı bozulmadan kaldı mı
+- `HomeViewModel`, `HomeScreen` ve `ZenithSnapshotActivity` yeni katalog kaynağını crash olmadan tüketiyor mu
+- `WallpaperRenderController` scheduler/lifecycle davranışı aynı kaldı mı
+- Asset yolu `app/build/generated/filteredAssets/main` paketleme zinciriyle uyumlu mu
 
 ## Mimari Hedef (Kilitlemek İstediğimiz Tasarım)
 
@@ -629,276 +679,68 @@ Not:
 2. Modüler efekt sistemi shader-pass tabanlı mı olsun, yoksa CPU update + sprite layer karışık mı?
 3. Weather entegrasyonu için ilk sağlayıcı stratejisi ne olacak (tam local mock / gerçek API / opsiyonel modül)?
 
-# Lumisky Progress (Updated for Play Store Compliance)
-
-## Current Status (Reality Check)
-
-* Total presets: ~14
-* True unique experiences: ~9–10 (due to shared shaders)
-* Risk level: ⚠️ Medium (borderline Play Store rejection risk)
-
-Main issue:
-
-> Some wallpapers are perceived as variations (same shader + different textures)
-
----
-
-## 🎯 Goal Before Re-Submission
-
-### Target Metrics
-
-* Total presets: **16–18+**
-* Truly unique experiences: **12+**
-* Categories: **5+ strong distinct categories**
-
----
-
-## 🔴 Critical Problems Identified
-
-### 1. City Wallpapers Are Too Similar
-
-Current:
-
-* Istanbul
-* New York
-* Tokyo
-* Paris
-
-Problem:
-
-* Same shader (`city/fragment_shader.glsl`)
-* Only texture changes
-
-➡️ Play Store may treat these as **1 wallpaper, not 4**
-
----
-
-### 2. Perceived Content Value Is Low
-
-Even with 14 presets:
-
-* Not all feel unique
-* Lacks strong differentiation signals
-
----
-
-### 3. Features Not Visible Enough to User
-
-We have:
-
-* Location-based sun
-* Performance modes
-* Render strategies
-
-BUT:
-
-* User does not clearly see these as value
-
----
-
-## ✅ Action Plan (Must Complete)
-
-### 🔧 1. Fix City Wallpapers (HIGH PRIORITY)
-
-Make each city **behaviorally unique**:
-
-* Istanbul → Fog layer + birds
-* Tokyo → Neon + rain animation
-* New York → Moving clouds + light flicker
-* Paris → Warm sunset haze
-
-Goal:
-
-> Each city = unique shader behavior
-
----
-
-### 🎨 2. Add 4–6 New Unique Wallpapers
-
-Add these categories:
-
-#### Weather-based
-
-* Snow (falling particles)
-* Rain (dynamic drops + ripple)
-* Fog (depth fade)
-
-#### Space-based
-
-* Galaxy (parallax stars)
-* Nebula (color shifting)
-
-#### Premium Minimal
-
-* Gradient horizon
-* Glass glow effect
-
----
-
-### ⚙️ 3. Add Metadata Per Wallpaper
-
-Each wallpaper must expose:
-
-* Battery mode (Saver / Smooth)
-* Animation type (Continuous / Static)
-* Effects (Stars, Fog, Rain, etc.)
-
-UI Example:
-
-```
-🌙 Night Sky
-⭐ Stars Enabled
-🔋 Battery Saver
-```
-
----
-
-### 🧠 4. Improve First Screen Experience
-
-Add sections:
-
-* Featured
-* Dynamic Wallpapers
-* Battery Friendly
-* Location-Based
-
-Goal:
-
-> Avoid "empty list" feeling
-
----
-
-### 🧩 5. Strengthen Categories
-
-Required categories:
-
-* Nature
-* Cities
-* Space
-* Minimal
-* Special / Effects
-
----
-
-### ⚡ 6. Surface Engine Power to User
-
-Expose clearly:
-
-* Real-time day/night cycle
-* Location-based sun
-* Performance modes
-
-These should be visible in:
-
-* UI
-* Store listing
-
----
-
-### 🧱 7. Improve WallpaperCatalog Structure
-
-Current problem:
-
-* Hardcoded
-* Not scalable
-
-Next step:
-
-* Move to structured data (JSON / DB / config)
-
----
-
-### 🔄 8. Show Render Mode Differences
-
-Expose visually:
-
-* "Smooth Animation"
-* "Battery Saver"
-
-This increases perceived value
-
----
-
-### 🧪 9. Ensure Each Wallpaper Feels Different
-
-Checklist per wallpaper:
-
-* Different shader logic
-* Different animation
-* Different color mood
-* Different foreground composition
-
-If NOT → it does NOT count as new content
-
----
-
-### 📱 10. Store Listing Optimization
-
-Must show:
-
-* Different wallpapers visually
-* Feature highlights
-
-Use phrases:
-
-* Dynamic OpenGL wallpapers
-* Real-time day/night cycle
-* Battery optimized
-* Location-aware lighting
-
----
-
-## 🚀 Final Target State
-
-When ALL completed:
-
-* 16–18 wallpapers
-* 12+ unique behaviors
-* Strong UI categories
-* Clear feature communication
-
-➡️ Result:
-
-> High chance of Play Store approval
-
----
-
-## ⚠️ Final Rule
-
-> Texture change ≠ new wallpaper
-
-Only count if:
-
-* Behavior changes
-* Visual logic changes
-* Experience changes
-
----
-
-## 📌 Summary
-
-Current:
-
-* Good architecture ✅
-* Decent UI ✅
-* Weak content differentiation ❌
-
-After update:
-
-* Strong product perception
-* High approval probability
-
----
-
-## Next Step
-
-Implement in this order:
-
-1. Fix city shaders
-2. Add 4 new wallpapers
-3. Add metadata system
-4. Improve home screen sections
-5. Update store listing
+# Lumisky Progress (Code-Verified 2026-04-09)
+
+## Kodla Doğrulanan Mevcut Durum
+
+- Toplam preset: `14`
+- Ayrı fragment shader yolu: `11`
+- Home ekranında aktif kategori grubu: `5` (`Special`, `Landscapes`, `Cities`, `Anime`, `Games`)
+- Continuous render kullanan preset: `2` (`warrior`, `flower`)
+- Konum bazlı sun-times / day-night akışı: `var`
+- Kullanıcıya açık performans modları: `Battery`, `Auto`, `Smooth`
+
+## Tamamlanan Özellikler
+
+- `WallpaperConfig.runtimeRenderPolicy` modeli eklenmiş durumda.
+- `WallpaperConfigStore` encode/decode akışı `runtimeRenderPolicy` alanını saklıyor ve eski config'ler için legacy fallback kullanıyor.
+- Wallpaper service tarafında continuous render kararı `config.runtimeRenderPolicy.policy` üzerinden veriliyor.
+- Home ekranında kategori bazlı wallpaper listesi var.
+- Settings ekranında performans modu seçimi ile konum/güneş döngüsü bilgileri kullanıcıya sunuluyor.
+- Canlı duvar kağıdı apply akışı korunuyor (`WallpaperConfigStore` + `ACTION_APPLY_STORED_WALLPAPER_CONFIG`).
+
+## Kısmen Tamamlanan Maddeler
+
+- İçerik farklılaşması kısmi: `14` preset var, ancak `city_istanbul`, `city_newyork`, `city_tokyo`, `city_paris` aynı `shaders/city/fragment_shader.glsl` shader'ını kullanıyor.
+- Kategori yapısı kısmi: Home ekranında `5` kategori var, ancak Play Store odaklı hedefteki `Nature`, `Space`, `Minimal`, `Special / Effects` ayrımı henüz oturmuş değil.
+- Engine değerini kullanıcıya gösterme kısmi: performans modu ve konum bilgisi Settings ekranında görünüyor, fakat wallpaper kartlarında metadata olarak gösterilmiyor.
+- Faz 0, Faz 4, Faz 5 ve Faz 6 için bazı altyapı parçaları mevcut, fakat bu fazların dokümandaki kabul kriterleri tam kapanmış değil.
+
+## Hala Eksik Olan Kritik Maddeler
+
+- `WallpaperCatalog` hala hardcoded; JSON/manifest tabanlı katalog yok.
+- Wallpaper kartlarında wallpaper bazlı metadata (`Battery`, `Smooth`, `Stars`, `Fog` vb.) gösterilmiyor.
+- Home ekranında `Featured`, `Dynamic Wallpapers`, `Battery Friendly`, `Location-Based` bölümleri yok.
+- `4-6` yeni gerçekten benzersiz wallpaper eklenmemiş.
+- Şehir wallpaper'ları davranışsal olarak ayrışmıyor; şu an esas fark texture.
+- Modüler efekt sistemi (`clouds`, `rain`, `snow`, `fog`, `stars`) kurulmuş değil.
+- Weather tabanlı tema/effect entegrasyonu yok.
+- Hibrit/remote katalog altyapısı yok.
+- `docs/perf_targets.md` ve `docs/wallpaper_types.md` repo içinde yok.
+
+## Faz Durumu (Kodla Teyitli)
+
+- Faz 0 - `Kısmen tamamlandı`
+- Faz 1 - `Kısmen tamamlandı`
+- Faz 2 - `Başlamadı`
+- Faz 3 - `Başlamadı`
+- Faz 4 - `Kısmen tamamlandı`
+- Faz 5 - `Kısmen tamamlandı`
+- Faz 6 - `Kısmen tamamlandı`
+- Faz 7 - `Başlamadı`
+- Faz 8 - `Henüz doğrulanmadı`
+
+## Güncel Öncelik Sırası
+
+1. `WallpaperCatalog` yapısını manifest/data-driven hale getir.
+2. Şehir wallpaper'larını aynı shader + texture varyasyonu olmaktan çıkar.
+3. Wallpaper kartlarına metadata alanı ekle (`animation`, `battery`, `effects`).
+4. Home ekranına içerik değerini daha net gösteren bölüm başlıkları ekle.
+5. Yeni gerçekten farklı `4-6` wallpaper ekle.
+
+Not:
+
+- Store listing optimizasyonu repo içi koddan doğrudan doğrulanamaz; bu madde ayrı bir yayın hazırlık checklist'i olarak takip edilmeli.
 
 ---
 

@@ -30,6 +30,7 @@ import com.example.engine.config.WallpaperConfig
 import com.example.engine.preview.PreviewGlRenderer
 import com.example.engine.renderer.RenderMode
 import com.example.lumisky.data.WallpaperCatalog
+import com.example.lumisky.data.WallpaperCatalogRepository
 import com.example.lumisky.shader.RenderAssetCache
 import com.example.lumisky.ui.common.PreviewRendererSurfaceView
 import com.example.lumisky.ui.home.resolveHomePreviewFrameAspectRatio
@@ -47,6 +48,9 @@ class ZenithSnapshotActivity : AppCompatActivity() {
 
 	private val appSettingsRepository by lazy { AppSettingsRepository(applicationContext) }
 	private val sunTimesRepository by lazy { SunTimesRepository() }
+	private val wallpaperCatalogRepository by lazy {
+		WallpaperCatalog.repository(applicationContext)
+	}
 	private val mainHandler = Handler(Looper.getMainLooper())
 	private val worker = Executors.newSingleThreadExecutor()
 
@@ -96,7 +100,7 @@ class ZenithSnapshotActivity : AppCompatActivity() {
 				return@execute
 			}
 			val daylight = resolveDaylight()
-			val generatedConfigs = WallpaperCatalog.buildConfigs(daylight = daylight)
+			val generatedConfigs = wallpaperCatalogRepository.buildConfigs(daylight = daylight)
 			generatedConfigs.forEach { config ->
 				RenderAssetCache.prewarmWallpaper(applicationContext, config)
 			}

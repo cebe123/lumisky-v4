@@ -201,10 +201,26 @@ internal object WallpaperConfigJsonCodec {
 	private const val KEY_CELESTIAL = "celestial"
 	private const val KEY_SUN_PATH_TYPE = "sunPathType"
 	private const val KEY_MOON_PATH_TYPE = "moonPathType"
+	private const val KEY_SUN_ORBIT = "sunOrbit"
+	private const val KEY_MOON_ORBIT = "moonOrbit"
+	private const val KEY_START_X = "startX"
+	private const val KEY_END_X = "endX"
+	private const val KEY_HIDDEN_Y = "hiddenY"
+	private const val KEY_CURVE = "curve"
 	private const val KEY_FEATURES = "features"
 	private const val KEY_ATMOSPHERE_ENABLED = "atmosphereEnabled"
 	private const val KEY_LENS_FLARE_ENABLED = "lensFlareEnabled"
 	private const val KEY_STARS_ENABLED = "starsEnabled"
+	private const val KEY_EFFECTS = "effects"
+	private const val KEY_CLOUDS = "clouds"
+	private const val KEY_STARS = "stars"
+	private const val KEY_FOG = "fog"
+	private const val KEY_RAIN = "rain"
+	private const val KEY_SNOW = "snow"
+	private const val KEY_ENABLED = "enabled"
+	private const val KEY_SPEED = "speed"
+	private const val KEY_DENSITY = "density"
+	private const val KEY_INTENSITY = "intensity"
 	private const val KEY_TEXTURES = "textures"
 	private const val KEY_SUN_TEXTURE = "sunTexture"
 	private const val KEY_MOON_TEXTURE = "moonTexture"
@@ -229,9 +245,29 @@ internal object WallpaperConfigJsonCodec {
 	private const val KEY_SHADER = "shader"
 	private const val KEY_FRAGMENT_ASSET_PATH = "fragmentAssetPath"
 	private const val KEY_MODE = "mode"
+	private const val KEY_UNIFORM_OVERRIDES = "uniformOverrides"
+	private const val KEY_CITY_ZOOM = "cityZoom"
+	private const val KEY_CITY_VERTICAL_OFFSET = "cityVerticalOffset"
+	private const val KEY_CITY_HORIZONTAL_OFFSET = "cityHorizontalOffset"
+	private const val KEY_CLOUD_ALPHA = "cloudAlpha"
+	private const val KEY_CLOUD_OFFSET = "cloudOffset"
 	private const val KEY_RUNTIME_RENDER_POLICY = "runtimeRenderPolicy"
 	private const val KEY_POLICY = "policy"
 	private const val KEY_CONTINUOUS_FRAME_INTERVAL_MS = "continuousFrameIntervalMs"
+	private const val KEY_CAPABILITIES = "capabilities"
+	private const val KEY_DYNAMIC_MOTION = "dynamicMotion"
+	private const val KEY_DYNAMIC_TEXTURES = "dynamicTextures"
+	private const val KEY_LOCATION_AWARE_LIGHTING = "locationAwareLighting"
+	private const val KEY_SUPPORTS_CLOUD_LAYER = "supportsCloudLayer"
+	private const val KEY_SUPPORTS_STAR_LAYER = "supportsStarLayer"
+	private const val KEY_SERVICE_RENDER_POLICY = "serviceRenderPolicy"
+	private const val KEY_OVERRIDE_POLICY = "overridePolicy"
+	private const val KEY_OVERRIDE_FRAME_INTERVAL_MS = "overrideFrameIntervalMs"
+	private const val KEY_USE_POWER_SAVER_THROTTLE = "usePowerSaverThrottle"
+	private const val KEY_USE_THERMAL_THROTTLE = "useThermalThrottle"
+	private const val KEY_POWER_SAVER_POLICY = "powerSaverPolicy"
+	private const val KEY_POWER_SAVER_FRAME_INTERVAL_MS = "powerSaverFrameIntervalMs"
+	private const val KEY_THERMAL_THROTTLE_FRAME_INTERVAL_MS = "thermalThrottleFrameIntervalMs"
 
 	fun encode(config: WallpaperConfig): String {
 		return JSONObject().apply {
@@ -243,11 +279,20 @@ internal object WallpaperConfigJsonCodec {
 			put(KEY_CELESTIAL, JSONObject().apply {
 				put(KEY_SUN_PATH_TYPE, config.celestial.sunPathType.name)
 				put(KEY_MOON_PATH_TYPE, config.celestial.moonPathType.name)
+				put(KEY_SUN_ORBIT, encodeOrbit(config.celestial.sunOrbit) ?: JSONObject.NULL)
+				put(KEY_MOON_ORBIT, encodeOrbit(config.celestial.moonOrbit) ?: JSONObject.NULL)
 			})
 			put(KEY_FEATURES, JSONObject().apply {
 				put(KEY_ATMOSPHERE_ENABLED, config.features.atmosphereEnabled)
 				put(KEY_LENS_FLARE_ENABLED, config.features.lensFlareEnabled)
 				put(KEY_STARS_ENABLED, config.features.starsEnabled)
+			})
+			put(KEY_EFFECTS, JSONObject().apply {
+				put(KEY_CLOUDS, encodeEffect(config.effects.clouds) ?: JSONObject.NULL)
+				put(KEY_STARS, encodeEffect(config.effects.stars) ?: JSONObject.NULL)
+				put(KEY_FOG, encodeEffect(config.effects.fog) ?: JSONObject.NULL)
+				put(KEY_RAIN, encodeEffect(config.effects.rain) ?: JSONObject.NULL)
+				put(KEY_SNOW, encodeEffect(config.effects.snow) ?: JSONObject.NULL)
 			})
 			put(KEY_TEXTURES, JSONObject().apply {
 				put(KEY_SUN_TEXTURE, config.textures.sunTexture)
@@ -277,6 +322,10 @@ internal object WallpaperConfigJsonCodec {
 			put(KEY_SHADER, JSONObject().apply {
 				put(KEY_FRAGMENT_ASSET_PATH, config.shader.fragmentAssetPath ?: JSONObject.NULL)
 				put(KEY_MODE, config.shader.mode)
+				put(
+					KEY_UNIFORM_OVERRIDES,
+					encodeShaderUniformOverrides(config.shader.uniformOverrides) ?: JSONObject.NULL
+				)
 			})
 			put(KEY_RUNTIME_RENDER_POLICY, JSONObject().apply {
 				put(KEY_POLICY, config.runtimeRenderPolicy.policy.name)
@@ -285,15 +334,45 @@ internal object WallpaperConfigJsonCodec {
 					config.runtimeRenderPolicy.continuousFrameIntervalMs
 				)
 			})
+			put(KEY_CAPABILITIES, JSONObject().apply {
+				put(KEY_DYNAMIC_MOTION, config.capabilities.dynamicMotion)
+				put(KEY_DYNAMIC_TEXTURES, config.capabilities.dynamicTextures)
+				put(KEY_LOCATION_AWARE_LIGHTING, config.capabilities.locationAwareLighting)
+				put(KEY_SUPPORTS_CLOUD_LAYER, config.capabilities.supportsCloudLayer)
+				put(KEY_SUPPORTS_STAR_LAYER, config.capabilities.supportsStarLayer)
+			})
+			put(KEY_SERVICE_RENDER_POLICY, JSONObject().apply {
+				put(KEY_OVERRIDE_POLICY, config.serviceRenderPolicy.overridePolicy?.name ?: JSONObject.NULL)
+				put(
+					KEY_OVERRIDE_FRAME_INTERVAL_MS,
+					config.serviceRenderPolicy.overrideFrameIntervalMs ?: JSONObject.NULL
+				)
+				put(
+					KEY_USE_POWER_SAVER_THROTTLE,
+					config.serviceRenderPolicy.usePowerSaverThrottle
+				)
+				put(KEY_USE_THERMAL_THROTTLE, config.serviceRenderPolicy.useThermalThrottle)
+				put(
+					KEY_POWER_SAVER_POLICY,
+					config.serviceRenderPolicy.powerSaverPolicy?.name ?: JSONObject.NULL
+				)
+				put(
+					KEY_POWER_SAVER_FRAME_INTERVAL_MS,
+					config.serviceRenderPolicy.powerSaverFrameIntervalMs ?: JSONObject.NULL
+				)
+				put(
+					KEY_THERMAL_THROTTLE_FRAME_INTERVAL_MS,
+					config.serviceRenderPolicy.thermalThrottleFrameIntervalMs ?: JSONObject.NULL
+				)
+			})
 		}.toString()
 	}
 
 	fun decode(encoded: String): WallpaperConfig? {
 		return runCatching {
 			val root = JSONObject(encoded)
-			val defaults = WallpaperConfig.default()
-
 			val id = root.optString(KEY_ID, "").takeIf { it.isNotBlank() } ?: return null
+			val defaults = WallpaperConfig.default(id)
 			val name = root.optString(KEY_NAME, defaults.name).ifBlank { defaults.name }
 
 			val horizon = root.optJSONObject(KEY_HORIZON)
@@ -310,6 +389,14 @@ internal object WallpaperConfigJsonCodec {
 				raw = celestial?.optString(KEY_MOON_PATH_TYPE),
 				fallback = defaults.celestial.moonPathType
 			)
+			val sunOrbit = decodeOrbit(
+				json = celestial?.optJSONObject(KEY_SUN_ORBIT),
+				fallbackPathType = sunPathType
+			)
+			val moonOrbit = decodeOrbit(
+				json = celestial?.optJSONObject(KEY_MOON_ORBIT),
+				fallbackPathType = moonPathType
+			)
 
 			val features = root.optJSONObject(KEY_FEATURES)
 			val atmosphereEnabled = features?.optBoolean(
@@ -324,6 +411,14 @@ internal object WallpaperConfigJsonCodec {
 				KEY_STARS_ENABLED,
 				defaults.features.starsEnabled
 			) ?: defaults.features.starsEnabled
+			val effects = root.optJSONObject(KEY_EFFECTS)
+			val wallpaperEffects = WallpaperEffects(
+				clouds = decodeEffect(effects?.optJSONObject(KEY_CLOUDS)),
+				stars = decodeEffect(effects?.optJSONObject(KEY_STARS)),
+				fog = decodeEffect(effects?.optJSONObject(KEY_FOG)),
+				rain = decodeEffect(effects?.optJSONObject(KEY_RAIN)),
+				snow = decodeEffect(effects?.optJSONObject(KEY_SNOW))
+			)
 
 			val textures = root.optJSONObject(KEY_TEXTURES)
 			val sunTexture = textures?.optString(KEY_SUN_TEXTURE, defaults.textures.sunTexture)
@@ -381,9 +476,20 @@ internal object WallpaperConfigJsonCodec {
 			val mode = shader?.optString(KEY_MODE, defaults.shader.mode)?.ifBlank {
 				defaults.shader.mode
 			} ?: defaults.shader.mode
+			val uniformOverrides = decodeShaderUniformOverrides(
+				json = shader?.optJSONObject(KEY_UNIFORM_OVERRIDES)
+			)
 			val runtimeRenderPolicy = decodeRuntimeRenderPolicy(
 				json = root.optJSONObject(KEY_RUNTIME_RENDER_POLICY),
 				configId = id
+			)
+			val capabilities = decodeCapabilities(
+				json = root.optJSONObject(KEY_CAPABILITIES),
+				fallback = defaults.capabilities
+			)
+			val serviceRenderPolicy = decodeServiceRenderPolicy(
+				json = root.optJSONObject(KEY_SERVICE_RENDER_POLICY),
+				fallback = defaults.serviceRenderPolicy
 			)
 
 			WallpaperConfig(
@@ -392,13 +498,16 @@ internal object WallpaperConfigJsonCodec {
 				horizon = HorizonConfig(offset = horizonOffset),
 				celestial = CelestialConfig(
 					sunPathType = sunPathType,
-					moonPathType = moonPathType
+					moonPathType = moonPathType,
+					sunOrbit = sunOrbit,
+					moonOrbit = moonOrbit
 				),
 				features = SkyFeatureFlags(
 					atmosphereEnabled = atmosphereEnabled,
 					lensFlareEnabled = lensFlareEnabled,
 					starsEnabled = starsEnabled
 				),
+				effects = wallpaperEffects,
 				textures = WallpaperTextures(
 					sunTexture = sunTexture,
 					moonTexture = moonTexture,
@@ -418,16 +527,88 @@ internal object WallpaperConfigJsonCodec {
 				belowHorizonOffset = belowHorizonOffset,
 				shader = ShaderProfile(
 					fragmentAssetPath = fragmentAssetPath,
-					mode = mode
+					mode = mode,
+					uniformOverrides = uniformOverrides
 				),
-				runtimeRenderPolicy = runtimeRenderPolicy
+				runtimeRenderPolicy = runtimeRenderPolicy,
+				capabilities = capabilities,
+				serviceRenderPolicy = serviceRenderPolicy
 			)
 		}.getOrNull()
+	}
+
+	private fun encodeOrbit(config: CelestialOrbitConfig?): JSONObject? {
+		config ?: return null
+		return JSONObject().apply {
+			put(KEY_SUN_PATH_TYPE, config.pathType.name)
+			put(KEY_START_X, config.startX ?: JSONObject.NULL)
+			put(KEY_END_X, config.endX ?: JSONObject.NULL)
+			put(KEY_PEAK_Y, config.peakY ?: JSONObject.NULL)
+			put(KEY_HIDDEN_Y, config.hiddenY ?: JSONObject.NULL)
+			put(KEY_CURVE, config.curve.name)
+		}
+	}
+
+	private fun decodeOrbit(
+		json: JSONObject?,
+		fallbackPathType: PathType
+	): CelestialOrbitConfig? {
+		json ?: return null
+		val hasOrbitValues = json.has(KEY_START_X) ||
+			json.has(KEY_END_X) ||
+			json.has(KEY_PEAK_Y) ||
+			json.has(KEY_HIDDEN_Y) ||
+			json.has(KEY_CURVE)
+		if (!hasOrbitValues && !json.has(KEY_SUN_PATH_TYPE)) {
+			return null
+		}
+		return CelestialOrbitConfig(
+			pathType = parsePathType(
+				raw = json.optString(KEY_SUN_PATH_TYPE, fallbackPathType.name),
+				fallback = fallbackPathType
+			),
+			startX = json.optNullableFloat(KEY_START_X),
+			endX = json.optNullableFloat(KEY_END_X),
+			peakY = json.optNullableFloat(KEY_PEAK_Y),
+			hiddenY = json.optNullableFloat(KEY_HIDDEN_Y),
+			curve = parseOrbitCurve(
+				raw = json.optString(KEY_CURVE, OrbitCurve.LINEAR.name),
+				fallback = OrbitCurve.LINEAR
+			)
+		)
 	}
 
 	private fun parsePathType(raw: String?, fallback: PathType): PathType {
 		if (raw.isNullOrBlank()) return fallback
 		return runCatching { PathType.valueOf(raw) }.getOrElse { fallback }
+	}
+
+	private fun parseOrbitCurve(
+		raw: String?,
+		fallback: OrbitCurve
+	): OrbitCurve {
+		if (raw.isNullOrBlank()) return fallback
+		return runCatching { OrbitCurve.valueOf(raw) }.getOrElse { fallback }
+	}
+
+	private fun encodeEffect(config: EffectConfig?): JSONObject? {
+		config ?: return null
+		return JSONObject().apply {
+			put(KEY_ENABLED, config.enabled)
+			put(KEY_SPEED, config.speed.toDouble())
+			put(KEY_DENSITY, config.density.toDouble())
+			put(KEY_INTENSITY, config.intensity.toDouble())
+		}
+	}
+
+	private fun decodeEffect(json: JSONObject?): EffectConfig? {
+		json ?: return null
+		return EffectConfig(
+			enabled = json.optBoolean(KEY_ENABLED, true),
+			speed = json.optDouble(KEY_SPEED, 1.0).toFloat(),
+			density = json.optDouble(KEY_DENSITY, 1.0).toFloat(),
+			intensity = json.optDouble(KEY_INTENSITY, 1.0).toFloat()
+		)
 	}
 
 	private fun decodeCustomSkyColors(json: JSONObject?): SkyColors? {
@@ -456,7 +637,7 @@ internal object WallpaperConfigJsonCodec {
 		val policy = parseRenderPolicy(
 			raw = json.optString(KEY_POLICY, fallback.policy.name),
 			fallback = fallback.policy
-		)
+		) ?: fallback.policy
 		val intervalMs = json.optLong(
 			KEY_CONTINUOUS_FRAME_INTERVAL_MS,
 			fallback.continuousFrameIntervalMs
@@ -467,10 +648,98 @@ internal object WallpaperConfigJsonCodec {
 		)
 	}
 
+	private fun encodeShaderUniformOverrides(
+		overrides: ShaderUniformOverrides
+	): JSONObject? {
+		val hasOverrides = overrides.cityZoom != null ||
+			overrides.cityVerticalOffset != null ||
+			overrides.cityHorizontalOffset != null ||
+			overrides.cloudAlpha != null ||
+			overrides.cloudOffset != null
+		if (!hasOverrides) return null
+		return JSONObject().apply {
+			put(KEY_CITY_ZOOM, overrides.cityZoom ?: JSONObject.NULL)
+			put(KEY_CITY_VERTICAL_OFFSET, overrides.cityVerticalOffset ?: JSONObject.NULL)
+			put(KEY_CITY_HORIZONTAL_OFFSET, overrides.cityHorizontalOffset ?: JSONObject.NULL)
+			put(KEY_CLOUD_ALPHA, overrides.cloudAlpha ?: JSONObject.NULL)
+			put(KEY_CLOUD_OFFSET, overrides.cloudOffset ?: JSONObject.NULL)
+		}
+	}
+
+	private fun decodeShaderUniformOverrides(
+		json: JSONObject?
+	): ShaderUniformOverrides {
+		json ?: return ShaderUniformOverrides()
+		return ShaderUniformOverrides(
+			cityZoom = json.optNullableFloat(KEY_CITY_ZOOM),
+			cityVerticalOffset = json.optNullableFloat(KEY_CITY_VERTICAL_OFFSET),
+			cityHorizontalOffset = json.optNullableFloat(KEY_CITY_HORIZONTAL_OFFSET),
+			cloudAlpha = json.optNullableFloat(KEY_CLOUD_ALPHA),
+			cloudOffset = json.optNullableFloat(KEY_CLOUD_OFFSET)
+		)
+	}
+
+	private fun decodeCapabilities(
+		json: JSONObject?,
+		fallback: WallpaperCapabilities
+	): WallpaperCapabilities {
+		json ?: return fallback
+		return WallpaperCapabilities(
+			dynamicMotion = json.optBoolean(KEY_DYNAMIC_MOTION, fallback.dynamicMotion),
+			dynamicTextures = json.optBoolean(KEY_DYNAMIC_TEXTURES, fallback.dynamicTextures),
+			locationAwareLighting = json.optBoolean(
+				KEY_LOCATION_AWARE_LIGHTING,
+				fallback.locationAwareLighting
+			),
+			supportsCloudLayer = json.optBoolean(
+				KEY_SUPPORTS_CLOUD_LAYER,
+				fallback.supportsCloudLayer
+			),
+			supportsStarLayer = json.optBoolean(
+				KEY_SUPPORTS_STAR_LAYER,
+				fallback.supportsStarLayer
+			)
+		)
+	}
+
+	private fun decodeServiceRenderPolicy(
+		json: JSONObject?,
+		fallback: ServiceRenderPolicy
+	): ServiceRenderPolicy {
+		json ?: return fallback
+		return ServiceRenderPolicy(
+			overridePolicy = parseRenderPolicy(
+				raw = json.optNullableString(KEY_OVERRIDE_POLICY),
+				fallback = fallback.overridePolicy
+			),
+			overrideFrameIntervalMs = json.optNullableLong(KEY_OVERRIDE_FRAME_INTERVAL_MS)
+				?.coerceAtLeast(1L)
+				?: fallback.overrideFrameIntervalMs,
+			usePowerSaverThrottle = json.optBoolean(
+				KEY_USE_POWER_SAVER_THROTTLE,
+				fallback.usePowerSaverThrottle
+			),
+			useThermalThrottle = json.optBoolean(
+				KEY_USE_THERMAL_THROTTLE,
+				fallback.useThermalThrottle
+			),
+			powerSaverPolicy = parseRenderPolicy(
+				raw = json.optNullableString(KEY_POWER_SAVER_POLICY),
+				fallback = fallback.powerSaverPolicy
+			),
+			powerSaverFrameIntervalMs = json.optNullableLong(KEY_POWER_SAVER_FRAME_INTERVAL_MS)
+				?.coerceAtLeast(1L)
+				?: fallback.powerSaverFrameIntervalMs,
+			thermalThrottleFrameIntervalMs = json.optNullableLong(
+				KEY_THERMAL_THROTTLE_FRAME_INTERVAL_MS
+			)?.coerceAtLeast(1L) ?: fallback.thermalThrottleFrameIntervalMs
+		)
+	}
+
 	private fun parseRenderPolicy(
 		raw: String?,
-		fallback: RenderPolicy
-	): RenderPolicy {
+		fallback: RenderPolicy?
+	): RenderPolicy? {
 		if (raw.isNullOrBlank()) return fallback
 		return runCatching { RenderPolicy.valueOf(raw) }.getOrElse { fallback }
 	}
@@ -478,6 +747,16 @@ internal object WallpaperConfigJsonCodec {
 	private fun JSONObject.optNullableString(key: String): String? {
 		if (isNull(key)) return null
 		return optString(key, "").takeIf { it.isNotBlank() }
+	}
+
+	private fun JSONObject.optNullableFloat(key: String): Float? {
+		if (!has(key) || isNull(key)) return null
+		return optDouble(key).toFloat()
+	}
+
+	private fun JSONObject.optNullableLong(key: String): Long? {
+		if (!has(key) || isNull(key)) return null
+		return optLong(key)
 	}
 
 	private fun deriveSolarNoonMinute(

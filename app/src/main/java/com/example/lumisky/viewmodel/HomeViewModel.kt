@@ -31,6 +31,7 @@ import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.data.WallpaperCatalog
+import com.example.lumisky.data.WallpaperCatalogRepository
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -50,6 +51,8 @@ class HomeViewModel(
 	private val initialSettings: AppSettingsSnapshot = settingsRepository.snapshot()
 ) {
 	private val tag = "HomeViewModel"
+	private val wallpaperCatalogRepository: WallpaperCatalogRepository =
+		WallpaperCatalog.repository(context)
 	private val mainHandler = Handler(Looper.getMainLooper())
 	private val catalogExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 	private val locationLabelExecutor: ExecutorService = Executors.newSingleThreadExecutor()
@@ -372,10 +375,7 @@ class HomeViewModel(
 
 	fun configFor(id: String): WallpaperConfig {
 		return _items.firstOrNull { it.config.id == id }?.config
-			?: WallpaperCatalog.configById(
-				id = id,
-				daylight = daylight
-			)
+			?: wallpaperCatalogRepository.configById(id = id, daylight = daylight)
 	}
 
 	fun release() {
@@ -497,9 +497,7 @@ class HomeViewModel(
 	}
 
 	private fun seedInitialCatalog(currentDaylight: SunDaylight) {
-		val configs = WallpaperCatalog.buildConfigs(
-			daylight = currentDaylight
-		)
+		val configs = wallpaperCatalogRepository.buildConfigs(daylight = currentDaylight)
 		publishItems(configs.map { config -> HomeWallpaperItem(config = config) })
 		if (selectedWallpaperId != null && _items.none { it.config.id == selectedWallpaperId }) {
 			selectedWallpaperId = null
@@ -511,9 +509,7 @@ class HomeViewModel(
 
 	private fun rebuildCatalog(currentDaylight: SunDaylight) {
 		catalogExecutor.execute {
-			val configs = WallpaperCatalog.buildConfigs(
-				daylight = currentDaylight
-			)
+			val configs = wallpaperCatalogRepository.buildConfigs(daylight = currentDaylight)
 			postCatalog(configs)
 		}
 	}

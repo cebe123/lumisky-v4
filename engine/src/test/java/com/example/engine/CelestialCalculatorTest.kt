@@ -3,8 +3,10 @@ package com.example.engine
 import com.example.engine.atmosphere.AtmosphereController
 import com.example.engine.celestial.CelestialCalculator
 import com.example.engine.config.CelestialConfig
+import com.example.engine.config.CelestialOrbitConfig
 import com.example.engine.config.DaylightConfig
 import com.example.engine.config.HorizonConfig
+import com.example.engine.config.OrbitCurve
 import com.example.engine.config.PathType
 import com.example.engine.config.WallpaperConfig
 import org.junit.Assert.assertEquals
@@ -90,6 +92,57 @@ class CelestialCalculatorTest {
 		val moonZenith = calculator.computeMoonPosition(progress = moonZenithProgress, config = config)
 
 		assertEquals(config.peakY, moonZenith.y, 0.0001f)
+	}
+
+	@Test
+	fun custom_arc_orbit_uses_manifest_like_start_and_end_offsets() {
+		val config = WallpaperConfig.default().copy(
+			celestial = CelestialConfig(
+				sunPathType = PathType.ARC,
+				moonPathType = PathType.ARC,
+				sunOrbit = CelestialOrbitConfig(
+					pathType = PathType.ARC,
+					startX = 0.18f,
+					endX = 0.82f,
+					peakY = 0.86f,
+					curve = OrbitCurve.EASE_IN_OUT
+				)
+			),
+			daylight = DaylightConfig(
+				sunriseMinute = 6 * 60,
+				sunsetMinute = 18 * 60,
+				solarNoonMinute = 12 * 60
+			)
+		)
+
+		val sunrise = calculator.computeSunPosition(progress = 0.25f, config = config)
+		val sunset = calculator.computeSunPosition(progress = 0.75f, config = config)
+		val solarNoon = calculator.computeSunPosition(progress = 0.5f, config = config)
+
+		assertEquals(0.18f, sunrise.x, 0.02f)
+		assertEquals(0.82f, sunset.x, 0.02f)
+		assertEquals(0.86f, solarNoon.y, 0.0001f)
+	}
+
+	@Test
+	fun vertical_orbit_can_be_shifted_off_center_without_new_path_type() {
+		val config = WallpaperConfig.default().copy(
+			celestial = CelestialConfig(
+				sunPathType = PathType.VERTICAL,
+				moonPathType = PathType.VERTICAL,
+				sunOrbit = CelestialOrbitConfig(
+					pathType = PathType.VERTICAL,
+					startX = 0.68f,
+					endX = 0.68f
+				)
+			)
+		)
+
+		val morning = calculator.computeSunPosition(progress = 0.30f, config = config)
+		val evening = calculator.computeSunPosition(progress = 0.70f, config = config)
+
+		assertEquals(0.68f, morning.x, 0.0001f)
+		assertEquals(0.68f, evening.x, 0.0001f)
 	}
 
 	private fun luminance(color: Int): Int {

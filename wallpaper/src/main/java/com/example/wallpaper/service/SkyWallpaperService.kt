@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.os.PowerManager
 import android.os.UserManager
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
@@ -28,6 +29,18 @@ open class SkyWallpaperService : WallpaperService() {
 			renderEngine = WallpaperRenderEngine(appContext),
 			scheduler = MinuteTickScheduler(),
 			hasher = SceneStateHasher(),
+			policyResolver = ServiceRenderPolicyResolver(
+				isPowerSaveModeProvider = {
+					appContext.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
+				},
+				thermalStatusProvider = {
+					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+						appContext.getSystemService(PowerManager::class.java)?.currentThermalStatus
+					} else {
+						null
+					}
+				}
+			),
 			displayRefreshRateProvider = {
 				resolveWallpaperDisplayRefreshRateHz(appContext)
 			}

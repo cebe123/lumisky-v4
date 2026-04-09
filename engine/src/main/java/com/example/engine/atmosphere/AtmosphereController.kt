@@ -2,6 +2,7 @@ package com.example.engine.atmosphere
 
 import com.example.engine.config.SkyColors
 import com.example.engine.config.WallpaperConfig
+import com.example.engine.config.resolvePeakYForAtmosphere
 import kotlin.math.abs
 
 class AtmosphereController {
@@ -18,7 +19,7 @@ class AtmosphereController {
 	): AtmosphereState {
 		val palette = config.customSkyColors ?: DEFAULT_COLORS
 		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
-		val peakY = config.peakY.coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
+		val peakY = config.resolvePeakYForAtmosphere().coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
 
 		val sunAltitude = ((sunY - horizonY) / (peakY - horizonY)).coerceIn(0f, 1f)
 		val moonAltitude = ((moonY - horizonY) / (peakY - horizonY)).coerceIn(0f, 1f)
