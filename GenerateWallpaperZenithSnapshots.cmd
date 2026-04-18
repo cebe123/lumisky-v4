@@ -98,8 +98,8 @@ if errorlevel 1 (
 
 set /a ELAPSED_SECONDS=0
 :wait_for_output
-"%ADB_EXE%" shell ls %DEVICE_MARKER_FILE% >nul 2>nul
-if not errorlevel 1 goto pull_output
+call :probe_marker_ready
+if /i "!MARKER_READY!"=="1" goto pull_output
 
 if %ELAPSED_SECONDS% GEQ %MAX_WAIT_SECONDS% goto wait_timeout
 
@@ -151,7 +151,25 @@ pause
 exit /b 0
 
 :wait_timeout
+call :probe_marker_ready
+if /i "!MARKER_READY!"=="1" (
+	echo Snapshot marker timeout sonrasinda bulundu. Pull adimina devam ediliyor...
+	goto pull_output
+)
 echo Snapshotlar %MAX_WAIT_SECONDS% saniye icinde tamamlanmadi.
 echo Cihaz ekraninin acik kaldigindan emin olun.
 pause
 exit /b 1
+
+:probe_marker_ready
+set "MARKER_READY=0"
+for /f "usebackq delims=" %%I in (`"%ADB_EXE%" shell sh -c "if [ -f '%DEVICE_MARKER_FILE%' ]; then sed -n '1p' '%DEVICE_MARKER_FILE%'; else echo WAIT; fi" 2^>nul`) do (
+	if /i "%%I"=="status=ok" (
+		set "MARKER_READY=1"
+	) else (
+		set "MARKER_READY=0"
+	)
+	goto :probe_marker_ready_done
+)
+:probe_marker_ready_done
+exit /b 0
