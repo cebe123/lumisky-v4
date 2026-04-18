@@ -5,6 +5,10 @@
       "manifest": "wallpapers/pixel_forest/manifest.json"
     },
     {
+      "id": "city_lisbon",
+      "manifest": "wallpapers/city_lisbon/manifest.json"
+    },
+    {
       "id": "city_istanbul",
       "manifest": "wallpapers/city_istanbul/manifest.json"
     },

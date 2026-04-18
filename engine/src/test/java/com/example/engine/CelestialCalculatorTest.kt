@@ -12,6 +12,7 @@ import com.example.engine.config.WallpaperConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.abs
 
 class CelestialCalculatorTest {
 
@@ -143,6 +144,25 @@ class CelestialCalculatorTest {
 
 		assertEquals(0.68f, morning.x, 0.0001f)
 		assertEquals(0.68f, evening.x, 0.0001f)
+	}
+
+	@Test
+	fun moon_position_updates_with_sub_minute_progress_changes() {
+		val config = WallpaperConfig.default().copy(
+			daylight = DaylightConfig(
+				sunriseMinute = 7 * 60,
+				sunsetMinute = 19 * 60,
+				solarNoonMinute = 12 * 60
+			)
+		)
+
+		val sampleMinute = (20 * 60) + 15f
+		val progressA = sampleMinute / (24f * 60f)
+		val progressB = (sampleMinute + 0.5f) / (24f * 60f)
+		val moonA = calculator.computeMoonPosition(progress = progressA, config = config)
+		val moonB = calculator.computeMoonPosition(progress = progressB, config = config)
+
+		assertTrue(abs(moonB.x - moonA.x) > 0.00001f || abs(moonB.y - moonA.y) > 0.00001f)
 	}
 
 	private fun luminance(color: Int): Int {

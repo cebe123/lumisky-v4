@@ -6,19 +6,41 @@ Bu metni yeni bir wallpaper isterken doğrudan kullan.
 
 Yeni bir wallpaper oluştur.
 
-- Wallpaper id: `[]`
-- Görünen isim: `[flower]`
-- Kategori: `[special]`
-- Arkaplan texture: `[D:\Lumisky\images\flower.webp]`
+- Wallpaper id: `[Lisbon]`
+- Görünen isim: `[Lisbon]`
+- Kategori: `[Cities]`
+- Arkaplan texture: `[promptta verilen görsel(Lisbon.png)]`
 
 ## Görsel Davranış
 
-- Ufuk çizgisi: `[ekranın en tabanı]`
-- Gökyüzü stili: `[sabah kızıl , öğlen 26a2f8 renginde,akşam da kızıl ]`
+- Ufuk çizgisi: `[ekranın ortası]`
+- Gökyüzü stili: `[vec3 getLisbonSkyColor(vec2 uv) {
+    // uv.y = 0.0 alt, 1.0 üst
+    float y = clamp(uv.y, 0.0, 1.0);
+
+    // Ufuk tarafı: açık, hafif turkuazımsı mavi
+    vec3 horizonColor = vec3(0.52, 0.76, 0.93);
+
+    // Orta gökyüzü: temiz parlak mavi
+    vec3 midColor = vec3(0.30, 0.60, 0.88);
+
+    // Üst gökyüzü: daha doygun ve derin mavi
+    vec3 topColor = vec3(0.14, 0.42, 0.76);
+
+    // Alt -> orta
+    float t1 = smoothstep(0.0, 0.58, y);
+    vec3 sky = mix(horizonColor, midColor, t1);
+
+    // Orta -> üst
+    float t2 = smoothstep(0.45, 1.0, y);
+    sky = mix(sky, topColor, t2 * 0.85);
+
+    return sky;
+} ]`
 - Güneş davranışı:
   `[solar ile aynı]`
 - Ay davranışı:
-  `[temaya uygun yeni]`
+  `[solar ile aynı]`
 - Gece gökyüzü:
   `[biraz koyu]`
 - Foreground gece kararması:

@@ -18,8 +18,8 @@ class CelestialCalculator {
 		out: Vec2 = Vec2()
 	): Vec2 {
 		val minute = minuteOfDay(progress)
-		val sunrise = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
-		val sunset = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
+		val sunrise = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY).toFloat()
+		val sunset = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY).toFloat()
 		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
 		val orbit = config.resolveSunOrbit()
 		val peakY = resolvePeakY(horizonY, orbit, config)
@@ -36,15 +36,15 @@ class CelestialCalculator {
 			)
 		}
 
-		return if (minute in sunrise..sunset) {
+		return if (minute >= sunrise && minute <= sunset) {
 			val dayProgress = resolvePeakAlignedPhaseProgress(
 				currentMinute = minute,
 				startMinute = sunrise,
 				peakMinute = resolveSunZenithMinute(
-					sunriseMinute = sunrise,
-					sunsetMinute = sunset,
+					sunriseMinute = sunrise.toInt(),
+					sunsetMinute = sunset.toInt(),
 					config = config
-				),
+				).toFloat(),
 				endMinute = sunset
 			)
 			resolveVisiblePosition(
@@ -68,8 +68,8 @@ class CelestialCalculator {
 		out: Vec2 = Vec2()
 	): Vec2 {
 		val minute = minuteOfDay(progress)
-		val sunrise = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
-		val sunset = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
+		val sunrise = config.daylight.sunriseMinute.coerceIn(0, MINUTES_PER_DAY).toFloat()
+		val sunset = config.daylight.sunsetMinute.coerceIn(0, MINUTES_PER_DAY).toFloat()
 		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
 		val orbit = config.resolveMoonOrbit()
 		val peakY = resolvePeakY(horizonY, orbit, config)
@@ -86,21 +86,21 @@ class CelestialCalculator {
 			)
 		}
 
-		return if (minute in sunrise..sunset) {
+		return if (minute >= sunrise && minute <= sunset) {
 			out.set(
 				x = resolveHiddenX(orbit),
 				y = hiddenY
 			)
 		} else {
 			val sunZenithMinute = resolveSunZenithMinute(
-				sunriseMinute = sunrise,
-				sunsetMinute = sunset,
+				sunriseMinute = sunrise.toInt(),
+				sunsetMinute = sunset.toInt(),
 				config = config
 			)
 			val nightProgress = resolvePeakAlignedPhaseProgress(
 				currentMinute = minute,
 				startMinute = sunset,
-				peakMinute = (sunZenithMinute + HALF_DAY_MINUTES) % MINUTES_PER_DAY,
+				peakMinute = ((sunZenithMinute + HALF_DAY_MINUTES) % MINUTES_PER_DAY).toFloat(),
 				endMinute = sunrise
 			)
 			resolveVisiblePosition(
@@ -206,41 +206,41 @@ class CelestialCalculator {
 	}
 
 	private fun resolvePeakAlignedPhaseProgress(
-		currentMinute: Int,
-		startMinute: Int,
-		peakMinute: Int,
-		endMinute: Int
+		currentMinute: Float,
+		startMinute: Float,
+		peakMinute: Float,
+		endMinute: Float
 	): Float {
 		val start = normalizeMinute(startMinute)
 		val peak = normalizeMinuteForward(peakMinute, anchorMinute = start)
 		val end = normalizeMinuteForward(endMinute, anchorMinute = start)
 		val current = normalizeMinuteForward(currentMinute, anchorMinute = start)
 		if (current <= peak) {
-			val firstHalfDuration = (peak - start).coerceAtLeast(1)
-			val firstHalfProgress = (current - start).toFloat() / firstHalfDuration.toFloat()
+			val firstHalfDuration = (peak - start).coerceAtLeast(1f)
+			val firstHalfProgress = (current - start) / firstHalfDuration
 			return (firstHalfProgress * 0.5f).coerceIn(0f, 0.5f)
 		}
-		val secondHalfDuration = (end - peak).coerceAtLeast(1)
-		val secondHalfProgress = (current - peak).toFloat() / secondHalfDuration.toFloat()
+		val secondHalfDuration = (end - peak).coerceAtLeast(1f)
+		val secondHalfProgress = (current - peak) / secondHalfDuration
 		return (0.5f + (secondHalfProgress * 0.5f)).coerceIn(0.5f, 1f)
 	}
 
-	private fun minuteOfDay(progress: Float): Int {
+	private fun minuteOfDay(progress: Float): Float {
 		val wrapped = ((progress % 1f) + 1f) % 1f
-		return (wrapped * MINUTES_PER_DAY).toInt().coerceIn(0, MINUTES_PER_DAY)
+		return (wrapped * MINUTES_PER_DAY.toFloat()).coerceIn(0f, MINUTES_PER_DAY.toFloat())
 	}
 
-	private fun normalizeMinute(minute: Int): Int {
-		return minute.coerceIn(0, MINUTES_PER_DAY)
+	private fun normalizeMinute(minute: Float): Float {
+		return minute.coerceIn(0f, MINUTES_PER_DAY.toFloat())
 	}
 
 	private fun normalizeMinuteForward(
-		minute: Int,
-		anchorMinute: Int
-	): Int {
+		minute: Float,
+		anchorMinute: Float
+	): Float {
 		var normalized = normalizeMinute(minute)
 		while (normalized < anchorMinute) {
-			normalized += MINUTES_PER_DAY
+			normalized += MINUTES_PER_DAY.toFloat()
 		}
 		return normalized
 	}

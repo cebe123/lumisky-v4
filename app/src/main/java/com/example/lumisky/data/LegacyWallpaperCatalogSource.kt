@@ -187,6 +187,18 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 				)
 			),
 			ThemePreset(
+				id = "city_lisbon",
+				displayName = "Lisbon",
+				fragmentAssetPath = "shaders/lisbon/fragment.glsl",
+				horizonOffset = 0.425f,
+				peakY = 0.89f,
+				sunPath = PathType.VERTICAL,
+				moonPath = PathType.VERTICAL,
+				textures = WallpaperTextures(
+					backgroundTexture = "backgrounds/city_lisbon.png"
+				)
+			),
+			ThemePreset(
 				id = "city_istanbul",
 				displayName = "Istanbul",
 				fragmentAssetPath = "shaders/city/fragment_shader.glsl",

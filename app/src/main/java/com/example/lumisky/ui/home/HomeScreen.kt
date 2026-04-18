@@ -735,7 +735,12 @@ private fun FocusedWallpaperPreview(
 		HOME_PREVIEW_RENDER_QUALITY_SCALE
 	}
 	val previewConfig = remember(config) {
-		config.copy(focusCatchUpDurationSeconds = HOME_FOCUS_CATCHUP_SECONDS)
+		config.copy(
+			focusCatchUpDurationSeconds = maxOf(
+				HOME_FOCUS_CATCHUP_SECONDS,
+				config.focusCatchUpDurationSeconds
+			)
+		)
 	}
 	val fragmentAssetPath = previewConfig.shader.fragmentAssetPath?.takeIf { it.isNotBlank() }
 	val renderAssetState by produceState(

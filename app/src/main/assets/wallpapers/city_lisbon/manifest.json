@@ -1,0 +1,63 @@
+{
+  "id": "city_lisbon",
+  "name": "Lisbon",
+  "horizon": {
+    "offset": 0.425
+  },
+  "celestial": {
+    "sunPathType": "VERTICAL",
+    "moonPathType": "VERTICAL",
+    "sunOrbit": {
+      "pathType": "VERTICAL",
+      "startX": 0.5,
+      "endX": 0.5,
+      "peakY": 0.89,
+      "curve": "EASE_IN_OUT"
+    },
+    "moonOrbit": {
+      "pathType": "VERTICAL",
+      "startX": 0.5,
+      "endX": 0.5,
+      "peakY": 0.89,
+      "curve": "EASE_IN_OUT"
+    }
+  },
+  "features": {
+    "atmosphereEnabled": true,
+    "lensFlareEnabled": true,
+    "starsEnabled": true
+  },
+  "effects": {
+    "stars": {
+      "enabled": true,
+      "density": 0.8,
+      "intensity": 0.86
+    }
+  },
+  "textures": {
+    "backgroundTexture": "backgrounds/city_lisbon.png"
+  },
+  "shader": {
+    "fragmentAssetPath": "shaders/lisbon/fragment.glsl",
+    "mode": "external_theme"
+  },
+  "previewLoopDurationSeconds": 8.0,
+  "focusCatchUpDurationSeconds": 6.0,
+  "peakY": 0.89,
+  "belowHorizonOffset": 0.1,
+  "runtimeRenderPolicy": {
+    "policy": "MINUTE_TICK",
+    "continuousFrameIntervalMs": 16
+  },
+  "capabilities": {
+    "dynamicMotion": false,
+    "dynamicTextures": false,
+    "locationAwareLighting": true,
+    "supportsCloudLayer": false,
+    "supportsStarLayer": true
+  },
+  "serviceRenderPolicy": {
+    "usePowerSaverThrottle": true,
+    "useThermalThrottle": true
+  }
+}
