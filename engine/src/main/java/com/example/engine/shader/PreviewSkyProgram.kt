@@ -84,6 +84,7 @@ class PreviewSkyProgram {
 	private val legacyThemeAdapter = LegacyThemeAdapter()
 	private val effectAdapter = PreviewEffectAdapter()
 	private val textureBinder = PreviewTextureBinder()
+	private val preferredTextureResolver = PreferredTextureResolver()
 
 	fun configure(
 		value: WallpaperConfig,
@@ -350,10 +351,7 @@ class PreviewSkyProgram {
 	private fun loadTexture(path: String?): Int {
 		val normalized = path?.takeIf { it.isNotBlank() } ?: return 0
 		val loader = textureBytesLoader ?: return 0
-		val resolvedTexture = resolveTextureBytes(
-			originalPath = normalized,
-			loader = loader
-		) ?: return 0
+		val resolvedTexture = preferredTextureResolver.resolve(normalized, loader) ?: return 0
 		val resolvedPath = resolvedTexture.path
 		val bytes = resolvedTexture.bytes
 
@@ -688,31 +686,6 @@ class PreviewSkyProgram {
 		return (start + ((end - start) * progress)).roundToInt().coerceIn(0, 255)
 	}
 
-	private fun resolveTextureBytes(
-		originalPath: String,
-		loader: (String) -> ByteArray?
-	): ResolvedTexture? {
-		val lower = originalPath.lowercase()
-		if (lower.endsWith(".webp")) {
-			val bytes = runCatching { loader(originalPath) }.getOrNull()
-				?.takeIf { it.isNotEmpty() }
-				?: return null
-			return ResolvedTexture(path = originalPath, bytes = bytes)
-		}
-		val extIndex = originalPath.lastIndexOf('.')
-		if (extIndex != -1) {
-			val webpCandidate = "${originalPath.substring(0, extIndex)}.webp"
-			val webpBytes = runCatching { loader(webpCandidate) }.getOrNull()
-			if (webpBytes != null && webpBytes.isNotEmpty()) {
-				return ResolvedTexture(path = webpCandidate, bytes = webpBytes)
-			}
-		}
-		val originalBytes = runCatching { loader(originalPath) }.getOrNull()
-			?.takeIf { it.isNotEmpty() }
-			?: return null
-		return ResolvedTexture(path = originalPath, bytes = originalBytes)
-	}
-
 	private fun setVec2(handle: Int, x: Float, y: Float) {
 		if (handle >= 0) GLES20.glUniform2f(handle, x, y)
 	}
@@ -843,8 +816,4 @@ class PreviewSkyProgram {
 		"""
 	}
 
-	private data class ResolvedTexture(
-		val path: String,
-		val bytes: ByteArray
-	)
 }

@@ -221,43 +221,22 @@ class SunTimesRepository(
 		candidates: List<SunLocation>,
 		minRefreshIntervalMs: Long = DEFAULT_BACKUP_REFRESH_INTERVAL_MS
 	) {
-		val uniqueCandidates = candidates
-			.distinctBy { "${it.latitude}|${it.longitude}" }
-		if (uniqueCandidates.isEmpty()) return
-
-		val nowMs = System.currentTimeMillis()
-		val dueCandidates = uniqueCandidates.filter { candidate ->
-			shouldRefreshBackup(candidate, nowMs, minRefreshIntervalMs)
-		}
-		if (dueCandidates.isEmpty()) return
 		backupPrefetchExecutor.execute {
-			val futures = dueCandidates.mapNotNull { candidate ->
-				val attemptAt = System.currentTimeMillis()
-				if (!shouldRefreshBackup(candidate, attemptAt, minRefreshIntervalMs)) {
-					null
-				} else {
-				    candidate to networkExecutor.submit(Callable {
-					    apiClient.fetchDaylight(
-						    latitude = candidate.latitude,
-						    longitude = candidate.longitude,
-						    timeZoneId = candidate.timeZoneId
-					    )
-				    })
-                }
-			}
-			futures.forEach { (candidate, future) ->
-				val fetched = try { future.get() } catch (e: Exception) { null }
-				if (fetched == null) {
-					Logger.w(
-						TAG,
-						"Sun times backup fetch failed source=${candidate.label} at=${toHourMinuteLabel(System.currentTimeMillis())}"
-					)
-					return@forEach
-				}
-				val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.BACKUP)
-				markBackupRefresh(candidate, entry.updatedAtWallClockMs)
-			}
+			prefetchBackupInternal(
+				candidates = candidates,
+				minRefreshIntervalMs = minRefreshIntervalMs
+			)
 		}
+	}
+
+	fun prefetchBackupBlocking(
+		candidates: List<SunLocation>,
+		minRefreshIntervalMs: Long = DEFAULT_BACKUP_REFRESH_INTERVAL_MS
+	): Int {
+		return prefetchBackupInternal(
+			candidates = candidates,
+			minRefreshIntervalMs = minRefreshIntervalMs
+		)
 	}
 
 	fun release() {
@@ -448,6 +427,51 @@ class SunTimesRepository(
 
 	private fun cacheResolvedEntry(entry: CachedDaylightEntry) {
 		cachedEntry.set(entry)
+	}
+
+	private fun prefetchBackupInternal(
+		candidates: List<SunLocation>,
+		minRefreshIntervalMs: Long
+	): Int {
+		val uniqueCandidates = candidates
+			.distinctBy { "${it.latitude}|${it.longitude}" }
+		if (uniqueCandidates.isEmpty()) return 0
+
+		val nowMs = System.currentTimeMillis()
+		val dueCandidates = uniqueCandidates.filter { candidate ->
+			shouldRefreshBackup(candidate, nowMs, minRefreshIntervalMs)
+		}
+		if (dueCandidates.isEmpty()) return 0
+
+		var refreshedCount = 0
+		val futures = dueCandidates.mapNotNull { candidate ->
+			val attemptAt = System.currentTimeMillis()
+			if (!shouldRefreshBackup(candidate, attemptAt, minRefreshIntervalMs)) {
+				null
+			} else {
+				candidate to networkExecutor.submit(Callable {
+					apiClient.fetchDaylight(
+						latitude = candidate.latitude,
+						longitude = candidate.longitude,
+						timeZoneId = candidate.timeZoneId
+					)
+				})
+			}
+		}
+		futures.forEach { (candidate, future) ->
+			val fetched = try { future.get() } catch (e: Exception) { null }
+			if (fetched == null) {
+				Logger.w(
+					TAG,
+					"Sun times backup fetch failed source=${candidate.label} at=${toHourMinuteLabel(System.currentTimeMillis())}"
+				)
+				return@forEach
+			}
+			val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.BACKUP)
+			markBackupRefresh(candidate, entry.updatedAtWallClockMs)
+			refreshedCount += 1
+		}
+		return refreshedCount
 	}
 
 	private fun isEntryCurrent(

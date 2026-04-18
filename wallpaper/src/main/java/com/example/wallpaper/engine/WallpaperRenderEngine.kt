@@ -13,6 +13,7 @@ import com.example.engine.renderer.RenderMode
 import com.example.engine.renderer.RenderFrameState
 import com.example.wallpaper.render.WallpaperEglSession
 import com.example.wallpaper.render.SceneStateHasher
+import com.example.wallpaper.render.WallpaperSceneFingerprintHasher
 import com.example.wallpaper.render.WallpaperShaderAssetLoader
 import kotlin.math.max
 
@@ -28,7 +29,7 @@ class WallpaperRenderEngine(
 			mode = "lighthouse_like"
 		)
 	)
-	private var sceneFingerprintCache: String = buildSceneFingerprint(config)
+	private var sceneFingerprintHash: Int = WallpaperSceneFingerprintHasher.compute(config)
 	private var renderMode: RenderMode = RenderMode.WALLPAPER_SERVICE
 	private var fragmentShaderOverride: String? = null
 	private var previewLoopStartNanos: Long = 0L
@@ -56,7 +57,7 @@ class WallpaperRenderEngine(
 
 	fun setConfig(value: WallpaperConfig) {
 		config = value
-		sceneFingerprintCache = buildSceneFingerprint(value)
+		sceneFingerprintHash = WallpaperSceneFingerprintHasher.compute(value)
 		skyEngine.setConfig(value)
 		previewLoopStartNanos = 0L
 		previewLoopConfigId = value.id
@@ -157,8 +158,8 @@ class WallpaperRenderEngine(
 		return hasher.compute(
 			visible = visible,
 			surfaceAttached = surfaceAttached,
-			configFingerprint = sceneFingerprintCache,
-			renderMode = renderMode.name,
+			configFingerprintHash = sceneFingerprintHash,
+			renderModeOrdinal = renderMode.ordinal,
 			sunX = quantize(resolvedSnapshot?.sun?.x),
 			sunY = quantize(resolvedSnapshot?.sun?.y),
 			moonX = quantize(resolvedSnapshot?.moon?.x),
@@ -169,44 +170,8 @@ class WallpaperRenderEngine(
 		)
 	}
 
-	fun sceneFingerprint(): String {
-		return sceneFingerprintCache
-	}
-
-	private fun buildSceneFingerprint(config: WallpaperConfig): String {
-		return buildString {
-			append(config.id)
-			append('|')
-			append(config.horizon.hashCode())
-			append('|')
-			append(config.celestial.hashCode())
-			append('|')
-			append(config.features.hashCode())
-			append('|')
-			append(config.effects.hashCode())
-			append('|')
-			append(config.textures.hashCode())
-			append('|')
-			append(config.shader.hashCode())
-			append('|')
-			append(config.runtimeRenderPolicy.hashCode())
-			append('|')
-			append(config.capabilities.hashCode())
-			append('|')
-			append(config.serviceRenderPolicy.hashCode())
-			append('|')
-			append(config.daylight.hashCode())
-			append('|')
-			append(config.previewLoopDurationSeconds)
-			append('|')
-			append(config.focusCatchUpDurationSeconds)
-			append('|')
-			append(config.peakY)
-			append('|')
-			append(config.belowHorizonOffset)
-			append('|')
-			append(config.customSkyColors?.hashCode() ?: 0)
-		}
+	fun sceneFingerprint(): Int {
+		return sceneFingerprintHash
 	}
 
 	fun renderModeName(): String = renderMode.name

@@ -32,11 +32,12 @@ import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.data.WallpaperCatalog
 import com.example.lumisky.data.WallpaperCatalogRepository
+import com.example.lumisky.work.BackupCityPrefetchWorker
+import com.example.lumisky.work.buildBackupCityPrefetchCandidates
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
-import kotlin.random.Random
 
 data class HomeWallpaperItem(
 	val config: WallpaperConfig
@@ -51,6 +52,7 @@ class HomeViewModel(
 	private val initialSettings: AppSettingsSnapshot = settingsRepository.snapshot()
 ) {
 	private val tag = "HomeViewModel"
+	private val appContext = context.applicationContext
 	private val wallpaperCatalogRepository: WallpaperCatalogRepository =
 		WallpaperCatalog.repository(context)
 	private val mainHandler = Handler(Looper.getMainLooper())
@@ -63,8 +65,7 @@ class HomeViewModel(
 	private var refreshPipelineScheduled = false
 	private var refreshPipelineNeedsSunTimes = false
 	private var refreshPipelineNeedsGpsRequest = false
-	private var startupBackupPrefetchScheduled = false
-	private var startupBackupPrefetchCompleted = false
+	private var startupBackupPrefetchEnqueued = false
 	private var locationCandidatesCacheKey: String? = null
 	private var locationCandidatesCache: List<SunLocation> = emptyList()
 	private var locationCandidatesCacheAtMs: Long = 0L
@@ -137,12 +138,6 @@ class HomeViewModel(
 			schedulePeriodicSunTimesRefresh()
 		}
 	}
-	private val startupBackupPrefetchRunnable = Runnable {
-		startupBackupPrefetchScheduled = false
-		if (startupBackupPrefetchCompleted) return@Runnable
-		startupBackupPrefetchCompleted = true
-		prefetchBackupCityCache(maxCandidateCount = BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT)
-	}
 	private val backupCityRefreshRunnable = object : Runnable {
 		override fun run() {
 			prefetchBackupCityCache()
@@ -204,7 +199,7 @@ class HomeViewModel(
 	}
 
 	fun onUserInteraction() {
-		scheduleStartupBackupPrefetchIfNeeded()
+		enqueueStartupBackupPrefetchIfNeeded()
 	}
 
 	fun onForegroundStarted() {
@@ -383,7 +378,6 @@ class HomeViewModel(
 		settingsChangeListenerHandle = null
 		stopPassiveLocationUpdates()
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
-		mainHandler.removeCallbacks(startupBackupPrefetchRunnable)
 		mainHandler.removeCallbacks(backupCityRefreshRunnable)
 		mainHandler.removeCallbacks(refreshLocationAndSunTimesRunnable)
 		mainHandler.removeCallbacks(startupRefreshRunnable)
@@ -780,17 +774,13 @@ class HomeViewModel(
 		mainHandler.postDelayed(backupCityRefreshRunnable, BACKUP_CITY_REFRESH_INTERVAL_MS)
 	}
 
-	private fun scheduleStartupBackupPrefetch(delayMs: Long) {
-		mainHandler.removeCallbacks(startupBackupPrefetchRunnable)
-		mainHandler.postDelayed(startupBackupPrefetchRunnable, delayMs)
-	}
-
-	private fun scheduleStartupBackupPrefetchIfNeeded() {
-		if (startupBackupPrefetchCompleted) return
-		if (startupBackupPrefetchScheduled) return
-		startupBackupPrefetchScheduled = true
-		val delayMs = resolveStartupBackupPrefetchDelayMs()
-		scheduleStartupBackupPrefetch(delayMs)
+	private fun enqueueStartupBackupPrefetchIfNeeded() {
+		if (startupBackupPrefetchEnqueued) return
+		startupBackupPrefetchEnqueued = true
+		BackupCityPrefetchWorker.enqueue(
+			context = appContext,
+			maxCandidateCount = BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT
+		)
 	}
 
 	private fun shouldRequestCurrentLocation(
@@ -881,42 +871,12 @@ class HomeViewModel(
 		}
 	}
 
-	private fun resolveStartupBackupPrefetchDelayMs(): Long {
-		val jitter = Random.nextLong(
-			from = 0L,
-			until = BACKUP_PREFETCH_STARTUP_JITTER_MS + 1L
-		)
-		return BACKUP_PREFETCH_STARTUP_DELAY_MS + jitter
-	}
-
 	private fun prefetchBackupCityCache(maxCandidateCount: Int = Int.MAX_VALUE) {
-		val defaultCity = resolveDefaultCity()
-		val supportedCities = AppSettingsDefaults.supportedCities(languageTag).map { city ->
-			SunLocation(
-				label = city.name,
-				latitude = city.latitude,
-				longitude = city.longitude,
-				timeZoneId = city.timeZoneId
-			)
-		}
-		val manual = SunLocation(
-			label = manualCity.name,
-			latitude = manualCity.latitude,
-			longitude = manualCity.longitude,
-			timeZoneId = manualCity.timeZoneId
+		val boundedCandidates = buildBackupCityPrefetchCandidates(
+			languageTag = languageTag,
+			manualCity = manualCity,
+			maxCandidateCount = maxCandidateCount
 		)
-		val candidates = buildList {
-			add(defaultCity)
-			add(manual)
-			addAll(supportedCities)
-		}.distinctBy { candidate ->
-			"${candidate.latitude}|${candidate.longitude}|${candidate.timeZoneId.orEmpty()}"
-		}
-		val boundedCandidates = if (maxCandidateCount > 0) {
-			candidates.take(maxCandidateCount)
-		} else {
-			emptyList()
-		}
 		if (boundedCandidates.isEmpty()) return
 		sunTimesRepository.prefetchBackupAsync(
 			candidates = boundedCandidates,
@@ -933,8 +893,6 @@ class HomeViewModel(
 		private const val FOREGROUND_LOCATION_REFRESH_STALE_MS = 30L * 1000L
 		private const val FOREGROUND_AUTOMATIC_LOCATION_MAX_AGE_MS = 30L * 60L * 1000L
 		private const val BACKUP_CITY_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
-		private const val BACKUP_PREFETCH_STARTUP_DELAY_MS = 30_000L
-		private const val BACKUP_PREFETCH_STARTUP_JITTER_MS = 10_000L
 		private const val BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT = 8
 		private const val LOCATION_REFRESH_COALESCE_DELAY_MS = 120L
 		private const val LOCATION_CANDIDATES_CACHE_TTL_MS = 1_500L
