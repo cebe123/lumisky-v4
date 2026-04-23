@@ -14,13 +14,18 @@ uniform vec2 u_MoonPos;
 uniform vec2 u_Parallax;
 uniform sampler2D u_ForegroundTexture;
 uniform sampler2D u_CloudTexture;
+uniform sampler2D u_MoonTexture;
+uniform float u_Minute;
+uniform float u_Sunrise;
+uniform float u_Sunset;
+uniform float u_SolarNoon;
 
 #define iResolution u_Resolution
 
 varying vec2 v_TexCoord;
 
-const float gunesBoyut = 0.05;
-const float gunesParlama = 0.5;
+const float gunesBoyut = 0.035;
+const float gunesParlama = 0.25;
 const vec3 gunesMerkezRenk = vec3(1.0, 0.98, 0.9);
 const vec3 gunesHaleRenk = vec3(1.0, 0.5, 0.1);
 const float castleTextureAspect = 1350.0 / 2400.0;
@@ -39,7 +44,7 @@ vec2 legacySunPosToFragUv(vec2 sunPos) {
     return vec2(sunPos.x, 1.0 - sunPos.y);
 }
 
-vec4 sampleCastleTexture(vec2 parallaxOffset) {
+vec4 sampleCastleTexture(vec2 parallaxOffset, float envBrightness) {
     float screenAspect = iResolution.x / iResolution.y;
     vec2 castleUv;
 
@@ -69,7 +74,14 @@ vec4 sampleCastleTexture(vec2 parallaxOffset) {
         return vec4(0.0);
     }
 
-    vec4 castle = texture2D(u_ForegroundTexture, castleUv);
+    vec4 castleDay = texture2D(u_ForegroundTexture, castleUv);
+    castleDay.rgb *= envBrightness; // Only darken the daytime texture
+
+    vec4 castleNight = texture2D(u_MoonTexture, castleUv);
+    // The night texture already has natural dark tones and lit windows, no need to darken.
+
+    vec4 castle = mix(castleDay, castleNight, u_NightAmount);
+    
     float blackKey = max(max(castle.r, castle.g), castle.b);
     float visibleMask = smoothstep(0.02, 0.08, blackKey);
     castle.a *= visibleMask;
@@ -108,8 +120,8 @@ vec4 sampleCloudTexture(float speed, float verticalOffset, vec2 parallaxOffset) 
 }
 
 vec4 applyCloudLight(vec4 cloud, float gunesMesafe, vec2 p, vec2 posGunes, float gunesGorunurluk) {
-    float bulutIsik = exp(-gunesMesafe * 2.4) * gunesGorunurluk;
-    float bulutIsinCizgisi = exp(-abs(p.x - posGunes.x) * 4.8) *
+    float bulutIsik = exp(-gunesMesafe * 3.5) * gunesGorunurluk;
+    float bulutIsinCizgisi = exp(-abs(p.x - posGunes.x) * 6.0) *
         smoothstep(posGunes.y - 0.28, posGunes.y + 0.10, p.y) *
         gunesGorunurluk;
     float bulutAydinlanma = clamp((bulutIsik * 0.7) + (bulutIsinCizgisi * 0.3), 0.0, 1.0);
@@ -217,18 +229,45 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float gunesMesafe = length(p - posGunes);
     float gunesGorunurluk = clamp(u_DrawSun * (1.0 - u_IsNight), 0.0, 1.0);
 
-    vec3 horizonColor = vec3(0.9, 0.45, 0.25);
-    vec3 zenithColor = vec3(0.1, 0.25, 0.6);
+    vec3 mornHorizon = vec3(0.85, 0.45, 0.35);
+    vec3 mornZenith  = vec3(0.15, 0.20, 0.40);
+
+    vec3 noonHorizon = vec3(0.40, 0.75, 1.00);
+    vec3 noonZenith  = vec3(0.10, 0.40, 0.85);
+
+    vec3 eveHorizon  = vec3(0.90, 0.35, 0.15);
+    vec3 eveZenith   = vec3(0.05, 0.10, 0.25);
+
+    vec3 nightHorizon = vec3(0.03, 0.06, 0.12);
+    vec3 nightZenith  = vec3(0.01, 0.02, 0.05);
+
+    vec3 currentHorizon;
+    vec3 currentZenith;
+
+    float mornToNoon = smoothstep(u_Sunrise, u_SolarNoon, u_Minute);
+    float noonToEve  = smoothstep(u_SolarNoon, u_Sunset, u_Minute);
+
+    if (u_Minute < u_SolarNoon) {
+        currentHorizon = mix(mornHorizon, noonHorizon, mornToNoon);
+        currentZenith  = mix(mornZenith, noonZenith, mornToNoon);
+    } else {
+        currentHorizon = mix(noonHorizon, eveHorizon, noonToEve);
+        currentZenith  = mix(noonZenith, eveZenith, noonToEve);
+    }
+
+    vec3 horizonColor = mix(currentHorizon, nightHorizon, u_NightAmount);
+    vec3 zenithColor  = mix(currentZenith, nightZenith, u_NightAmount);
+
     float gradientY = smoothstep(0.0, 1.2, uv.y);
     vec3 finalColor = mix(horizonColor, zenithColor, gradientY);
 
     float parlamaMaske = 1.0 - smoothstep(gunesBoyut, gunesBoyut + gunesParlama, gunesMesafe);
     parlamaMaske = parlamaMaske * parlamaMaske * gunesGorunurluk;
 
-    float diskMaske = 1.0 - smoothstep(gunesBoyut - 0.005, gunesBoyut + 0.015, gunesMesafe);
+    float diskMaske = 1.0 - smoothstep(gunesBoyut - 0.005, gunesBoyut + 0.010, gunesMesafe);
     diskMaske *= gunesGorunurluk;
 
-    finalColor += gunesHaleRenk * parlamaMaske * 1.5;
+    finalColor += gunesHaleRenk * parlamaMaske * 1.0;
     finalColor = mix(finalColor, gunesMerkezRenk, diskMaske);
 
     // Procedural moon (follows celestial motion, only visible at night)
@@ -266,8 +305,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     altBulut.rgb *= envBrightness;
     finalColor = mix(finalColor, altBulut.rgb, altBulut.a);
 
-    vec4 castle = sampleCastleTexture(castleParallax);
-    castle.rgb *= envBrightness;
+    vec4 castle = sampleCastleTexture(castleParallax, envBrightness);
     finalColor = mix(finalColor, castle.rgb, castle.a);
 
     fragColor = vec4(finalColor, 1.0);

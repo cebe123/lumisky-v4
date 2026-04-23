@@ -6,7 +6,8 @@
   },
   "textures": {
     "backgroundTexture": "backgrounds/castle.png",
-    "flareTexture": "backgrounds/castle_clouds.png"
+    "flareTexture": "backgrounds/castle_clouds.png",
+    "moonTexture": "backgrounds/castle_2.png"
   },
   "features": {
     "atmosphereEnabled": false,
