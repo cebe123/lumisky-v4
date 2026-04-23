@@ -710,12 +710,21 @@ private fun WallpaperCard(
 					.padding(14.dp)
 			)
 
-			WallpaperPerformanceBadge(
-				tier = resolveWallpaperPerformanceBadge(item.config),
+			Row(
 				modifier = Modifier
 					.align(Alignment.TopEnd)
-					.padding(14.dp)
-			)
+					.padding(14.dp),
+				horizontalArrangement = Arrangement.spacedBy(8.dp)
+			) {
+				if (item.config.id == "sky" || item.config.shader.fragmentAssetPath?.contains("sky") == true) {
+					WallpaperFeatureBadge(
+						text = stringResource(R.string.wallpaper_feature_parallax)
+					)
+				}
+				WallpaperPerformanceBadge(
+					tier = resolveWallpaperPerformanceBadge(item.config)
+				)
+			}
 		}
 	}
 }
@@ -771,6 +780,32 @@ private fun WallpaperPerformanceBadge(
 			.border(
 				width = 1.dp,
 				color = Color.White.copy(alpha = 0.26f),
+				shape = shape
+			)
+			.padding(horizontal = 10.dp, vertical = 6.dp)
+	)
+}
+
+@Composable
+private fun WallpaperFeatureBadge(
+	text: String,
+	modifier: Modifier = Modifier
+) {
+	val shape = RoundedCornerShape(999.dp)
+	Text(
+		text = text,
+		maxLines = 1,
+		softWrap = false,
+		style = MaterialTheme.typography.labelSmall.copy(
+			fontWeight = FontWeight.SemiBold,
+			color = Color.White
+		),
+		modifier = modifier
+			.clip(shape)
+			.background(Color(0xFF153A55).copy(alpha = 0.8f))
+			.border(
+				width = 1.dp,
+				color = Color(0xFF9FD8FF).copy(alpha = 0.4f),
 				shape = shape
 			)
 			.padding(horizontal = 10.dp, vertical = 6.dp)

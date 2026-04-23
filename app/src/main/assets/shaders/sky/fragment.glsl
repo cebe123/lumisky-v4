@@ -9,6 +9,8 @@ uniform float u_Time;
 uniform vec2 u_SunPos;
 uniform float u_DrawSun;
 uniform float u_IsNight;
+uniform float u_NightAmount;
+uniform vec2 u_MoonPos;
 uniform vec2 u_Parallax;
 uniform sampler2D u_ForegroundTexture;
 uniform sampler2D u_CloudTexture;
@@ -25,8 +27,13 @@ const float castleTextureAspect = 1350.0 / 2400.0;
 const float cloudTextureAspect = 3344.0 / 941.0;
 const float cloudTargetHeight = 0.34;
 const float cloudMinWidth = 1.18;
-const float cloudTopSpeed = 0.010;
-const float cloudLowerSpeed = 0.0065;
+const float cloudTopSpeed = 0.014;
+const float cloudLowerSpeed = 0.020;
+
+// Zoom factor for castle texture: larger than max tilt offset
+// to prevent texture edges from being visible during parallax.
+// Max horizontal offset = 0.85 * 0.12 = 0.102 => zoom 1.30 gives ~0.115 centered margin per side.
+const float castleZoom = 1.30;
 
 vec2 legacySunPosToFragUv(vec2 sunPos) {
     return vec2(sunPos.x, 1.0 - sunPos.y);
@@ -52,6 +59,12 @@ vec4 sampleCastleTexture(vec2 parallaxOffset) {
         );
     }
 
+    // Apply zoom: scale UV around center so all edges have equal margin.
+    castleUv = vec2(
+        (castleUv.x - 0.5) / castleZoom + 0.5,
+        (castleUv.y - 0.5) / castleZoom + 0.5
+    );
+
     if (castleUv.x < 0.0 || castleUv.x > 1.0 || castleUv.y < 0.0 || castleUv.y > 1.0) {
         return vec4(0.0);
     }
@@ -67,18 +80,28 @@ vec4 sampleCloudTexture(float speed, float verticalOffset, vec2 parallaxOffset) 
     float screenAspect = iResolution.x / iResolution.y;
     float displayedWidth = max(cloudMinWidth, (cloudTextureAspect * cloudTargetHeight) / screenAspect);
     float displayedHeight = displayedWidth * screenAspect / cloudTextureAspect;
-    float horizontalTravel = max(displayedWidth - 1.0, 0.0);
-    float horizontalOffset = fract(u_Time * speed) * horizontalTravel;
-    vec2 cloudUv = vec2(
-        (v_TexCoord.x + horizontalOffset + parallaxOffset.x) / displayedWidth,
-        (v_TexCoord.y - verticalOffset + parallaxOffset.y) / displayedHeight
-    );
 
-    if (cloudUv.x < 0.0 || cloudUv.x > 1.0 || cloudUv.y < 0.0 || cloudUv.y > 1.0) {
+    // Continuous horizontal scroll (unbounded)
+    float horizontalOffset = u_Time * speed;
+    float rawX = (v_TexCoord.x + horizontalOffset + parallaxOffset.x) / displayedWidth;
+    float rawY = (v_TexCoord.y - verticalOffset + parallaxOffset.y) / displayedHeight;
+
+    // Vertical bounds check only
+    if (rawY < 0.0 || rawY > 1.0) {
         return vec4(0.0);
     }
 
-    vec4 cloud = texture2D(u_CloudTexture, cloudUv);
+    // Seamless horizontal wrapping: sample two half-period-offset
+    // copies and cross-fade so the seam is never visible.
+    float wx  = fract(rawX);
+    float wx2 = fract(rawX + 0.5);
+    float edgeDist = min(wx, 1.0 - wx);
+    float blendFactor = smoothstep(0.0, 0.10, edgeDist);
+
+    vec4 sample1 = texture2D(u_CloudTexture, vec2(wx,  rawY));
+    vec4 sample2 = texture2D(u_CloudTexture, vec2(wx2, rawY));
+    vec4 cloud = mix(sample2, sample1, blendFactor);
+
     float alphaMask = smoothstep(0.01, 0.08, cloud.a);
     cloud.a *= alphaMask;
     return cloud;
@@ -101,21 +124,103 @@ vec2 resolveParallaxOffset(float horizontalScale, float verticalScale) {
     );
 }
 
+// ─── Procedural Moon ───
+
+float hash21(vec2 p) {
+    p = fract(p * vec2(123.34, 345.45));
+    p += dot(p, p + 34.345);
+    return fract(p.x * p.y);
+}
+
+float moonNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+
+    float a = hash21(i);
+    float b = hash21(i + vec2(1.0, 0.0));
+    float c = hash21(i + vec2(0.0, 1.0));
+    float d = hash21(i + vec2(1.0, 1.0));
+
+    vec2 u = f * f * (3.0 - 2.0 * f);
+
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+float moonSurface(vec2 p) {
+    float n = 0.0;
+    n += moonNoise(p * 3.0) * 0.6;
+    n += moonNoise(p * 6.0) * 0.3;
+    n += moonNoise(p * 12.0) * 0.1;
+    return n;
+}
+
+// Draw a procedural moon with subtle glow at the given center (in p-space).
+vec3 drawMoon(vec2 p, vec2 center) {
+    vec2 d = p - center;
+    float r = length(d);
+    float radius = 0.036;
+
+    vec3 col = vec3(0.0);
+
+    float mask = smoothstep(radius, radius - 0.001, r);
+
+    if (mask > 0.0) {
+        vec2 mp = d / radius;
+
+        float z = sqrt(max(0.0, 1.0 - dot(mp, mp)));
+        vec3 n = normalize(vec3(mp, z));
+
+        vec3 lightDir = normalize(vec3(-0.7, 0.25, 0.6));
+
+        float diff = max(dot(n, lightDir), 0.0);
+        float shade = 0.3 + 0.7 * diff;
+
+        float s = moonSurface(mp * 2.5);
+        float maria = smoothstep(0.45, 0.75, s);
+
+        float albedo = 0.8;
+        albedo -= maria * 0.12;
+        albedo += (s - 0.5) * 0.08;
+
+        float limb = 1.0 - smoothstep(0.7, 1.0, length(mp));
+        float finalShade = shade * (0.85 + 0.15 * limb);
+
+        vec3 moon = vec3(0.88, 0.89, 0.9) * albedo * finalShade;
+        moon *= mix(vec3(0.92, 0.95, 1.0), vec3(1.0), diff);
+
+        col = moon * mask;
+    }
+
+    // Near glow
+    float glow = smoothstep(radius + 0.08, radius, r);
+    glow = pow(glow, 2.0);
+
+    vec3 glowColor = vec3(0.6, 0.7, 1.0);
+    col += glow * glowColor * 0.55;
+
+    // Far ambient glow for extra light scatter
+    float farGlow = smoothstep(radius + 0.35, radius, r);
+    farGlow = pow(farGlow, 2.0);
+    col += farGlow * glowColor * 0.25;
+
+    return col;
+}
+
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
     vec2 uv = fragCoord / iResolution.xy;
     vec2 p = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
     float aspect = iResolution.x / iResolution.y;
 
-    vec3 horizonColor = vec3(0.9, 0.45, 0.25);
-    vec3 zenithColor = vec3(0.1, 0.25, 0.6);
-    float gradientY = smoothstep(0.0, 1.2, uv.y);
-    vec3 finalColor = mix(horizonColor, zenithColor, gradientY);
-
     vec2 gunesKonum = legacySunPosToFragUv(u_SunPos);
     vec2 posGunes = vec2(gunesKonum.x * aspect, gunesKonum.y) - vec2(0.5 * aspect, 0.5);
     float gunesMesafe = length(p - posGunes);
     float gunesGorunurluk = clamp(u_DrawSun * (1.0 - u_IsNight), 0.0, 1.0);
+
+    vec3 horizonColor = vec3(0.9, 0.45, 0.25);
+    vec3 zenithColor = vec3(0.1, 0.25, 0.6);
+    float gradientY = smoothstep(0.0, 1.2, uv.y);
+    vec3 finalColor = mix(horizonColor, zenithColor, gradientY);
 
     float parlamaMaske = 1.0 - smoothstep(gunesBoyut, gunesBoyut + gunesParlama, gunesMesafe);
     parlamaMaske = parlamaMaske * parlamaMaske * gunesGorunurluk;
@@ -125,9 +230,21 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     finalColor += gunesHaleRenk * parlamaMaske * 1.5;
     finalColor = mix(finalColor, gunesMerkezRenk, diskMaske);
-    vec2 ustBulutParallax = resolveParallaxOffset(0.028, 0.006);
-    vec2 altBulutParallax = resolveParallaxOffset(0.045, 0.010);
-    vec2 castleParallax = resolveParallaxOffset(0.075, 0.016);
+
+    // Procedural moon (follows celestial motion, only visible at night)
+    if (u_IsNight > 0.0) {
+        vec2 ayKonum = legacySunPosToFragUv(u_MoonPos);
+        vec2 moonCenter = vec2(ayKonum.x * aspect, ayKonum.y) - vec2(0.5 * aspect, 0.5);
+        vec3 moonColor = drawMoon(p, moonCenter);
+        finalColor += moonColor * u_IsNight;
+    }
+
+    // Environmental darkening at night (smooth transition)
+    float envBrightness = mix(1.0, 0.15, u_NightAmount);
+
+    vec2 ustBulutParallax = resolveParallaxOffset(0.035, 0.008);
+    vec2 altBulutParallax = resolveParallaxOffset(0.060, 0.014);
+    vec2 castleParallax = resolveParallaxOffset(0.12, 0.028);
 
     vec4 ustBulut = applyCloudLight(
         sampleCloudTexture(cloudTopSpeed, 0.0, ustBulutParallax),
@@ -136,6 +253,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
         posGunes,
         gunesGorunurluk
     );
+    ustBulut.rgb *= envBrightness;
     finalColor = mix(finalColor, ustBulut.rgb, ustBulut.a);
 
     vec4 altBulut = applyCloudLight(
@@ -145,9 +263,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
         posGunes,
         gunesGorunurluk
     );
+    altBulut.rgb *= envBrightness;
     finalColor = mix(finalColor, altBulut.rgb, altBulut.a);
 
     vec4 castle = sampleCastleTexture(castleParallax);
+    castle.rgb *= envBrightness;
     finalColor = mix(finalColor, castle.rgb, castle.a);
 
     fragColor = vec4(finalColor, 1.0);

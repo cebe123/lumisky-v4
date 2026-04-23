@@ -49,6 +49,7 @@
     <string name="wallpaper_performance_smooth">Smooth</string>
     <string name="wallpaper_performance_balanced">Balanced</string>
     <string name="wallpaper_performance_efficient">Efficient</string>
+    <string name="wallpaper_feature_parallax">Parallax</string>
 
     <!-- Categories -->
     <string name="cat_special">Special</string>

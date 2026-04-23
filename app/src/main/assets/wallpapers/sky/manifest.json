@@ -13,6 +13,10 @@
     "lensFlareEnabled": false,
     "starsEnabled": false
   },
+  "celestial": {
+    "sunPathType": "VERTICAL",
+    "moonPathType": "VERTICAL"
+  },
   "shader": {
     "fragmentAssetPath": "shaders/sky/fragment.glsl",
     "mode": "external_theme"
