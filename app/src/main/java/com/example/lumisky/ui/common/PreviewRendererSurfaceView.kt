@@ -4,12 +4,14 @@ import android.content.Context
 import android.opengl.GLSurfaceView
 import android.os.Build
 import android.view.View
+import com.example.core.motion.TiltParallaxTracker
 import com.example.engine.preview.PreviewGlRenderer
 
 class PreviewRendererSurfaceView(
 	context: Context,
 	private val previewRenderer: PreviewGlRenderer,
 	initialPlaybackEnabled: Boolean = true,
+	private val parallaxEnabled: Boolean = true,
 	private val warmupFramesOnEnable: Int = 0,
 	private val requestRenderOnAttach: Boolean = false,
 	private val onPlaybackStateChanged: ((enabled: Boolean, enteringEnabled: Boolean) -> Unit)? = null
@@ -17,7 +19,17 @@ class PreviewRendererSurfaceView(
 
 	private var playbackEnabled: Boolean = initialPlaybackEnabled
 	private var lastRenderFrameNs: Long = 0L
+	private var lastParallaxRenderNs: Long = 0L
 	private var warmupFramesRemaining: Int = 0
+	private val tiltParallaxTracker = TiltParallaxTracker(context) { x, y ->
+		previewRenderer.setParallaxOffset(x, y)
+		if (parallaxEnabled &&
+			windowVisibility == View.VISIBLE &&
+			!previewRenderer.shouldContinueRendering()
+		) {
+			requestParallaxRenderIfNeeded()
+		}
+	}
 	private val frameLoop = ChoreographerFrameLoop(
 		onFrame = { frameTimeNanos ->
 			val minIntervalNs = previewRenderer.nextFrameDelayMs() * 1_000_000L
@@ -69,6 +81,9 @@ class PreviewRendererSurfaceView(
 	override fun onAttachedToWindow() {
 		super.onAttachedToWindow()
 		lastRenderFrameNs = 0L
+		if (parallaxEnabled) {
+			tiltParallaxTracker.start()
+		}
 		if (requestRenderOnAttach) {
 			requestRender()
 		}
@@ -84,10 +99,19 @@ class PreviewRendererSurfaceView(
 		} else {
 			frameLoop.remove()
 		}
+		if (!parallaxEnabled) return
+		if (visibility == View.VISIBLE) {
+			tiltParallaxTracker.start()
+		} else {
+			tiltParallaxTracker.stop()
+		}
 	}
 
 	override fun onDetachedFromWindow() {
 		frameLoop.remove()
+		if (parallaxEnabled) {
+			tiltParallaxTracker.close()
+		}
 		runCatching {
 			queueEvent { previewRenderer.release() }
 		}
@@ -104,5 +128,16 @@ class PreviewRendererSurfaceView(
 	private fun shouldScheduleFrame(): Boolean {
 		if (windowVisibility != View.VISIBLE || !playbackEnabled) return false
 		return previewRenderer.shouldContinueRendering() || warmupFramesRemaining > 0
+	}
+
+	private fun requestParallaxRenderIfNeeded() {
+		val nowNs = System.nanoTime()
+		if (nowNs - lastParallaxRenderNs < PARALLAX_RENDER_INTERVAL_NS) return
+		lastParallaxRenderNs = nowNs
+		requestRender()
+	}
+
+	companion object {
+		private const val PARALLAX_RENDER_INTERVAL_NS = 16_000_000L
 	}
 }

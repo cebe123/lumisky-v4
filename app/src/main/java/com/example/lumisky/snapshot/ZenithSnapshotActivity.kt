@@ -159,6 +159,7 @@ class ZenithSnapshotActivity : AppCompatActivity() {
 			context = this,
 			previewRenderer = renderer,
 			initialPlaybackEnabled = true,
+			parallaxEnabled = false,
 			requestRenderOnAttach = true
 		)
 		currentSurfaceView = nextView

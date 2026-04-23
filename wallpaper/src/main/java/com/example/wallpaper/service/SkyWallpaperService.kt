@@ -10,6 +10,7 @@ import android.os.UserManager
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
 import com.example.core.Logger
+import com.example.core.motion.TiltParallaxTracker
 import com.example.core.settings.AppSettingsRepository
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
@@ -52,7 +53,11 @@ open class SkyWallpaperService : WallpaperService() {
 		private var settingsChangeSubscription: AutoCloseable? = null
 		private var daylightSyncDeferredUntilUnlockLogged: Boolean = false
 		private var engineVisible: Boolean = false
+		private var engineSurfaceAttached: Boolean = false
 		private var lastAppliedConfigSignature: String? = null
+		private val tiltParallaxTracker = TiltParallaxTracker(appContext) { x, y ->
+			renderController.setParallaxOffset(x, y)
+		}
 		private val configRefreshReceiver = object : BroadcastReceiver() {
 			override fun onReceive(context: Context?, intent: Intent?) {
 				if (intent?.action != ACTION_APPLY_STORED_WALLPAPER_CONFIG) return
@@ -79,6 +84,7 @@ open class SkyWallpaperService : WallpaperService() {
 			maybeRestoreLockScreenWallpaperSharing()
 			applyStoredConfig()
 			renderController.onCreate()
+			updateParallaxTrackingState()
 		}
 
 		override fun onVisibilityChanged(visible: Boolean) {
@@ -93,26 +99,32 @@ open class SkyWallpaperService : WallpaperService() {
 				applyStoredConfig()
 			}
 			daylightSyncCoordinator?.onVisibilityChanged(visible)
+			updateParallaxTrackingState()
 			renderController.onVisibilityChanged(visible)
 		}
 
 		override fun onSurfaceCreated(holder: SurfaceHolder) {
 			super.onSurfaceCreated(holder)
+			engineSurfaceAttached = true
 			renderController.setPreviewMode(isPreview)
 			refreshRenderSettings()
 			maybeStartDaylightSyncCoordinator()
 			daylightSyncCoordinator?.setPreviewMode(isPreview)
 			maybeRestoreLockScreenWallpaperSharing()
 			applyStoredConfig()
+			updateParallaxTrackingState()
 			renderController.onSurfaceCreated(holder)
 		}
 
 		override fun onSurfaceDestroyed(holder: SurfaceHolder) {
+			engineSurfaceAttached = false
+			updateParallaxTrackingState()
 			renderController.onSurfaceDestroyed()
 			super.onSurfaceDestroyed(holder)
 		}
 
 		override fun onDestroy() {
+			tiltParallaxTracker.close()
 			daylightSyncCoordinator?.onDestroy()
 			daylightSyncCoordinator = null
 			unregisterSettingsChangeListener()
@@ -120,6 +132,14 @@ open class SkyWallpaperService : WallpaperService() {
 			unregisterConfigRefreshReceiver()
 			renderController.onDestroy()
 			super.onDestroy()
+		}
+
+		private fun updateParallaxTrackingState() {
+			if (engineVisible && engineSurfaceAttached) {
+				tiltParallaxTracker.start()
+			} else {
+				tiltParallaxTracker.stop()
+			}
 		}
 
 		private fun maybeStartDaylightSyncCoordinator() {

@@ -11,6 +11,7 @@ class RenderFrameState(
 	var nightLengthMinutes: Int = 0,
 	val sun: Vec2 = Vec2(),
 	val moon: Vec2 = Vec2(),
+	val parallax: Vec2 = Vec2(),
 	var skyColor: Int = 0,
 	var skyTopColor: Int = 0,
 	var skyHorizonColor: Int = 0,

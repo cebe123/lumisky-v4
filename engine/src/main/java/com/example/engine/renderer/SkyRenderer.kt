@@ -69,6 +69,7 @@ class SkyRenderer(
 		state.nightLengthMinutes = dayCycle.nightLengthMinutes
 		state.sun.set(sun.x, sun.y)
 		state.moon.set(moon.x, moon.y)
+		state.parallax.set(0f, 0f)
 		state.skyColor = finalColor
 		state.skyTopColor = atmosphere.skyTopColor
 		state.skyHorizonColor = atmosphere.skyHorizonColor

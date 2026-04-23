@@ -122,6 +122,13 @@ internal class WallpaperRenderController(
 		}
 	}
 
+	fun setParallaxOffset(
+		x: Float,
+		y: Float
+	) {
+		renderEngine.setParallaxOffset(x, y)
+	}
+
 	fun setConfig(config: WallpaperConfig) {
 		if (config == currentConfig) return
 		currentConfig = config

@@ -9,6 +9,7 @@ uniform float u_Time;
 uniform vec2 u_SunPos;
 uniform float u_DrawSun;
 uniform float u_IsNight;
+uniform vec2 u_Parallax;
 uniform sampler2D u_ForegroundTexture;
 uniform sampler2D u_CloudTexture;
 
@@ -31,18 +32,24 @@ vec2 legacySunPosToFragUv(vec2 sunPos) {
     return vec2(sunPos.x, 1.0 - sunPos.y);
 }
 
-vec4 sampleCastleTexture() {
+vec4 sampleCastleTexture(vec2 parallaxOffset) {
     float screenAspect = iResolution.x / iResolution.y;
     vec2 castleUv;
 
     if (screenAspect <= castleTextureAspect) {
         float displayedHeight = screenAspect / castleTextureAspect;
         float topInset = 1.0 - displayedHeight;
-        castleUv = vec2(v_TexCoord.x, (v_TexCoord.y - topInset) / displayedHeight);
+        castleUv = vec2(
+            v_TexCoord.x + parallaxOffset.x,
+            (v_TexCoord.y + parallaxOffset.y - topInset) / displayedHeight
+        );
     } else {
         float displayedWidth = castleTextureAspect / screenAspect;
         float sideInset = (1.0 - displayedWidth) * 0.5;
-        castleUv = vec2((v_TexCoord.x - sideInset) / displayedWidth, v_TexCoord.y);
+        castleUv = vec2(
+            (v_TexCoord.x + parallaxOffset.x - sideInset) / displayedWidth,
+            v_TexCoord.y + parallaxOffset.y
+        );
     }
 
     if (castleUv.x < 0.0 || castleUv.x > 1.0 || castleUv.y < 0.0 || castleUv.y > 1.0) {
@@ -56,15 +63,15 @@ vec4 sampleCastleTexture() {
     return castle;
 }
 
-vec4 sampleCloudTexture(float speed, float verticalOffset) {
+vec4 sampleCloudTexture(float speed, float verticalOffset, vec2 parallaxOffset) {
     float screenAspect = iResolution.x / iResolution.y;
     float displayedWidth = max(cloudMinWidth, (cloudTextureAspect * cloudTargetHeight) / screenAspect);
     float displayedHeight = displayedWidth * screenAspect / cloudTextureAspect;
     float horizontalTravel = max(displayedWidth - 1.0, 0.0);
     float horizontalOffset = fract(u_Time * speed) * horizontalTravel;
     vec2 cloudUv = vec2(
-        (v_TexCoord.x + horizontalOffset) / displayedWidth,
-        (v_TexCoord.y - verticalOffset) / displayedHeight
+        (v_TexCoord.x + horizontalOffset + parallaxOffset.x) / displayedWidth,
+        (v_TexCoord.y - verticalOffset + parallaxOffset.y) / displayedHeight
     );
 
     if (cloudUv.x < 0.0 || cloudUv.x > 1.0 || cloudUv.y < 0.0 || cloudUv.y > 1.0) {
@@ -85,6 +92,13 @@ vec4 applyCloudLight(vec4 cloud, float gunesMesafe, vec2 p, vec2 posGunes, float
     float bulutAydinlanma = clamp((bulutIsik * 0.7) + (bulutIsinCizgisi * 0.3), 0.0, 1.0);
     cloud.rgb = mix(cloud.rgb, vec3(1.0, 0.93, 0.84), bulutAydinlanma * 0.22);
     return cloud;
+}
+
+vec2 resolveParallaxOffset(float horizontalScale, float verticalScale) {
+    return vec2(
+        u_Parallax.x * horizontalScale,
+        u_Parallax.y * verticalScale
+    );
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
@@ -111,9 +125,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     finalColor += gunesHaleRenk * parlamaMaske * 1.5;
     finalColor = mix(finalColor, gunesMerkezRenk, diskMaske);
+    vec2 ustBulutParallax = resolveParallaxOffset(0.028, 0.006);
+    vec2 altBulutParallax = resolveParallaxOffset(0.045, 0.010);
+    vec2 castleParallax = resolveParallaxOffset(0.075, 0.016);
 
     vec4 ustBulut = applyCloudLight(
-        sampleCloudTexture(cloudTopSpeed, 0.0),
+        sampleCloudTexture(cloudTopSpeed, 0.0, ustBulutParallax),
         gunesMesafe,
         p,
         posGunes,
@@ -122,7 +139,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     finalColor = mix(finalColor, ustBulut.rgb, ustBulut.a);
 
     vec4 altBulut = applyCloudLight(
-        sampleCloudTexture(cloudLowerSpeed, 0.18),
+        sampleCloudTexture(cloudLowerSpeed, 0.18, altBulutParallax),
         gunesMesafe,
         p,
         posGunes,
@@ -130,7 +147,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     );
     finalColor = mix(finalColor, altBulut.rgb, altBulut.a);
 
-    vec4 castle = sampleCastleTexture();
+    vec4 castle = sampleCastleTexture(castleParallax);
     finalColor = mix(finalColor, castle.rgb, castle.a);
 
     fragColor = vec4(finalColor, 1.0);

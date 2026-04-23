@@ -79,6 +79,10 @@ class PreviewGlRenderer(
 	private var qualityScaleLowerBound: Float = 0.5f
 	private var qualityScaleUpperBound: Float = 1f
 	private var currentTargetFps: Int = DEFAULT_DISPLAY_FPS
+	@Volatile
+	private var parallaxX: Float = 0f
+	@Volatile
+	private var parallaxY: Float = 0f
 
 	private val skyProgram = PreviewSkyProgram()
 	private val stats = RenderStatsTracker(
@@ -116,6 +120,7 @@ class PreviewGlRenderer(
 
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 		if (state != null) {
+			state.parallax.set(parallaxX, parallaxY)
 			skyProgram.draw(state)
 			onRenderedDayProgressChanged?.invoke(state.dayProgress)
 			onFrameDrawn?.invoke()
@@ -157,6 +162,14 @@ class PreviewGlRenderer(
 			previewStartMillis = nowProvider()
 			initializeFocusState()
 		}
+	}
+
+	fun setParallaxOffset(
+		x: Float,
+		y: Float
+	) {
+		parallaxX = x.coerceIn(-1f, 1f)
+		parallaxY = y.coerceIn(-1f, 1f)
 	}
 
 	fun release() {

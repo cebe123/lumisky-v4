@@ -34,6 +34,10 @@ class WallpaperRenderEngine(
 	private var fragmentShaderOverride: String? = null
 	private var previewLoopStartNanos: Long = 0L
 	private var previewLoopConfigId: String = config.id
+	@Volatile
+	private var parallaxX: Float = 0f
+	@Volatile
+	private var parallaxY: Float = 0f
 	private val textureBytesCache = object : LruCache<String, ByteArray>(MAX_TEXTURE_CACHE_BYTES) {
 		override fun sizeOf(key: String, value: ByteArray): Int = value.size
 	}
@@ -138,6 +142,7 @@ class WallpaperRenderEngine(
 			stats.onSkip("engine_state_skip")
 			return null
 		}
+		state.parallax.set(parallaxX, parallaxY)
 		val drawn = eglSession.draw(state)
 		if (!drawn) {
 			Logger.e(TAG, "EGL draw failed")
@@ -172,6 +177,14 @@ class WallpaperRenderEngine(
 
 	fun sceneFingerprint(): Int {
 		return sceneFingerprintHash
+	}
+
+	fun setParallaxOffset(
+		x: Float,
+		y: Float
+	) {
+		parallaxX = x.coerceIn(-1f, 1f)
+		parallaxY = y.coerceIn(-1f, 1f)
 	}
 
 	fun renderModeName(): String = renderMode.name

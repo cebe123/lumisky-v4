@@ -58,6 +58,7 @@ class PreviewSkyProgram {
 	private var uTextureHandle: Int = -1
 	private var uTexture1Handle: Int = -1
 	private var uTexture2Handle: Int = -1
+	private var uParallaxHandle: Int = -1
 	private var uTouchPositionHandle: Int = -1
 	private var uTouchTimeHandle: Int = -1
 	private var uWindSpeedHandle: Int = -1
@@ -141,6 +142,7 @@ class PreviewSkyProgram {
 		uTextureHandle = GLES20.glGetUniformLocation(programHandle, "u_Texture")
 		uTexture1Handle = GLES20.glGetUniformLocation(programHandle, "u_Texture1")
 		uTexture2Handle = GLES20.glGetUniformLocation(programHandle, "u_Texture2")
+		uParallaxHandle = GLES20.glGetUniformLocation(programHandle, "u_Parallax")
 		uTouchPositionHandle = GLES20.glGetUniformLocation(programHandle, "u_TouchPosition")
 		uTouchTimeHandle = GLES20.glGetUniformLocation(programHandle, "u_TouchTime")
 		uWindSpeedHandle = GLES20.glGetUniformLocation(programHandle, "u_WindSpeed")
@@ -232,6 +234,7 @@ class PreviewSkyProgram {
 		setVec2(uResolutionHandle, viewportWidth.toFloat(), viewportHeight.toFloat())
 		setFloat(uTimeHandle, legacyThemeState.timeSeconds)
 		setFloat(uTimeOfDayHandle, legacyThemeState.timeOfDay)
+		setVec2(uParallaxHandle, state.parallax.x, state.parallax.y)
 		setVec2(uTouchPositionHandle, 0f, 0f)
 		setFloat(uTouchTimeHandle, 0f)
 		setFloat(uWindSpeedHandle, windSpeed)
