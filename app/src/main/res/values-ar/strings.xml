@@ -30,6 +30,9 @@
     <string name="performance_mode_auto">Auto</string>
     <string name="performance_mode_smooth">Smooth</string>
     <string name="performance_mode_battery">Battery</string>
+    <string name="wallpaper_performance_smooth">سلس</string>
+    <string name="wallpaper_performance_balanced">متوازن</string>
+    <string name="wallpaper_performance_efficient">موفر</string>
     <string name="cat_special">Special</string>
     <string name="cat_landscapes">Landscapes</string>
     <string name="cat_cities">Cities</string>

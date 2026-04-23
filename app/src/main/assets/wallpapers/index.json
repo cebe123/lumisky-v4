@@ -23,6 +23,10 @@
     {
       "id": "city_paris",
       "manifest": "wallpapers/city_paris/manifest.json"
+    },
+    {
+      "id": "sky",
+      "manifest": "wallpapers/sky/manifest.json"
     }
   ]
 }

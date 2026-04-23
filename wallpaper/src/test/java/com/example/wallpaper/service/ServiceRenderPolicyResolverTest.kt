@@ -1,5 +1,6 @@
 package com.example.wallpaper.service
 
+import com.example.core.settings.PerformanceMode
 import com.example.engine.config.RenderPolicy
 import com.example.engine.config.RuntimeRenderPolicy
 import com.example.engine.config.ServiceRenderPolicy
@@ -78,6 +79,98 @@ class ServiceRenderPolicyResolverTest {
 
 		assertEquals(WallpaperLoopMode.VSYNC, resolved.loopMode)
 		assertEquals(80L, resolved.frameIntervalMs)
+	}
+
+	@Test
+	fun smooth_mode_caps_service_wallpaper_at_90_fps() {
+		val resolver = ServiceRenderPolicyResolver()
+		val config = WallpaperConfig.default(id = "smooth").copy(
+			runtimeRenderPolicy = RuntimeRenderPolicy(
+				policy = RenderPolicy.CONTINUOUS,
+				continuousFrameIntervalMs = 16L
+			)
+		)
+
+		val resolved = resolver.resolve(
+			config = config,
+			previewMode = false,
+			visible = true,
+			surfaceAttached = true,
+			performanceMode = PerformanceMode.SMOOTH,
+			displayRefreshRateHz = 120
+		)
+
+		assertEquals(WallpaperLoopMode.VSYNC, resolved.loopMode)
+		assertEquals(90, resolved.targetFrameRateFps)
+	}
+
+	@Test
+	fun smooth_mode_keeps_service_wallpaper_at_least_30_fps() {
+		val resolver = ServiceRenderPolicyResolver()
+		val config = WallpaperConfig.default(id = "smooth").copy(
+			runtimeRenderPolicy = RuntimeRenderPolicy(
+				policy = RenderPolicy.CONTINUOUS,
+				continuousFrameIntervalMs = 16L
+			)
+		)
+
+		val resolved = resolver.resolve(
+			config = config,
+			previewMode = false,
+			visible = true,
+			surfaceAttached = true,
+			performanceMode = PerformanceMode.SMOOTH,
+			displayRefreshRateHz = 24
+		)
+
+		assertEquals(WallpaperLoopMode.VSYNC, resolved.loopMode)
+		assertEquals(30, resolved.targetFrameRateFps)
+	}
+
+	@Test
+	fun battery_mode_targets_30_fps_for_service_wallpaper() {
+		val resolver = ServiceRenderPolicyResolver()
+		val config = WallpaperConfig.default(id = "battery").copy(
+			runtimeRenderPolicy = RuntimeRenderPolicy(
+				policy = RenderPolicy.CONTINUOUS,
+				continuousFrameIntervalMs = 16L
+			)
+		)
+
+		val resolved = resolver.resolve(
+			config = config,
+			previewMode = false,
+			visible = true,
+			surfaceAttached = true,
+			performanceMode = PerformanceMode.BATTERY,
+			displayRefreshRateHz = 120
+		)
+
+		assertEquals(WallpaperLoopMode.VSYNC, resolved.loopMode)
+		assertEquals(30, resolved.targetFrameRateFps)
+	}
+
+	@Test
+	fun auto_mode_targets_30_fps_for_dynamic_service_wallpaper() {
+		val resolver = ServiceRenderPolicyResolver()
+		val config = WallpaperConfig.default(id = "auto").copy(
+			runtimeRenderPolicy = RuntimeRenderPolicy(
+				policy = RenderPolicy.CONTINUOUS,
+				continuousFrameIntervalMs = 16L
+			)
+		)
+
+		val resolved = resolver.resolve(
+			config = config,
+			previewMode = false,
+			visible = true,
+			surfaceAttached = true,
+			performanceMode = PerformanceMode.AUTO,
+			displayRefreshRateHz = 90
+		)
+
+		assertEquals(WallpaperLoopMode.VSYNC, resolved.loopMode)
+		assertEquals(30, resolved.targetFrameRateFps)
 	}
 
 	@Test

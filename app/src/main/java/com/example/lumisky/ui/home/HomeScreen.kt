@@ -72,6 +72,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.core.settings.PerformanceMode
+import com.example.engine.config.RenderPolicy
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.preview.PreviewGlRenderer
 import com.example.engine.renderer.RenderMode
@@ -108,6 +109,12 @@ private data class FragmentShaderLoadState(
 	val isReady: Boolean,
 	val fragmentOverride: String?
 )
+
+private enum class WallpaperPerformanceTier {
+	SMOOTH,
+	BALANCED,
+	EFFICIENT
+}
 
 @Composable
 fun LaunchSkeleton() {
@@ -584,6 +591,15 @@ private fun WallpaperCard(
 		targetWidthPx = previewWidthPx,
 		targetHeightPx = previewHeightPx
 	)
+	val snapshotDayProgress = remember(
+		item.config.id,
+		item.config.daylight.solarNoonMinute
+	) {
+		dayProgressFromMinute(item.config.daylight.solarNoonMinute)
+	}
+	var renderedDayProgress by remember(item.config.id, snapshotDayProgress) {
+		mutableStateOf(snapshotDayProgress)
+	}
 	var livePreviewReady by remember(item.config.id, highRefreshEnabled, performanceMode) {
 		mutableStateOf(false)
 	}
@@ -599,6 +615,7 @@ private fun WallpaperCard(
 		} else {
 			hasActivePreviewSession = false
 			livePreviewReady = false
+			renderedDayProgress = snapshotDayProgress
 		}
 	}
 	val snapshotOverlayAlpha by animateFloatAsState(
@@ -625,6 +642,9 @@ private fun WallpaperCard(
 					preferFullQuality = isSelected,
 					playbackEnabled = isLive,
 					modifier = Modifier.fillMaxSize(),
+					onRenderedDayProgressChanged = { dayProgress ->
+						renderedDayProgress = dayProgress
+					},
 					onFirstFrameRendered = {
 						livePreviewReady = true
 					}
@@ -682,7 +702,127 @@ private fun WallpaperCard(
 					)
 				)
 			}
+
+			WallpaperRenderTimeBadge(
+				timeText = formatDayProgressAsTime(renderedDayProgress),
+				modifier = Modifier
+					.align(Alignment.TopStart)
+					.padding(14.dp)
+			)
+
+			WallpaperPerformanceBadge(
+				tier = resolveWallpaperPerformanceBadge(item.config),
+				modifier = Modifier
+					.align(Alignment.TopEnd)
+					.padding(14.dp)
+			)
 		}
+	}
+}
+
+@Composable
+private fun WallpaperRenderTimeBadge(
+	timeText: String,
+	modifier: Modifier = Modifier
+) {
+	val shape = RoundedCornerShape(999.dp)
+	Text(
+		text = timeText,
+		maxLines = 1,
+		softWrap = false,
+		style = MaterialTheme.typography.labelMedium.copy(
+			fontWeight = FontWeight.SemiBold,
+			color = Color.White
+		),
+		modifier = modifier
+			.clip(shape)
+			.background(Color.Black.copy(alpha = 0.58f))
+			.border(
+				width = 1.dp,
+				color = Color.White.copy(alpha = 0.28f),
+				shape = shape
+			)
+			.padding(horizontal = 10.dp, vertical = 6.dp)
+	)
+}
+
+@Composable
+private fun WallpaperPerformanceBadge(
+	tier: WallpaperPerformanceTier,
+	modifier: Modifier = Modifier
+) {
+	val label = when (tier) {
+		WallpaperPerformanceTier.SMOOTH -> stringResource(R.string.wallpaper_performance_smooth)
+		WallpaperPerformanceTier.BALANCED -> stringResource(R.string.wallpaper_performance_balanced)
+		WallpaperPerformanceTier.EFFICIENT -> stringResource(R.string.wallpaper_performance_efficient)
+	}
+	val shape = RoundedCornerShape(999.dp)
+	Text(
+		text = label,
+		maxLines = 1,
+		softWrap = false,
+		style = MaterialTheme.typography.labelSmall.copy(
+			fontWeight = FontWeight.SemiBold,
+			color = Color.White
+		),
+		modifier = modifier
+			.clip(shape)
+			.background(Color.Black.copy(alpha = 0.52f))
+			.border(
+				width = 1.dp,
+				color = Color.White.copy(alpha = 0.26f),
+				shape = shape
+			)
+			.padding(horizontal = 10.dp, vertical = 6.dp)
+	)
+}
+
+private fun formatDayProgressAsTime(dayProgress: Float): String {
+	return formatMinuteOfDay(dayProgressToMinute(dayProgress))
+}
+
+private fun dayProgressFromMinute(minuteOfDay: Int): Float {
+	return normalizeMinuteOfDay(minuteOfDay) / MINUTES_PER_DAY.toFloat()
+}
+
+private fun dayProgressToMinute(dayProgress: Float): Int {
+	val wrappedProgress = wrapDayProgress(dayProgress)
+	return (wrappedProgress * MINUTES_PER_DAY.toFloat()).toInt()
+		.coerceIn(0, MINUTES_PER_DAY - 1)
+}
+
+private fun formatMinuteOfDay(minuteOfDay: Int): String {
+	val normalized = normalizeMinuteOfDay(minuteOfDay)
+	val hours = normalized / 60
+	val minutes = normalized % 60
+	return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}"
+}
+
+private fun normalizeMinuteOfDay(minuteOfDay: Int): Int {
+	val remainder = minuteOfDay % MINUTES_PER_DAY
+	return if (remainder >= 0) remainder else remainder + MINUTES_PER_DAY
+}
+
+private fun wrapDayProgress(dayProgress: Float): Float {
+	val wrapped = dayProgress % 1f
+	return if (wrapped >= 0f) wrapped else wrapped + 1f
+}
+
+private fun resolveWallpaperPerformanceBadge(config: WallpaperConfig): WallpaperPerformanceTier {
+	val effectivePolicy = config.serviceRenderPolicy.overridePolicy
+		?: config.runtimeRenderPolicy.policy
+	val effectiveFrameIntervalMs = config.serviceRenderPolicy.overrideFrameIntervalMs
+		?: config.runtimeRenderPolicy.continuousFrameIntervalMs
+	return when (effectivePolicy) {
+		RenderPolicy.CONTINUOUS -> {
+			if (effectiveFrameIntervalMs <= SMOOTH_FRAME_INTERVAL_MS) {
+				WallpaperPerformanceTier.SMOOTH
+			} else {
+				WallpaperPerformanceTier.BALANCED
+			}
+		}
+		RenderPolicy.MINUTE_TICK,
+		RenderPolicy.STATIC -> WallpaperPerformanceTier.EFFICIENT
 	}
 }
 
@@ -725,6 +865,7 @@ private fun FocusedWallpaperPreview(
 	preferFullQuality: Boolean,
 	playbackEnabled: Boolean,
 	modifier: Modifier = Modifier,
+	onRenderedDayProgressChanged: (Float) -> Unit,
 	onFirstFrameRendered: () -> Unit
 ) {
 	val appContext = LocalContext.current.applicationContext
@@ -781,6 +922,7 @@ private fun FocusedWallpaperPreview(
 			factory = { context ->
 				val readyFrameCount = AtomicInteger(0)
 				val firstFrameDispatched = AtomicBoolean(false)
+				val lastDispatchedMinute = AtomicInteger(-1)
 				val mainHandler = Handler(context.mainLooper)
 				val renderer = PreviewGlRenderer(
 					config = previewConfig,
@@ -801,6 +943,14 @@ private fun FocusedWallpaperPreview(
 							assetPath = assetPath,
 							preferPreviewVariant = preferPreviewVariant
 						)
+					},
+					onRenderedDayProgressChanged = { dayProgress ->
+						val renderedMinute = dayProgressToMinute(dayProgress)
+						if (lastDispatchedMinute.getAndSet(renderedMinute) != renderedMinute) {
+							mainHandler.post {
+								onRenderedDayProgressChanged(dayProgress)
+							}
+						}
 					},
 					onFrameDrawn = {
 						if (
@@ -880,15 +1030,6 @@ private fun PreviewPlaceholderFrame(
 				.padding(9.dp)
 				.clip(PlaceholderInnerShape)
 				.background(brush = PlaceholderInnerBrush)
-		)
-
-		Box(
-			modifier = Modifier
-				.align(Alignment.TopStart)
-				.padding(start = 14.dp, top = 12.dp)
-				.size(width = 104.dp, height = 20.dp)
-				.clip(RoundedCornerShape(999.dp))
-				.background(Color(0xFF8FD2FF).copy(alpha = 0.22f))
 		)
 
 		Box(
@@ -985,6 +1126,8 @@ private const val HOME_PREVIEW_RENDER_QUALITY_SCALE = 0.7f
 private const val HOME_PREVIEW_ENABLE_WARMUP_FRAMES = 2
 private const val SNAPSHOT_OVERLAY_FADE_DURATION_MS = 160
 private const val LIVE_PREVIEW_READY_FRAME_COUNT = 1
+private const val SMOOTH_FRAME_INTERVAL_MS = 34L
+private const val MINUTES_PER_DAY = 24 * 60
 private const val CATEGORY_FOCUS_MAX_ITEMS = 1
 private const val FOCUS_INIT_DELAY_MS = 100L
 private const val CATEGORY_SECTION_CONTENT_TYPE = "category_section"

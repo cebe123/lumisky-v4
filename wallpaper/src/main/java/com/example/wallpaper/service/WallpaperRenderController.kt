@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
 import android.view.SurfaceHolder
+import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
 import com.example.wallpaper.engine.WallpaperRenderEngine
@@ -31,6 +32,8 @@ internal class WallpaperRenderController(
 	private var previewMode: Boolean = false
 	@Volatile
 	private var displayRefreshRateHz: Int = DEFAULT_DISPLAY_REFRESH_RATE_HZ
+	@Volatile
+	private var performanceMode: PerformanceMode = PerformanceMode.AUTO
 	private var renderThread: HandlerThread? = null
 	private var renderHandler: Handler? = null
 	private var renderThreadVsyncLoop: RenderThreadVsyncLoop? = null
@@ -104,6 +107,15 @@ internal class WallpaperRenderController(
 
 	fun setPreviewMode(enabled: Boolean) {
 		previewMode = enabled
+		updateSchedulerState()
+		postRenderTask {
+			updateRenderLoopsLocked()
+		}
+	}
+
+	fun setPerformanceMode(mode: PerformanceMode) {
+		if (performanceMode == mode) return
+		performanceMode = mode
 		updateSchedulerState()
 		postRenderTask {
 			updateRenderLoopsLocked()
@@ -188,7 +200,8 @@ internal class WallpaperRenderController(
 	private fun renderCurrentScene(
 		force: Boolean,
 		expectedHash: Int? = null,
-		frameTimeNanos: Long? = null
+		frameTimeNanos: Long? = null,
+		debounceForcedRender: Boolean = true
 	) {
 		if (previewMode) {
 			val renderedState = renderEngine.renderFrame(
@@ -205,16 +218,26 @@ internal class WallpaperRenderController(
 			return
 		}
 
-		val targetHash = expectedHash ?: computeSceneHash()
-		if (shouldSkipRender(force = force, hash = targetHash)) {
+		val shouldBypassHashSkip = force && !debounceForcedRender && expectedHash == null
+		val targetHash = if (shouldBypassHashSkip) {
+			null
+		} else {
+			expectedHash ?: computeSceneHash()
+		}
+		if (targetHash != null && shouldSkipRender(
+				force = force,
+				hash = targetHash,
+				debounceForcedRender = debounceForcedRender
+			)
+		) {
 			if (expectedHash == null) {
 				pendingStateHash = null
 			}
 			return
 		}
 
-		renderEngine.renderFrame(force = force, frameTimeNanos = frameTimeNanos) ?: return
-		lastStateHash = targetHash
+		val renderedState = renderEngine.renderFrame(force = force, frameTimeNanos = frameTimeNanos) ?: return
+		lastStateHash = targetHash ?: computeSceneHash(renderedState)
 		lastRenderElapsedMs = SystemClock.elapsedRealtime()
 		pendingFullRedraw = false
 		if (expectedHash == null) {
@@ -227,6 +250,17 @@ internal class WallpaperRenderController(
 		if (resolvedPolicy.loopMode != WallpaperLoopMode.VSYNC) return
 		val targetIntervalNanos = when {
 			previewMode -> renderEngine.previewFrameIntervalNanos(displayRefreshRateHz)
+			resolvedPolicy.targetFrameRateFps != null -> frameIntervalNanosForTargetFps(
+				targetFps = resolvedPolicy.targetFrameRateFps,
+				displayRefreshRateHz = displayRefreshRateHz
+			).coerceAtLeast(
+				resolvedPolicy.frameIntervalMs?.let { frameIntervalMs ->
+					renderEngine.frameIntervalNanos(
+						frameIntervalMs = frameIntervalMs,
+						displayRefreshRateHz = displayRefreshRateHz
+					)
+				} ?: 1L
+			)
 			resolvedPolicy.frameIntervalMs != null -> renderEngine.frameIntervalNanos(
 				frameIntervalMs = resolvedPolicy.frameIntervalMs,
 				displayRefreshRateHz = displayRefreshRateHz
@@ -238,13 +272,21 @@ internal class WallpaperRenderController(
 		}
 		renderCurrentScene(
 			force = true,
-			frameTimeNanos = frameTimeNanos
+			frameTimeNanos = frameTimeNanos,
+			debounceForcedRender = false
 		)
 	}
 
-	private fun shouldSkipRender(force: Boolean, hash: Int): Boolean {
+	private fun shouldSkipRender(
+		force: Boolean,
+		hash: Int,
+		debounceForcedRender: Boolean
+	): Boolean {
 		if (!force) {
 			return hash == lastStateHash
+		}
+		if (!debounceForcedRender) {
+			return false
 		}
 		if (pendingFullRedraw) {
 			return false
@@ -294,8 +336,23 @@ internal class WallpaperRenderController(
 			config = config,
 			previewMode = previewMode,
 			visible = visible,
-			surfaceAttached = surfaceAttached
+			surfaceAttached = surfaceAttached,
+			performanceMode = performanceMode,
+			displayRefreshRateHz = displayRefreshRateHz
 		)
+	}
+
+	private fun frameIntervalNanosForTargetFps(
+		targetFps: Int,
+		displayRefreshRateHz: Int
+	): Long {
+		val displayVsyncNanos = NANOS_PER_SECOND / displayRefreshRateHz
+			.coerceIn(MIN_DISPLAY_REFRESH_RATE_HZ, MAX_DISPLAY_REFRESH_RATE_HZ)
+			.toLong()
+		val targetIntervalNanos = NANOS_PER_SECOND / targetFps
+			.coerceIn(MIN_SETTINGS_FRAME_RATE_FPS, MAX_SETTINGS_FRAME_RATE_FPS)
+			.toLong()
+		return targetIntervalNanos.coerceAtLeast(displayVsyncNanos)
 	}
 
 	private fun updateRenderLoopsLocked() {
@@ -335,5 +392,10 @@ internal class WallpaperRenderController(
 		private const val THREAD_JOIN_TIMEOUT_MS = 1500L
 		private const val FORCE_RENDER_DEBOUNCE_MS = 500L
 		private const val DEFAULT_DISPLAY_REFRESH_RATE_HZ = 60
+		private const val MIN_DISPLAY_REFRESH_RATE_HZ = 30
+		private const val MAX_DISPLAY_REFRESH_RATE_HZ = 120
+		private const val MIN_SETTINGS_FRAME_RATE_FPS = 30
+		private const val MAX_SETTINGS_FRAME_RATE_FPS = 90
+		private const val NANOS_PER_SECOND = 1_000_000_000L
 	}
 }

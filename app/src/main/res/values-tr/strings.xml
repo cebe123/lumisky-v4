@@ -44,6 +44,9 @@
     <string name="home_selected_wallpaper_label">Seçili duvar kağıdı</string>
     <string name="home_select_wallpaper_hint">Uygulamak için bir duvar kağıdı seçin</string>
     <string name="home_set_wallpaper">Ayarla</string>
+    <string name="wallpaper_performance_smooth">Akıcı</string>
+    <string name="wallpaper_performance_balanced">Dengeli</string>
+    <string name="wallpaper_performance_efficient">Tasarruflu</string>
     <string name="cat_special">Special</string>
     <string name="cat_landscapes">Landscapes</string>
     <string name="cat_cities">Cities</string>

@@ -226,7 +226,7 @@ class MainActivity : AppCompatActivity() {
 						reportFullyDrawn()
 					}
 					LaunchedEffect(homeViewModel.daylight) {
-						syncStoredWallpaperDaylightIfNeeded(homeViewModel.daylight)
+						syncStoredWallpaperConfigIfNeeded(homeViewModel.daylight)
 					}
 					if (startupAnimationsEnabled) {
 						AnimatedContent(
@@ -450,24 +450,31 @@ class MainActivity : AppCompatActivity() {
 		}
 	}
 
-	private fun syncStoredWallpaperDaylightIfNeeded(daylight: SunDaylight) {
-		if (daylight.timeZoneId.isNullOrBlank()) return
+	private fun syncStoredWallpaperConfigIfNeeded(daylight: SunDaylight) {
+		val catalogConfigsById = homeViewModelOrNull()
+			?.items
+			?.associateBy { item -> item.config.id }
+			.orEmpty()
 		setWallpaperExecutor.execute {
 			runCatching {
 				val storedConfig = wallpaperConfigStore.loadSelected() ?: return@runCatching
-				val updatedDaylight = DaylightConfig(
-					sunriseMinute = daylight.sunriseMinute,
-					sunsetMinute = daylight.sunsetMinute,
-					solarNoonMinute = daylight.solarNoonMinute,
-					timeZoneId = daylight.timeZoneId
-				)
-				if (storedConfig.daylight == updatedDaylight) return@runCatching
-				wallpaperConfigStore.saveSelected(
-					storedConfig.copy(daylight = updatedDaylight)
-				)
+				val catalogConfig = catalogConfigsById[storedConfig.id]?.config
+				val updatedDaylight = if (daylight.timeZoneId.isNullOrBlank()) {
+					storedConfig.daylight
+				} else {
+					DaylightConfig(
+						sunriseMinute = daylight.sunriseMinute,
+						sunsetMinute = daylight.sunsetMinute,
+						solarNoonMinute = daylight.solarNoonMinute,
+						timeZoneId = daylight.timeZoneId
+					)
+				}
+				val updatedConfig = (catalogConfig ?: storedConfig).copy(daylight = updatedDaylight)
+				if (storedConfig == updatedConfig) return@runCatching
+				wallpaperConfigStore.saveSelected(updatedConfig)
 				notifyWallpaperConfigChanged()
 			}.onFailure { throwable ->
-				Logger.w(TAG, "syncStoredWallpaperDaylightIfNeeded failed", throwable)
+				Logger.w(TAG, "syncStoredWallpaperConfigIfNeeded failed", throwable)
 			}
 		}
 	}

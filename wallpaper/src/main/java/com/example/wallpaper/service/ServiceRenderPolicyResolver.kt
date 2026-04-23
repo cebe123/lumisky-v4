@@ -1,5 +1,6 @@
 package com.example.wallpaper.service
 
+import com.example.core.settings.PerformanceMode
 import com.example.engine.config.RenderPolicy
 import com.example.engine.config.RuntimeRenderPolicy
 import com.example.engine.config.WallpaperConfig
@@ -13,7 +14,8 @@ internal enum class WallpaperLoopMode {
 
 internal data class ResolvedServiceRenderPolicy(
 	val loopMode: WallpaperLoopMode,
-	val frameIntervalMs: Long? = null
+	val frameIntervalMs: Long? = null,
+	val targetFrameRateFps: Int? = null
 )
 
 internal class ServiceRenderPolicyResolver(
@@ -25,7 +27,9 @@ internal class ServiceRenderPolicyResolver(
 		config: WallpaperConfig,
 		previewMode: Boolean,
 		visible: Boolean,
-		surfaceAttached: Boolean
+		surfaceAttached: Boolean,
+		performanceMode: PerformanceMode = PerformanceMode.AUTO,
+		displayRefreshRateHz: Int = DEFAULT_DISPLAY_REFRESH_RATE_HZ
 	): ResolvedServiceRenderPolicy {
 		if (!visible || !surfaceAttached) {
 			return ResolvedServiceRenderPolicy(loopMode = WallpaperLoopMode.NONE)
@@ -77,7 +81,11 @@ internal class ServiceRenderPolicyResolver(
 			RenderPolicy.MINUTE_TICK -> ResolvedServiceRenderPolicy(loopMode = WallpaperLoopMode.MINUTE_TICK)
 			RenderPolicy.CONTINUOUS -> ResolvedServiceRenderPolicy(
 				loopMode = WallpaperLoopMode.VSYNC,
-				frameIntervalMs = frameIntervalMs.coerceAtLeast(1L)
+				frameIntervalMs = frameIntervalMs.coerceAtLeast(1L),
+				targetFrameRateFps = resolveSettingsFrameRate(
+					performanceMode = performanceMode,
+					displayRefreshRateHz = displayRefreshRateHz
+				)
 			)
 		}
 	}
@@ -95,7 +103,26 @@ internal class ServiceRenderPolicyResolver(
 		)
 	}
 
+	private fun resolveSettingsFrameRate(
+		performanceMode: PerformanceMode,
+		displayRefreshRateHz: Int
+	): Int? {
+		return when (performanceMode) {
+			PerformanceMode.SMOOTH -> displayRefreshRateHz.coerceIn(
+				MIN_SETTINGS_FRAME_RATE_FPS,
+				SMOOTH_MAX_FRAME_RATE_FPS
+			)
+			PerformanceMode.BATTERY -> BATTERY_FRAME_RATE_FPS
+			PerformanceMode.AUTO -> AUTO_FRAME_RATE_FPS
+		}
+	}
+
 	private companion object {
+		const val DEFAULT_DISPLAY_REFRESH_RATE_HZ = 60
+		const val MIN_SETTINGS_FRAME_RATE_FPS = 30
+		const val SMOOTH_MAX_FRAME_RATE_FPS = 90
+		const val AUTO_FRAME_RATE_FPS = 30
+		const val BATTERY_FRAME_RATE_FPS = 30
 		const val DEFAULT_POWER_SAVER_FRAME_INTERVAL_MS = 66L
 		const val DEFAULT_THERMAL_MODERATE_FRAME_INTERVAL_MS = 50L
 		const val DEFAULT_THERMAL_SEVERE_FRAME_INTERVAL_MS = 100L

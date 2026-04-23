@@ -11,6 +11,7 @@ import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
 import com.example.core.Logger
 import com.example.core.settings.AppSettingsRepository
+import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
 import com.example.wallpaper.engine.WallpaperRenderEngine
 import com.example.wallpaper.render.SceneStateHasher
@@ -48,6 +49,7 @@ open class SkyWallpaperService : WallpaperService() {
 		private var daylightSyncCoordinator: WallpaperDaylightSyncCoordinator? = null
 		private var configRefreshReceiverRegistered: Boolean = false
 		private var userUnlockReceiverRegistered: Boolean = false
+		private var settingsChangeSubscription: AutoCloseable? = null
 		private var daylightSyncDeferredUntilUnlockLogged: Boolean = false
 		private var engineVisible: Boolean = false
 		private var lastAppliedConfigSignature: String? = null
@@ -69,6 +71,8 @@ open class SkyWallpaperService : WallpaperService() {
 			super.onCreate(surfaceHolder)
 			registerConfigRefreshReceiver()
 			registerUserUnlockReceiver()
+			registerSettingsChangeListener()
+			refreshRenderSettings()
 			renderController.setPreviewMode(isPreview)
 			maybeStartDaylightSyncCoordinator()
 			daylightSyncCoordinator?.setPreviewMode(isPreview)
@@ -85,6 +89,7 @@ open class SkyWallpaperService : WallpaperService() {
 			daylightSyncCoordinator?.setPreviewMode(isPreview)
 			maybeRestoreLockScreenWallpaperSharing()
 			if (visible) {
+				refreshRenderSettings()
 				applyStoredConfig()
 			}
 			daylightSyncCoordinator?.onVisibilityChanged(visible)
@@ -94,6 +99,7 @@ open class SkyWallpaperService : WallpaperService() {
 		override fun onSurfaceCreated(holder: SurfaceHolder) {
 			super.onSurfaceCreated(holder)
 			renderController.setPreviewMode(isPreview)
+			refreshRenderSettings()
 			maybeStartDaylightSyncCoordinator()
 			daylightSyncCoordinator?.setPreviewMode(isPreview)
 			maybeRestoreLockScreenWallpaperSharing()
@@ -109,6 +115,7 @@ open class SkyWallpaperService : WallpaperService() {
 		override fun onDestroy() {
 			daylightSyncCoordinator?.onDestroy()
 			daylightSyncCoordinator = null
+			unregisterSettingsChangeListener()
 			unregisterUserUnlockReceiver()
 			unregisterConfigRefreshReceiver()
 			renderController.onDestroy()
@@ -141,17 +148,28 @@ open class SkyWallpaperService : WallpaperService() {
 			clearLockWallpaperOverrideIfNeeded(appContext)
 		}
 
+		private fun registerSettingsChangeListener() {
+			if (settingsChangeSubscription != null) return
+			settingsChangeSubscription = settingsRepository.addChangeListener { snapshot ->
+				renderController.setPerformanceMode(snapshot.performanceMode)
+			}
+		}
+
+		private fun unregisterSettingsChangeListener() {
+			settingsChangeSubscription?.let { subscription ->
+				runCatching { subscription.close() }
+			}
+			settingsChangeSubscription = null
+		}
+
+		private fun refreshRenderSettings() {
+			renderController.setPerformanceMode(settingsRepository.getPerformanceMode())
+		}
+
 		private fun applyStoredConfig() {
 			val config = resolveConfigForCurrentEngine()
 			config?.let {
-				val signature = buildConfigSignature(
-					id = it.id,
-					isPreview = isPreview,
-					sunrise = it.daylight.sunriseMinute,
-					sunset = it.daylight.sunsetMinute,
-					solarNoon = it.daylight.solarNoonMinute,
-					timeZoneId = it.daylight.timeZoneId
-				)
+				val signature = buildConfigSignature(config = it, isPreview = isPreview)
 				if (lastAppliedConfigSignature == signature) {
 					return
 				}
@@ -169,14 +187,10 @@ open class SkyWallpaperService : WallpaperService() {
 			}
 
 		private fun buildConfigSignature(
-			id: String,
-			isPreview: Boolean,
-			sunrise: Int,
-			sunset: Int,
-			solarNoon: Int,
-			timeZoneId: String?
+			config: WallpaperConfig,
+			isPreview: Boolean
 		): String {
-			return "$id|$isPreview|$sunrise|$sunset|$solarNoon|${timeZoneId.orEmpty()}"
+			return "$isPreview|${config.hashCode()}"
 		}
 
 		private fun registerConfigRefreshReceiver() {

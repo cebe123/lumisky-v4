@@ -29,7 +29,9 @@ internal data class LegacyThemeState(
 	val swapForegroundPair: Boolean
 )
 
-internal class LegacyThemeAdapter {
+internal class LegacyThemeAdapter(
+	private val elapsedRealtimeProvider: () -> Long = { SystemClock.elapsedRealtime() }
+) {
 
 	fun resolve(
 		config: WallpaperConfig,
@@ -211,9 +213,8 @@ internal class LegacyThemeAdapter {
 		val id = config.id.lowercase()
 		if (!isWarrior(id)) {
 			val baseSeconds = when (state.mode) {
-				RenderMode.WALLPAPER_SERVICE -> {
-					(SystemClock.elapsedRealtime() % LEGACY_REALTIME_WINDOW_MS).toFloat() / 1000f
-				}
+				RenderMode.FOCUS,
+				RenderMode.WALLPAPER_SERVICE -> realtimeSeconds()
 				else -> (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f
 			}
 			return when {
@@ -224,18 +225,20 @@ internal class LegacyThemeAdapter {
 		}
 
 		return when (state.mode) {
-			RenderMode.FOCUS -> (System.currentTimeMillis() % MILLIS_PER_DAY).toFloat() / 1000f
+			RenderMode.FOCUS -> realtimeSeconds()
 			RenderMode.PREVIEW -> {
 				val acceleratedSeconds = (state.frameTimeMillis % MILLIS_PER_DAY).toFloat() / 1000f
 				quantizeTimeSeconds(acceleratedSeconds, WARRIOR_TEXTURE_FPS)
 			}
 			RenderMode.WALLPAPER_SERVICE -> {
-				val realtimeSeconds =
-					(SystemClock.elapsedRealtime() % LEGACY_REALTIME_WINDOW_MS).toFloat() / 1000f
-				quantizeTimeSeconds(realtimeSeconds, WARRIOR_TEXTURE_FPS)
+				quantizeTimeSeconds(realtimeSeconds(), WARRIOR_TEXTURE_FPS)
 			}
 			else -> (state.frameTimeMillis % LEGACY_TIME_WINDOW_MS).toFloat() / 1000f
 		}
+	}
+
+	private fun realtimeSeconds(): Float {
+		return (elapsedRealtimeProvider() % LEGACY_REALTIME_WINDOW_MS).toFloat() / 1000f
 	}
 
 	private fun quantizeTimeSeconds(

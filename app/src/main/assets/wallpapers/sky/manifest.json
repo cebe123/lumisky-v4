@@ -1,0 +1,39 @@
+{
+  "id": "sky",
+  "name": "Castle",
+  "horizon": {
+    "offset": 0.0
+  },
+  "textures": {
+    "backgroundTexture": "backgrounds/castle.png",
+    "flareTexture": "backgrounds/castle_clouds.png"
+  },
+  "features": {
+    "atmosphereEnabled": false,
+    "lensFlareEnabled": false,
+    "starsEnabled": false
+  },
+  "shader": {
+    "fragmentAssetPath": "shaders/sky/fragment.glsl",
+    "mode": "external_theme"
+  },
+  "previewLoopDurationSeconds": 8.0,
+  "focusCatchUpDurationSeconds": 2.0,
+  "runtimeRenderPolicy": {
+    "policy": "CONTINUOUS",
+    "continuousFrameIntervalMs": 16
+  },
+  "capabilities": {
+    "dynamicMotion": true,
+    "dynamicTextures": false,
+    "locationAwareLighting": false,
+    "supportsCloudLayer": true,
+    "supportsStarLayer": false
+  },
+  "serviceRenderPolicy": {
+    "overridePolicy": "CONTINUOUS",
+    "overrideFrameIntervalMs": 16,
+    "usePowerSaverThrottle": true,
+    "useThermalThrottle": true
+  }
+}

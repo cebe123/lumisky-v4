@@ -72,11 +72,7 @@ fun writeWebpImage(
 	target: File,
 	quality: Float
 ) {
-	val writer = ImageIO.getImageWritersByMIMEType("image/webp").asSequence().firstOrNull()
-		?: ImageIO.getImageWritersBySuffix("webp").asSequence().firstOrNull()
-		?: throw GradleException(
-			"WebP writer not found. Ensure org.sejda.imageio:webp-imageio is available."
-		)
+	val writer = createWebpImageWriter()
 	target.parentFile?.mkdirs()
 	try {
 		ImageIO.createImageOutputStream(target).use { output ->
@@ -96,6 +92,15 @@ fun writeWebpImage(
 	} finally {
 		writer.dispose()
 	}
+}
+
+fun createWebpImageWriter(): javax.imageio.ImageWriter {
+	ImageIO.scanForPlugins()
+	return ImageIO.getImageWritersByMIMEType("image/webp").asSequence().firstOrNull()
+		?: ImageIO.getImageWritersBySuffix("webp").asSequence().firstOrNull()
+		?: throw GradleException(
+			"WebP writer not found. Ensure org.sejda.imageio:webp-imageio is available."
+		)
 }
 
 fun scaleBufferedImage(
@@ -475,13 +480,7 @@ val syncZenithPreviewAssets by tasks.registering {
 				return@forEach
 			}
 
-			val writer = ImageIO.getImageWritersByMIMEType("image/webp").asSequence().firstOrNull()
-				?: ImageIO.getImageWritersBySuffix("webp").asSequence().firstOrNull()
-			if (writer == null) {
-				throw GradleException(
-					"WebP writer not found. Ensure org.sejda.imageio:webp-imageio is available."
-				)
-			}
+			val writer = createWebpImageWriter()
 
 			runCatching {
 				ImageIO.createImageOutputStream(target).use { output ->
@@ -563,13 +562,7 @@ val convertWallpaperTexturesToWebp by tasks.registering {
 				return@forEach
 			}
 
-			val writer = ImageIO.getImageWritersByMIMEType("image/webp").asSequence().firstOrNull()
-				?: ImageIO.getImageWritersBySuffix("webp").asSequence().firstOrNull()
-			if (writer == null) {
-				throw GradleException(
-					"WebP writer not found. Ensure org.sejda.imageio:webp-imageio is available."
-				)
-			}
+			val writer = createWebpImageWriter()
 
 			runCatching {
 				target.parentFile?.mkdirs()

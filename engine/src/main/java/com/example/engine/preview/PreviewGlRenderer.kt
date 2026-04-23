@@ -62,6 +62,7 @@ class PreviewGlRenderer(
 	private val isPowerSaveModeProvider: () -> Boolean = { false },
 	private val fragmentShaderOverride: String? = null,
 	private val textureBytesLoader: ((String) -> ByteArray?)? = null,
+	private val onRenderedDayProgressChanged: ((Float) -> Unit)? = null,
 	private val onFrameDrawn: (() -> Unit)? = null
 ) : GLSurfaceView.Renderer {
 
@@ -116,6 +117,7 @@ class PreviewGlRenderer(
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 		if (state != null) {
 			skyProgram.draw(state)
+			onRenderedDayProgressChanged?.invoke(state.dayProgress)
 			onFrameDrawn?.invoke()
 			val drawDurationNs = System.nanoTime() - frameStartNs
 			val drawDurationMs = drawDurationNs / 1_000_000f
