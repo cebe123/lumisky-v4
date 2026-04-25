@@ -11,13 +11,14 @@ class PreviewRendererSurfaceView(
 	context: Context,
 	private val previewRenderer: PreviewGlRenderer,
 	initialPlaybackEnabled: Boolean = true,
-	private val parallaxEnabled: Boolean = true,
+	parallaxEnabled: Boolean = true,
 	private val warmupFramesOnEnable: Int = 0,
 	private val requestRenderOnAttach: Boolean = false,
 	private val onPlaybackStateChanged: ((enabled: Boolean, enteringEnabled: Boolean) -> Unit)? = null
 ) : GLSurfaceView(context) {
 
 	private var playbackEnabled: Boolean = initialPlaybackEnabled
+	private var parallaxEnabled: Boolean = parallaxEnabled
 	private var lastRenderFrameNs: Long = 0L
 	private var lastParallaxRenderNs: Long = 0L
 	private var warmupFramesRemaining: Int = 0
@@ -75,6 +76,16 @@ class PreviewRendererSurfaceView(
 		} else {
 			warmupFramesRemaining = 0
 			frameLoop.remove()
+		}
+	}
+
+	fun setParallaxEnabled(enabled: Boolean) {
+		if (parallaxEnabled == enabled) return
+		parallaxEnabled = enabled
+		if (enabled && isAttachedToWindow && windowVisibility == View.VISIBLE) {
+			tiltParallaxTracker.start()
+		} else {
+			tiltParallaxTracker.stop()
 		}
 	}
 

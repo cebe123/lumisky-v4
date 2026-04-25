@@ -3,6 +3,8 @@
 
     <string name="wallpaper_description">随太阳位置变化的动态壁纸。</string>
 
+    <string name="nav_home">首页</string>
+    <string name="nav_settings">设置</string>
     <string name="settings_title">设置</string>
     <string name="section_appearance">外观</string>
     <string name="theme_title">应用主题</string>
@@ -17,6 +19,17 @@
     <string name="location_enable">开启定位</string>
     <string name="location_current_gps">当前位置 (GPS)</string>
     <string name="location_select_city">选择城市</string>
+    <string name="location_current_sun_times">当前太阳时间</string>
+    <string name="location_current_celestial_cycle">天体周期</string>
+    <string name="location_current_timeline">24 小时时间线</string>
+    <string name="location_current_sunrise">日出</string>
+    <string name="location_current_solar_noon">太阳正午（太阳天顶）</string>
+    <string name="location_current_sunset">日落</string>
+    <string name="location_current_moonrise">月出</string>
+    <string name="location_current_moonset">月落</string>
+    <string name="location_current_moon_zenith">月亮天顶</string>
+    <string name="location_refresh">刷新</string>
+    <string name="location_refreshing">正在刷新</string>
     <string name="section_wallpaper_settings">壁纸设置</string>
     <string name="quality_title">质量</string>
     <string name="quality_low">低 (性能)</string>
@@ -36,6 +49,7 @@
     <string name="wallpaper_performance_smooth">流畅</string>
     <string name="wallpaper_performance_balanced">均衡</string>
     <string name="wallpaper_performance_efficient">省电</string>
+    <string name="wallpaper_feature_parallax">视差</string>
     <string name="cat_special">Special</string>
     <string name="cat_landscapes">Landscapes</string>
     <string name="cat_cities">Cities</string>

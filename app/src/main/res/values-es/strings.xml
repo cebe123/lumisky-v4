@@ -3,6 +3,8 @@
 
     <string name="wallpaper_description">Fondo de pantalla dinámico que cambia con el sol.</string>
 
+    <string name="nav_home">Inicio</string>
+    <string name="nav_settings">Ajustes</string>
     <string name="settings_title">Ajustes</string>
     <string name="section_appearance">Apariencia</string>
     <string name="theme_title">Tema de la App</string>
@@ -17,6 +19,17 @@
     <string name="location_enable">Activar Ubicación</string>
     <string name="location_current_gps">Ubicación Actual (GPS)</string>
     <string name="location_select_city">Seleccionar Ciudad</string>
+    <string name="location_current_sun_times">Horarios solares actuales</string>
+    <string name="location_current_celestial_cycle">Ciclo celeste</string>
+    <string name="location_current_timeline">Línea de 24 h</string>
+    <string name="location_current_sunrise">Amanecer</string>
+    <string name="location_current_solar_noon">Mediodía solar (cenit solar)</string>
+    <string name="location_current_sunset">Atardecer</string>
+    <string name="location_current_moonrise">Salida de la luna</string>
+    <string name="location_current_moonset">Puesta de la luna</string>
+    <string name="location_current_moon_zenith">Cenit lunar</string>
+    <string name="location_refresh">Actualizar</string>
+    <string name="location_refreshing">Actualizando</string>
     <string name="section_wallpaper_settings">AJUSTES DE FONDO</string>
     <string name="quality_title">Calidad</string>
     <string name="quality_low">Baja (Rendimiento)</string>
@@ -26,6 +39,9 @@
     <string name="language_title">Idioma</string>
     <string name="language_select">Seleccionar Idioma</string>
     <string name="location_unknown">Desconocido</string>
+    <string name="home_selected_wallpaper_label">Fondo seleccionado</string>
+    <string name="home_select_wallpaper_hint">Elige un fondo</string>
+    <string name="home_set_wallpaper">Establecer</string>
     <string name="performance_mode_title">Performance Mode</string>
     <string name="performance_mode_auto">Auto</string>
     <string name="performance_mode_smooth">Smooth</string>
@@ -33,6 +49,7 @@
     <string name="wallpaper_performance_smooth">Fluido</string>
     <string name="wallpaper_performance_balanced">Equilibrado</string>
     <string name="wallpaper_performance_efficient">Eficiente</string>
+    <string name="wallpaper_feature_parallax">Paralaje</string>
     <string name="cat_special">Special</string>
     <string name="cat_landscapes">Landscapes</string>
     <string name="cat_cities">Cities</string>

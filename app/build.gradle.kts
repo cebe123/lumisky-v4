@@ -27,12 +27,72 @@ plugins {
 val lintIncludeTestSources = providers.gradleProperty("lumisky.lint.includeTestSources")
 	.map { raw -> raw.equals("true", ignoreCase = true) }
 	.orElse(false)
-val appId = "com.example.lumisky"
+val appId = providers.gradleProperty("lumisky.applicationId")
+	.orElse("com.lumisky.wallpaper")
+	.get()
+val releaseVersionCode = providers.gradleProperty("lumisky.versionCode")
+	.map { raw ->
+		raw.toIntOrNull()
+			?: throw GradleException("lumisky.versionCode must be an integer.")
+	}
+	.orElse(1)
+val releaseVersionName = providers.gradleProperty("lumisky.versionName")
+	.orElse("1.0.0")
 val appProjectDir = project.projectDir
 val rootProjectDir = rootProject.projectDir
 val phoneRunPreferencesFile = rootProject.layout.projectDirectory
 	.file(".codex-local/phone-runner.properties")
 	.asFile
+val releaseSigningPropertiesFile = rootProject.layout.projectDirectory
+	.file("keystore.properties")
+	.asFile
+val releaseSigningProperties = Properties().apply {
+	if (releaseSigningPropertiesFile.isFile) {
+		releaseSigningPropertiesFile.inputStream().use(::load)
+	}
+}
+fun releaseSigningValue(
+	gradlePropertyName: String,
+	propertiesFileName: String,
+	environmentVariableName: String
+): String? {
+	providers.gradleProperty(gradlePropertyName).orNull
+		?.trim()
+		?.takeIf { it.isNotEmpty() }
+		?.let { return it }
+	releaseSigningProperties.getProperty(propertiesFileName)
+		?.trim()
+		?.takeIf { it.isNotEmpty() }
+		?.let { return it }
+	return providers.environmentVariable(environmentVariableName).orNull
+		?.trim()
+		?.takeIf { it.isNotEmpty() }
+}
+val releaseStoreFilePath = releaseSigningValue(
+	gradlePropertyName = "lumisky.release.storeFile",
+	propertiesFileName = "storeFile",
+	environmentVariableName = "LUMISKY_RELEASE_STORE_FILE"
+)
+val releaseStorePassword = releaseSigningValue(
+	gradlePropertyName = "lumisky.release.storePassword",
+	propertiesFileName = "storePassword",
+	environmentVariableName = "LUMISKY_RELEASE_STORE_PASSWORD"
+)
+val releaseKeyAlias = releaseSigningValue(
+	gradlePropertyName = "lumisky.release.keyAlias",
+	propertiesFileName = "keyAlias",
+	environmentVariableName = "LUMISKY_RELEASE_KEY_ALIAS"
+)
+val releaseKeyPassword = releaseSigningValue(
+	gradlePropertyName = "lumisky.release.keyPassword",
+	propertiesFileName = "keyPassword",
+	environmentVariableName = "LUMISKY_RELEASE_KEY_PASSWORD"
+)
+val releaseStoreFile = releaseStoreFilePath?.let { rootProject.file(it) }
+val releaseSigningConfigured = releaseStoreFile?.isFile == true &&
+	!releaseStorePassword.isNullOrBlank() &&
+	!releaseKeyAlias.isNullOrBlank() &&
+	!releaseKeyPassword.isNullOrBlank()
 
 val teemoDerivedAssetPaths = listOf(
 	"teemo/teemo.webp",
@@ -293,17 +353,36 @@ android {
 		version = release(36)
 	}
 
+	signingConfigs {
+		create("release") {
+			if (releaseSigningConfigured) {
+				storeFile = releaseStoreFile
+				storePassword = releaseStorePassword
+				keyAlias = releaseKeyAlias
+				keyPassword = releaseKeyPassword
+			}
+		}
+	}
+
 	defaultConfig {
 		applicationId = appId
 		minSdk = 28
 		targetSdk = 36
-		versionCode = 1
-		versionName = "1.0"
+		versionCode = releaseVersionCode.get()
+		versionName = releaseVersionName.get()
 	}
 
 	buildTypes {
 		release {
-			isMinifyEnabled = false
+			isMinifyEnabled = true
+			isShrinkResources = true
+			proguardFiles(
+				getDefaultProguardFile("proguard-android-optimize.txt"),
+				"proguard-rules.pro"
+			)
+			if (releaseSigningConfigured) {
+				signingConfig = signingConfigs.getByName("release")
+			}
 		}
 	}
 	compileOptions {
@@ -318,6 +397,50 @@ android {
 		// -Plumisky.lint.includeTestSources=true
 		checkTestSources = lintIncludeTestSources.get()
 	}
+}
+
+val validatePlayReleaseConfig by tasks.registering {
+	group = "verification"
+	description = "Checks release metadata and upload signing inputs before building Play artifacts."
+
+	doLast {
+		val missingSigningInputs = buildList {
+			if (releaseStoreFilePath.isNullOrBlank()) add("storeFile")
+			if (releaseStorePassword.isNullOrBlank()) add("storePassword")
+			if (releaseKeyAlias.isNullOrBlank()) add("keyAlias")
+			if (releaseKeyPassword.isNullOrBlank()) add("keyPassword")
+		}
+		if (appId.startsWith("com.example.")) {
+			throw GradleException(
+				"Google Play release applicationId must not use the placeholder com.example namespace."
+			)
+		}
+		if (releaseVersionCode.get() < 1) {
+			throw GradleException("lumisky.versionCode must be greater than zero.")
+		}
+		if (releaseVersionName.get().isBlank()) {
+			throw GradleException("lumisky.versionName must not be blank.")
+		}
+		if (missingSigningInputs.isNotEmpty()) {
+			throw GradleException(
+				"Release signing is incomplete. Provide ${missingSigningInputs.joinToString()} " +
+					"in keystore.properties, Gradle properties, or LUMISKY_RELEASE_* environment variables."
+			)
+		}
+		val storeFile = releaseStoreFile
+		if (storeFile == null || !storeFile.isFile) {
+			throw GradleException("Release signing storeFile does not exist: ${releaseStoreFilePath.orEmpty()}")
+		}
+		logger.lifecycle("validatePlayReleaseConfig: applicationId=$appId version=${releaseVersionName.get()} (${releaseVersionCode.get()})")
+	}
+}
+
+tasks.matching { task ->
+	task.name == "assembleRelease" ||
+		task.name == "bundleRelease" ||
+		task.name == "packageReleaseBundle"
+}.configureEach {
+	dependsOn(validatePlayReleaseConfig)
 }
 
 dependencies {
@@ -356,6 +479,7 @@ tasks.register("lintDebugFull") {
 val validateShaderCelestialMotionContinuity by tasks.registering {
 	group = "verification"
 	description = "Fails the build when a shader reintroduces noon-only celestial position locks that cause visible jumps."
+	notCompatibleWithConfigurationCache("Uses Gradle script state while scanning shader assets.")
 
 	val shaderFiles = fileTree(layout.projectDirectory.dir("src/main/assets/shaders")) {
 		include("**/*.glsl")
@@ -394,6 +518,7 @@ val validateShaderCelestialMotionContinuity by tasks.registering {
 val syncZenithPreviewAssets by tasks.registering {
 	group = "assets"
 	description = "Normalizes local zenith snapshot PNGs and converts them to WebP preview assets."
+	notCompatibleWithConfigurationCache("Uses Gradle script image helpers during asset generation.")
 
 	val rawSnapshotsDir = rootProject.layout.projectDirectory.dir("snapshot-output/zenith-snapshots").asFile
 	val normalizedPngDir = rootProject.layout.projectDirectory.dir("snapshot-output/zenith-png").asFile
@@ -524,6 +649,7 @@ val syncZenithPreviewAssets by tasks.registering {
 val convertWallpaperTexturesToWebp by tasks.registering {
 	group = "assets"
 	description = "Converts added wallpaper textures in assets to WebP."
+	notCompatibleWithConfigurationCache("Uses Gradle script image helpers during asset generation.")
 
 	val sourceAssetsDir = layout.projectDirectory.dir("src/main/assets").asFile
 	val convertedTexturesDir = layout.buildDirectory.dir("generated/convertedWallpaperTextures/main").get().asFile
@@ -609,6 +735,7 @@ val convertWallpaperTexturesToWebp by tasks.registering {
 val generateDerivedWallpaperAssets by tasks.registering {
 	group = "assets"
 	description = "Preprocesses heavy wallpaper textures at build-time and emits preview texture variants."
+	notCompatibleWithConfigurationCache("Uses Gradle script image helpers during asset generation.")
 
 	val sourceAssetsDir = layout.projectDirectory.dir("src/main/assets").asFile
 	val derivedAssetsDir = layout.buildDirectory.dir("generated/derivedWallpaperAssets/main").get().asFile

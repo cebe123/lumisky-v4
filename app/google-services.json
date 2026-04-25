@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "525539300072",
+    "project_id": "lumisky",
+    "storage_bucket": "lumisky.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:525539300072:android:b3fa7e2092d5ed17586f5d",
+        "android_client_info": {
+          "package_name": "com.example.lumisky"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANX9KReqsqKfcKLY0rmGy4DLsSUdSOF-Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

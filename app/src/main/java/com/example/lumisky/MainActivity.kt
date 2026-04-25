@@ -12,6 +12,7 @@ import android.content.IntentFilter
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
@@ -55,19 +56,26 @@ import com.example.core.settings.LocationMode
 import com.example.engine.config.DaylightConfig
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
+import com.example.lumisky.shader.RenderAssetCache
 import com.example.lumisky.ui.home.HomeScreen
 import com.example.lumisky.ui.home.HomeScreenBackgroundColor
 import com.example.lumisky.ui.home.LaunchSkeleton
+import com.example.lumisky.ui.home.SnapshotPreviewAssetLoader
+import com.example.lumisky.ui.home.resolveHomePreviewFrameAspectRatio
 import com.example.lumisky.ui.settings.SettingsScreen
 import com.example.lumisky.ui.theme.LumiskyTheme
 import com.example.lumisky.viewmodel.HomeViewModel
+import com.example.lumisky.viewmodel.HomeWallpaperItem
 import com.example.wallpaper.service.ACTION_APPLY_STORED_WALLPAPER_CONFIG
 import com.example.wallpaper.service.clearLockWallpaperOverrideIfNeeded
 import com.example.wallpaper.service.isLumiskyHomeWallpaperActive
 import com.example.wallpaper.service.queryLockWallpaperId
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
 
@@ -121,6 +129,7 @@ class MainActivity : AppCompatActivity() {
 			) {
 				var currentScreen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
 				var startupAnimationsEnabled by rememberSaveable { mutableStateOf(false) }
+				var startupCacheReady by rememberSaveable { mutableStateOf(false) }
 				val targetSystemBarColor = if (currentScreen == SCREEN_HOME) {
 					HomeScreenBackgroundColor
 				} else {
@@ -150,6 +159,18 @@ class MainActivity : AppCompatActivity() {
 				if (homeViewModel == null) {
 					LaunchSkeleton()
 				} else {
+					LaunchedEffect(homeViewModel) {
+						startupCacheReady = false
+						startupAnimationsEnabled = false
+						withFrameNanos { }
+						warmHomeStartupCaches(homeViewModel.items)
+						startupCacheReady = true
+						startupAnimationsEnabled = true
+						reportFullyDrawn()
+					}
+					if (!startupCacheReady) {
+						LaunchSkeleton()
+					} else {
 					val screenContent: @Composable (String) -> Unit = { screen ->
 						when (screen) {
 							SCREEN_HOME -> HomeScreen(
@@ -220,11 +241,6 @@ class MainActivity : AppCompatActivity() {
 							)
 						}
 					}
-					LaunchedEffect(homeViewModel) {
-						withFrameNanos { }
-						startupAnimationsEnabled = true
-						reportFullyDrawn()
-					}
 					LaunchedEffect(homeViewModel.daylight) {
 						syncStoredWallpaperConfigIfNeeded(homeViewModel.daylight)
 					}
@@ -270,6 +286,7 @@ class MainActivity : AppCompatActivity() {
 						}
 					} else {
 						screenContent(currentScreen)
+					}
 					}
 				}
 			}
@@ -588,6 +605,53 @@ class MainActivity : AppCompatActivity() {
 		Logger.restartSession()
 	}
 
+	private suspend fun warmHomeStartupCaches(items: List<HomeWallpaperItem>) {
+		if (items.isEmpty()) return
+		val appContext = applicationContext
+		val (previewWidthPx, previewHeightPx) = resolveHomeStartupPreviewSizePx()
+		val startedAtMs = SystemClock.elapsedRealtime()
+		withContext(Dispatchers.IO) {
+			val snapshotLoader = SnapshotPreviewAssetLoader(appContext)
+			items.forEach { item ->
+				snapshotLoader.loadBitmap(
+					configId = item.config.id,
+					targetWidthPx = previewWidthPx,
+					targetHeightPx = previewHeightPx
+				)
+			}
+			items.take(STARTUP_RENDER_ASSET_WARM_LIMIT).forEach { item ->
+				RenderAssetCache.prewarmWallpaper(
+					context = appContext,
+					config = item.config,
+					preferPreviewVariant = true
+				)
+			}
+		}
+		Logger.d(
+			TAG,
+			"home startup cache warmed items=${items.size} size=${previewWidthPx}x$previewHeightPx " +
+				"elapsedMs=${SystemClock.elapsedRealtime() - startedAtMs}"
+		)
+	}
+
+	private fun resolveHomeStartupPreviewSizePx(): Pair<Int, Int> {
+		val metrics = resources.displayMetrics
+		val density = metrics.density.takeIf { it > 0f } ?: 1f
+		val widthDp = (metrics.widthPixels / density).roundToInt()
+		val heightDp = (metrics.heightPixels / density).roundToInt()
+		val aspectRatio = resolveHomePreviewFrameAspectRatio(
+			primaryEdge = widthDp,
+			secondaryEdge = heightDp
+		)
+		val previewWidthPx = (HOME_STARTUP_CARD_WIDTH_DP * density)
+			.roundToInt()
+			.coerceAtLeast(1)
+		val previewHeightPx = (previewWidthPx * aspectRatio)
+			.roundToInt()
+			.coerceAtLeast(1)
+		return previewWidthPx to previewHeightPx
+	}
+
 	internal fun homeViewModelOrNull(): HomeViewModel? = homeViewModelState.value
 
 	private fun ensureHomeViewModelCreated(): HomeViewModel {
@@ -607,5 +671,7 @@ class MainActivity : AppCompatActivity() {
 		private const val SCREEN_HOME = "home"
 		private const val SCREEN_SETTINGS = "settings"
 		private const val SET_WALLPAPER_REFRESH_TIMEOUT_MS = 1_800L
+		private const val HOME_STARTUP_CARD_WIDTH_DP = 276f
+		private const val STARTUP_RENDER_ASSET_WARM_LIMIT = 6
 	}
 }

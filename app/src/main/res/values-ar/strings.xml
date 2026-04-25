@@ -3,6 +3,8 @@
 
     <string name="wallpaper_description">خلفية ديناميكية تتغير مع موقع الشمس.</string>
 
+    <string name="nav_home">الصفحة الرئيسية</string>
+    <string name="nav_settings">الإعدادات</string>
     <string name="settings_title">الإعدادات</string>
     <string name="section_appearance">المظهر</string>
     <string name="theme_title">سمة التطبيق</string>
@@ -17,6 +19,17 @@
     <string name="location_enable">تمكين الموقع</string>
     <string name="location_current_gps">الموقع الحالي (GPS)</string>
     <string name="location_select_city">اختر مدينة</string>
+    <string name="location_current_sun_times">أوقات الشمس الحالية</string>
+    <string name="location_current_celestial_cycle">الدورة السماوية</string>
+    <string name="location_current_timeline">الخط الزمني لـ 24 ساعة</string>
+    <string name="location_current_sunrise">شروق الشمس</string>
+    <string name="location_current_solar_noon">الظهيرة الشمسية (سمت الشمس)</string>
+    <string name="location_current_sunset">غروب الشمس</string>
+    <string name="location_current_moonrise">شروق القمر</string>
+    <string name="location_current_moonset">غروب القمر</string>
+    <string name="location_current_moon_zenith">سمت القمر</string>
+    <string name="location_refresh">تحديث</string>
+    <string name="location_refreshing">جارٍ التحديث</string>
     <string name="section_wallpaper_settings">إعدادات الخلفية</string>
     <string name="quality_title">الجودة</string>
     <string name="quality_low">منخفضة (الأداء)</string>
@@ -26,6 +39,9 @@
     <string name="language_title">اللغة</string>
     <string name="language_select">اختر اللغة</string>
     <string name="location_unknown">مجهول</string>
+    <string name="home_selected_wallpaper_label">الخلفية المحددة</string>
+    <string name="home_select_wallpaper_hint">اختر خلفية</string>
+    <string name="home_set_wallpaper">تعيين</string>
     <string name="performance_mode_title">Performance Mode</string>
     <string name="performance_mode_auto">Auto</string>
     <string name="performance_mode_smooth">Smooth</string>
@@ -33,6 +49,7 @@
     <string name="wallpaper_performance_smooth">سلس</string>
     <string name="wallpaper_performance_balanced">متوازن</string>
     <string name="wallpaper_performance_efficient">موفر</string>
+    <string name="wallpaper_feature_parallax">اختلاف المنظر</string>
     <string name="cat_special">Special</string>
     <string name="cat_landscapes">Landscapes</string>
     <string name="cat_cities">Cities</string>

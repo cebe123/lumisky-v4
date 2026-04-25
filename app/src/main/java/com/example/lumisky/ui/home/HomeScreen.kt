@@ -152,13 +152,11 @@ fun HomeScreen(
 	val specialCategory = stringResource(R.string.cat_special)
 	val landscapesCategory = stringResource(R.string.cat_landscapes)
 	val citiesCategory = stringResource(R.string.cat_cities)
-	val animeCategory = stringResource(R.string.cat_abstract)
 	val gamesCategory = stringResource(R.string.cat_games)
 	val orderedCategories = listOf(
 		specialCategory,
 		landscapesCategory,
 		citiesCategory,
-		animeCategory,
 		gamesCategory
 	)
 
@@ -167,7 +165,6 @@ fun HomeScreen(
 		specialCategory,
 		landscapesCategory,
 		citiesCategory,
-		animeCategory,
 		gamesCategory
 	) {
 		items.map { item ->
@@ -179,7 +176,6 @@ fun HomeScreen(
 					specialCategory = specialCategory,
 					landscapesCategory = landscapesCategory,
 					citiesCategory = citiesCategory,
-					animeCategory = animeCategory,
 					gamesCategory = gamesCategory
 				),
 				item = item
@@ -606,6 +602,9 @@ private fun WallpaperCard(
 	var hasActivePreviewSession by remember(item.config.id, highRefreshEnabled, performanceMode) {
 		mutableStateOf(false)
 	}
+	var livePreviewParallaxEnabled by remember(item.config.id, highRefreshEnabled, performanceMode) {
+		mutableStateOf(false)
+	}
 	LaunchedEffect(showLivePreview) {
 		if (showLivePreview) {
 			if (!hasActivePreviewSession) {
@@ -615,8 +614,19 @@ private fun WallpaperCard(
 		} else {
 			hasActivePreviewSession = false
 			livePreviewReady = false
+			livePreviewParallaxEnabled = false
 			renderedDayProgress = snapshotDayProgress
 		}
+	}
+	LaunchedEffect(showLivePreview, livePreviewReady, snapshotBitmap != null) {
+		if (!showLivePreview || !livePreviewReady) {
+			livePreviewParallaxEnabled = false
+			return@LaunchedEffect
+		}
+		if (snapshotBitmap != null) {
+			delay(SNAPSHOT_OVERLAY_FADE_DURATION_MS.toLong())
+		}
+		livePreviewParallaxEnabled = true
 	}
 	val snapshotOverlayAlpha by animateFloatAsState(
 		targetValue = if (showLivePreview && livePreviewReady) 0f else 1f,
@@ -641,6 +651,7 @@ private fun WallpaperCard(
 					performanceMode = performanceMode,
 					preferFullQuality = isSelected,
 					playbackEnabled = isLive,
+					parallaxEnabled = livePreviewParallaxEnabled,
 					modifier = Modifier.fillMaxSize(),
 					onRenderedDayProgressChanged = { dayProgress ->
 						renderedDayProgress = dayProgress
@@ -899,6 +910,7 @@ private fun FocusedWallpaperPreview(
 	performanceMode: PerformanceMode,
 	preferFullQuality: Boolean,
 	playbackEnabled: Boolean,
+	parallaxEnabled: Boolean,
 	modifier: Modifier = Modifier,
 	onRenderedDayProgressChanged: (Float) -> Unit,
 	onFirstFrameRendered: () -> Unit
@@ -1002,6 +1014,7 @@ private fun FocusedWallpaperPreview(
 					context = context,
 					previewRenderer = renderer,
 					initialPlaybackEnabled = playbackEnabled,
+					parallaxEnabled = parallaxEnabled,
 					warmupFramesOnEnable = HOME_PREVIEW_ENABLE_WARMUP_FRAMES,
 					requestRenderOnAttach = true,
 					onPlaybackStateChanged = { enabled, enteringEnabled ->
@@ -1015,6 +1028,7 @@ private fun FocusedWallpaperPreview(
 				}
 			},
 			update = { view ->
+				view.setParallaxEnabled(parallaxEnabled)
 				view.setPlaybackEnabled(playbackEnabled)
 			}
 		)
@@ -1115,12 +1129,11 @@ private fun resolveCategory(
 	specialCategory: String,
 	landscapesCategory: String,
 	citiesCategory: String,
-	animeCategory: String,
 	gamesCategory: String
 ): String {
 	return when {
 		id.startsWith("city_") -> citiesCategory
-		id.startsWith("anime_") -> animeCategory
+		id.startsWith("anime_") -> gamesCategory
 		id == "warrior" || id.startsWith("game_") -> gamesCategory
 		id.startsWith("solar_horizon") || id.startsWith("optical_sunset") || id.startsWith("mars") ->
 			landscapesCategory

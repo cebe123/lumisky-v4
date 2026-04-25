@@ -3,6 +3,8 @@
 
     <string name="wallpaper_description">太陽の位置に合わせて変化するダイナミックな壁紙。</string>
 
+    <string name="nav_home">ホーム</string>
+    <string name="nav_settings">設定</string>
     <string name="settings_title">設定</string>
     <string name="section_appearance">外観</string>
     <string name="theme_title">アプリのテーマ</string>
@@ -17,6 +19,17 @@
     <string name="location_enable">位置情報を有効にする</string>
     <string name="location_current_gps">現在地 (GPS)</string>
     <string name="location_select_city">都市を選択</string>
+    <string name="location_current_sun_times">現在の太陽時刻</string>
+    <string name="location_current_celestial_cycle">天体サイクル</string>
+    <string name="location_current_timeline">24時間タイムライン</string>
+    <string name="location_current_sunrise">日の出</string>
+    <string name="location_current_solar_noon">南中時刻 (太陽の天頂)</string>
+    <string name="location_current_sunset">日の入り</string>
+    <string name="location_current_moonrise">月の出</string>
+    <string name="location_current_moonset">月の入り</string>
+    <string name="location_current_moon_zenith">月の天頂</string>
+    <string name="location_refresh">更新</string>
+    <string name="location_refreshing">更新中</string>
     <string name="section_wallpaper_settings">壁紙設定</string>
     <string name="quality_title">画質</string>
     <string name="quality_low">低 (パフォーマンス重視)</string>
@@ -26,6 +39,9 @@
     <string name="language_title">言語</string>
     <string name="language_select">言語を選択</string>
     <string name="location_unknown">不明</string>
+    <string name="home_selected_wallpaper_label">選択中の壁紙</string>
+    <string name="home_select_wallpaper_hint">壁紙を選択</string>
+    <string name="home_set_wallpaper">設定</string>
     <string name="performance_mode_title">Performance Mode</string>
     <string name="performance_mode_auto">Auto</string>
     <string name="performance_mode_smooth">Smooth</string>
@@ -33,6 +49,7 @@
     <string name="wallpaper_performance_smooth">滑らか</string>
     <string name="wallpaper_performance_balanced">バランス</string>
     <string name="wallpaper_performance_efficient">省電力</string>
+    <string name="wallpaper_feature_parallax">視差</string>
     <string name="cat_special">Special</string>
     <string name="cat_landscapes">Landscapes</string>
     <string name="cat_cities">Cities</string>

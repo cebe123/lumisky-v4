@@ -3,6 +3,8 @@
 
     <string name="wallpaper_description">गतिशील वॉलपेपर जो सूर्य की स्थिति के साथ बदलता है।</string>
 
+    <string name="nav_home">होम</string>
+    <string name="nav_settings">सेटिंग्स</string>
     <string name="settings_title">सेटिंग्स</string>
     <string name="section_appearance">दिखावट</string>
     <string name="theme_title">ऐप थीम</string>
@@ -17,6 +19,17 @@
     <string name="location_enable">स्थान सक्षम करें</string>
     <string name="location_current_gps">वर्तमान स्थान (जीपीएस)</string>
     <string name="location_select_city">शहर चुनें</string>
+    <string name="location_current_sun_times">वर्तमान सूर्य समय</string>
+    <string name="location_current_celestial_cycle">खगोलीय चक्र</string>
+    <string name="location_current_timeline">24 घंटे की समयरेखा</string>
+    <string name="location_current_sunrise">सूर्योदय</string>
+    <string name="location_current_solar_noon">सौर दोपहर (सूर्य शीर्ष)</string>
+    <string name="location_current_sunset">सूर्यास्त</string>
+    <string name="location_current_moonrise">चंद्रोदय</string>
+    <string name="location_current_moonset">चंद्रास्त</string>
+    <string name="location_current_moon_zenith">चंद्र शीर्ष</string>
+    <string name="location_refresh">रीफ्रेश</string>
+    <string name="location_refreshing">रीफ्रेश हो रहा है</string>
     <string name="section_wallpaper_settings">वॉलपेपर सेटिंग्स</string>
     <string name="quality_title">गुणवत्ता</string>
     <string name="quality_low">कम (प्रदर्शन)</string>
@@ -26,6 +39,9 @@
     <string name="language_title">भाषा</string>
     <string name="language_select">भाषा चुनें</string>
     <string name="location_unknown">अज्ञात</string>
+    <string name="home_selected_wallpaper_label">चुना गया वॉलपेपर</string>
+    <string name="home_select_wallpaper_hint">वॉलपेपर चुनें</string>
+    <string name="home_set_wallpaper">सेट करें</string>
     <string name="performance_mode_title">Performance Mode</string>
     <string name="performance_mode_auto">Auto</string>
     <string name="performance_mode_smooth">Smooth</string>
@@ -33,6 +49,7 @@
     <string name="wallpaper_performance_smooth">स्मूथ</string>
     <string name="wallpaper_performance_balanced">संतुलित</string>
     <string name="wallpaper_performance_efficient">किफायती</string>
+    <string name="wallpaper_feature_parallax">पैरालैक्स</string>
     <string name="cat_special">Special</string>
     <string name="cat_landscapes">Landscapes</string>
     <string name="cat_cities">Cities</string>

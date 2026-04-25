@@ -14,15 +14,6 @@ import kotlin.math.max
 
 class SnapshotPreviewAssetLoader(context: Context) {
 	private val assetManager = context.applicationContext.assets
-	private val missingAssetPaths = HashSet<String>()
-	private val failedAssetPaths = HashSet<String>()
-	private val decodeLocks = HashMap<String, Any>()
-	private val bitmapCache = object : LruCache<String, Bitmap>(MAX_CACHE_BYTES) {
-		override fun sizeOf(
-			key: String,
-			value: Bitmap
-		): Int = value.allocationByteCount
-	}
 
 	fun cachedBitmap(
 		configId: String,
@@ -206,5 +197,14 @@ class SnapshotPreviewAssetLoader(context: Context) {
 		private const val TAG = "SnapshotPreviewAssetLoader"
 		private const val ASSET_DIRECTORY = "previews/zenith"
 		private const val MAX_CACHE_BYTES = 24 * 1024 * 1024
+		private val missingAssetPaths = HashSet<String>()
+		private val failedAssetPaths = HashSet<String>()
+		private val decodeLocks = HashMap<String, Any>()
+		private val bitmapCache = object : LruCache<String, Bitmap>(MAX_CACHE_BYTES) {
+			override fun sizeOf(
+				key: String,
+				value: Bitmap
+			): Int = value.allocationByteCount
+		}
 	}
 }
