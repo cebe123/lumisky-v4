@@ -50,13 +50,14 @@
     <string name="wallpaper_performance_balanced">Сбалансировано</string>
     <string name="wallpaper_performance_efficient">Экономно</string>
     <string name="wallpaper_feature_parallax">Параллакс</string>
-    <string name="cat_special">Special</string>
-    <string name="cat_landscapes">Landscapes</string>
-    <string name="cat_cities">Cities</string>
-    <string name="cat_space">Space &amp; 4K</string>
-    <string name="cat_abstract">Anime</string>
-    <string name="cat_games">Игры</string>
-    <string name="cat_nature">Nature</string>
+    <string name="cat_special">Премиум 4K Обои</string>
+    <string name="cat_landscapes">Природа и пейзажи 3D</string>
+    <string name="cat_cities">Киберпанк и Города</string>
+    <string name="cat_space">Космос и Научная Фантастика 4K</string>
+    <string name="cat_abstract">Аниме Живые Обои</string>
+
+    <string name="cat_games">Игровые Фоны HD</string>
+    <string name="cat_nature">Природные Пейзажи 4K</string>
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
 </resources>

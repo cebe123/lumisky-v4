@@ -73,7 +73,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 		val ORDERED_PRESETS = listOf(
 			ThemePreset(
 				id = "pixel_forest",
-				displayName = "Pixel Forest",
+				displayName = "Pixel Forest 4K Live",
 				fragmentAssetPath = "shaders/pixelforest/fragment.glsl",
 				horizonOffset = 0.45f,
 				sunPath = PathType.VERTICAL,
@@ -91,7 +91,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "classic_sun",
-				displayName = "Lighthouse",
+				displayName = "Lighthouse 3D Scenery",
 				fragmentAssetPath = "shaders/lighthouse/fragment.glsl",
 				horizonOffset = 0.25f,
 				textures = WallpaperTextures(
@@ -102,13 +102,13 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "solar_horizon",
-				displayName = "Solar Horizon",
+				displayName = "Solar Horizon HD",
 				fragmentAssetPath = "shaders/solar/fragment_shader.glsl",
 				horizonOffset = 0.50f
 			),
 			ThemePreset(
 				id = "optical_sunset",
-				displayName = "Optical Sunset",
+				displayName = "Desert Sunset 4K",
 				fragmentAssetPath = "shaders/opticalsunset/fragment.glsl",
 				horizonOffset = 0.54f,
 				textures = WallpaperTextures(
@@ -117,7 +117,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "mars",
-				displayName = "Red Planet",
+				displayName = "Mars Space 3D",
 				fragmentAssetPath = "shaders/mars/fragment.glsl",
 				horizonOffset = 0.50f,
 				sunPath = PathType.VERTICAL,
@@ -133,7 +133,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "warrior",
-				displayName = "Warrior",
+				displayName = "Warrior Fantasy HD",
 				fragmentAssetPath = "shaders/warrior/fragment.glsl",
 				horizonOffset = 0.42f,
 				features = SkyFeatureFlags(
@@ -152,7 +152,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "tablo",
-				displayName = "Canvas",
+				displayName = "Artistic Canvas Live",
 				fragmentAssetPath = "shaders/tablo/fragment.glsl",
 				horizonOffset = 0.25f,
 				features = SkyFeatureFlags(
@@ -168,7 +168,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "flower",
-				displayName = "flower",
+				displayName = "Spring Flower 3D",
 				fragmentAssetPath = "shaders/flower/fragment.glsl",
 				horizonOffset = 0.02f,
 				peakY = 0.94f,
@@ -188,7 +188,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "city_lisbon",
-				displayName = "Lisbon",
+				displayName = "Lisbon Cityscape 4K",
 				fragmentAssetPath = "shaders/lisbon/fragment.glsl",
 				horizonOffset = 0.425f,
 				peakY = 0.89f,
@@ -200,7 +200,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "city_istanbul",
-				displayName = "Istanbul",
+				displayName = "Istanbul Skyline HD",
 				fragmentAssetPath = "shaders/city/fragment_shader.glsl",
 				horizonOffset = 0.48f,
 				textures = WallpaperTextures(
@@ -209,7 +209,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "city_newyork",
-				displayName = "New York",
+				displayName = "New York Cyberpunk 4K",
 				fragmentAssetPath = "shaders/city/fragment_shader.glsl",
 				horizonOffset = 0.48f,
 				textures = WallpaperTextures(
@@ -218,7 +218,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "city_tokyo",
-				displayName = "Tokyo",
+				displayName = "Tokyo Night Live",
 				fragmentAssetPath = "shaders/city/fragment_shader.glsl",
 				horizonOffset = 0.48f,
 				textures = WallpaperTextures(
@@ -227,7 +227,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "city_paris",
-				displayName = "Paris",
+				displayName = "Paris Romance 3D",
 				fragmentAssetPath = "shaders/city/fragment_shader.glsl",
 				horizonOffset = 0.48f,
 				textures = WallpaperTextures(
@@ -236,7 +236,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "anime_sakura",
-				displayName = "Cherry Blossom",
+				displayName = "Anime Sakura Live",
 				fragmentAssetPath = "shaders/anime_sakura/fragment.glsl",
 				horizonOffset = 0.25f,
 				sunPath = PathType.VERTICAL,
@@ -254,7 +254,7 @@ internal class LegacyWallpaperCatalogSource : WallpaperCatalogSource {
 			),
 			ThemePreset(
 				id = "game_teemo",
-				displayName = "Teemo",
+				displayName = "Teemo Gaming HD",
 				fragmentAssetPath = "shaders/teemo/fragment.glsl",
 				horizonOffset = 0.30f,
 				peakY = 0.94f,

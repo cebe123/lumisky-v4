@@ -52,15 +52,13 @@
     <string name="wallpaper_feature_parallax">Parallax</string>
 
     <!-- Categories -->
-    <string name="cat_special">Special</string>
-    <string name="cat_landscapes">Landscapes</string>
-    <string name="cat_cities">Cities</string>
-    <string name="cat_space">Space &amp; 4K</string>
-    <string name="cat_abstract">Anime</string>
-    <string name="cat_games">Games</string>
-    <string name="cat_nature">Nature</string>
-    
-    <string name="coming_soon">COMING SOON</string>
-    <string name="coming_soon_desc">Something exciting is on the way!</string>
+    <string name="cat_special">Premium 4K Wallpapers</string>
+    <string name="cat_landscapes">Nature &amp; Landscapes 3D</string>
+    <string name="cat_cities">Cyberpunk &amp; Cityscapes</string>
+    <string name="cat_space">Space &amp; Sci-Fi 4K</string>
+    <string name="cat_abstract">Anime Live Wallpapers</string>
+
+    <string name="cat_games">Gaming Backgrounds HD</string>
+    <string name="cat_nature">Natural Scenery 4K</string>
 </resources>
 

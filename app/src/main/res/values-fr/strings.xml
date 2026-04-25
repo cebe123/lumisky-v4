@@ -50,13 +50,14 @@
     <string name="wallpaper_performance_balanced">Équilibré</string>
     <string name="wallpaper_performance_efficient">Économe</string>
     <string name="wallpaper_feature_parallax">Parallaxe</string>
-    <string name="cat_special">Special</string>
-    <string name="cat_landscapes">Landscapes</string>
-    <string name="cat_cities">Cities</string>
-    <string name="cat_space">Space &amp; 4K</string>
-    <string name="cat_abstract">Anime</string>
-    <string name="cat_games">Jeux</string>
-    <string name="cat_nature">Nature</string>
+    <string name="cat_special">Fonds d\'écran Premium 4K</string>
+    <string name="cat_landscapes">Nature &amp; Paysages 3D</string>
+    <string name="cat_cities">Cyberpunk &amp; Paysages urbains</string>
+    <string name="cat_space">Espace &amp; Science-Fiction 4K</string>
+    <string name="cat_abstract">Fonds d\'écran Animés Anime</string>
+
+    <string name="cat_games">Fonds d\'écran Gaming HD</string>
+    <string name="cat_nature">Paysages Naturels 4K</string>
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
 </resources>

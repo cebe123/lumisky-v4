@@ -10,8 +10,10 @@ appcompat = "1.7.1"
 material = "1.13.0"
 playServicesLocation = "21.3.0"
 workRuntimeKtx = "2.10.1"
+playReviewKtx = "2.0.1"
 
 [libraries]
+play-review-ktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "playReviewKtx" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }

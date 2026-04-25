@@ -50,13 +50,14 @@
     <string name="wallpaper_performance_balanced">Ausgewogen</string>
     <string name="wallpaper_performance_efficient">Sparsam</string>
     <string name="wallpaper_feature_parallax">Parallaxe</string>
-    <string name="cat_special">Special</string>
-    <string name="cat_landscapes">Landscapes</string>
-    <string name="cat_cities">Cities</string>
-    <string name="cat_space">Space &amp; 4K</string>
-    <string name="cat_abstract">Anime</string>
-    <string name="cat_games">Spiele</string>
-    <string name="cat_nature">Nature</string>
+    <string name="cat_special">Premium 4K Hintergrundbilder</string>
+    <string name="cat_landscapes">Natur &amp; Landschaften 3D</string>
+    <string name="cat_cities">Cyberpunk &amp; Stadtlandschaften</string>
+    <string name="cat_space">Weltraum &amp; Sci-Fi 4K</string>
+    <string name="cat_abstract">Anime Live-Hintergründe</string>
+
+    <string name="cat_games">Gaming Hintergründe HD</string>
+    <string name="cat_nature">Naturlandschaften 4K</string>
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
 </resources>

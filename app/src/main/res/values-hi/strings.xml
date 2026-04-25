@@ -50,13 +50,14 @@
     <string name="wallpaper_performance_balanced">संतुलित</string>
     <string name="wallpaper_performance_efficient">किफायती</string>
     <string name="wallpaper_feature_parallax">पैरालैक्स</string>
-    <string name="cat_special">Special</string>
-    <string name="cat_landscapes">Landscapes</string>
-    <string name="cat_cities">Cities</string>
-    <string name="cat_space">Space &amp; 4K</string>
-    <string name="cat_abstract">Anime</string>
-    <string name="cat_games">गेम</string>
-    <string name="cat_nature">Nature</string>
+    <string name="cat_special">प्रीमियम 4K वॉलपेपर</string>
+    <string name="cat_landscapes">प्रकृति और परिदृश्य 3D</string>
+    <string name="cat_cities">साइबरपंक और शहर</string>
+    <string name="cat_space">अंतरिक्ष और विज्ञान-कथा 4K</string>
+    <string name="cat_abstract">एनीमे लाइव वॉलपेपर</string>
+
+    <string name="cat_games">गेमिंग बैकग्राउंड HD</string>
+    <string name="cat_nature">प्राकृतिक दृश्य 4K</string>
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
 </resources>

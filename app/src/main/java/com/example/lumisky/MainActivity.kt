@@ -456,6 +456,7 @@ class MainActivity : AppCompatActivity() {
 						restoreLockScreenWallpaperSharingIfNeeded()
 					}
 					notifyWallpaperConfigChanged()
+					requestInAppReview()
 				} else {
 					pendingLockWallpaperIdBeforeSet = null
 				}
@@ -663,6 +664,26 @@ class MainActivity : AppCompatActivity() {
 			initialSettings = initialSettings
 		).also { created ->
 			homeViewModelState.value = created
+		}
+	}
+
+	private fun requestInAppReview() {
+		try {
+			val manager = com.google.android.play.core.review.ReviewManagerFactory.create(this)
+			val request = manager.requestReviewFlow()
+			request.addOnCompleteListener { task ->
+				if (task.isSuccessful) {
+					val reviewInfo = task.result
+					val flow = manager.launchReviewFlow(this, reviewInfo)
+					flow.addOnCompleteListener { _ ->
+						// Flow completed
+					}
+				} else {
+					Logger.w(TAG, "In-app review request failed")
+				}
+			}
+		} catch (e: Exception) {
+			Logger.e(TAG, "Failed to launch in-app review", e)
 		}
 	}
 
