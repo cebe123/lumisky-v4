@@ -296,7 +296,6 @@ class SunTimesRepository(
 					sharedBackupLocationCache[locationKey] = entry
 				}
 			}
-			trimCacheLocked()
 		}
 		if (layer == CacheLayer.ACTIVE) {
 			cachedEntry.set(entry)
@@ -369,39 +368,6 @@ class SunTimesRepository(
 		}
 	}
 
-	private fun trimCacheLocked() {
-		while (sharedDailyCache.size > MAX_DAILY_CACHE_ENTRIES) {
-			val iterator = sharedDailyCache.entries.iterator()
-			if (!iterator.hasNext()) break
-			iterator.next()
-			iterator.remove()
-		}
-		while (sharedLocationCache.size > MAX_LOCATION_CACHE_ENTRIES) {
-			val iterator = sharedLocationCache.entries.iterator()
-			if (!iterator.hasNext()) break
-			iterator.next()
-			iterator.remove()
-		}
-		while (sharedBackupDailyCache.size > MAX_DAILY_CACHE_ENTRIES) {
-			val iterator = sharedBackupDailyCache.entries.iterator()
-			if (!iterator.hasNext()) break
-			iterator.next()
-			iterator.remove()
-		}
-		while (sharedBackupLocationCache.size > MAX_LOCATION_CACHE_ENTRIES) {
-			val iterator = sharedBackupLocationCache.entries.iterator()
-			if (!iterator.hasNext()) break
-			iterator.next()
-			iterator.remove()
-		}
-		while (sharedBackupRefreshCache.size > MAX_BACKUP_REFRESH_ENTRIES) {
-			val iterator = sharedBackupRefreshCache.entries.iterator()
-			if (!iterator.hasNext()) break
-			iterator.next()
-			iterator.remove()
-		}
-	}
-
 	private fun shouldRefreshBackup(
 		candidate: SunLocation,
 		nowMs: Long,
@@ -421,7 +387,6 @@ class SunTimesRepository(
 		val locationKey = toLocationKey(candidate)
 		synchronized(cacheLock) {
 			sharedBackupRefreshCache[locationKey] = refreshedAtMs
-			trimCacheLocked()
 		}
 	}
 
@@ -550,10 +515,30 @@ class SunTimesRepository(
 		private const val MAX_BACKUP_REFRESH_ENTRIES = 96
 		private const val DEFAULT_BACKUP_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
 		private val cacheLock = Any()
-		private val sharedDailyCache = LinkedHashMap<String, CachedDaylightEntry>(64, 0.75f, true)
-		private val sharedLocationCache = LinkedHashMap<String, CachedDaylightEntry>(32, 0.75f, true)
-		private val sharedBackupDailyCache = LinkedHashMap<String, CachedDaylightEntry>(64, 0.75f, true)
-		private val sharedBackupLocationCache = LinkedHashMap<String, CachedDaylightEntry>(32, 0.75f, true)
-		private val sharedBackupRefreshCache = LinkedHashMap<String, Long>(64, 0.75f, true)
+		private val sharedDailyCache = object : LinkedHashMap<String, CachedDaylightEntry>(64, 0.75f, true) {
+			override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedDaylightEntry>?): Boolean {
+				return size > MAX_DAILY_CACHE_ENTRIES
+			}
+		}
+		private val sharedLocationCache = object : LinkedHashMap<String, CachedDaylightEntry>(32, 0.75f, true) {
+			override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedDaylightEntry>?): Boolean {
+				return size > MAX_LOCATION_CACHE_ENTRIES
+			}
+		}
+		private val sharedBackupDailyCache = object : LinkedHashMap<String, CachedDaylightEntry>(64, 0.75f, true) {
+			override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedDaylightEntry>?): Boolean {
+				return size > MAX_DAILY_CACHE_ENTRIES
+			}
+		}
+		private val sharedBackupLocationCache = object : LinkedHashMap<String, CachedDaylightEntry>(32, 0.75f, true) {
+			override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedDaylightEntry>?): Boolean {
+				return size > MAX_LOCATION_CACHE_ENTRIES
+			}
+		}
+		private val sharedBackupRefreshCache = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
+			override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?): Boolean {
+				return size > MAX_BACKUP_REFRESH_ENTRIES
+			}
+		}
 	}
 }
