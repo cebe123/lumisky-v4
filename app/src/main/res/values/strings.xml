@@ -60,5 +60,9 @@
 
     <string name="cat_games">Gaming Backgrounds HD</string>
     <string name="cat_nature">Natural Scenery 4K</string>
+    
+    <!-- Extra strings -->
+    <string name="coming_soon">COMING SOON</string>
+    <string name="coming_soon_desc">Something exciting is on the way!</string>
 </resources>
 
