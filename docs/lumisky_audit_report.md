@@ -34,10 +34,15 @@
 
 ### Kritik İyileştirme Alanları
 - ⚠️ **İçerik çeşitliliği** — 14 preset, 4 şehir aynı shader'ı paylaşıyor → Minimum Functionality riski
-- ⚠️ **Startup performansı** — Backup prefetch + location cascade jank yaratıyor
-- ⚠️ **Per-frame allocations** — `listOf().hashCode()` GC baskısı oluşturuyor
 - ⚠️ **Hardcoded katalog** — `WallpaperCatalog` kod içinde, ölçeklenemiyor
 - ⚠️ **Test coverage** — 13 test dosyası var ama UI/integration testleri eksik
+
+### ✅ Çözülmüş Alanlar (Önceki Sprint'ler)
+- ✅ **Startup performansı** — WorkManager + debounce pipeline ile çözüldü
+- ✅ **Per-frame allocations** — Manual rolling hash ile sıfır allocation
+- ✅ **Thermal awareness** — Service tarafında thermal + power-saver throttle aktif
+- ✅ **Texture path cache** — `PreferredTextureResolver` LRU cache ile çözüldü
+- ✅ **Duplicate texture reads** — `ResolvedTextureAsset` ile tek seferde çözüm
 
 ### Genel Hazırlık Skoru
 
@@ -45,7 +50,7 @@
 |------|------|-------|
 | Mimari | 8.5/10 | 🟢 Yayına hazır |
 | Rendering | 8/10 | 🟢 Küçük optimizasyonlarla mükemmel |
-| Performans | 6.5/10 | 🟡 Startup ve GC iyileştirmesi gerekli |
+| Performans | 8/10 | 🟢 Tüm optimizasyonlar uygulanmış |
 | UI/UX | 7.5/10 | 🟡 Premium hissi güçlendirilmeli |
 | Play Policy | 7/10 | 🟡 İçerik çeşitliliği ve Data Safety kritik |
 | Test | 5/10 | 🔴 Coverage artırılmalı |
@@ -125,20 +130,23 @@ graph LR
 
 **Potansiyel Sorun:** `sunset <= sunrise` durumunda fallback davranışı tüm gün boyunca sabit yörünge üretiyor. Kutup bölgeleri gibi edge case'lerde görsel olarak garip sonuçlar doğabilir. Ancak hedef kitle için kabul edilebilir.
 
-### 3.3 PreviewSkyProgram — Monolitik Shader Yönetimi
+### 3.3 PreviewSkyProgram — Shader Yönetimi
 
-> [!IMPORTANT]
-> `PreviewSkyProgram` (800+ satır) projenin **en yüksek riskli bileşeni**. Texture binding, uniform management, legacy theme adaptation, pixel manipulation (`trimTransparentTop`, `bleedTransparentEdgeColors`) hepsi tek sınıfta.
+`PreviewSkyProgram` (800+ satır) projenin en büyük tekil sınıfı. Texture binding, uniform management ve legacy theme adaptation barındırıyor.
 
-**Risk Matrisi:**
+**Pixel Manipulation Durumu:**
+- ✅ `bleedTransparentEdgeColors` → `return false` — runtime'da devre dışı, build-time'a taşındı (`generateDerivedWallpaperAssets`)
+- ✅ `featherTransparentTopBoundary` → `return false` — runtime'da devre dışı, build-time'a taşındı
+- ⚠️ `trimTransparentTop` → Sadece `anime_sakura` texture'ı için aktif — runtime'da çalışıyor
+
+**Kalan Riskler:**
 
 | Risk | Ciddiyet | Açıklama |
 |------|----------|----------|
-| OOM | Yüksek | `Bitmap.createBitmap` + pixel manipulation texture yükleme sırasında |
-| GC Stutter | Orta | Her texture load'da geçici bitmap allocation |
-| Bakım | Yüksek | Yeni efekt eklemek tüm temaları etkileme riski taşır |
+| Bakım | 🟡 Orta | Sınıf büyük ama pixel manipulation'lar build-time'a taşınmış |
+| OOM | 🟢 Düşük | Artık sadece `trimTransparentTop` runtime'da, tek texture için |
 
-**Öneri:** Build-time'a taşınan `bleedTransparentEdgeColors` ve `featherTransparentTopBoundary` işlemleri (`generateDerivedWallpaperAssets` task'ı) iyi bir adım. Kalan runtime pixel manipulation'lar da build-time'a taşınmalı.
+**Öneri (P2):** Sınıf uzun vadede texture binding, uniform management ve theme adaptation olarak ayrıştırılabilir, ancak **yayın için blocker değil**.
 
 ### 3.4 Render Policy Sistemi
 
@@ -150,7 +158,7 @@ data class RuntimeRenderPolicy(
 )
 ```
 
-**Durum:** `runtimeRenderPolicy` alanı eklenmiş ve service tarafında kullanılıyor. Ancak bazı yerlerde hâlâ `config.id` string match'i ile policy kararı verildiği tespit edildi.
+**Durum:** ✅ `runtimeRenderPolicy` tam olarak entegre. Service tarafında render kararları `ServiceRenderPolicyResolver` üzerinden veriliyor. `config.id` string match ile policy kararı **kaldırılmış** — wallpaper modülünde `config.id` sadece preview loop tracking amaçlı kullanılıyor.
 
 ---
 
@@ -164,37 +172,58 @@ data class RuntimeRenderPolicy(
 | State hash skip | ✅ Aktif | Çok iyi — aynı state'te render atlanıyor |
 | VSync-based frame pacing | ✅ Aktif | İyi — gereksiz wakeup yok |
 | Thermal/Power-saver awareness (preview) | ✅ Aktif | İyi — adaptive quality |
-| Thermal/Power-saver awareness (service) | ⚠️ Eksik | Service tarafında thermal policy yok |
+| Thermal/Power-saver awareness (service) | ✅ Aktif | `ServiceRenderPolicyResolver` thermal + power-saver throttle |
 | Visibility-based render pause | ✅ Aktif | Mükemmel — invisible'da render durduruluyor |
 
-### 4.2 Startup Performans Darboğazları
+### 4.2 Startup Performans — Çözülmüş Bulgular
 
-**Kritik Bulgu 1: Backup Prefetch Burst**
-- `HomeViewModel.init` bloğunda 2 saniye sonra 25 şehir için sun-times API çağrısı başlatılıyor
-- Bu, UI composition ve preview initialization ile çakışıyor
-- `gfxinfo` ölçümleri: cold launch'ta **%64 janky frame**, p90 **101ms**
+> [!TIP]
+> Aşağıdaki bulgular önceki optimizasyon sprint'lerinde tespit edilip **çözülmüştür**. Mevcut implementasyon referans olarak belgelenmiştir.
 
-**Kritik Bulgu 2: Duplicate Location Reads**
-- `refreshLocationState()` → `refreshSunTimes()` → `resolveLocationCandidates()` zincirinde aynı `getLastKnownLocation()` 2-3 kez çağrılıyor
-- Her çağrı system service erişimi gerektiriyor
+**Bulgu 1: Backup Prefetch Burst → ✅ Çözüldü**
+- **Eski:** `HomeViewModel.init` bloğunda 2s sonra 25 şehir için burst API çağrısı
+- **Yeni:** `BackupCityPrefetchWorker` (WorkManager) ile arka plan iş kuyruğuna taşındı
+- Tetikleme `onUserInteraction()` ile kullanıcı etkileşimi sonrasına ertelendi
+- Aday sayısı `BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT = 8` ile sınırlandı
+- Periyodik yenileme `BACKUP_CITY_REFRESH_INTERVAL_MS = 7 gün` ile throttle edildi
 
-**Kritik Bulgu 3: Per-Frame Allocations**
+**Bulgu 2: Duplicate Location Reads → ✅ Çözüldü**
+- **Eski:** `refreshLocationState()` → `refreshSunTimes()` → `resolveLocationCandidates()` zincirinde 2-3 tekrarlı `getLastKnownLocation()`
+- **Yeni:** `scheduleCoalescedLocationAndSunTimesRefresh()` tek debounce pipeline'ı (`LOCATION_REFRESH_COALESCE_DELAY_MS = 120ms`)
+- `locationCandidatesCache` ile TTL bazlı cache (`1.5s`) — aynı döngüde tekrar hesaplama yok
+- `buildLocationCandidatesCacheKey()` ile cache invalidation güvenliği sağlandı
+
+**Bulgu 3: Per-Frame Allocations → ✅ Çözüldü**
+- **Eski:** `listOf(mode, progress, sunX, ...).hashCode()` — her frame'de `List` + boxing allocation
+- **Yeni:** Manual rolling hash — sıfır allocation:
 ```kotlin
-// SkyRenderer.kt:97 — Her frame'de allocation!
-val stateHash = listOf(mode, quantizedProgress, quantizedSunX, ...).hashCode()
+// SkyRenderer.kt:106-134 — Mevcut implementasyon
+private fun buildStateHash(...): Int {
+    var result = 17
+    result = 31 * result + config.id.hashCode()
+    result = 31 * result + mode.ordinal
+    result = 31 * result + quantize(progress)
+    // ... tüm alanlar primitive olarak hash'leniyor
+    return result
+}
 ```
-Bu pattern `listOf()` ile her frame'de yeni `List` ve boxing oluşturuyor.
+- `SceneStateHasher.compute()` de aynı pattern'i kullanıyor (wallpaper modülü)
 
-### 4.3 Performans Önerileri (Öncelik Sırasıyla)
+### 4.3 Performans Önerileri — Durum Güncellemesi
 
-| # | Öneri | Etki | Zorluk |
-|---|-------|------|--------|
-| 1 | Startup prefetch'i WorkManager'a taşı | 🟢 Yüksek | Düşük |
-| 2 | Location refresh pipeline'ını debounce ile birleştir | 🟢 Yüksek | Orta |
-| 3 | `listOf().hashCode()` → manual rolling hash | 🟡 Orta | Düşük |
-| 4 | Texture path resolution cache ekle | 🟡 Orta | Düşük |
-| 5 | Service tarafına thermal awareness ekle | 🟡 Orta | Orta |
-| 6 | Duplicate texture read'leri ortadan kaldır | 🟡 Orta | Orta |
+> [!NOTE]
+> Detaylı kod incelemesi sonucunda, **önceki optimizasyon çalışmalarında 6 önerinin tamamının uygulandığı** doğrulanmıştır.
+
+| # | Öneri | Durum | Uygulama Kanıtı |
+|---|-------|-------|-----------------|
+| 1 | Startup prefetch → WorkManager | ✅ Uygulandı | `BackupCityPrefetchWorker.enqueue()`, `onUserInteraction()` ile tetikleniyor |
+| 2 | Location refresh debounce | ✅ Uygulandı | `scheduleCoalescedLocationAndSunTimesRefresh()` + `locationCandidatesCache` TTL |
+| 3 | Rolling hash | ✅ Uygulandı | `SkyRenderer.buildStateHash()` + `SceneStateHasher.compute()` manual hash |
+| 4 | Texture path cache | ✅ Uygulandı | `PreferredTextureResolver` (engine) + `RenderAssetCache.resolvedTexturePathCache` (app) |
+| 5 | Service thermal awareness | ✅ Uygulandı | `ServiceRenderPolicyResolver` thermal throttle + `SkyWallpaperService:38-44` provider bağlantısı |
+| 6 | Duplicate texture read elim. | ✅ Uygulandı | `PreferredTextureResolver.resolve()` → `ResolvedTextureAsset(path, bytes)` tek seferde |
+
+**Sonuç:** Performans pipeline'ı production-ready durumda. Kalan iyileştirmeler büyüme odaklı (100+ wallpaper ölçeği).
 
 ---
 
@@ -381,15 +410,18 @@ preBuild → prepareFilteredAssets → convertWallpaperTexturesToWebp
 | 3 | **Data Safety formu** — konum kullanım beyanını tamamla | Play Console | 0.5 gün |
 | 4 | **Privacy Policy URL** — oluştur ve manifest'e ekle | Harici | 0.5 gün |
 
-### 🟡 P1 — Performans ve Kalite (2-4 hafta)
+### 🟡 P1 — Kalite ve Test (2-4 hafta)
 
-| # | Aksiyon | Etki |
-|---|---------|------|
-| 5 | Startup prefetch'i WorkManager'a taşı | Jank %50+ azalma |
-| 6 | Location refresh pipeline debounce | Duplicate syscall eliminasyonu |
-| 7 | Per-frame hash allocation'ları kaldır | GC pressure azalma |
-| 8 | Service tarafına thermal awareness ekle | Batarya iyileştirme |
-| 9 | `WallpaperConfigStore` encode/decode testi yaz | Regression güvenliği |
+> [!NOTE]
+> Performans aksiyonları (#5-8) önceki sprint'lerde tamamlanmıştır.
+
+| # | Aksiyon | Durum |
+|---|---------|-------|
+| 5 | ~~Startup prefetch → WorkManager~~ | ✅ `BackupCityPrefetchWorker` ile tamamlandı |
+| 6 | ~~Location refresh debounce~~ | ✅ `scheduleCoalescedLocationAndSunTimesRefresh()` ile tamamlandı |
+| 7 | ~~Per-frame hash allocation kaldır~~ | ✅ Manual rolling hash ile tamamlandı |
+| 8 | ~~Service thermal awareness~~ | ✅ `ServiceRenderPolicyResolver` thermal throttle ile tamamlandı |
+| 9 | `WallpaperConfigStore` encode/decode testi yaz | ❌ Henüz yapılmadı — hâlâ gerekli |
 
 ### 🟢 P2 — UX ve Ölçeklenebilirlik (4-8 hafta)
 
@@ -405,23 +437,24 @@ preBuild → prepareFilteredAssets → convertWallpaperTexturesToWebp
 
 ## 10. Sonuç ve Genel Puan
 
-### Genel Değerlendirme: **7.2 / 10**
+### Genel Değerlendirme: **8.0 / 10**
 
-Lumisky, teknik mimari açısından **profesyonel düzeyde** bir canlı duvar kağıdı uygulamasıdır. Rendering pipeline'ı, state management'ı ve batarya stratejisi **çoğu rakipten üstündür**. Ancak Google Play yayını için kritik iki alan acil müdahale gerektirmektedir:
+Lumisky, teknik mimari ve performans açısından **production-ready** bir canlı duvar kağıdı uygulamasıdır. Rendering pipeline'ı, state management'ı, batarya stratejisi ve thermal awareness **çoğu rakipten üstündür**. Önceki optimizasyon sprint'lerinde tespit edilen tüm performans darboğazları başarıyla çözülmüştür.
+
+Google Play yayını için kalan **tek kritik blocker:**
 
 1. **İçerik çeşitliliği** — Minimum Functionality reddini önlemek için benzersiz wallpaper sayısı ve davranışsal farklılaşma artırılmalı
-2. **Startup performansı** — Cold launch jank'ı kullanıcı ilk deneyimini olumsuz etkiliyor
 
-Bu iki alan çözüldüğünde, uygulama Google Play Store'da **güçlü bir içerik kalitesi ve teknik altyapıyla** rekabet edebilecek konumdadır.
+Bu alan çözüldüğünde, uygulama Google Play Store'da **güçlü bir içerik kalitesi ve teknik altyapıyla** rekabet edebilecek konumdadır.
 
 ### Modül Bazlı Sağlık Kartı
 
 | Modül | Sağlık | Acil Müdahale |
 |-------|--------|---------------|
 | `core` | 🟢 9/10 | Yok |
-| `engine` | 🟡 7.5/10 | PreviewSkyProgram parçalama (P2) |
-| `wallpaper` | 🟢 8.5/10 | Thermal awareness (P1) |
-| `app` | 🟡 6.5/10 | ViewModel ayrıştırma + UX iyileştirme |
+| `engine` | 🟢 8/10 | PreviewSkyProgram parçalama (P2, blocker değil) |
+| `wallpaper` | 🟢 9/10 | Yok — thermal + power-saver + render policy tamamlandı |
+| `app` | 🟡 7/10 | ViewModel ayrıştırma + UX iyileştirme (P2) |
 
 ---
 
