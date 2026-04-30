@@ -192,7 +192,11 @@ class PreviewSkyProgram {
 		val shaderMoonX = state.moon.x.coerceIn(0f, 1f)
 		val shaderMoonY = mapToLegacyShaderY(state.moon.y)
 		val shaderHorizonY = mapToLegacyShaderY(config.horizon.offset.coerceIn(0f, 1f))
-		val drawSun = if (minute >= state.sunriseMinute && minute <= state.sunsetMinute) 1f else 0f
+		val drawSun = if (state.sunsetMinute >= state.sunriseMinute) {
+			if (minute >= state.sunriseMinute && minute <= state.sunsetMinute) 1f else 0f
+		} else {
+			if (minute >= state.sunriseMinute || minute <= state.sunsetMinute) 1f else 0f
+		}
 		val windSpeed = 1.0f + kotlin.math.sin(legacyThemeState.timeSeconds * 0.1f) * 0.5f
 		val effectiveAtmosphere = state.atmosphereEnabled && qualityScale >= QUALITY_ATMOSPHERE_THRESHOLD
 		val effectiveFlare = state.lensFlareEnabled && qualityScale >= QUALITY_FLARE_THRESHOLD

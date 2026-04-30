@@ -25,18 +25,15 @@ class CelestialCalculator {
 		val peakY = resolvePeakY(horizonY, orbit, config)
 		val hiddenY = resolveHiddenY(horizonY, orbit)
 
-		if (sunset <= sunrise) {
-			val fallbackProgress = progress.coerceIn(0f, 1f)
-			return resolveVisiblePosition(
-				orbit = orbit,
-				horizonY = horizonY,
-				peakY = peakY,
-				phaseProgress = fallbackProgress,
-				out = out
-			)
+		val isDaytime = if (sunset > sunrise) {
+			minute >= sunrise && minute <= sunset
+		} else if (sunset < sunrise) {
+			minute >= sunrise || minute <= sunset
+		} else {
+			false
 		}
 
-		return if (minute >= sunrise && minute <= sunset) {
+		return if (isDaytime) {
 			val dayProgress = resolvePeakAlignedPhaseProgress(
 				currentMinute = minute,
 				startMinute = sunrise,
@@ -75,18 +72,15 @@ class CelestialCalculator {
 		val peakY = resolvePeakY(horizonY, orbit, config)
 		val hiddenY = resolveHiddenY(horizonY, orbit)
 
-		if (sunset <= sunrise) {
-			val fallbackProgress = progress.coerceIn(0f, 1f)
-			return resolveVisiblePosition(
-				orbit = orbit,
-				horizonY = horizonY,
-				peakY = peakY,
-				phaseProgress = fallbackProgress,
-				out = out
-			)
+		val isDaytime = if (sunset > sunrise) {
+			minute >= sunrise && minute <= sunset
+		} else if (sunset < sunrise) {
+			minute >= sunrise || minute <= sunset
+		} else {
+			false
 		}
 
-		return if (minute >= sunrise && minute <= sunset) {
+		return if (isDaytime) {
 			out.set(
 				x = resolveHiddenX(orbit),
 				y = hiddenY

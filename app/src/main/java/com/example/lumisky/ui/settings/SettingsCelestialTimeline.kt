@@ -21,7 +21,11 @@ internal fun resolveCelestialTimeline(
 	val sunset = normalizeMinute(daylight.sunsetMinute)
 	val normalizedCurrentMinute = normalizeMinute(currentMinute)
 	val moonWindow = deriveMoonWindow(daylight)
-	val sunActive = sunset > sunrise && normalizedCurrentMinute in sunrise..sunset
+	val sunActive = isInWrappedRange(
+		minute = normalizedCurrentMinute,
+		startMinute = sunrise,
+		endMinute = sunset
+	)
 	val moonActive = !sunActive && isInWrappedRange(
 		minute = normalizedCurrentMinute,
 		startMinute = moonWindow.startMinute,
@@ -68,11 +72,16 @@ private fun resolveSunProgress(
 	sunriseMinute: Int,
 	sunsetMinute: Int
 ): Float {
-	if (sunsetMinute <= sunriseMinute) return 0.5f
-	if (currentMinute <= sunriseMinute) return 0f
-	if (currentMinute >= sunsetMinute) return 1f
-	return ((currentMinute - sunriseMinute).toFloat() / (sunsetMinute - sunriseMinute).toFloat())
-		.coerceIn(0f, 1f)
+	val duration = minutesForward(
+		startMinute = sunriseMinute,
+		endMinute = sunsetMinute
+	).coerceAtLeast(1)
+	val elapsed = minutesForward(
+		startMinute = sunriseMinute,
+		endMinute = currentMinute
+	)
+	if (elapsed > duration) return 0f
+	return (elapsed.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
 }
 
 private fun resolveMoonProgress(

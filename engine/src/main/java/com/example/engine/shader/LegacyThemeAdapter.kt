@@ -255,24 +255,26 @@ internal class LegacyThemeAdapter(
 		sunrise: Float,
 		sunset: Float
 	): Float {
-		if (minute >= sunset && minute < sunset + NIGHT_TRANSITION_AFTER_SUNSET_MIN) {
-			return smoothstep(sunset, sunset + NIGHT_TRANSITION_AFTER_SUNSET_MIN, minute)
+		// Normalize minutes relative to sunset to handle wrap-around days easily.
+		val relM = (minute - sunset + MINUTES_PER_DAY) % MINUTES_PER_DAY
+		val relR = (sunrise - sunset + MINUTES_PER_DAY) % MINUTES_PER_DAY
+
+		if (relM < NIGHT_TRANSITION_AFTER_SUNSET_MIN) {
+			return smoothstep(0f, NIGHT_TRANSITION_AFTER_SUNSET_MIN, relM)
 		}
-		if ((minute >= sunset + NIGHT_TRANSITION_AFTER_SUNSET_MIN && minute < MINUTES_PER_DAY.toFloat()) ||
-			minute < sunrise - NIGHT_TRANSITION_BEFORE_SUNRISE_MIN
-		) {
-			return 1f
-		}
-		if (minute >= sunrise - NIGHT_TRANSITION_BEFORE_SUNRISE_WIDE_MIN &&
-			minute <= sunrise + NIGHT_TRANSITION_AFTER_SUNRISE_MIN
-		) {
-			val t = smoothstep(
-				sunrise - NIGHT_TRANSITION_BEFORE_SUNRISE_WIDE_MIN,
-				sunrise + NIGHT_TRANSITION_AFTER_SUNRISE_MIN,
-				minute
-			)
+
+		val relSunriseStart = relR - NIGHT_TRANSITION_BEFORE_SUNRISE_WIDE_MIN
+		val relSunriseEnd = relR + NIGHT_TRANSITION_AFTER_SUNRISE_MIN
+
+		if (relM >= relSunriseStart && relM <= relSunriseEnd) {
+			val t = smoothstep(relSunriseStart, relSunriseEnd, relM)
 			return 1f - t
 		}
+
+		if (relM > NIGHT_TRANSITION_AFTER_SUNSET_MIN && relM < relSunriseStart) {
+			return 1f
+		}
+
 		return 0f
 	}
 
