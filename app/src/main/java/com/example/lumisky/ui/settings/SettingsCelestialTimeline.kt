@@ -72,6 +72,11 @@ private fun resolveSunProgress(
 	sunriseMinute: Int,
 	sunsetMinute: Int
 ): Float {
+	if (sunriseMinute == sunsetMinute) return 0f
+	if (sunriseMinute < sunsetMinute) {
+		if (currentMinute < sunriseMinute) return 0f
+		if (currentMinute > sunsetMinute) return 1f
+	}
 	val duration = minutesForward(
 		startMinute = sunriseMinute,
 		endMinute = sunsetMinute
@@ -80,7 +85,7 @@ private fun resolveSunProgress(
 		startMinute = sunriseMinute,
 		endMinute = currentMinute
 	)
-	if (elapsed > duration) return 0f
+	if (elapsed > duration) return 1f
 	return (elapsed.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
 }
 
