@@ -55,9 +55,12 @@ class HomeViewModel(
 		settingsRepository = settingsRepository,
 		lastKnownLocationProvider = lastKnownLocationProvider,
 		initialSettings = initialSettings,
-		onDaylightChanged = { newDaylight ->
-			daylight = newDaylight
-			rebuildCatalog(newDaylight)
+		onDaylightResolved = { newDaylight ->
+			if (daylight != newDaylight) {
+				daylight = newDaylight
+				rebuildCatalog(newDaylight)
+			}
+			wallpaperDaylightSyncVersion += 1
 		}
 	)
 
@@ -84,6 +87,9 @@ class HomeViewModel(
 	)
 
 	var daylight by mutableStateOf(initialDaylight)
+		private set
+
+	var wallpaperDaylightSyncVersion by mutableStateOf(0)
 		private set
 
 	var appThemeMode by mutableStateOf(initialSettings.appThemeMode)

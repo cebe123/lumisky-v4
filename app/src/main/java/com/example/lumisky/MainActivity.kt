@@ -268,7 +268,10 @@ class MainActivity : AppCompatActivity() {
 							)
 						}
 					}
-					LaunchedEffect(homeViewModel.daylight) {
+					LaunchedEffect(
+						homeViewModel.daylight,
+						homeViewModel.wallpaperDaylightSyncVersion
+					) {
 						syncStoredWallpaperConfigIfNeeded(homeViewModel.daylight)
 					}
 					if (startupAnimationsEnabled) {

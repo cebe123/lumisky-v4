@@ -44,7 +44,7 @@ internal class LocationSunTimesCoordinator(
 	private val settingsRepository: AppSettingsRepository,
 	private val lastKnownLocationProvider: LastKnownLocationProvider,
 	initialSettings: AppSettingsSnapshot,
-	private val onDaylightChanged: (SunDaylight) -> Unit
+	private val onDaylightResolved: (SunDaylight) -> Unit
 ) {
 	private val tag = "LocationSunTimesCoordinator"
 	private val mainHandler = Handler(Looper.getMainLooper())
@@ -402,9 +402,10 @@ internal class LocationSunTimesCoordinator(
 			mainHandler.post {
 				syncAutomaticLocationTimeZoneIfNeeded(resolution)
 				val fetched = resolution.daylight
-				if (fetched == daylight) return@post
-				daylight = fetched
-				onDaylightChanged(fetched)
+				if (fetched != daylight) {
+					daylight = fetched
+				}
+				onDaylightResolved(fetched)
 			}
 		}
 	}
@@ -681,21 +682,7 @@ internal class LocationSunTimesCoordinator(
 	}
 
 	private fun formatGpsLabel(latitude: Double, longitude: Double): String {
-		return "(${latitude.toDisplay()}, ${longitude.toDisplay()})"
-	}
-
-	private fun LocationSnapshot.toLastKnownManualCity(): ManualCity {
-		val resolvedName = label
-			?.takeIf { it.isNotBlank() }
-			?: formatGpsLabel(latitude, longitude)
-		return ManualCity(
-			id = LAST_KNOWN_CITY_ID,
-			name = resolvedName,
-			countryCode = "GPS",
-			latitude = latitude,
-			longitude = longitude,
-			timeZoneId = timeZoneId ?: "UTC"
-		)
+		return formatGpsCoordinatesLabel(latitude, longitude)
 	}
 
 	private fun updateLastKnownCity(location: LocationSnapshot?) {
@@ -752,8 +739,6 @@ internal class LocationSunTimesCoordinator(
 		}
 	}
 
-	private fun Double.toDisplay(): String = String.format(Locale.US, "%.2f", this)
-
 	companion object {
 		private const val SUN_TIMES_REFRESH_INTERVAL_MS = 3L * 60L * 60L * 1000L
 		private const val GPS_REQUEST_THROTTLE_MS = 1_500L
@@ -767,6 +752,5 @@ internal class LocationSunTimesCoordinator(
 		private const val CURRENT_LOCATION_TIMEOUT_MS = 6_000L
 		private const val MAX_ACCEPTABLE_LAST_LOCATION_ACCURACY_METERS = 15_000f
 		private const val SUN_TIMES_REFRESH_LOCATION_BUCKET_SCALE = 100.0
-		private const val LAST_KNOWN_CITY_ID = "gps_last_known"
 	}
 }
