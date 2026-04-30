@@ -6,3 +6,8 @@
 -keep class com.example.wallpaper.SkyWallpaperService { *; }
 -keep class com.example.wallpaper.service.SkyWallpaperService { *; }
 -keep class com.example.wallpaper.service.WallpaperRestoreReceiver { *; }
+
+# WorkManager's Room database implementation is created by reflection in release builds.
+-keepclassmembers class androidx.work.impl.WorkDatabase_Impl {
+    public <init>();
+}
