@@ -60,6 +60,8 @@
     <string name="cat_nature">自然风光 4K</string>
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
+    <string name="location_last_known">上次已知位置</string>
+    <string name="location_last_known_format">上次已知位置: %1$s</string>
 </resources>
 
 

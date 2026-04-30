@@ -60,6 +60,8 @@
     <string name="cat_nature">प्राकृतिक दृश्य 4K</string>
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
+    <string name="location_last_known">अंतिम ज्ञात स्थान</string>
+    <string name="location_last_known_format">अंतिम ज्ञात स्थान: %1$s</string>
 </resources>
 
 

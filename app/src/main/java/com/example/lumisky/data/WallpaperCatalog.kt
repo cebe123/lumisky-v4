@@ -13,7 +13,6 @@ object WallpaperCatalog {
 		return synchronized(this) {
 			repository ?: WallpaperCatalogRepository(
 				sources = listOf(
-					LegacyWallpaperCatalogSource(),
 					WallpaperManifestCatalogSource(context.applicationContext)
 				)
 			).also { created ->

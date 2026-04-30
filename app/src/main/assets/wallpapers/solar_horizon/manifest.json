@@ -1,0 +1,11 @@
+{
+  "id": "solar_horizon",
+  "name": "Solar Horizon HD",
+  "horizon": {
+    "offset": 0.50
+  },
+  "shader": {
+    "fragmentAssetPath": "shaders/solar/fragment_shader.glsl",
+    "mode": "external_theme"
+  }
+}

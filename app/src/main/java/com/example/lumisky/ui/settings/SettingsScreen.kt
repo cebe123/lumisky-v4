@@ -68,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -110,6 +111,7 @@ fun SettingsScreen(
 	onRefreshLocation: () -> Unit,
 	onRequestEnableSystemLocation: () -> Unit,
 	manualCity: ManualCity,
+	lastKnownCity: ManualCity?,
 	onManualCitySelected: (ManualCity) -> Unit,
 	languageTag: String,
 	onLanguageSelected: (String) -> Unit
@@ -141,6 +143,11 @@ fun SettingsScreen(
 	}
 	val citySelectionEnabled = locationMode != LocationMode.GPS
 	val appVersionName = remember(context) { resolveAppVersionName(context) }
+	val lastKnownCityId = lastKnownCity?.id
+	val lastKnownLocationName = lastKnownCity?.name?.takeIf { it.isNotBlank() }
+	val selectedLastKnownLocationText = lastKnownLocationName
+		?.takeIf { manualCity.id == lastKnownCityId }
+		?.let { name -> stringResource(R.string.location_last_known_format, name) }
 
 	val permissionLauncher = rememberLauncherForActivityResult(
 		contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -186,6 +193,7 @@ fun SettingsScreen(
 					locationSummary = locationSummary,
 					manualCity = manualCity,
 					citySelectionEnabled = citySelectionEnabled,
+					selectedLastKnownLocationText = selectedLastKnownLocationText,
 					locationRefreshInProgress = locationRefreshInProgress,
 					celestialTimeline = celestialTimeline,
 					onToggleGps = { enabled ->
@@ -216,7 +224,23 @@ fun SettingsScreen(
 						}
 					},
 					onRefreshLocation = {
-						if (systemLocationEnabled) onRefreshLocation() else onRequestEnableSystemLocation()
+						val hasPermission = ContextCompat.checkSelfPermission(
+							context,
+							Manifest.permission.ACCESS_COARSE_LOCATION
+						) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+							context,
+							Manifest.permission.ACCESS_FINE_LOCATION
+						) == PackageManager.PERMISSION_GRANTED
+						if (hasPermission) {
+							if (systemLocationEnabled) onRefreshLocation() else onRequestEnableSystemLocation()
+						} else {
+							permissionLauncher.launch(
+								arrayOf(
+									Manifest.permission.ACCESS_COARSE_LOCATION,
+									Manifest.permission.ACCESS_FINE_LOCATION
+								)
+							)
+						}
 					},
 					onSelectCity = { showCityDialog = true }
 				)
@@ -259,9 +283,23 @@ fun SettingsScreen(
 	}
 
 	if (showCityDialog && citySelectionEnabled) {
+		val lastKnownLocationTitle = stringResource(R.string.location_last_known)
 		CountryCityDialog(
 			title = stringResource(R.string.location_select_city),
-			groups = cityGroups(languageTag),
+			groups = remember(languageTag, lastKnownCity, lastKnownLocationTitle) {
+				val baseGroups = cityGroups(languageTag)
+				if (lastKnownCity != null) {
+					listOf(
+						CityGroup(
+							countryCode = "GPS",
+							countryName = lastKnownLocationTitle,
+							cities = listOf(lastKnownCity)
+						)
+					) + baseGroups
+				} else {
+					baseGroups
+				}
+			},
 			selectedCityId = manualCity.id,
 			onDismiss = { showCityDialog = false },
 			onSelect = { city ->
@@ -274,12 +312,17 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsBackdrop() {
+	val backdropGradient = if (SettingsIsDark) {
+		listOf(Color(0xFF080A10), SettingsBackground, Color(0xFF0A0F18))
+	} else {
+		listOf(Color(0xFFF8FAFF), SettingsBackground, Color(0xFFEFF4FA))
+	}
 	Box(
 		modifier = Modifier
 			.fillMaxSize()
 			.background(
 				brush = Brush.verticalGradient(
-					colors = listOf(Color(0xFF080A10), SettingsBackground, Color(0xFF0A0F18))
+					colors = backdropGradient
 				)
 			)
 	) {
@@ -409,6 +452,7 @@ private fun LocationSection(
 	locationSummary: String,
 	manualCity: ManualCity,
 	citySelectionEnabled: Boolean,
+	selectedLastKnownLocationText: String?,
 	locationRefreshInProgress: Boolean,
 	celestialTimeline: CelestialTimelineSnapshot,
 	onToggleGps: (Boolean) -> Unit,
@@ -427,6 +471,7 @@ private fun LocationSection(
 		CitySelectionField(
 			label = stringResource(R.string.location_select_city),
 			value = manualCity.name,
+			supportingText = selectedLastKnownLocationText,
 			enabled = citySelectionEnabled,
 			onClick = onSelectCity
 		)
@@ -459,6 +504,7 @@ private fun WallpaperSection(
 		SectionDivider()
 		Spacer(modifier = Modifier.height(16.dp))
 		Row(
+			modifier = Modifier.fillMaxWidth(),
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.spacedBy(12.dp)
 		) {
@@ -475,7 +521,10 @@ private fun WallpaperSection(
 					tint = SettingsPrimary
 				)
 			}
-			Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+			Column(
+				modifier = Modifier.weight(1f),
+				verticalArrangement = Arrangement.spacedBy(2.dp)
+			) {
 				Text(
 					text = stringResource(R.string.performance_mode_title),
 					style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
@@ -485,7 +534,7 @@ private fun WallpaperSection(
 					text = stringResource(R.string.wallpaper_description),
 					style = MaterialTheme.typography.bodySmall,
 					color = SettingsOnSurfaceVariant,
-					maxLines = 1,
+					maxLines = 2,
 					overflow = TextOverflow.Ellipsis
 				)
 			}
@@ -793,6 +842,7 @@ private fun RefreshLocationButton(
 private fun CitySelectionField(
 	label: String,
 	value: String,
+	supportingText: String? = null,
 	enabled: Boolean,
 	onClick: () -> Unit
 ) {
@@ -823,6 +873,15 @@ private fun CitySelectionField(
 				contentDescription = null,
 				tint = if (enabled) SettingsOnSurfaceVariant else SettingsOnSurfaceVariant.copy(alpha = 0.35f),
 				modifier = Modifier.size(18.dp)
+			)
+		}
+		if (!supportingText.isNullOrBlank()) {
+			Text(
+				text = supportingText,
+				style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+				color = SettingsOnSurfaceVariant,
+				maxLines = 2,
+				overflow = TextOverflow.Ellipsis
 			)
 		}
 	}
@@ -1360,27 +1419,88 @@ private fun formatMinuteLabel(minute: Int): String {
 	return String.format(Locale.US, "%02d:%02d", normalized / 60, normalized % 60)
 }
 
-private val SettingsBackground = Color(0xFF0D0E13)
-private val SettingsSurfaceLow = Color(0xFF121319)
-private val SettingsSurfaceHigh = Color(0xFF1E1F26)
-private val SettingsSurfaceHighest = Color(0xFF24252D)
-private val SettingsPrimary = Color(0xFF81ECFF)
-private val SettingsSecondary = Color(0xFFB884FF)
-private val SettingsTertiary = Color(0xFFFF84AA)
-private val SettingsOnPrimaryFixed = Color(0xFF003840)
-private val SettingsOnSurface = Color(0xFFF7F5FD)
-private val SettingsOnSurfaceVariant = Color(0xFFABAAB1)
-private val SettingsGhostBorder = Color(0xFF47474E).copy(alpha = 0.42f)
-private val SettingsGlassBrush = Brush.verticalGradient(
-	colors = listOf(
-		SettingsSurfaceHighest.copy(alpha = 0.84f),
-		SettingsSurfaceHigh.copy(alpha = 0.96f)
+private val SettingsIsDark: Boolean
+	@Composable
+	get() = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+private val SettingsBackground: Color
+	@Composable
+	get() = MaterialTheme.colorScheme.background
+
+private val SettingsSurfaceLow: Color
+	@Composable
+	get() = if (SettingsIsDark) {
+		MaterialTheme.colorScheme.surface
+	} else {
+		MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+	}
+
+private val SettingsSurfaceHigh: Color
+	@Composable
+	get() = if (SettingsIsDark) {
+		MaterialTheme.colorScheme.surfaceVariant
+	} else {
+		MaterialTheme.colorScheme.surface
+	}
+
+private val SettingsSurfaceHighest: Color
+	@Composable
+	get() = if (SettingsIsDark) {
+		MaterialTheme.colorScheme.surfaceTint
+	} else {
+		MaterialTheme.colorScheme.surfaceVariant
+	}
+
+private val SettingsPrimary: Color
+	@Composable
+	get() = MaterialTheme.colorScheme.primary
+
+private val SettingsSecondary: Color
+	@Composable
+	get() = MaterialTheme.colorScheme.secondary
+
+private val SettingsTertiary: Color
+	@Composable
+	get() = MaterialTheme.colorScheme.tertiary
+
+private val SettingsOnPrimaryFixed: Color
+	@Composable
+	get() = MaterialTheme.colorScheme.onPrimary
+
+private val SettingsOnSurface: Color
+	@Composable
+	get() = MaterialTheme.colorScheme.onSurface
+
+private val SettingsOnSurfaceVariant: Color
+	@Composable
+	get() = MaterialTheme.colorScheme.onSurfaceVariant
+
+private val SettingsGhostBorder: Color
+	@Composable
+	get() = MaterialTheme.colorScheme.outline.copy(alpha = if (SettingsIsDark) 0.42f else 0.28f)
+
+private val SettingsGlassBrush: Brush
+	@Composable
+	get() = Brush.verticalGradient(
+		colors = if (SettingsIsDark) {
+			listOf(
+				SettingsSurfaceHighest.copy(alpha = 0.84f),
+				SettingsSurfaceHigh.copy(alpha = 0.96f)
+			)
+		} else {
+			listOf(
+				MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+				MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.74f)
+			)
+		}
 	)
-)
-private val CelestialTimelineBrush = Brush.horizontalGradient(
-	colorStops = arrayOf(
-		0.00f to Color(0xFFD05434),
-		0.46f to Color(0xFFF3C64E),
-		1.00f to Color(0xFF07090D)
+
+private val CelestialTimelineBrush: Brush
+	@Composable
+	get() = Brush.horizontalGradient(
+		colorStops = arrayOf(
+			0.00f to Color(0xFFD05434),
+			0.46f to Color(0xFFF3C64E),
+			1.00f to if (SettingsIsDark) Color(0xFF07090D) else MaterialTheme.colorScheme.primary
+		)
 	)
-)

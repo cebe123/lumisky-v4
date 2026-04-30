@@ -128,7 +128,7 @@ fun LaunchSkeleton() {
 			imageVector = Icons.Filled.FilterHdr,
 			contentDescription = "App Logo",
 			modifier = Modifier.size(42.dp),
-			tint = Color.White.copy(alpha = 0.92f)
+			tint = MaterialTheme.colorScheme.primary
 		)
 	}
 }
@@ -416,7 +416,7 @@ private fun HomeTopBar(simplified: Boolean) {
 				imageVector = Icons.Filled.FilterHdr,
 				contentDescription = "App Logo",
 				modifier = Modifier.size(28.dp),
-				tint = Color.White.copy(alpha = 0.90f)
+				tint = MaterialTheme.colorScheme.primary
 			)
 		}
 		return
@@ -433,14 +433,14 @@ private fun HomeTopBar(simplified: Boolean) {
 					imageVector = Icons.Filled.FilterHdr,
 					contentDescription = "App Logo",
 					modifier = Modifier.size(32.dp),
-					tint = Color.White.copy(alpha = 0.92f)
+					tint = MaterialTheme.colorScheme.primary
 				)
 			}
 		},
 		colors = TopAppBarDefaults.topAppBarColors(
 			containerColor = HomeScreenBackgroundColor,
 			scrolledContainerColor = HomeScreenBackgroundColor,
-			titleContentColor = Color.White
+			titleContentColor = MaterialTheme.colorScheme.onBackground
 		)
 	)
 }
@@ -520,7 +520,7 @@ private fun CategorySection(
 			text = categoryName,
 			style = MaterialTheme.typography.titleLarge.copy(
 				fontWeight = FontWeight.Bold,
-				color = Color.White.copy(alpha = 0.96f)
+				color = MaterialTheme.colorScheme.onBackground
 			),
 			modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
 		)
@@ -1141,7 +1141,9 @@ private fun resolveCategory(
 	}
 }
 
-internal val HomeScreenBackgroundColor = Color(0xFF07121F)
+internal val HomeScreenBackgroundColor: Color
+	@Composable
+	get() = MaterialTheme.colorScheme.background
 
 @Composable
 private fun rememberHomeFlingBehavior(): FlingBehavior {

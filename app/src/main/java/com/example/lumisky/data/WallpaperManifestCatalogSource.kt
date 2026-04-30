@@ -93,12 +93,18 @@ internal class WallpaperManifestParser {
 		fallbackId: String,
 		sourceAssetPath: String
 	): WallpaperCatalogEntry {
-		@Suppress("UNUSED_PARAMETER")
-		val ignoredSourceAssetPath = sourceAssetPath
 		return runCatching {
 			val id = root.optString(KEY_ID, fallbackId).ifBlank { fallbackId }
 			val defaults = WallpaperConfig.default(id)
 			val name = root.optString(KEY_NAME, defaults.name).ifBlank { defaults.name }
+			val texturesJson = root.optJSONObject(KEY_TEXTURES)
+			val shaderJson = root.optJSONObject(KEY_SHADER)
+			val forceLinearOrbitCurve = !isLighthouseWallpaper(
+				id = id,
+				sourceAssetPath = sourceAssetPath,
+				texturesJson = texturesJson,
+				shaderJson = shaderJson
+			)
 
 			val horizon = root.optJSONObject(KEY_HORIZON)
 			val horizonOffset = horizon?.optDouble(KEY_OFFSET, defaults.horizon.offset.toDouble())
@@ -114,8 +120,16 @@ internal class WallpaperManifestParser {
 				raw = celestial?.optString(KEY_MOON_PATH_TYPE),
 				fallback = defaults.celestial.moonPathType
 			)
-			val sunOrbit = decodeOrbit(celestial?.optJSONObject(KEY_SUN_ORBIT), sunPathType)
-			val moonOrbit = decodeOrbit(celestial?.optJSONObject(KEY_MOON_ORBIT), moonPathType)
+			val sunOrbit = decodeOrbit(
+				json = celestial?.optJSONObject(KEY_SUN_ORBIT),
+				fallbackPathType = sunPathType,
+				forceLinearCurve = forceLinearOrbitCurve
+			)
+			val moonOrbit = decodeOrbit(
+				json = celestial?.optJSONObject(KEY_MOON_ORBIT),
+				fallbackPathType = moonPathType,
+				forceLinearCurve = forceLinearOrbitCurve
+			)
 
 			val features = root.optJSONObject(KEY_FEATURES)
 			val featureFlags = SkyFeatureFlags(
@@ -142,7 +156,6 @@ internal class WallpaperManifestParser {
 				snow = decodeEffect(effectsJson?.optJSONObject(KEY_SNOW))
 			)
 
-			val texturesJson = root.optJSONObject(KEY_TEXTURES)
 			val textures = WallpaperTextures(
 				sunTexture = texturesJson?.optString(KEY_SUN_TEXTURE, defaults.textures.sunTexture)
 					?: defaults.textures.sunTexture,
@@ -152,7 +165,6 @@ internal class WallpaperManifestParser {
 				backgroundTexture = texturesJson?.optNullableString(KEY_BACKGROUND_TEXTURE)
 			)
 
-			val shaderJson = root.optJSONObject(KEY_SHADER)
 			val shader = ShaderProfile(
 				fragmentAssetPath = shaderJson?.optNullableString(KEY_FRAGMENT_ASSET_PATH)
 					?: defaults.shader.fragmentAssetPath,
@@ -217,9 +229,26 @@ internal class WallpaperManifestParser {
 		}.getOrThrow()
 	}
 
+	private fun isLighthouseWallpaper(
+		id: String,
+		sourceAssetPath: String,
+		texturesJson: JSONObject?,
+		shaderJson: JSONObject?
+	): Boolean {
+		return listOfNotNull(
+			id,
+			sourceAssetPath,
+			texturesJson?.optString(KEY_BACKGROUND_TEXTURE),
+			shaderJson?.optString(KEY_FRAGMENT_ASSET_PATH)
+		).any { value ->
+			value.contains("lighthouse", ignoreCase = true)
+		}
+	}
+
 	private fun decodeOrbit(
 		json: JSONObject?,
-		fallbackPathType: PathType
+		fallbackPathType: PathType,
+		forceLinearCurve: Boolean
 	): CelestialOrbitConfig? {
 		json ?: return null
 		return CelestialOrbitConfig(
@@ -231,10 +260,14 @@ internal class WallpaperManifestParser {
 			endX = json.optNullableFloat(KEY_END_X),
 			peakY = json.optNullableFloat(KEY_PEAK_Y),
 			hiddenY = json.optNullableFloat(KEY_HIDDEN_Y),
-			curve = parseOrbitCurve(
-				raw = json.optString(KEY_CURVE, OrbitCurve.LINEAR.name),
-				fallback = OrbitCurve.LINEAR
-			)
+			curve = if (forceLinearCurve) {
+				OrbitCurve.LINEAR
+			} else {
+				parseOrbitCurve(
+					raw = json.optString(KEY_CURVE, OrbitCurve.LINEAR.name),
+					fallback = OrbitCurve.LINEAR
+				)
+			}
 		)
 	}
 

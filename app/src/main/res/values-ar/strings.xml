@@ -60,6 +60,8 @@
     <string name="cat_nature">مناظر طبيعية 4K</string>
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
+    <string name="location_last_known">آخر موقع معروف</string>
+    <string name="location_last_known_format">آخر موقع معروف: %1$s</string>
 </resources>
 
 

@@ -24,8 +24,8 @@ data class CelestialOrbitConfig(
 )
 
 data class CelestialConfig(
-	val sunPathType: PathType = PathType.ARC,
-	val moonPathType: PathType = PathType.ARC,
+	val sunPathType: PathType = PathType.VERTICAL,
+	val moonPathType: PathType = PathType.VERTICAL,
 	val sunOrbit: CelestialOrbitConfig? = null,
 	val moonOrbit: CelestialOrbitConfig? = null
 )
@@ -199,7 +199,6 @@ fun WallpaperConfig.resolveSunOrbit(): CelestialOrbitConfig {
 		peakY = peakY
 	)
 }
-
 fun WallpaperConfig.resolveMoonOrbit(): CelestialOrbitConfig {
 	return celestial.moonOrbit ?: CelestialOrbitConfig(
 		pathType = celestial.moonPathType,

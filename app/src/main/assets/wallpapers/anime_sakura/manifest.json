@@ -1,0 +1,25 @@
+{
+  "id": "anime_sakura",
+  "name": "Anime Sakura Live",
+  "horizon": {
+    "offset": 0.25
+  },
+  "celestial": {
+    "sunPathType": "VERTICAL",
+    "moonPathType": "VERTICAL"
+  },
+  "features": {
+    "atmosphereEnabled": true,
+    "lensFlareEnabled": false,
+    "starsEnabled": true
+  },
+  "textures": {
+    "backgroundTexture": "anime/anime_sakura.webp",
+    "sunTexture": "anime/anime_sun.webp",
+    "moonTexture": "anime/anime_moon.webp"
+  },
+  "shader": {
+    "fragmentAssetPath": "shaders/anime_sakura/fragment.glsl",
+    "mode": "external_theme"
+  }
+}

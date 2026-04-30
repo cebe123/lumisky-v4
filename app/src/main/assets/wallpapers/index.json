@@ -5,6 +5,34 @@
       "manifest": "wallpapers/pixel_forest/manifest.json"
     },
     {
+      "id": "classic_sun",
+      "manifest": "wallpapers/classic_sun/manifest.json"
+    },
+    {
+      "id": "solar_horizon",
+      "manifest": "wallpapers/solar_horizon/manifest.json"
+    },
+    {
+      "id": "optical_sunset",
+      "manifest": "wallpapers/optical_sunset/manifest.json"
+    },
+    {
+      "id": "mars",
+      "manifest": "wallpapers/mars/manifest.json"
+    },
+    {
+      "id": "warrior",
+      "manifest": "wallpapers/warrior/manifest.json"
+    },
+    {
+      "id": "tablo",
+      "manifest": "wallpapers/tablo/manifest.json"
+    },
+    {
+      "id": "flower",
+      "manifest": "wallpapers/flower/manifest.json"
+    },
+    {
       "id": "city_lisbon",
       "manifest": "wallpapers/city_lisbon/manifest.json"
     },
@@ -23,6 +51,14 @@
     {
       "id": "city_paris",
       "manifest": "wallpapers/city_paris/manifest.json"
+    },
+    {
+      "id": "anime_sakura",
+      "manifest": "wallpapers/anime_sakura/manifest.json"
+    },
+    {
+      "id": "game_teemo",
+      "manifest": "wallpapers/game_teemo/manifest.json"
     },
     {
       "id": "sky",

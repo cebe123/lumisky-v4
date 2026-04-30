@@ -95,16 +95,21 @@ graph LR
 | Device Protected Storage | Reboot sonrası wallpaper korunumu | `WallpaperRestoreReceiver` |
 | `SceneStateHasher` ile render skip | Batarya tasarrufu | `WallpaperRenderController.kt:213-235` |
 
-### 2.4 Mimari Risk: HomeViewModel Aşırı Sorumluluk
+### 2.4 Mimari İyileştirme: HomeViewModel Ayrıştırması ✅
 
-`HomeViewModel` (~800 satır) şu anda **çok fazla sorumluluk** taşıyor:
-- Konum yönetimi + GPS listener
-- Sun-times refresh logic
-- Katalog orchestration
-- Backup prefetch scheduling
+`HomeViewModel` başarıyla ayrıştırıldı:
 
-> [!WARNING]
-> **Öneri:** `LocationCoordinator`, `SunTimesCoordinator` ve `CatalogRepository` olarak ayrıştırılmalı. Bu, test edilebilirliği ve bakım maliyetini doğrudan iyileştirir.
+| Bileşen | Sorumluluk | Satır |
+|---------|------------|-------|
+| `HomeViewModel` | UI state, katalog, wallpaper seçimi, backup prefetch | ~290 |
+| `LocationSunTimesCoordinator` | GPS, konum, sun-times, debounce pipeline | ~520 |
+
+**Değişiklik Özeti:**
+- Konum yönetimi (GPS request, passive updates, label resolution) tamamen `LocationSunTimesCoordinator`'a taşındı
+- Sun-times refresh pipeline (coalesced debounce, periodic refresh) coordinator'a taşındı
+- ViewModel'daki location state property'leri coordinator'a delege edildi (`get() = coordinator.xxx`)
+- `onDaylightChanged` callback ile daylight güncellemeleri ViewModel'a iletiliyor
+- Tüm public API yüzeyi korundu — `HomeScreen.kt` ve `MainActivity.kt` değişiklik gerektirmedi
 
 ---
 

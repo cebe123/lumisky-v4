@@ -1,5 +1,6 @@
 package com.example.lumisky
 
+import android.Manifest
 import android.app.Activity
 import android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER
 import android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER
@@ -15,6 +16,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -146,14 +148,38 @@ class MainActivity : AppCompatActivity() {
 				}
 				SideEffect {
 					window.statusBarColor = systemBarColor.toArgb()
-					WindowCompat
-						.getInsetsController(window, window.decorView)
-						.isAppearanceLightStatusBars = systemBarColor.luminance() > 0.5f
+					window.navigationBarColor = systemBarColor.toArgb()
+					val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+					val useLightSystemBars = systemBarColor.luminance() > 0.5f
+					insetsController.isAppearanceLightStatusBars = useLightSystemBars
+					insetsController.isAppearanceLightNavigationBars = useLightSystemBars
+				}
+				val startupPermissionLauncher = rememberLauncherForActivityResult(
+					contract = ActivityResultContracts.RequestMultiplePermissions()
+				) { result ->
+					val granted = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
+						result[Manifest.permission.ACCESS_FINE_LOCATION] == true
+					if (granted && homeViewModel != null) {
+						if (!homeViewModel.systemLocationEnabled) {
+							openSystemLocationPanel()
+						}
+					} else if (!granted && homeViewModel != null) {
+						homeViewModel.updateLocationMode(com.example.core.settings.LocationMode.MANUAL)
+					}
 				}
 
 				LaunchedEffect(Unit) {
 					withFrameNanos { }
 					ensureHomeViewModelCreated()
+					if (!appSettingsRepository.getHasRequestedLocationPermission()) {
+						appSettingsRepository.setHasRequestedLocationPermission(true)
+						startupPermissionLauncher.launch(
+							arrayOf(
+								Manifest.permission.ACCESS_COARSE_LOCATION,
+								Manifest.permission.ACCESS_FINE_LOCATION
+							)
+						)
+					}
 				}
 
 				if (homeViewModel == null) {
@@ -229,6 +255,7 @@ class MainActivity : AppCompatActivity() {
 								},
 								onRequestEnableSystemLocation = { openSystemLocationPanel() },
 								manualCity = homeViewModel.manualCity,
+								lastKnownCity = homeViewModel.lastKnownCity,
 								onManualCitySelected = { city -> homeViewModel.updateManualCity(city) },
 								languageTag = homeViewModel.languageTag,
 								onLanguageSelected = { tag ->

@@ -60,6 +60,8 @@
     <string name="cat_nature">Paysages Naturels 4K</string>
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
+    <string name="location_last_known">Dernière position connue</string>
+    <string name="location_last_known_format">Dernière position connue: %1$s</string>
 </resources>
 
 

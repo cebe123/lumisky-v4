@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -54,21 +55,26 @@ fun BottomNavBar(
 	animationsEnabled: Boolean = true
 ) {
 	val isHomeBackdrop = selectedItem == HOME_INDEX
+	val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
 	val frameShape = RoundedCornerShape(999.dp)
 	val frameBorderColor = if (isHomeBackdrop) {
-		Color.White.copy(alpha = 0.22f)
+		MaterialTheme.colorScheme.onSurface.copy(alpha = 0.22f)
 	} else {
-		MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
+		MaterialTheme.colorScheme.outline.copy(alpha = if (isDarkTheme) 0.18f else 0.30f)
 	}
 	val frameBackground = if (isHomeBackdrop) {
 		listOf(
-			Color.White.copy(alpha = 0.14f),
-			Color(0xFF0C1A2C).copy(alpha = 0.40f)
+			MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.16f else 0.80f),
+			if (isDarkTheme) {
+				Color(0xFF0C1A2C).copy(alpha = 0.40f)
+			} else {
+				MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.64f)
+			}
 		)
 	} else {
 		listOf(
-			Color.White.copy(alpha = 0.16f),
-			MaterialTheme.colorScheme.surface.copy(alpha = 0.30f)
+			MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.34f else 0.84f),
+			MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDarkTheme) 0.30f else 0.70f)
 		)
 	}
 
@@ -120,10 +126,11 @@ private fun GlassNavItem(
 	animationsEnabled: Boolean,
 	onClick: () -> Unit
 ) {
+	val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
 	val targetContentColor = when {
-		selected && isHomeBackdrop -> Color.White
+		selected && isHomeBackdrop -> MaterialTheme.colorScheme.onSurface
 		selected -> MaterialTheme.colorScheme.primary
-		isHomeBackdrop -> Color.White.copy(alpha = 0.82f)
+		isHomeBackdrop -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
 		else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.88f)
 	}
 	val contentColor = if (animationsEnabled) {
@@ -136,9 +143,9 @@ private fun GlassNavItem(
 		targetContentColor
 	}
 	val targetBorderColor = when {
-		selected && isHomeBackdrop -> Color.White.copy(alpha = 0.20f)
+		selected && isHomeBackdrop -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f)
 		selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.19f)
-		isHomeBackdrop -> Color.White.copy(alpha = 0.11f)
+		isHomeBackdrop -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.11f)
 		else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)
 	}
 	val borderColor = if (animationsEnabled) {
@@ -152,22 +159,30 @@ private fun GlassNavItem(
 	}
 	val glassGradient = if (isHomeBackdrop) {
 		listOf(
-			Color.White.copy(alpha = if (selected) 0.24f else 0.18f),
-			Color(0xFF102238).copy(alpha = if (selected) 0.58f else 0.44f)
+			MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) {
+				if (selected) 0.24f else 0.18f
+			} else {
+				if (selected) 0.86f else 0.74f
+			}),
+			if (isDarkTheme) {
+				Color(0xFF102238).copy(alpha = if (selected) 0.58f else 0.44f)
+			} else {
+				MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (selected) 0.58f else 0.40f)
+			}
 		)
 	} else if (selected) {
 		listOf(
-			Color.White.copy(alpha = 0.30f),
-			MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.40f)
+			MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.32f else 0.86f),
+			MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.40f else 0.62f)
 		)
 	} else {
 		listOf(
-			Color.White.copy(alpha = 0.22f),
-			MaterialTheme.colorScheme.surface.copy(alpha = 0.32f)
+			MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.30f else 0.76f),
+			MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDarkTheme) 0.32f else 0.56f)
 		)
 	}
 	val topGlow = if (isHomeBackdrop) {
-		Color.White.copy(alpha = if (selected) 0.14f else 0.08f)
+		MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) 0.14f else 0.08f)
 	} else {
 		MaterialTheme.colorScheme.primary.copy(alpha = if (selected) 0.10f else 0.05f)
 	}

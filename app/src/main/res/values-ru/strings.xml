@@ -60,6 +60,8 @@
     <string name="cat_nature">Природные Пейзажи 4K</string>
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
+    <string name="location_last_known">Последнее известное местоположение</string>
+    <string name="location_last_known_format">Последнее известное местоположение: %1$s</string>
 </resources>
 
 

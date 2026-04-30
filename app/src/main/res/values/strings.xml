@@ -64,5 +64,7 @@
     <!-- Extra strings -->
     <string name="coming_soon">COMING SOON</string>
     <string name="coming_soon_desc">Something exciting is on the way!</string>
+    <string name="location_last_known">Last Known Location</string>
+    <string name="location_last_known_format">Last Known Location: %1$s</string>
 </resources>
 

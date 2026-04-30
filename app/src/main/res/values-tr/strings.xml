@@ -57,6 +57,9 @@
 
     <string name="cat_games">Oyun Arkaplanları HD</string>
     <string name="cat_nature">Doğal Manzara 4K</string>
+    <string name="coming_soon">YAKINDA</string>
+    <string name="coming_soon_desc">Heyecan verici bir şey yolda!</string>
+    <string name="location_last_known">Son Konum</string>
+    <string name="location_last_known_format">Son Konum: %1$s</string>
 </resources>
-
 

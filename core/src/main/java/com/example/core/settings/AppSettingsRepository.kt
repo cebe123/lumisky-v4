@@ -118,7 +118,34 @@ class AppSettingsRepository(
 		val defaultCity = AppSettingsDefaults.defaultCity(languageTag)
 		val storedId = prefs.getString(KEY_MANUAL_CITY_ID, null)
 		if (!storedId.isNullOrBlank()) {
-			return AppSettingsDefaults.resolveCityById(storedId, languageTag)
+			AppSettingsDefaults.supportedCities(languageTag)
+				.firstOrNull { city -> city.id == storedId }
+				?.let { city -> return city }
+
+			val storedName = prefs.getString(KEY_MANUAL_CITY_NAME, null)?.takeIf { it.isNotBlank() }
+			val latitude = readDouble(KEY_MANUAL_CITY_LAT, Double.NaN)
+			val longitude = readDouble(KEY_MANUAL_CITY_LNG, Double.NaN)
+			val timeZoneId = prefs.getString(KEY_MANUAL_CITY_TIME_ZONE_ID, null)
+				?.takeIf { it.isNotBlank() }
+			if (
+				storedName != null &&
+				latitude.isFinite() &&
+				longitude.isFinite() &&
+				!timeZoneId.isNullOrBlank()
+			) {
+				return ManualCity(
+					id = storedId,
+					name = storedName,
+					countryCode = prefs.getString(KEY_MANUAL_CITY_COUNTRY, null)
+						?.takeIf { it.isNotBlank() }
+						?: "GPS",
+					latitude = latitude,
+					longitude = longitude,
+					timeZoneId = timeZoneId
+				)
+			}
+
+			return defaultCity
 		}
 
 		val legacyName = prefs.getString(KEY_MANUAL_CITY_NAME, defaultCity.name)
@@ -140,11 +167,13 @@ class AppSettingsRepository(
 		val storedCountryCode = prefs.getString(KEY_MANUAL_CITY_COUNTRY, null)
 		val storedLatitude = readDouble(KEY_MANUAL_CITY_LAT, Double.NaN)
 		val storedLongitude = readDouble(KEY_MANUAL_CITY_LNG, Double.NaN)
+		val storedTimeZoneId = prefs.getString(KEY_MANUAL_CITY_TIME_ZONE_ID, null)
 		val sameStoredCity = storedCityId == city.id &&
 			storedCityName == city.name &&
 			storedCountryCode == city.countryCode &&
 			storedLatitude == city.latitude &&
-			storedLongitude == city.longitude
+			storedLongitude == city.longitude &&
+			storedTimeZoneId == city.timeZoneId
 		if (sameStoredCity) return
 		prefs.edit()
 			.putString(KEY_MANUAL_CITY_ID, city.id)
@@ -152,6 +181,7 @@ class AppSettingsRepository(
 			.putString(KEY_MANUAL_CITY_COUNTRY, city.countryCode)
 			.putLong(KEY_MANUAL_CITY_LAT, city.latitude.toRawBits())
 			.putLong(KEY_MANUAL_CITY_LNG, city.longitude.toRawBits())
+			.putString(KEY_MANUAL_CITY_TIME_ZONE_ID, city.timeZoneId)
 			.apply()
 		dispatchSnapshotChanged()
 	}
@@ -233,6 +263,14 @@ class AppSettingsRepository(
 			.remove(KEY_AUTO_LOCATION_SOURCE)
 			.apply()
 		dispatchSnapshotChanged()
+	}
+
+	fun getHasRequestedLocationPermission(): Boolean {
+		return prefs.getBoolean(KEY_REQUESTED_LOCATION_PERMISSION, false)
+	}
+
+	fun setHasRequestedLocationPermission(requested: Boolean) {
+		prefs.edit().putBoolean(KEY_REQUESTED_LOCATION_PERMISSION, requested).apply()
 	}
 
 	fun getRestoreLiveWallpaperOnLockScreen(): Boolean? {
@@ -317,6 +355,7 @@ class AppSettingsRepository(
 		private const val KEY_MANUAL_CITY_COUNTRY = "manual_city_country"
 		private const val KEY_MANUAL_CITY_LAT = "manual_city_lat"
 		private const val KEY_MANUAL_CITY_LNG = "manual_city_lng"
+		private const val KEY_MANUAL_CITY_TIME_ZONE_ID = "manual_city_time_zone_id"
 		private const val KEY_AUTO_LOCATION_LAT = "auto_location_lat"
 		private const val KEY_AUTO_LOCATION_LNG = "auto_location_lng"
 		private const val KEY_AUTO_LOCATION_TIME_ZONE_ID = "auto_location_time_zone_id"
@@ -327,6 +366,7 @@ class AppSettingsRepository(
 		private const val KEY_AUTO_LOCATION_SOURCE = "auto_location_source"
 		private const val KEY_RESTORE_LIVE_WALLPAPER_ON_LOCK_SCREEN =
 			"restore_live_wallpaper_on_lock_screen"
+		private const val KEY_REQUESTED_LOCATION_PERMISSION = "requested_location_permission"
 
 		private const val DEFAULT_HIGH_REFRESH_ENABLED = false
 		private val DEFAULT_PERFORMANCE_MODE = PerformanceMode.AUTO
