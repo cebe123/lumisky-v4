@@ -52,6 +52,7 @@ open class SkyWallpaperService : WallpaperService() {
 		private var userUnlockReceiverRegistered: Boolean = false
 		private var settingsChangeSubscription: AutoCloseable? = null
 		private var daylightSyncDeferredUntilUnlockLogged: Boolean = false
+		private var renderSettingsDeferredUntilUnlockLogged: Boolean = false
 		private var engineVisible: Boolean = false
 		private var engineSurfaceAttached: Boolean = false
 		private var lastAppliedConfigSignature: String? = null
@@ -67,8 +68,10 @@ open class SkyWallpaperService : WallpaperService() {
 		private val userUnlockReceiver = object : BroadcastReceiver() {
 			override fun onReceive(context: Context?, intent: Intent?) {
 				if (intent?.action != Intent.ACTION_USER_UNLOCKED) return
+				applyUserUnlockedSettingsIfAvailable()
 				maybeStartDaylightSyncCoordinator()
 				maybeRestoreLockScreenWallpaperSharing()
+				applyStoredConfig()
 			}
 		}
 
@@ -76,8 +79,7 @@ open class SkyWallpaperService : WallpaperService() {
 			super.onCreate(surfaceHolder)
 			registerConfigRefreshReceiver()
 			registerUserUnlockReceiver()
-			registerSettingsChangeListener()
-			refreshRenderSettings()
+			applyUserUnlockedSettingsIfAvailable()
 			renderController.setPreviewMode(isPreview)
 			maybeStartDaylightSyncCoordinator()
 			daylightSyncCoordinator?.setPreviewMode(isPreview)
@@ -95,7 +97,7 @@ open class SkyWallpaperService : WallpaperService() {
 			daylightSyncCoordinator?.setPreviewMode(isPreview)
 			maybeRestoreLockScreenWallpaperSharing()
 			if (visible) {
-				refreshRenderSettings()
+				applyUserUnlockedSettingsIfAvailable()
 				applyStoredConfig()
 			}
 			daylightSyncCoordinator?.onVisibilityChanged(visible)
@@ -107,7 +109,7 @@ open class SkyWallpaperService : WallpaperService() {
 			super.onSurfaceCreated(holder)
 			engineSurfaceAttached = true
 			renderController.setPreviewMode(isPreview)
-			refreshRenderSettings()
+			applyUserUnlockedSettingsIfAvailable()
 			maybeStartDaylightSyncCoordinator()
 			daylightSyncCoordinator?.setPreviewMode(isPreview)
 			maybeRestoreLockScreenWallpaperSharing()
@@ -198,6 +200,20 @@ open class SkyWallpaperService : WallpaperService() {
 			} ?: run {
 				Logger.w("SkyWallpaperService", "apply_stored_config skipped: no saved config")
 			}
+		}
+
+		private fun applyUserUnlockedSettingsIfAvailable(): Boolean {
+			if (!isUserUnlocked()) {
+				if (!renderSettingsDeferredUntilUnlockLogged) {
+					Logger.i(TAG, "render settings deferred until user unlock")
+					renderSettingsDeferredUntilUnlockLogged = true
+				}
+				return false
+			}
+			renderSettingsDeferredUntilUnlockLogged = false
+			registerSettingsChangeListener()
+			refreshRenderSettings()
+			return true
 		}
 
 		private fun resolveConfigForCurrentEngine() =
