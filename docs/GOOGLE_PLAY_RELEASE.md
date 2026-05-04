@@ -22,7 +22,7 @@ Official references:
 
 ```properties
 lumisky.applicationId=com.lumisky.android
-lumisky.versionCode=3
+lumisky.versionCode=4
 lumisky.versionName=1.0.1
 ```
 

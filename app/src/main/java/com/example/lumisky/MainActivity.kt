@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -40,7 +41,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.toArgb
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import com.example.core.Logger
@@ -117,6 +117,7 @@ class MainActivity : AppCompatActivity() {
 		val launchLanguageTag = appSettingsRepository.getLanguageTag()
 		applyLanguage(launchLanguageTag)
 		super.onCreate(savedInstanceState)
+		enableEdgeToEdge()
 
 		setContent {
 			val homeViewModel = homeViewModelState.value
@@ -147,8 +148,6 @@ class MainActivity : AppCompatActivity() {
 					targetSystemBarColor
 				}
 				SideEffect {
-					window.statusBarColor = systemBarColor.toArgb()
-					window.navigationBarColor = systemBarColor.toArgb()
 					val insetsController = WindowCompat.getInsetsController(window, window.decorView)
 					val useLightSystemBars = systemBarColor.luminance() > 0.5f
 					insetsController.isAppearanceLightStatusBars = useLightSystemBars
