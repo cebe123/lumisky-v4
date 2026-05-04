@@ -1,6 +1,6 @@
 # Google Play Release
 
-Last checked: 2026-04-25
+Last checked: 2026-05-04
 
 ## Build Requirements
 
@@ -21,9 +21,9 @@ Official references:
 `lumisky.applicationId` is set in `gradle.properties`:
 
 ```properties
-lumisky.applicationId=com.lumisky.wallpaper
-lumisky.versionCode=1
-lumisky.versionName=1.0.0
+lumisky.applicationId=com.lumisky.android
+lumisky.versionCode=3
+lumisky.versionName=1.0.1
 ```
 
 The application ID is permanent after the first Play upload. Change it before the first upload if `com.lumisky.wallpaper` is not the final package name.
@@ -89,7 +89,9 @@ app/build/outputs/bundle/release/app-release.aab
 ## Play Console Checklist
 
 - Use `app-release.aab` for the release track.
-- Complete Data safety. The app requests approximate and precise location and uses network access for daylight/location-related behavior.
-- Add a real privacy policy URL in Play Console and inside the app/store materials before submission.
+- Privacy policy URL: `https://sites.google.com/view/lumiskylivesolarwallpaper`
+- Google Sites source text for the required policy update is maintained in `docs/GOOGLE_SITES_PRIVACY_POLICY.md`.
+- Complete Data safety. The app requests approximate and precise location. It may send latitude, longitude, and time zone over HTTPS to `https://api.sunrise-sunset.org/json` for sunrise/sunset/solar-noon synchronization.
+- Data safety should not claim "no location data leaves the device" while online daylight synchronization remains enabled.
 - Confirm content rating, target audience, ads status, and app category.
 - Keep `QUERY_ALL_PACKAGES` out of the manifest unless the app has a policy-approved core use case.
