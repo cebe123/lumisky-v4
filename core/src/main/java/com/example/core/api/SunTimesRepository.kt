@@ -117,6 +117,12 @@ class SunTimesRepository(
 		forceRefresh: Boolean = false,
 		onUpdated: (SunDaylightResolution) -> Unit = {}
 	) {
+		if (refreshExecutor.isShutdown) {
+			val (fallback, _) = resolveFallback()
+			onUpdated(SunDaylightResolution(daylight = fallback, sourceLocation = null))
+			return
+		}
+
 		if (candidates.isEmpty()) {
 			val (fallback, source) = resolveFallback()
 			Logger.w(
