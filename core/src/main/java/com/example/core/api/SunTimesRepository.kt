@@ -2,7 +2,6 @@ package com.example.core.api
 
 import com.example.core.Logger
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import java.util.LinkedHashMap
 import java.util.Locale
@@ -505,10 +504,10 @@ class SunTimesRepository(
 		timeZoneId: String?,
 		epochMillis: Long = nowProvider()
 	): String {
-		return LocalDate.ofInstant(
-			Instant.ofEpochMilli(epochMillis),
-			resolveZoneId(timeZoneId)
-		).toString()
+		return Instant.ofEpochMilli(epochMillis)
+			.atZone(resolveZoneId(timeZoneId))
+			.toLocalDate()
+			.toString()
 	}
 
 	private fun toDailyCacheKey(locationKey: String, dayKey: String): String {
