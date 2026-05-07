@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.opengl.GLES20
 import android.opengl.GLUtils
+import com.example.core.Logger
 import kotlin.math.roundToInt
 
 internal class GlTextureLoader(
@@ -16,8 +17,14 @@ internal class GlTextureLoader(
 		qualityScale: Float
 	): Int {
 		val normalized = path?.takeIf { it.isNotBlank() } ?: return 0
-		val loader = textureBytesLoader ?: return 0
-		val resolvedTexture = preferredTextureResolver.resolve(normalized, loader) ?: return 0
+		val loader = textureBytesLoader ?: run {
+			Logger.w(TAG, "Texture loader unavailable path=$normalized")
+			return 0
+		}
+		val resolvedTexture = preferredTextureResolver.resolve(normalized, loader) ?: run {
+			Logger.w(TAG, "Texture asset unavailable path=$normalized")
+			return 0
+		}
 		val resolvedPath = resolvedTexture.path
 		val bytes = resolvedTexture.bytes
 
@@ -30,7 +37,10 @@ internal class GlTextureLoader(
 				inDither = true
 				inSampleSize = resolveTextureDecodeSampleSize(resolvedPath, qualityScale)
 			}
-		) ?: return 0
+		) ?: run {
+			Logger.w(TAG, "Texture decode failed path=$resolvedPath bytes=${bytes.size}")
+			return 0
+		}
 		val bitmap = preprocessTextureBitmap(
 			assetPath = resolvedPath,
 			bitmap = decodedBitmap
@@ -39,7 +49,10 @@ internal class GlTextureLoader(
 			val handles = IntArray(1)
 			GLES20.glGenTextures(1, handles, 0)
 			val handle = handles[0]
-			if (handle == 0) return 0
+			if (handle == 0) {
+				Logger.w(TAG, "glGenTextures returned 0 path=$resolvedPath")
+				return 0
+			}
 
 			GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, handle)
 			val isPixelArt = isPixelArtTexture(resolvedPath)
@@ -56,9 +69,30 @@ internal class GlTextureLoader(
 			GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, magFilter)
 			GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
 			GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
-			GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
+			clearGlErrors()
+			runCatching {
+				GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
+			}.onFailure { error ->
+				Logger.w(TAG, "Texture upload threw path=$resolvedPath", error)
+				GLES20.glDeleteTextures(1, intArrayOf(handle), 0)
+				return 0
+			}
+			val uploadError = GLES20.glGetError()
+			if (uploadError != GLES20.GL_NO_ERROR) {
+				Logger.w(
+					TAG,
+					"Texture upload failed path=$resolvedPath size=${bitmap.width}x${bitmap.height} glError=$uploadError"
+				)
+				GLES20.glDeleteTextures(1, intArrayOf(handle), 0)
+				return 0
+			}
 			if (!isPixelArt && isPot) {
 				GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D)
+				val mipmapError = GLES20.glGetError()
+				if (mipmapError != GLES20.GL_NO_ERROR) {
+					Logger.w(TAG, "Texture mipmap generation failed path=$resolvedPath glError=$mipmapError")
+					GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+				}
 			}
 			handle
 		} finally {
@@ -361,7 +395,15 @@ internal class GlTextureLoader(
 		return value > 0 && (value and (value - 1)) == 0
 	}
 
+	private fun clearGlErrors() {
+		repeat(MAX_GL_ERROR_DRAIN_COUNT) {
+			if (GLES20.glGetError() == GLES20.GL_NO_ERROR) return
+		}
+	}
+
 	companion object {
+		private const val TAG = "GlTextureLoader"
+		private const val MAX_GL_ERROR_DRAIN_COUNT = 8
 		private const val ANIME_SAKURA_TEXTURE_PATH = "anime/anime_sakura.webp"
 		private const val TEEMO_BACKGROUND_TEXTURE_PATH = "teemo/teemo.webp"
 		private const val TEEMO_SUN_TEXTURE_PATH = "teemo/teemo_sun.webp"

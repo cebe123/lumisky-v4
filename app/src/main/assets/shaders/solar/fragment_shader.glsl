@@ -1,4 +1,8 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 uniform float u_Time;
 uniform vec2 u_Resolution;
@@ -6,6 +10,8 @@ uniform float u_Minute;
 uniform float u_Sunrise;
 uniform float u_Sunset;
 uniform float u_SolarNoon;
+uniform float u_CloudOffset;
+uniform float u_CloudAlpha;
 
 uniform vec2 u_TouchPosition;
 uniform float u_TouchTime;
@@ -161,10 +167,11 @@ void main() {
         finalColor += (isActuallyDay ? sunsetOrange : moonGlowColor) * verticalGlow;
 
         vec2 cloudUV = uv;
-        cloudUV.x += u_Time * 0.005 * u_WindSpeed;
+        cloudUV.x += u_CloudOffset + u_Time * 0.005 * u_WindSpeed;
         float cloudNoise = fbm(cloudUV * 3.0);
-        float cloudMask = smoothstep(0.4, 0.7, cloudNoise);
+        float cloudMask = smoothstep(0.46, 0.78, cloudNoise);
         cloudMask *= smoothstep(HORIZON_Y, HORIZON_Y + 0.2, uv.y);
+        cloudMask *= max(u_CloudAlpha, 0.24);
         vec3 cloudColor = mix(vec3(0.35), vec3(1.0), isDay * 0.8 + 0.2);
         finalColor = mix(finalColor, cloudColor, cloudMask * 0.4);
 

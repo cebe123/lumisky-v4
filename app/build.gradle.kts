@@ -864,6 +864,12 @@ tasks.register("deployDebugToConnectedDevice") {
 			workingDir = appProjectDir,
 			command = listOf(adb.absolutePath, "-s", selectedSerial, "install", "-r", "-d", apk.absolutePath)
 		)
+		val launcherActivity = resolveLauncherActivity(
+			workingDir = appProjectDir,
+			adb = adb,
+			deviceSerial = selectedSerial,
+			applicationId = appId
+		)
 		runCommand(
 			workingDir = appProjectDir,
 			command = listOf(
@@ -874,7 +880,7 @@ tasks.register("deployDebugToConnectedDevice") {
 				"am",
 				"start",
 				"-n",
-				"$appId/.MainActivity"
+				launcherActivity
 			)
 		)
 
@@ -1009,6 +1015,33 @@ private fun savePhoneRunPreferences(
 	file.outputStream().use { output ->
 		properties.store(output, "Local phone deployment preferences for Codex")
 	}
+}
+
+private fun resolveLauncherActivity(
+	workingDir: File,
+	adb: File,
+	deviceSerial: String,
+	applicationId: String
+): String {
+	val output = runCommand(
+		workingDir = workingDir,
+		command = listOf(
+			adb.absolutePath,
+			"-s",
+			deviceSerial,
+			"shell",
+			"cmd",
+			"package",
+			"resolve-activity",
+			"--brief",
+			applicationId
+		)
+	)
+	return output.lineSequence()
+		.map { it.trim() }
+		.filter { it.contains('/') && !it.startsWith("priority=") }
+		.lastOrNull()
+		?: throw GradleException("Launcher activity not found for $applicationId on $deviceSerial.")
 }
 
 private fun runCommand(

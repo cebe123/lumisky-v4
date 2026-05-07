@@ -1,4 +1,8 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 uniform float u_Time;
 uniform vec2 u_Resolution;
@@ -154,7 +158,7 @@ void main() {
         color = mix(color, lunarSurf, m);
 
         if (u_TimeOfDay > 0.6) {
-            float starThresh = 0.98;
+            float starThresh = 0.99;
             float n = hash(uv * 10.0 + vec2(0.0, 1.0));
             float twinkle = noise(uv * 50.0 + u_Time);
             if (n > starThresh) {

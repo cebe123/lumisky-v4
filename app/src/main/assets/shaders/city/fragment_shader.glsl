@@ -1,4 +1,8 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 uniform float u_Time;
 uniform vec2 u_Resolution;
@@ -7,6 +11,9 @@ uniform float u_Sunrise;
 uniform float u_Sunset;
 uniform float u_SolarNoon;
 uniform sampler2D u_Texture; // City Mask Texture
+uniform float u_CloudOffset;
+uniform float u_CloudAlpha;
+uniform float u_HasStars;
 
 uniform vec2 u_TouchPosition;
 uniform float u_TouchTime;
@@ -80,59 +87,34 @@ float resolvePeakAlignedProgress(float minute, float startMinute, float peakMinu
     float secondHalf = max(endMinute - safePeak, 1.0);
     return clamp(0.5 + ((minute - safePeak) / secondHalf) * 0.5, 0.5, 1.0);
 }
-// --- Yıldız Oluşturma Fonksiyonu ---
-// Gürültü ve zaman tabanlı parlama kullanarak prosedürel yıldızlar oluşturur
 float getStars(vec2 uv) {
-    // 1. Yıldız Konumlandırması: Rastgelelik için gürültü kullan
-    // Dikey sıralanmayı bozmak için koordinatları çevir
-    float theta = 0.785; // 45 derece döndür
+    float theta = 0.63;
     float cs = cos(theta);
     float sn = sin(theta);
     vec2 rotatedUV = vec2(uv.x * cs - uv.y * sn, uv.x * sn + uv.y * cs);
-    
-    // Grid tabanlı yaklaşım yerine yüksek frekanslı gürültü eşiği
-    float starNoise = noise(rotatedUV * 300.0 + vec2(43.0, 19.0)); // Ofset ekle
-    float starThreshold = 0.80; // DAHA DA FAZLA YILDIZ İÇİN EŞİK DÜŞÜRÜLDÜ (0.95 -> 0.80)
-    
-    float stars = step(starThreshold, starNoise);
-    
-    // 2. Yıldız Parlaması (%15 Aktiflik Kuralı)
-    
-    // Her yıldız için 0 ile 1 arasında rastgele bir "Grup ID"si belirle
-    float starGroupID = hash(rotatedUV * 50.0);
-    
-    // Zamanı dilimlere böl (Her saniye farklı bir grup aktif olsun)
-    // 0.0 ile 1.0 arasında yavaşça değişen bir "Aktif Pencere" oluştur
-    float timeWindow = fract(u_Time * 0.2); // Her 5 saniyede bir tam döngü (Daha yavaş devir)
-    
-    // Sadece "Grup ID"si şu anki "Aktif Pencere"ye yakın olanları seç (%15'lik dilim)
-    // abs(a - b) < 0.075  =>  0.05 genişliğinde bir pencere
-    // Döngüsel olması için fract kullanıyoruz
-    float dist = abs(starGroupID - timeWindow);
-    float isActive = step(dist, 0.015); 
-    
-    // Aktif olanlar parıldasın, pasif olanlar sabit kalsın
-    float randomPhase = starGroupID * 6.28;
-    
-    // 2. Yıldız Parlaması (Basitleştirilmiş ve Güvenli)
-    // Karmaşık grid ve loop mantığı bazı GPU'larda sorun çıkardığı için
-    // daha basit ama etkili, loop içermeyen bir yaklaşıma dönüyoruz.
-    
-    // Her yıldızın benzersiz bir fazı olsun
-    float starPhase = hash(rotatedUV * 50.0) * 6.28;
-    
-    // Her yıldızın hızı farklı olsun (Yavaş 0.3 - 0.7 arası)
-    float speed = 0.3 + hash(uv) * 0.4;
-    
-    // Sinüs dalgası: -1..1 -> 0..1
-    float wave = sin(u_Time * speed + starPhase) * 0.5 + 0.5;
-    
-    // Parlaklığı modüle et
-    // Çok sönük (0.4) ile Parlak (1.2) arasında gidip gelsin
-    // wave^3 kullanarak "parlama" anlarını daha nadir ve keskin yap (Gaussian benzeri)
-    float brightness = 0.4 + pow(wave, 3.0) * 0.8;
-    
-    return stars * brightness;
+    vec2 starGrid = rotatedUV * vec2(78.0, 52.0) + vec2(11.0, 23.0);
+    vec2 starCell = floor(starGrid);
+    vec2 starLocal = fract(starGrid) - 0.5;
+    vec2 randomOffset = vec2(
+        hash(starCell + vec2(5.0, 13.0)),
+        hash(starCell + vec2(17.0, 3.0))
+    ) - 0.5;
+    vec2 delta = starLocal - randomOffset * 0.72;
+
+    float selector = hash(starCell + vec2(29.0, 31.0));
+    float presence = step(0.979, selector);
+    float largeStar = step(0.994, selector);
+    float core = smoothstep(mix(0.075, 0.115, largeStar), 0.0, length(delta));
+    float cross = max(
+        smoothstep(0.030, 0.0, abs(delta.x)) * smoothstep(0.120, 0.0, abs(delta.y)),
+        smoothstep(0.030, 0.0, abs(delta.y)) * smoothstep(0.120, 0.0, abs(delta.x))
+    ) * largeStar * 0.35;
+    float phase = hash(starCell + vec2(7.0, 19.0)) * 6.28318;
+    float speed = 0.36 + hash(starCell + vec2(13.0, 5.0)) * 0.58;
+    float pulse = pow(sin(u_Time * speed + phase) * 0.5 + 0.5, 4.0);
+    float twinkle = 0.66 + pulse * 0.42;
+
+    return presence * max(core, cross) * twinkle;
 }
 
 void main() {
@@ -245,10 +227,11 @@ void main() {
         finalColor = mix(finalColor, bodyCore, disk);
         // Clouds
         vec2 cloudUV = uv;
-        cloudUV.x += u_Time * 0.005 * u_WindSpeed;
+        cloudUV.x += u_CloudOffset + u_Time * 0.005 * u_WindSpeed;
         float cloudNoise = fbm(cloudUV * 3.0);
-        float cloudMask = smoothstep(0.4, 0.7, cloudNoise);
+        float cloudMask = smoothstep(0.46, 0.78, cloudNoise);
         cloudMask *= smoothstep(HORIZON_Y, HORIZON_Y + 0.2, uv.y);
+        cloudMask *= u_CloudAlpha;
         
         // --- Yıldızları Uygula (Sadece Gece) ---
         // Sadece gece görünür (1.0 - isDay)
@@ -258,10 +241,10 @@ void main() {
         float starVis = smoothstep(HORIZON_Y, HORIZON_Y + 0.3, uv.y);
         
         // Bulutların arkasında kalsın (1.0 - cloudMask)
-        float starVal = getStars(uv);
+        float starVal = getStars(uv) * u_HasStars;
         
         // Final yıldız rengi katkısı
-        vec3 starColor = vec3(0.9, 0.95, 1.0) * starVal * nightFactor * starVis * (1.0 - cloudMask);
+        vec3 starColor = vec3(0.9, 0.95, 1.0) * starVal * nightFactor * starVis * (1.0 - clamp(cloudMask * 2.2, 0.0, 1.0));
         finalColor += starColor;
 
         vec3 cloudColor = mix(vec3(0.35), vec3(1.0), isDay * 0.8 + 0.2);

@@ -1,4 +1,8 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 uniform vec2 u_SunPos;
 uniform float u_AspectRatio;
@@ -93,7 +97,7 @@ float getStars(vec2 uv) {
 		hash(starCell + vec2(17.0, 3.0))
 	) - 0.5;
 	vec2 delta = starLocal - randomOffset * 0.82;
-	float presence = step(0.54, hash(starCell + vec2(29.0, 31.0)));
+	float presence = step(0.77, hash(starCell + vec2(29.0, 31.0)));
 	float core = smoothstep(0.12, 0.0, length(delta));
 	float cross = max(
 		smoothstep(0.055, 0.0, abs(delta.x)) * smoothstep(0.18, 0.0, abs(delta.y)),

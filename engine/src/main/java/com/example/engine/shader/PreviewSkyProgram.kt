@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.opengl.EGL14
 import android.opengl.GLES20
 import android.opengl.GLUtils
+import com.example.core.Logger
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
 import java.nio.ByteBuffer
@@ -107,7 +108,9 @@ class PreviewSkyProgram {
 		val fragmentShader = fragmentShaderOverride ?: BUILTIN_FRAGMENT_SHADER
 		programHandle = buildProgram(VERTEX_SHADER, fragmentShader)
 		if (programHandle == 0) {
-			// Fallback to built-in shader if override fails.
+			if (fragmentShaderOverride != null) {
+				Logger.w(TAG, "Fragment shader override failed, using built-in fallback")
+			}
 			programHandle = buildProgram(VERTEX_SHADER, BUILTIN_FRAGMENT_SHADER)
 		}
 		if (programHandle == 0) return
@@ -376,9 +379,11 @@ class PreviewSkyProgram {
 
 		val linkStatus = IntArray(1)
 		GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, linkStatus, 0)
+		val linkInfo = GLES20.glGetProgramInfoLog(program).orEmpty()
 		GLES20.glDeleteShader(vertexHandle)
 		GLES20.glDeleteShader(fragmentHandle)
 		if (linkStatus[0] == 0) {
+			Logger.e(TAG, "Shader program link failed info=$linkInfo")
 			GLES20.glDeleteProgram(program)
 			return 0
 		}
@@ -411,6 +416,8 @@ class PreviewSkyProgram {
 		val status = IntArray(1)
 		GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, status, 0)
 		if (status[0] == 0) {
+			val info = GLES20.glGetShaderInfoLog(shader).orEmpty()
+			Logger.e(TAG, "Shader compile failed type=$type info=$info")
 			GLES20.glDeleteShader(shader)
 			return null
 		}
@@ -421,6 +428,7 @@ class PreviewSkyProgram {
 		private const val FLOAT_SIZE_BYTES = 4
 		private const val VERTEX_COUNT = 4
 		private const val MINUTES_PER_DAY = 1440
+		private const val TAG = "PreviewSkyProgram"
 		private const val QUALITY_ATMOSPHERE_THRESHOLD = 0.45f
 		private const val QUALITY_FLARE_THRESHOLD = 0.55f
 		private const val QUALITY_STARS_THRESHOLD = 0.70f

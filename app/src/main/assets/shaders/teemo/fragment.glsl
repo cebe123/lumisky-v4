@@ -1,4 +1,8 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 uniform vec2 u_SunPos;
 uniform vec3 u_SunColor;
@@ -125,7 +129,7 @@ float getStars(vec2 uv) {
 
     vec2 starGrid = rotatedUV * 300.0 + vec2(43.0, 19.0);
     float starNoise = noise(starGrid);
-    float stars = step(0.80, starNoise);
+    float stars = step(0.90, starNoise);
     vec2 starCell = floor(starGrid);
 
     float starPhase = hash(starCell + vec2(5.0, 17.0)) * 6.28;
