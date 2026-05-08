@@ -129,7 +129,7 @@ float getStars(vec2 uv) {
 
     vec2 starGrid = rotatedUV * 300.0 + vec2(43.0, 19.0);
     float starNoise = noise(starGrid);
-    float stars = step(0.90, starNoise);
+    float stars = step(0.99, starNoise);
     vec2 starCell = floor(starGrid);
 
     float starPhase = hash(starCell + vec2(5.0, 17.0)) * 6.28;

@@ -102,8 +102,8 @@ float getStars(vec2 uv) {
     vec2 delta = starLocal - randomOffset * 0.72;
 
     float selector = hash(starCell + vec2(29.0, 31.0));
-    float presence = step(0.979, selector);
-    float largeStar = step(0.994, selector);
+    float presence = step(0.9979, selector);
+    float largeStar = step(0.9994, selector);
     float core = smoothstep(mix(0.075, 0.115, largeStar), 0.0, length(delta));
     float cross = max(
         smoothstep(0.030, 0.0, abs(delta.x)) * smoothstep(0.120, 0.0, abs(delta.y)),
