@@ -41,6 +41,7 @@ internal class WallpaperRenderController(
 	private var currentConfig: WallpaperConfig? = null
 	private var pendingFullRedraw: Boolean = true
 	private var lastRenderElapsedMs: Long = 0L
+	private var surfaceGeneration: Int = 0
 	private val framePacingClock = FramePacingClock()
 
 	fun onCreate() {
@@ -63,12 +64,14 @@ internal class WallpaperRenderController(
 
 	fun onSurfaceCreated(holder: SurfaceHolder) {
 		surfaceAttached = true
+		val generation = ++surfaceGeneration
 		displayRefreshRateHz = displayRefreshRateProvider()
 		pendingFullRedraw = true
 		updateSchedulerState()
 		postRenderTask {
+			if (!isCurrentSurfaceGeneration(generation)) return@postRenderTask
 			renderEngine.attachSurface(holder)
-			if (visible) {
+			if (visible && isCurrentSurfaceGeneration(generation)) {
 				updateRenderLoopsLocked()
 				renderCurrentScene(force = true)
 			}
@@ -97,9 +100,10 @@ internal class WallpaperRenderController(
 
 	fun onSurfaceDestroyed() {
 		surfaceAttached = false
+		surfaceGeneration++
 		pendingFullRedraw = true
 		updateSchedulerState()
-		postRenderTask {
+		postRenderTaskBlocking(SURFACE_DETACH_WAIT_TIMEOUT_MS) {
 			stopRenderLoopsLocked()
 			renderEngine.detachSurface()
 		}
@@ -153,6 +157,7 @@ internal class WallpaperRenderController(
 
 	fun onDestroy() {
 		scheduler.stop()
+		surfaceGeneration++
 		postRenderTaskBlocking {
 			stopRenderLoopsLocked()
 			renderThreadVsyncLoop = null
@@ -210,6 +215,7 @@ internal class WallpaperRenderController(
 		frameTimeNanos: Long? = null,
 		debounceForcedRender: Boolean = true
 	) {
+		if (!visible || !surfaceAttached) return
 		if (previewMode) {
 			val renderedState = renderEngine.renderFrame(
 				force = true,
@@ -318,6 +324,10 @@ internal class WallpaperRenderController(
 		renderHandler?.post(task)
 	}
 
+	private fun isCurrentSurfaceGeneration(generation: Int): Boolean {
+		return surfaceAttached && surfaceGeneration == generation
+	}
+
 	private fun updateSchedulerState() {
 		if (!visible || !surfaceAttached) {
 			scheduler.stop()
@@ -380,7 +390,10 @@ internal class WallpaperRenderController(
 		framePacingClock.reset()
 	}
 
-	private fun postRenderTaskBlocking(task: () -> Unit) {
+	private fun postRenderTaskBlocking(
+		timeoutMs: Long = RELEASE_WAIT_TIMEOUT_MS,
+		task: () -> Unit
+	) {
 		val handler = renderHandler ?: return
 		val latch = CountDownLatch(1)
 		handler.post {
@@ -390,12 +403,13 @@ internal class WallpaperRenderController(
 				latch.countDown()
 			}
 		}
-		latch.await(RELEASE_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+		latch.await(timeoutMs, TimeUnit.MILLISECONDS)
 	}
 
 	companion object {
 		private const val RENDER_THREAD_NAME = "WallpaperRenderThread"
 		private const val RELEASE_WAIT_TIMEOUT_MS = 1500L
+		private const val SURFACE_DETACH_WAIT_TIMEOUT_MS = 500L
 		private const val THREAD_JOIN_TIMEOUT_MS = 1500L
 		private const val FORCE_RENDER_DEBOUNCE_MS = 500L
 		private const val DEFAULT_DISPLAY_REFRESH_RATE_HZ = 60
