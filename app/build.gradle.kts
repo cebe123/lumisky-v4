@@ -22,6 +22,8 @@ buildscript {
 plugins {
 	alias(libs.plugins.android.application)
 	alias(libs.plugins.kotlin.compose)
+	alias(libs.plugins.google.services)
+	alias(libs.plugins.firebase.crashlytics)
 }
 
 val lintIncludeTestSources = providers.gradleProperty("lumisky.lint.includeTestSources")
@@ -459,6 +461,9 @@ dependencies {
 	implementation(libs.androidx.compose.material3)
 	implementation(libs.material)
 	implementation("androidx.compose.material:material-icons-extended")
+	implementation(platform(libs.firebase.bom))
+	implementation(libs.firebase.crashlytics)
+	implementation(libs.firebase.analytics)
 
 	implementation(project(":core"))
 	implementation(project(":engine"))

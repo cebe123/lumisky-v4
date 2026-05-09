@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.example.core.Logger
 import com.example.lumisky.R
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.io.File
 import java.time.Instant
 import java.util.Locale
@@ -55,6 +56,7 @@ object ErrorReporter {
 	fun sendErrorReport(context: Context) {
 		val appContext = context.applicationContext
 		val report = buildReport(appContext)
+		recordManualReport(appContext)
 		val supportEmail = appContext.getString(R.string.support_email)
 		val mailIntent = Intent(Intent.ACTION_SENDTO).apply {
 			data = Uri.parse("mailto:")
@@ -84,6 +86,25 @@ object ErrorReporter {
 			Toast.LENGTH_LONG
 		).show()
 		Logger.w(TAG, "error report chooser unavailable")
+	}
+
+	private fun recordManualReport(context: Context) {
+		runCatching {
+			val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+			FirebaseCrashlytics.getInstance().apply {
+				setCustomKey("manual_report_opened", true)
+				setCustomKey("package_name", context.packageName)
+				setCustomKey("version_name", packageInfo.versionName.orEmpty())
+				setCustomKey("version_code", packageInfo.versionCodeCompat())
+				setCustomKey("installer", resolveInstallerPackage(context))
+				setCustomKey("device_model", Build.MODEL)
+				setCustomKey("android_sdk", Build.VERSION.SDK_INT)
+				log("Manual error report flow opened")
+				recordException(ManualErrorReportException())
+			}
+		}.onFailure { error ->
+			Logger.w(TAG, "Crashlytics manual report record failed", error)
+		}
 	}
 
 	private fun startChooser(
@@ -330,4 +351,6 @@ object ErrorReporter {
 		val body: String,
 		val chooserTitle: String
 	)
+
+	private class ManualErrorReportException : RuntimeException("Manual error report opened")
 }
