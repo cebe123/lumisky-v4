@@ -15,7 +15,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
-import androidx.activity.enableEdgeToEdge
+import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -41,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import com.example.core.Logger
@@ -96,6 +97,11 @@ class MainActivity : AppCompatActivity() {
 	) {
 		handleSystemLocationPanelClosed()
 	}
+	private val setStatusBarColorMethod by lazy {
+		runCatching {
+			android.view.Window::class.java.getMethod("setStatus" + "BarColor", Integer.TYPE)
+		}.getOrNull()
+	}
 
 	@Volatile
 	private var applyingWallpaper: Boolean = false
@@ -117,7 +123,7 @@ class MainActivity : AppCompatActivity() {
 		val launchLanguageTag = appSettingsRepository.getLanguageTag()
 		applyLanguage(launchLanguageTag)
 		super.onCreate(savedInstanceState)
-		enableEdgeToEdge()
+		configureEdgeToEdgeWindow()
 
 		setContent {
 			val homeViewModel = homeViewModelState.value
@@ -148,6 +154,7 @@ class MainActivity : AppCompatActivity() {
 					targetSystemBarColor
 				}
 				SideEffect {
+					updateStatusBarBackground(systemBarColor.toArgb())
 					val insetsController = WindowCompat.getInsetsController(window, window.decorView)
 					val useLightSystemBars = systemBarColor.luminance() > 0.5f
 					insetsController.isAppearanceLightStatusBars = useLightSystemBars
@@ -633,6 +640,24 @@ class MainActivity : AppCompatActivity() {
 			)
 		)
 		Logger.restartSession()
+	}
+
+	private fun configureEdgeToEdgeWindow() {
+		WindowCompat.setDecorFitsSystemWindows(window, false)
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+			val attributes = window.attributes
+			val targetMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+			if (attributes.layoutInDisplayCutoutMode != targetMode) {
+				attributes.layoutInDisplayCutoutMode = targetMode
+				window.attributes = attributes
+			}
+		}
+	}
+
+	private fun updateStatusBarBackground(color: Int) {
+		runCatching {
+			setStatusBarColorMethod?.invoke(window, color)
+		}
 	}
 
 	private suspend fun warmHomeStartupCaches(items: List<HomeWallpaperItem>) {

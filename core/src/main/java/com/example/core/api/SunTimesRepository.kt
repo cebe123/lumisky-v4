@@ -1,10 +1,10 @@
 package com.example.core.api
 
 import com.example.core.Logger
-import java.time.Instant
-import java.time.ZoneId
+import java.util.Calendar
 import java.util.LinkedHashMap
 import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.Executors
 import java.util.concurrent.Callable
 import java.util.concurrent.Future
@@ -74,7 +74,7 @@ class SunTimesRepository(
 				label = "direct",
 				latitude = latitude,
 				longitude = longitude,
-				timeZoneId = ZoneId.systemDefault().id
+				timeZoneId = TimeZone.getDefault().id
 			),
 			forceRefresh = forceRefresh,
 			onUpdated = onUpdated
@@ -504,10 +504,16 @@ class SunTimesRepository(
 		timeZoneId: String?,
 		epochMillis: Long = nowProvider()
 	): String {
-		return Instant.ofEpochMilli(epochMillis)
-			.atZone(resolveZoneId(timeZoneId))
-			.toLocalDate()
-			.toString()
+		val calendar = Calendar.getInstance(resolveTimeZone(timeZoneId), Locale.US).apply {
+			timeInMillis = epochMillis
+		}
+		return String.format(
+			Locale.US,
+			"%04d-%02d-%02d",
+			calendar.get(Calendar.YEAR),
+			calendar.get(Calendar.MONTH) + 1,
+			calendar.get(Calendar.DAY_OF_MONTH)
+		)
 	}
 
 	private fun toDailyCacheKey(locationKey: String, dayKey: String): String {
@@ -521,17 +527,33 @@ class SunTimesRepository(
 		return "$latitudeBucket|$longitudeBucket|$normalizedTimeZone"
 	}
 
-	private fun resolveZoneId(timeZoneId: String?): ZoneId {
-		return normalizeTimeZoneId(timeZoneId)
-			.takeIf { it.isNotBlank() }
-			?.let { normalized -> runCatching { ZoneId.of(normalized) }.getOrNull() }
-			?: ZoneId.systemDefault()
+	private fun resolveTimeZone(timeZoneId: String?): TimeZone {
+		val normalized = normalizeTimeZoneId(timeZoneId)
+		if (normalized.isBlank()) return TimeZone.getDefault()
+		val resolved = TimeZone.getTimeZone(normalized)
+		return if (resolved.id == "GMT" && !isGmtLikeTimeZoneId(normalized)) {
+			TimeZone.getDefault()
+		} else {
+			resolved
+		}
 	}
 
 	private fun normalizeTimeZoneId(timeZoneId: String?): String {
 		val normalized = timeZoneId?.trim().orEmpty()
 		if (normalized.isBlank()) return ""
-		return runCatching { ZoneId.of(normalized).id }.getOrDefault(normalized)
+		val resolved = TimeZone.getTimeZone(normalized)
+		return if (resolved.id == "GMT" && !isGmtLikeTimeZoneId(normalized)) {
+			normalized
+		} else {
+			resolved.id
+		}
+	}
+
+	private fun isGmtLikeTimeZoneId(value: String): Boolean {
+		return value.equals("GMT", ignoreCase = true) ||
+			value.startsWith("GMT", ignoreCase = true) ||
+			value.equals("UTC", ignoreCase = true) ||
+			value.startsWith("UTC", ignoreCase = true)
 	}
 
 	private fun toClockLabel(minute: Int): String {
@@ -543,8 +565,15 @@ class SunTimesRepository(
 
 	private fun toHourMinuteLabel(epochMillis: Long): String {
 		if (epochMillis <= 0L) return "--:--"
-		val local = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())
-		return String.format(Locale.US, "%02d:%02d", local.hour, local.minute)
+		val local = Calendar.getInstance(TimeZone.getDefault(), Locale.US).apply {
+			timeInMillis = epochMillis
+		}
+		return String.format(
+			Locale.US,
+			"%02d:%02d",
+			local.get(Calendar.HOUR_OF_DAY),
+			local.get(Calendar.MINUTE)
+		)
 	}
 
 	companion object {
