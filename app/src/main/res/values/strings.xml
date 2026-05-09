@@ -40,6 +40,15 @@
     <string name="performance_mode_battery">Battery</string>
     <string name="section_about">ABOUT</string>
     <string name="app_version">App Version</string>
+    <string name="section_support">SUPPORT</string>
+    <string name="support_email" translatable="false">adnancebe@hotmail.com</string>
+    <string name="report_issue_title">Report Error</string>
+    <string name="report_issue_action">Send</string>
+    <string name="report_issue_summary">Creates an email with app, device, and recent crash details.</string>
+    <string name="error_report_email_subject">%1$s error report (%2$s)</string>
+    <string name="error_report_chooser_title">Send error report</string>
+    <string name="error_report_no_mail_app">No mail or sharing app was found.</string>
+    <string name="error_report_body_prompt">Describe what happened here, then send this report.</string>
     <string name="language_title">Language</string>
     <string name="language_select">Select Language</string>
     <string name="location_unknown">Unknown</string>

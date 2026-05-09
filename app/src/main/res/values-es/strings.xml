@@ -36,6 +36,14 @@
     <string name="quality_high">Alta</string>
     <string name="section_about">ACERCA DE</string>
     <string name="app_version">Versión de la App</string>
+    <string name="section_support">SOPORTE</string>
+    <string name="report_issue_title">Informar error</string>
+    <string name="report_issue_action">Enviar</string>
+    <string name="report_issue_summary">Crea un correo con detalles de la app, el dispositivo y fallos recientes.</string>
+    <string name="error_report_email_subject">Informe de error de %1$s (%2$s)</string>
+    <string name="error_report_chooser_title">Enviar informe de error</string>
+    <string name="error_report_no_mail_app">No se encontró ninguna app de correo o para compartir.</string>
+    <string name="error_report_body_prompt">Describe aquí lo ocurrido y envía este informe.</string>
     <string name="language_title">Idioma</string>
     <string name="language_select">Seleccionar Idioma</string>
     <string name="location_unknown">Desconocido</string>

@@ -39,6 +39,14 @@
     <string name="performance_mode_battery">Batarya</string>
     <string name="section_about">HAKKINDA</string>
     <string name="app_version">Uygulama Sürümü</string>
+    <string name="section_support">DESTEK</string>
+    <string name="report_issue_title">Hata bildir</string>
+    <string name="report_issue_action">Gönder</string>
+    <string name="report_issue_summary">Uygulama, cihaz ve son çökme bilgileriyle e-posta oluşturur.</string>
+    <string name="error_report_email_subject">%1$s hata raporu (%2$s)</string>
+    <string name="error_report_chooser_title">Hata raporu gönder</string>
+    <string name="error_report_no_mail_app">E-posta veya paylaşım uygulaması bulunamadı.</string>
+    <string name="error_report_body_prompt">Buraya ne olduğunu kısaca yazıp bu raporu gönderin.</string>
     <string name="language_title">Dil</string>
     <string name="language_select">Dil Seçin</string>
     <string name="location_unknown">Bilinmiyor</string>

@@ -36,6 +36,14 @@
     <string name="quality_high">عالية</string>
     <string name="section_about">حول</string>
     <string name="app_version">إصدار التطبيق</string>
+    <string name="section_support">الدعم</string>
+    <string name="report_issue_title">الإبلاغ عن خطأ</string>
+    <string name="report_issue_action">إرسال</string>
+    <string name="report_issue_summary">ينشئ رسالة بريد بتفاصيل التطبيق والجهاز وآخر الأعطال.</string>
+    <string name="error_report_email_subject">تقرير خطأ %1$s (%2$s)</string>
+    <string name="error_report_chooser_title">إرسال تقرير الخطأ</string>
+    <string name="error_report_no_mail_app">لم يتم العثور على تطبيق بريد أو مشاركة.</string>
+    <string name="error_report_body_prompt">صف ما حدث هنا، ثم أرسل هذا التقرير.</string>
     <string name="language_title">اللغة</string>
     <string name="language_select">اختر اللغة</string>
     <string name="location_unknown">مجهول</string>

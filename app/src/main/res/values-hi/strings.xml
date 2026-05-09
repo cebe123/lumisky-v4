@@ -36,6 +36,14 @@
     <string name="quality_high">उच्च</string>
     <string name="section_about">के बारे में</string>
     <string name="app_version">ऐप संस्करण</string>
+    <string name="section_support">सहायता</string>
+    <string name="report_issue_title">त्रुटि रिपोर्ट करें</string>
+    <string name="report_issue_action">भेजें</string>
+    <string name="report_issue_summary">ऐप, डिवाइस और हाल की क्रैश जानकारी के साथ ईमेल बनाता है।</string>
+    <string name="error_report_email_subject">%1$s त्रुटि रिपोर्ट (%2$s)</string>
+    <string name="error_report_chooser_title">त्रुटि रिपोर्ट भेजें</string>
+    <string name="error_report_no_mail_app">कोई मेल या शेयरिंग ऐप नहीं मिला।</string>
+    <string name="error_report_body_prompt">यहां बताएं कि क्या हुआ, फिर यह रिपोर्ट भेजें।</string>
     <string name="language_title">भाषा</string>
     <string name="language_select">भाषा चुनें</string>
     <string name="location_unknown">अज्ञात</string>

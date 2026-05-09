@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BatterySaver
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.FilterHdr
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LightMode
@@ -86,6 +87,7 @@ import com.example.core.settings.LocationMode
 import com.example.core.settings.ManualCity
 import com.example.core.settings.PerformanceMode
 import com.example.lumisky.R
+import com.example.lumisky.report.ErrorReporter
 import com.example.lumisky.ui.components.BottomNavBar
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -253,6 +255,9 @@ fun SettingsScreen(
 					onHighRefreshChanged = onHighRefreshChanged,
 					performanceMode = performanceMode,
 					onPerformanceModeChanged = onPerformanceModeChanged
+				)
+				SupportSection(
+					onReportError = { ErrorReporter.sendErrorReport(context) }
 				)
 				AboutSection(appVersionName = appVersionName)
 				Spacer(modifier = Modifier.height(118.dp))
@@ -578,6 +583,28 @@ private fun AboutSection(
 			leadingIcon = null,
 			onClick = {},
 			enabled = false
+		)
+	}
+}
+
+@Composable
+private fun SupportSection(
+	onReportError: () -> Unit
+) {
+	GlassCard(kicker = stringResource(R.string.section_support)) {
+		InfoActionRow(
+			title = stringResource(R.string.report_issue_title),
+			value = stringResource(R.string.report_issue_action),
+			leadingIcon = Icons.Filled.BugReport,
+			onClick = onReportError
+		)
+		Spacer(modifier = Modifier.height(8.dp))
+		Text(
+			text = stringResource(R.string.report_issue_summary),
+			style = MaterialTheme.typography.bodySmall,
+			color = SettingsOnSurfaceVariant,
+			maxLines = 2,
+			overflow = TextOverflow.Ellipsis
 		)
 	}
 }

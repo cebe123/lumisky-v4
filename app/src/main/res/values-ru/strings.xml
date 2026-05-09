@@ -36,6 +36,14 @@
     <string name="quality_high">Высокое</string>
     <string name="section_about">О ПРИЛОЖЕНИИ</string>
     <string name="app_version">Версия приложения</string>
+    <string name="section_support">ПОДДЕРЖКА</string>
+    <string name="report_issue_title">Сообщить об ошибке</string>
+    <string name="report_issue_action">Отправить</string>
+    <string name="report_issue_summary">Создает письмо с данными приложения, устройства и последних сбоев.</string>
+    <string name="error_report_email_subject">Отчет об ошибке %1$s (%2$s)</string>
+    <string name="error_report_chooser_title">Отправить отчет об ошибке</string>
+    <string name="error_report_no_mail_app">Приложение почты или отправки не найдено.</string>
+    <string name="error_report_body_prompt">Опишите здесь, что произошло, затем отправьте этот отчет.</string>
     <string name="language_title">Язык</string>
     <string name="language_select">Выберите язык</string>
     <string name="location_unknown">Неизвестно</string>

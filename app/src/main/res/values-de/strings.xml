@@ -36,6 +36,14 @@
     <string name="quality_high">Hoch</string>
     <string name="section_about">ÜBER</string>
     <string name="app_version">App-Version</string>
+    <string name="section_support">SUPPORT</string>
+    <string name="report_issue_title">Fehler melden</string>
+    <string name="report_issue_action">Senden</string>
+    <string name="report_issue_summary">Erstellt eine E-Mail mit App-, Geräte- und letzten Absturzdaten.</string>
+    <string name="error_report_email_subject">%1$s Fehlerbericht (%2$s)</string>
+    <string name="error_report_chooser_title">Fehlerbericht senden</string>
+    <string name="error_report_no_mail_app">Keine E-Mail- oder Freigabe-App gefunden.</string>
+    <string name="error_report_body_prompt">Beschreiben Sie hier kurz, was passiert ist, und senden Sie den Bericht.</string>
     <string name="language_title">Sprache</string>
     <string name="language_select">Sprache Wählen</string>
     <string name="location_unknown">Unbekannt</string>

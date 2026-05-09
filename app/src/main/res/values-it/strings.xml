@@ -36,6 +36,14 @@
     <string name="quality_high">Alta</string>
     <string name="section_about">INFO</string>
     <string name="app_version">Versione App</string>
+    <string name="section_support">SUPPORTO</string>
+    <string name="report_issue_title">Segnala errore</string>
+    <string name="report_issue_action">Invia</string>
+    <string name="report_issue_summary">Crea un’e-mail con dettagli su app, dispositivo e crash recenti.</string>
+    <string name="error_report_email_subject">Report errore %1$s (%2$s)</string>
+    <string name="error_report_chooser_title">Invia report errore</string>
+    <string name="error_report_no_mail_app">Nessuna app di posta o condivisione trovata.</string>
+    <string name="error_report_body_prompt">Descrivi qui cosa è successo, poi invia questo report.</string>
     <string name="language_title">Lingua</string>
     <string name="language_select">Seleziona Lingua</string>
     <string name="location_unknown">Sconosciuto</string>

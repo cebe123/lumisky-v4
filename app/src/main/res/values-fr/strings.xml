@@ -36,6 +36,14 @@
     <string name="quality_high">Haute</string>
     <string name="section_about">À PROPOS</string>
     <string name="app_version">"Version de l'App"</string>
+    <string name="section_support">ASSISTANCE</string>
+    <string name="report_issue_title">Signaler une erreur</string>
+    <string name="report_issue_action">Envoyer</string>
+    <string name="report_issue_summary">Crée un e-mail avec les détails de l’appareil, de l’app et des plantages récents.</string>
+    <string name="error_report_email_subject">Rapport d’erreur %1$s (%2$s)</string>
+    <string name="error_report_chooser_title">Envoyer le rapport d’erreur</string>
+    <string name="error_report_no_mail_app">Aucune application d’e-mail ou de partage trouvée.</string>
+    <string name="error_report_body_prompt">Décrivez ici ce qui s’est passé, puis envoyez ce rapport.</string>
     <string name="language_title">Langue</string>
     <string name="language_select">Choisir la Langue</string>
     <string name="location_unknown">Inconnu</string>

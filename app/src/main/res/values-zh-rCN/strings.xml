@@ -36,6 +36,14 @@
     <string name="quality_high">高</string>
     <string name="section_about">关于</string>
     <string name="app_version">应用版本</string>
+    <string name="section_support">支持</string>
+    <string name="report_issue_title">报告错误</string>
+    <string name="report_issue_action">发送</string>
+    <string name="report_issue_summary">创建包含应用、设备和近期崩溃信息的邮件。</string>
+    <string name="error_report_email_subject">%1$s 错误报告 (%2$s)</string>
+    <string name="error_report_chooser_title">发送错误报告</string>
+    <string name="error_report_no_mail_app">未找到邮件或分享应用。</string>
+    <string name="error_report_body_prompt">请在此描述发生了什么，然后发送此报告。</string>
     <string name="language_title">语言</string>
     <string name="language_select">选择语言</string>
     <string name="location_unknown">未知</string>

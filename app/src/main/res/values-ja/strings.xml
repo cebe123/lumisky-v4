@@ -36,6 +36,14 @@
     <string name="quality_high">高</string>
     <string name="section_about">アプリについて</string>
     <string name="app_version">アプリバージョン</string>
+    <string name="section_support">サポート</string>
+    <string name="report_issue_title">エラーを報告</string>
+    <string name="report_issue_action">送信</string>
+    <string name="report_issue_summary">アプリ、端末、最近のクラッシュ情報を含むメールを作成します。</string>
+    <string name="error_report_email_subject">%1$s エラーレポート (%2$s)</string>
+    <string name="error_report_chooser_title">エラーレポートを送信</string>
+    <string name="error_report_no_mail_app">メールまたは共有アプリが見つかりません。</string>
+    <string name="error_report_body_prompt">ここに発生した内容を記入して、このレポートを送信してください。</string>
     <string name="language_title">言語</string>
     <string name="language_select">言語を選択</string>
     <string name="location_unknown">不明</string>
