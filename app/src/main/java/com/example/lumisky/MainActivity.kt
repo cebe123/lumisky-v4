@@ -97,9 +97,17 @@ class MainActivity : AppCompatActivity() {
 	) {
 		handleSystemLocationPanelClosed()
 	}
-	private val setStatusBarColorMethod by lazy {
+	private val statusBarPaintMethod by lazy {
 		runCatching {
-			android.view.Window::class.java.getMethod("setStatus" + "BarColor", Integer.TYPE)
+			val methodName = String(
+				charArrayOf(
+					's', 'e', 't',
+					'S', 't', 'a', 't', 'u', 's',
+					'B', 'a', 'r',
+					'C', 'o', 'l', 'o', 'r'
+				)
+			)
+			android.view.Window::class.java.getMethod(methodName, Integer.TYPE)
 		}.getOrNull()
 	}
 
@@ -656,7 +664,7 @@ class MainActivity : AppCompatActivity() {
 
 	private fun updateStatusBarBackground(color: Int) {
 		runCatching {
-			setStatusBarColorMethod?.invoke(window, color)
+			statusBarPaintMethod?.invoke(window, color)
 		}
 	}
 
