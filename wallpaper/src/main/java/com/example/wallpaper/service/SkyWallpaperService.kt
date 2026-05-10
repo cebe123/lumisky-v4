@@ -218,8 +218,8 @@ open class SkyWallpaperService : WallpaperService() {
 
 		private fun resolveConfigForCurrentEngine() =
 			when {
-				isPreview -> configStore.loadPreview() ?: configStore.loadSelected()
-				else -> configStore.loadSelected()
+				isPreview -> configStore.loadPreview() ?: configStore.loadSelected() ?: DEFAULT_WALLPAPER_CONFIG
+				else -> configStore.loadSelected() ?: configStore.loadPreview() ?: DEFAULT_WALLPAPER_CONFIG
 			}
 
 		private fun buildConfigSignature(
@@ -278,5 +278,6 @@ open class SkyWallpaperService : WallpaperService() {
 
 	companion object {
 		private const val TAG = "SkyWallpaperService"
+		private val DEFAULT_WALLPAPER_CONFIG = WallpaperConfig.default()
 	}
 }

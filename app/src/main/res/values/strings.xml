@@ -55,6 +55,7 @@
     <string name="home_selected_wallpaper_label">Selected Wallpaper</string>
     <string name="home_select_wallpaper_hint">Choose a wallpaper</string>
     <string name="home_set_wallpaper">Set</string>
+    <string name="wallpaper_picker_unavailable">Live wallpaper picker is not available on this device.</string>
     <string name="wallpaper_performance_smooth">Smooth</string>
     <string name="wallpaper_performance_balanced">Balanced</string>
     <string name="wallpaper_performance_efficient">Efficient</string>

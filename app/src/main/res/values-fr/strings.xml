@@ -50,6 +50,7 @@
     <string name="home_selected_wallpaper_label">Fond d’écran sélectionné</string>
     <string name="home_select_wallpaper_hint">Choisissez un fond d’écran</string>
     <string name="home_set_wallpaper">Définir</string>
+    <string name="wallpaper_picker_unavailable">Live wallpaper picker is not available on this device.</string>
     <string name="performance_mode_title">Performance Mode</string>
     <string name="performance_mode_auto">Auto</string>
     <string name="performance_mode_smooth">Smooth</string>

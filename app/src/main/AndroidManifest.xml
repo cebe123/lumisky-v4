@@ -15,9 +15,19 @@
         android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION"
         tools:node="remove" />
 
+    <uses-feature
+        android:name="android.software.live_wallpaper"
+        android:required="true" />
+
     <queries>
         <intent>
             <action android:name="android.service.wallpaper.WallpaperService" />
+        </intent>
+        <intent>
+            <action android:name="android.service.wallpaper.CHANGE_LIVE_WALLPAPER" />
+        </intent>
+        <intent>
+            <action android:name="android.service.wallpaper.LIVE_WALLPAPER_CHOOSER" />
         </intent>
     </queries>
 

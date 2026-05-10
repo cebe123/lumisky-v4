@@ -16,6 +16,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -116,6 +117,7 @@ class MainActivity : AppCompatActivity() {
 	private var locationReceiverRegistered: Boolean = false
 	private var awaitingSystemLocationEnableResult: Boolean = false
 	private var pendingLockWallpaperIdBeforeSet: Int? = null
+	private var pendingExternalWallpaperSetFlow: Boolean = false
 	private var launchThemeMode: AppThemeMode = AppThemeMode.SYSTEM
 	private val locationModeReceiver = object : BroadcastReceiver() {
 		override fun onReceive(context: Context?, intent: Intent?) {
@@ -339,6 +341,7 @@ class MainActivity : AppCompatActivity() {
 
 	override fun onStart() {
 		super.onStart()
+		completeExternalWallpaperSetFlowIfNeeded()
 		restoreLockScreenWallpaperSharingOnForegroundIfNeeded()
 		registerLocationModeReceiver()
 		homeViewModelOrNull()?.onForegroundStarted()
@@ -552,16 +555,50 @@ class MainActivity : AppCompatActivity() {
 				)
 			)
 		}
-		runCatching {
-			liveWallpaperPreviewLauncher.launch(directIntent)
-		}.onFailure {
+		if (directIntent.resolveActivity(packageManager) != null) {
+			runCatching {
+				liveWallpaperPreviewLauncher.launch(directIntent)
+			}.onSuccess {
+				return
+			}.onFailure {
+				Logger.w(TAG, "direct live wallpaper intent failed, falling back chooser", it)
+			}
+		} else {
+			Logger.w(TAG, "direct live wallpaper intent unavailable")
+		}
+
+		val chooserIntent = Intent(ACTION_LIVE_WALLPAPER_CHOOSER)
+		if (chooserIntent.resolveActivity(packageManager) != null) {
+			runCatching {
+				pendingExternalWallpaperSetFlow = true
+				startActivity(chooserIntent)
+				overridePendingTransition(0, 0)
+			}.onSuccess {
+				return
+			}.onFailure {
+				pendingExternalWallpaperSetFlow = false
+				Logger.w(TAG, "live wallpaper chooser failed", it)
+			}
+		}
+
+		pendingLockWallpaperIdBeforeSet = null
+		wallpaperConfigStore.clearPreview()
+		Toast.makeText(
+			this,
+			R.string.wallpaper_picker_unavailable,
+			Toast.LENGTH_LONG
+		).show()
+		Logger.w(TAG, "no live wallpaper set activity available")
+	}
+
+	private fun completeExternalWallpaperSetFlowIfNeeded() {
+		if (!pendingExternalWallpaperSetFlow) return
+		pendingExternalWallpaperSetFlow = false
+		if (isLumiskyHomeWallpaperActive(applicationContext)) {
+			handleLiveWallpaperPreviewResult(Activity.RESULT_OK)
+		} else {
 			pendingLockWallpaperIdBeforeSet = null
 			wallpaperConfigStore.clearPreview()
-			Logger.w(TAG, "direct live wallpaper intent failed, falling back chooser", it)
-			runCatching {
-				startActivity(Intent(ACTION_LIVE_WALLPAPER_CHOOSER))
-				overridePendingTransition(0, 0)
-			}
 		}
 	}
 
