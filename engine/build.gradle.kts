@@ -1,5 +1,6 @@
 plugins {
 	alias(libs.plugins.android.library)
+	alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -28,5 +29,6 @@ dependencies {
 	testImplementation(libs.junit)
 
 	implementation(project(":core"))
+	implementation(libs.kotlinx.serialization.json)
 	coreLibraryDesugaring(libs.desugar.jdk.libs)
 }
