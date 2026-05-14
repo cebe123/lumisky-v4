@@ -248,15 +248,20 @@ fun HomeScreen(
 			renderedCategoryGroups[index].wallpapers.map { it.id }
 		}
 	}
-	val allWallpaperIds by remember(renderedCategoryGroups) {
+	val allWallpaperIdSet by remember(renderedCategoryGroups) {
 		derivedStateOf {
 			renderedCategoryGroups.asSequence()
 				.flatMap { section -> section.wallpapers.asSequence().map { it.id } }
-				.toList()
+				.toHashSet()
 		}
 	}
-	val allWallpaperIdSet by remember(allWallpaperIds) {
-		derivedStateOf { allWallpaperIds.toHashSet() }
+	val firstWallpaperId by remember(renderedCategoryGroups) {
+		derivedStateOf {
+			renderedCategoryGroups.firstOrNull { section -> section.wallpapers.isNotEmpty() }
+				?.wallpapers
+				?.firstOrNull()
+				?.id
+		}
 	}
 
 	var focusCandidateId by remember { mutableStateOf<String?>(null) }
@@ -285,11 +290,11 @@ fun HomeScreen(
 
 	LaunchedEffect(renderedCategoryGroups, selectedWallpaperId, liveWallpaperId) {
 		if (focusCandidateId != null) return@LaunchedEffect
-		if (allWallpaperIds.isEmpty()) return@LaunchedEffect
+		if (allWallpaperIdSet.isEmpty()) return@LaunchedEffect
 		focusCandidateId = when {
 			selectedWallpaperId != null && selectedWallpaperId in allWallpaperIdSet -> selectedWallpaperId
 			liveWallpaperId != null && liveWallpaperId in allWallpaperIdSet -> liveWallpaperId
-			else -> allWallpaperIds.first()
+			else -> firstWallpaperId
 		}
 	}
 

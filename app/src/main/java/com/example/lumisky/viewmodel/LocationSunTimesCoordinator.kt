@@ -29,6 +29,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
+private data class ResolvedLocationState(
+	val systemEnabled: Boolean,
+	val liveGps: SunLocation?,
+	val lastGps: SunLocation?,
+	val resolvedAtMillis: Long
+)
+
 /**
  * Coordinates location state (GPS, manual city) and sun-times resolution.
  *
@@ -88,6 +95,10 @@ internal class LocationSunTimesCoordinator(
 	private var refreshPipelineScheduled = false
 	private var refreshPipelineNeedsSunTimes = false
 	private var refreshPipelineNeedsGpsRequest = false
+	private var refreshPipelineForceLocationState = false
+	private var refreshPipelineHandleProviderChange = false
+	private var refreshPipelineReason = "idle"
+	private var resolvedLocationStateCache: ResolvedLocationState? = null
 	private var locationCandidatesCacheKey: String? = null
 	private var locationCandidatesCache: List<SunLocation> = emptyList()
 	private var locationCandidatesCacheAtMs: Long = 0L
@@ -104,26 +115,52 @@ internal class LocationSunTimesCoordinator(
 		refreshPipelineScheduled = false
 		val shouldRefreshSunTimes = refreshPipelineNeedsSunTimes
 		val shouldRequestGps = refreshPipelineNeedsGpsRequest
+		val shouldForceLocationState = refreshPipelineForceLocationState
+		val shouldHandleProviderChange = refreshPipelineHandleProviderChange
+		val reason = refreshPipelineReason
 		refreshPipelineNeedsSunTimes = false
 		refreshPipelineNeedsGpsRequest = false
+		refreshPipelineForceLocationState = false
+		refreshPipelineHandleProviderChange = false
+		refreshPipelineReason = "idle"
 
-		refreshLocationState()
+		val wasSystemLocationEnabled = systemLocationEnabled
+		val resolvedState = resolveLocationState(forceRefresh = shouldForceLocationState)
+		Logger.d(
+			tag,
+			"LOCATION_REFRESH_COALESCED reason=$reason sunTimes=$shouldRefreshSunTimes gpsRequest=$shouldRequestGps"
+		)
+		refreshLocationStateNow(resolvedState)
+		if (shouldHandleProviderChange && locationMode == LocationMode.GPS) {
+			if (!resolvedState.systemEnabled) {
+				updateLocationMode(LocationMode.MANUAL)
+				lastKnownCity?.let { updateManualCity(it) }
+				return@Runnable
+			}
+			if (resolvedState.systemEnabled && lastKnownLocationProvider.hasLocationPermission()) {
+				requestImmediateGpsLocation()
+			}
+			if (wasSystemLocationEnabled != resolvedState.systemEnabled) {
+				refreshSunTimesNow(resolvedState)
+			}
+		}
 		if (shouldRequestGps && locationMode == LocationMode.GPS) {
 			requestImmediateGpsLocation()
 		}
 		if (shouldRefreshSunTimes) {
-			refreshSunTimes()
+			refreshSunTimesNow(resolvedState)
 		}
 	}
 	private val startupRefreshRunnable = Runnable {
-		refreshLocationState()
-		if (locationMode == LocationMode.GPS && !systemLocationEnabled) {
+		val resolvedState = resolveLocationState(forceRefresh = true)
+		refreshLocationStateNow(resolvedState)
+		if (locationMode == LocationMode.GPS && !resolvedState.systemEnabled) {
 			updateLocationMode(LocationMode.MANUAL)
 			lastKnownCity?.let { updateManualCity(it) }
 		} else if (locationMode == LocationMode.GPS) {
 			requestImmediateGpsLocation()
 		}
-		refreshSunTimes()
+		refreshSunTimesNow(resolvedState)
 	}
 
 	// ---- lifecycle ----
@@ -157,8 +194,10 @@ internal class LocationSunTimesCoordinator(
 		if (locationMode == mode) return
 		locationRefreshInProgress = false
 		locationMode = mode
+		invalidateResolvedLocationStateCache()
 		settingsRepository.setLocationMode(mode)
-		scheduleCoalescedLocationAndSunTimesRefresh(
+		refreshLocationAndSunTimesCoalesced(
+			reason = "location_mode",
 			requestGpsLocation = (mode == LocationMode.GPS)
 		)
 	}
@@ -170,7 +209,7 @@ internal class LocationSunTimesCoordinator(
 			gpsPlaceLabel = null
 			lastGpsPlaceKey = null
 		}
-		scheduleCoalescedLocationAndSunTimesRefresh()
+		refreshLocationAndSunTimesCoalesced(reason = "manual_city")
 	}
 
 	fun updateLanguageTag(tag: String) {
@@ -180,48 +219,42 @@ internal class LocationSunTimesCoordinator(
 			settingsRepository.setManualCity(manualCity)
 		}
 		updateLastKnownCity(automaticLocationSnapshot)
-		refreshLocationState()
+		refreshLocationAndSunTimesCoalesced(reason = "language")
 	}
 
 	fun refreshLocationNow() {
 		if (locationMode != LocationMode.GPS) {
 			locationRefreshInProgress = false
-			refreshLocationState()
-			refreshSunTimes()
+			refreshLocationAndSunTimesCoalesced(
+				reason = "refresh_now_manual",
+				refreshSunTimes = true,
+				debounceMs = 0L
+			)
 			return
 		}
 		if (!lastKnownLocationProvider.hasLocationPermission()) {
 			locationRefreshInProgress = false
-			refreshLocationState()
+			refreshLocationAndSunTimesCoalesced(
+				reason = "refresh_now_no_permission",
+				refreshSunTimes = false,
+				debounceMs = 0L
+			)
 			return
 		}
 
 		locationRefreshInProgress = true
-		refreshLocationState()
+		refreshLocationStateNow(resolveLocationState(forceRefresh = true))
 		requestImmediateGpsLocation(force = true)
 	}
 
 	fun onSystemLocationProviderChanged() {
-		runCatching {
-			val wasSystemLocationEnabled = systemLocationEnabled
-			refreshLocationState()
-			if (locationMode != LocationMode.GPS) return
-			if (!systemLocationEnabled) {
-				updateLocationMode(LocationMode.MANUAL)
-				lastKnownCity?.let { updateManualCity(it) }
-				return
-			}
-			val shouldRequestGps =
-				systemLocationEnabled && lastKnownLocationProvider.hasLocationPermission()
-			val shouldRefreshSunTimes = wasSystemLocationEnabled != systemLocationEnabled
-			if (shouldRequestGps || shouldRefreshSunTimes) {
-				scheduleCoalescedLocationAndSunTimesRefresh(
-					requestGpsLocation = shouldRequestGps,
-					refreshSunTimes = shouldRefreshSunTimes,
-					debounceMs = LOCATION_REFRESH_COALESCE_DELAY_MS
-				)
-			}
-		}
+		invalidateResolvedLocationStateCache()
+		refreshLocationAndSunTimesCoalesced(
+			reason = "provider_changed",
+			refreshSunTimes = false,
+			forceLocationState = true,
+			handleProviderChange = true
+		)
 	}
 
 	fun applySettingsChanges(
@@ -241,6 +274,7 @@ internal class LocationSunTimesCoordinator(
 		if (newLocationMode != null && locationMode != newLocationMode) {
 			locationMode = newLocationMode
 			locationRefreshInProgress = false
+			invalidateResolvedLocationStateCache()
 			shouldRefreshLocation = true
 			shouldRefreshSunTimes = true
 		}
@@ -259,23 +293,28 @@ internal class LocationSunTimesCoordinator(
 			gpsPlaceLabel = automaticLocationSnapshot?.label
 			lastGpsPlaceKey = lastKnownGpsLocation?.let(::gpsLocationKey)
 			updateLastKnownCity(automaticLocationSnapshot)
+			updateResolvedLocationStateCache()
 			shouldRefreshLocation = true
 			shouldRefreshSunTimes = true
 		}
 
-		if (shouldRefreshLocation) {
-			refreshLocationState()
-		}
-		if (shouldRefreshSunTimes) {
-			scheduleCoalescedLocationAndSunTimesRefresh(
+		if (shouldRefreshLocation || shouldRefreshSunTimes) {
+			refreshLocationAndSunTimesCoalesced(
+				reason = "settings_change",
 				requestGpsLocation = false,
-				refreshSunTimes = true,
+				refreshSunTimes = shouldRefreshSunTimes,
 				debounceMs = 0L
 			)
 		}
 	}
 
 	fun resolveLocationCandidates(): List<SunLocation> {
+		return resolveLocationCandidates(resolvedLocationState = freshResolvedLocationState())
+	}
+
+	private fun resolveLocationCandidates(
+		resolvedLocationState: ResolvedLocationState?
+	): List<SunLocation> {
 		val manual = SunLocation(
 			label = manualCity.name,
 			latitude = manualCity.latitude,
@@ -287,7 +326,8 @@ internal class LocationSunTimesCoordinator(
 
 		val cachedKey = buildLocationCandidatesCacheKey(
 			manual = manual,
-			defaultCity = defaultCity
+			defaultCity = defaultCity,
+			resolvedLocationState = resolvedLocationState
 		)
 		if (locationCandidatesCacheKey == cachedKey &&
 			(now - locationCandidatesCacheAtMs) in 0 until LOCATION_CANDIDATES_CACHE_TTL_MS
@@ -303,8 +343,10 @@ internal class LocationSunTimesCoordinator(
 				"${candidate.latitude}|${candidate.longitude}|${candidate.timeZoneId.orEmpty()}"
 			}
 			LocationMode.GPS -> buildList {
-				liveGpsLocation?.let { add(it.asGpsApiCandidate()) }
-				lastKnownGpsLocation?.let { add(it.asGpsApiCandidate()) }
+				val liveGps = resolvedLocationState?.liveGps ?: liveGpsLocation
+				val lastGps = resolvedLocationState?.lastGps ?: lastKnownGpsLocation
+				liveGps?.let { add(it.asGpsApiCandidate()) }
+				lastGps?.let { add(it.asGpsApiCandidate()) }
 				add(manual)
 				add(defaultCity)
 			}.distinctBy { candidate ->
@@ -347,10 +389,16 @@ internal class LocationSunTimesCoordinator(
 	// ---- internal ----
 
 	fun refreshLocationState() {
-		val refreshAtMs = SystemClock.elapsedRealtime()
+		refreshLocationAndSunTimesCoalesced(
+			reason = "refresh_location_state",
+			refreshSunTimes = false
+		)
+	}
+
+	private fun refreshLocationStateNow(resolvedState: ResolvedLocationState) {
+		val refreshAtMs = resolvedState.resolvedAtMillis
 		runCatching {
-			systemLocationEnabled = runCatching { lastKnownLocationProvider.isLocationEnabled() }
-				.getOrDefault(false)
+			systemLocationEnabled = resolvedState.systemEnabled
 			val accessLevel = lastKnownLocationProvider.getLocationAccessLevel()
 
 			if (locationMode != LocationMode.GPS) {
@@ -362,9 +410,8 @@ internal class LocationSunTimesCoordinator(
 				return
 			}
 
-			automaticLocationSnapshot = settingsRepository.getAutomaticLocation()
-			lastKnownGpsLocation =
-				automaticLocationSnapshot?.toSunLocation(labelFallback = "gps_last")
+			lastKnownGpsLocation = resolvedState.lastGps
+			liveGpsLocation = resolvedState.liveGps
 			gpsPlaceLabel = automaticLocationSnapshot?.label
 			lastGpsPlaceKey = lastKnownGpsLocation?.let(::gpsLocationKey)
 			updateLastKnownCity(automaticLocationSnapshot)
@@ -396,7 +443,11 @@ internal class LocationSunTimesCoordinator(
 	}
 
 	private fun refreshSunTimes() {
-		val candidates = resolveLocationCandidates()
+		refreshLocationAndSunTimesCoalesced(reason = "refresh_sun_times")
+	}
+
+	private fun refreshSunTimesNow(resolvedState: ResolvedLocationState? = null) {
+		val candidates = resolveLocationCandidates(resolvedState)
 		if (candidates.isEmpty()) return
 		sunTimesRepository.refreshResolvedAsyncWithCandidates(candidates) { resolution ->
 			mainHandler.post {
@@ -408,6 +459,53 @@ internal class LocationSunTimesCoordinator(
 				onDaylightResolved(fetched)
 			}
 		}
+	}
+
+	private fun resolveLocationState(forceRefresh: Boolean = false): ResolvedLocationState {
+		val now = SystemClock.elapsedRealtime()
+		if (!forceRefresh) {
+			freshResolvedLocationState(now)?.let { return it }
+		}
+
+		automaticLocationSnapshot = settingsRepository.getAutomaticLocation()
+		val liveGps = liveGpsLocation
+			?: automaticLocationSnapshot
+				?.takeIf { it.source == LocationSource.CURRENT || it.source == LocationSource.PASSIVE }
+				?.toSunLocation(labelFallback = "gps_live")
+		val state = ResolvedLocationState(
+			systemEnabled = runCatching { lastKnownLocationProvider.isLocationEnabled() }
+				.getOrDefault(false),
+			liveGps = liveGps,
+			lastGps = automaticLocationSnapshot?.toSunLocation(labelFallback = "gps_last"),
+			resolvedAtMillis = now
+		)
+		resolvedLocationStateCache = state
+		Logger.d(
+			tag,
+			"LOCATION_PROVIDER_SCAN_PASS systemEnabled=${state.systemEnabled} liveGps=${state.liveGps != null} lastGps=${state.lastGps != null}"
+		)
+		return state
+	}
+
+	private fun freshResolvedLocationState(
+		now: Long = SystemClock.elapsedRealtime()
+	): ResolvedLocationState? {
+		return resolvedLocationStateCache?.takeIf { state ->
+			(now - state.resolvedAtMillis) in 0 until RESOLVED_LOCATION_STATE_CACHE_TTL_MS
+		}
+	}
+
+	private fun invalidateResolvedLocationStateCache() {
+		resolvedLocationStateCache = null
+	}
+
+	private fun updateResolvedLocationStateCache() {
+		resolvedLocationStateCache = ResolvedLocationState(
+			systemEnabled = systemLocationEnabled,
+			liveGps = liveGpsLocation,
+			lastGps = lastKnownGpsLocation,
+			resolvedAtMillis = SystemClock.elapsedRealtime()
+		)
 	}
 
 	private fun requestImmediateGpsLocation(force: Boolean = false) {
@@ -435,7 +533,7 @@ internal class LocationSunTimesCoordinator(
 				} ?: false
 				if (!systemLocationEnabled) {
 					if (applied) {
-						refreshLocationState()
+						refreshLocationStateNow(resolveLocationState(forceRefresh = false))
 					}
 					locationRefreshInProgress = false
 					return@post
@@ -443,7 +541,7 @@ internal class LocationSunTimesCoordinator(
 				if (shouldRequestCurrent) {
 					requestCurrentGpsLocation()
 				} else if (applied) {
-					refreshLocationState()
+					refreshLocationStateNow(resolveLocationState(forceRefresh = false))
 					locationRefreshInProgress = false
 				} else {
 					locationRefreshInProgress = false
@@ -475,16 +573,26 @@ internal class LocationSunTimesCoordinator(
 		}
 	}
 
-	private fun scheduleCoalescedLocationAndSunTimesRefresh(
+	private fun refreshLocationAndSunTimesCoalesced(
+		reason: String,
 		requestGpsLocation: Boolean = false,
 		refreshSunTimes: Boolean = true,
-		debounceMs: Long = LOCATION_REFRESH_COALESCE_DELAY_MS
+		debounceMs: Long = LOCATION_REFRESH_COALESCE_DELAY_MS,
+		forceLocationState: Boolean = false,
+		handleProviderChange: Boolean = false
 	) {
 		refreshPipelineNeedsGpsRequest = refreshPipelineNeedsGpsRequest || requestGpsLocation
 		refreshPipelineNeedsSunTimes = refreshPipelineNeedsSunTimes || refreshSunTimes
-		if (refreshPipelineScheduled) return
+		refreshPipelineForceLocationState = refreshPipelineForceLocationState || forceLocationState
+		refreshPipelineHandleProviderChange = refreshPipelineHandleProviderChange || handleProviderChange
+		refreshPipelineReason = if (refreshPipelineReason == "idle") {
+			reason
+		} else {
+			"${refreshPipelineReason},$reason"
+		}
 		refreshPipelineScheduled = true
 		val delayMs = debounceMs.coerceAtLeast(0L)
+		mainHandler.removeCallbacks(refreshLocationAndSunTimesRunnable)
 		mainHandler.postDelayed(refreshLocationAndSunTimesRunnable, delayMs)
 	}
 
@@ -492,17 +600,16 @@ internal class LocationSunTimesCoordinator(
 		maxStaleMs: Long = FOREGROUND_LOCATION_REFRESH_STALE_MS
 	) {
 		val elapsed = SystemClock.elapsedRealtime() - lastLocationStateRefreshAtMs
-		refreshLocationState()
-		refreshSunTimes()
-		if (locationMode != LocationMode.GPS) return
-		if (elapsed in 0 until maxStaleMs &&
-			automaticLocationSnapshot?.isFreshWithin(FOREGROUND_AUTOMATIC_LOCATION_MAX_AGE_MS) == true
-		) {
-			return
-		}
-		scheduleCoalescedLocationAndSunTimesRefresh(
-			requestGpsLocation = lastKnownLocationProvider.hasLocationPermission(),
-			refreshSunTimes = false,
+		val hasFreshAutomaticLocation =
+			elapsed in 0 until maxStaleMs &&
+				automaticLocationSnapshot?.isFreshWithin(FOREGROUND_AUTOMATIC_LOCATION_MAX_AGE_MS) == true
+		val shouldRequestGps = locationMode == LocationMode.GPS &&
+			!hasFreshAutomaticLocation &&
+			lastKnownLocationProvider.hasLocationPermission()
+		refreshLocationAndSunTimesCoalesced(
+			reason = "foreground",
+			requestGpsLocation = shouldRequestGps,
+			refreshSunTimes = true,
 			debounceMs = LOCATION_REFRESH_COALESCE_DELAY_MS
 		)
 	}
@@ -570,11 +677,13 @@ internal class LocationSunTimesCoordinator(
 		if (!location.label.isNullOrBlank()) {
 			gpsPlaceLabel = location.label
 		}
+		updateResolvedLocationStateCache()
 		updateLocationLabelFromCachedGpsState()
 		maybeResolveGpsPlaceLabel(lastKnownGpsLocation ?: return true)
 
 		if (refreshSunTimes && shouldRefreshSunTimesForLocation(previous, location)) {
-			scheduleCoalescedLocationAndSunTimesRefresh(
+			refreshLocationAndSunTimesCoalesced(
+				reason = "automatic_location",
 				requestGpsLocation = false,
 				refreshSunTimes = true,
 				debounceMs = 0L
@@ -598,6 +707,7 @@ internal class LocationSunTimesCoordinator(
 		if (updated.source == LocationSource.CURRENT || updated.source == LocationSource.PASSIVE) {
 			liveGpsLocation = updated.toSunLocation(labelFallback = "gps_live")
 		}
+		updateResolvedLocationStateCache()
 		updateLocationLabelFromCachedGpsState()
 	}
 
@@ -704,10 +814,11 @@ internal class LocationSunTimesCoordinator(
 
 	private fun buildLocationCandidatesCacheKey(
 		manual: SunLocation,
-		defaultCity: SunLocation
+		defaultCity: SunLocation,
+		resolvedLocationState: ResolvedLocationState?
 	): String {
-		val liveGps = liveGpsLocation
-		val lastGps = lastKnownGpsLocation
+		val liveGps = resolvedLocationState?.liveGps ?: liveGpsLocation
+		val lastGps = resolvedLocationState?.lastGps ?: lastKnownGpsLocation
 		return buildString {
 			append(locationMode.name)
 			append('|')
@@ -744,7 +855,8 @@ internal class LocationSunTimesCoordinator(
 		private const val GPS_REQUEST_THROTTLE_MS = 1_500L
 		private const val FOREGROUND_LOCATION_REFRESH_STALE_MS = 30L * 1000L
 		private const val FOREGROUND_AUTOMATIC_LOCATION_MAX_AGE_MS = 30L * 60L * 1000L
-		private const val LOCATION_REFRESH_COALESCE_DELAY_MS = 120L
+		private const val LOCATION_REFRESH_COALESCE_DELAY_MS = 100L
+		private const val RESOLVED_LOCATION_STATE_CACHE_TTL_MS = 100L
 		private const val LOCATION_CANDIDATES_CACHE_TTL_MS = 1_500L
 		private const val LAST_KNOWN_LOCATION_MAX_AGE_MS = 30L * 60L * 1000L
 		private const val LOW_POWER_CURRENT_LOCATION_WINDOW_MS = 6L * 60L * 60L * 1000L

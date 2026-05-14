@@ -2,6 +2,7 @@ package com.example.lumisky.data
 
 import android.content.Context
 import com.example.core.api.SunDaylight
+import com.example.engine.config.DaylightConfig
 import com.example.engine.config.WallpaperConfig
 
 object WallpaperCatalog {
@@ -42,10 +43,25 @@ internal class WallpaperCatalogRepository(
 ) {
 	@Volatile
 	private var cachedEntries: List<WallpaperCatalogEntry>? = null
+	@Volatile
+	private var cachedEntriesById: Map<String, WallpaperCatalogEntry>? = null
+	private val configCache = object : LinkedHashMap<ConfigCacheKey, WallpaperConfig>(
+		MAX_CONFIG_CACHE_ENTRIES,
+		0.75f,
+		true
+	) {
+		override fun removeEldestEntry(
+			eldest: MutableMap.MutableEntry<ConfigCacheKey, WallpaperConfig>?
+		): Boolean {
+			return size > MAX_CONFIG_CACHE_ENTRIES
+		}
+	}
+	private var configCacheDaylightHash: Int? = null
 
 	fun buildConfigs(
 		daylight: SunDaylight = SunDaylight.fallback()
 	): List<WallpaperConfig> {
+		resetConfigCacheIfDaylightChanged(daylight.hashCode())
 		return loadEntries().map { entry -> entry.resolve(daylight) }
 	}
 
@@ -53,15 +69,26 @@ internal class WallpaperCatalogRepository(
 		id: String,
 		daylight: SunDaylight = SunDaylight.fallback()
 	): WallpaperConfig {
-		val entry = loadEntries().firstOrNull { candidate -> candidate.id == id }
-		return entry?.resolve(daylight) ?: WallpaperConfig.default(id = id).copy(
-			daylight = com.example.engine.config.DaylightConfig(
+		val daylightHash = daylight.hashCode()
+		val cacheKey = ConfigCacheKey(id = id, daylightHash = daylightHash)
+		synchronized(configCache) {
+			resetConfigCacheIfDaylightChangedLocked(daylightHash)
+			configCache[cacheKey]?.let { return it }
+		}
+		val entry = loadEntriesById()[id]
+		val config = entry?.resolve(daylight) ?: WallpaperConfig.default(id = id).copy(
+			daylight = DaylightConfig(
 				sunriseMinute = daylight.sunriseMinute,
 				sunsetMinute = daylight.sunsetMinute,
 				solarNoonMinute = daylight.solarNoonMinute,
 				timeZoneId = daylight.timeZoneId
 			)
 		)
+		synchronized(configCache) {
+			resetConfigCacheIfDaylightChangedLocked(daylightHash)
+			configCache[cacheKey] = config
+		}
+		return config
 	}
 
 	private fun loadEntries(): List<WallpaperCatalogEntry> {
@@ -69,6 +96,17 @@ internal class WallpaperCatalogRepository(
 		return synchronized(this) {
 			cachedEntries ?: mergeEntries().also { merged ->
 				cachedEntries = merged
+				cachedEntriesById = merged.associateBy { entry -> entry.id }
+			}
+		}
+	}
+
+	private fun loadEntriesById(): Map<String, WallpaperCatalogEntry> {
+		cachedEntriesById?.let { return it }
+		val entries = loadEntries()
+		return synchronized(this) {
+			cachedEntriesById ?: entries.associateBy { entry -> entry.id }.also { indexed ->
+				cachedEntriesById = indexed
 			}
 		}
 	}
@@ -81,5 +119,26 @@ internal class WallpaperCatalogRepository(
 			}
 		}
 		return merged.values.toList()
+	}
+
+	private fun resetConfigCacheIfDaylightChanged(daylightHash: Int) {
+		synchronized(configCache) {
+			resetConfigCacheIfDaylightChangedLocked(daylightHash)
+		}
+	}
+
+	private fun resetConfigCacheIfDaylightChangedLocked(daylightHash: Int) {
+		if (configCacheDaylightHash == daylightHash) return
+		configCache.clear()
+		configCacheDaylightHash = daylightHash
+	}
+
+	private data class ConfigCacheKey(
+		val id: String,
+		val daylightHash: Int
+	)
+
+	private companion object {
+		private const val MAX_CONFIG_CACHE_ENTRIES = 128
 	}
 }

@@ -1,19 +1,5 @@
 package com.example.wallpaper.render
 
-data class SceneStateInput(
-	val visible: Boolean,
-	val surfaceAttached: Boolean,
-	val configFingerprintHash: Int,
-	val renderModeOrdinal: Int,
-	val sunX: Int,
-	val sunY: Int,
-	val moonX: Int,
-	val moonY: Int,
-	val nightBlend: Int,
-	val skyColor: Int,
-	val flareActive: Boolean
-)
-
 class SceneStateHasher {
 	fun compute(
 		visible: Boolean,
@@ -41,22 +27,6 @@ class SceneStateHasher {
 		result = 31 * result + skyColor
 		result = 31 * result + flareActive.toHashToken()
 		return result
-	}
-
-	fun compute(input: SceneStateInput): Int {
-		return compute(
-			visible = input.visible,
-			surfaceAttached = input.surfaceAttached,
-			configFingerprintHash = input.configFingerprintHash,
-			renderModeOrdinal = input.renderModeOrdinal,
-			sunX = input.sunX,
-			sunY = input.sunY,
-			moonX = input.moonX,
-			moonY = input.moonY,
-			nightBlend = input.nightBlend,
-			skyColor = input.skyColor,
-			flareActive = input.flareActive
-		)
 	}
 
 	private fun Boolean.toHashToken(): Int = if (this) 1 else 0

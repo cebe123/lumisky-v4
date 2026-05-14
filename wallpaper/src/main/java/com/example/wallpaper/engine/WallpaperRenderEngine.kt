@@ -38,6 +38,7 @@ class WallpaperRenderEngine(
 	private var parallaxX: Float = 0f
 	@Volatile
 	private var parallaxY: Float = 0f
+	private val textureLoadLocks = HashMap<String, Any>()
 	private val textureBytesCache = object : LruCache<String, ByteArray>(MAX_TEXTURE_CACHE_BYTES) {
 		override fun sizeOf(key: String, value: ByteArray): Int = value.size
 	}
@@ -248,15 +249,48 @@ class WallpaperRenderEngine(
 
 	private fun loadTextureBytes(assetPath: String): ByteArray? {
 		synchronized(textureBytesCache) {
-			textureBytesCache.get(assetPath)?.let { return it }
+			textureBytesCache.get(assetPath)?.let {
+				Logger.v(TAG, "texture byte cache hit path=$assetPath size=${it.size}")
+				return it
+			}
 		}
-		val loaded = runCatching {
-			appContext.assets.open(assetPath).use { it.readBytes() }
-		}.getOrNull() ?: return null
-		synchronized(textureBytesCache) {
-			textureBytesCache.put(assetPath, loaded)
+		Logger.v(TAG, "texture byte cache miss path=$assetPath")
+		return withTextureLoadLock(assetPath) {
+			synchronized(textureBytesCache) {
+				textureBytesCache.get(assetPath)?.let {
+					Logger.v(TAG, "texture byte cache hit path=$assetPath size=${it.size}")
+					return@withTextureLoadLock it
+				}
+			}
+			val loaded = runCatching {
+				appContext.assets.open(assetPath).use { it.readBytes() }
+			}.getOrNull() ?: return@withTextureLoadLock null
+			Logger.v(TAG, "texture asset read path=$assetPath size=${loaded.size}")
+			synchronized(textureBytesCache) {
+				textureBytesCache.put(assetPath, loaded)
+			}
+			loaded
 		}
-		return loaded
+	}
+
+	private fun withTextureLoadLock(
+		assetPath: String,
+		block: () -> ByteArray?
+	): ByteArray? {
+		val lock = synchronized(textureLoadLocks) {
+			textureLoadLocks.getOrPut(assetPath) { Any() }
+		}
+		return synchronized(lock) {
+			try {
+				block()
+			} finally {
+				synchronized(textureLoadLocks) {
+					if (textureLoadLocks[assetPath] === lock) {
+						textureLoadLocks.remove(assetPath)
+					}
+				}
+			}
+		}
 	}
 
 	private fun isFlareActive(state: RenderFrameState?): Boolean {

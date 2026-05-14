@@ -2,6 +2,7 @@ package com.example.lumisky.shader
 
 import android.content.Context
 import android.util.LruCache
+import com.example.core.Logger
 import com.example.core.assets.AssetTextLoader
 import com.example.engine.config.WallpaperConfig
 
@@ -56,8 +57,10 @@ object RenderAssetCache {
 		)
 		val cachedResolvedPath = getCachedResolvedTexturePath(cacheLookupKey)
 		if (cachedResolvedPath != null) {
+			Logger.v(TAG, "texture path cache hit original=$normalized resolved=$cachedResolvedPath")
 			return loadTextureBytesForResolvedPath(context, cachedResolvedPath)
 		}
+		Logger.v(TAG, "texture path cache miss original=$normalized")
 
 		val resolvedTexture = resolvePreferredTextureBytes(
 			context = context,
@@ -77,10 +80,14 @@ object RenderAssetCache {
 		preferPreviewVariant: Boolean = false
 	) {
 		loadFragment(context, config.shader.fragmentAssetPath)
-		loadTextureBytes(context, config.textures.backgroundTexture, preferPreviewVariant)
-		loadTextureBytes(context, config.textures.sunTexture, preferPreviewVariant)
-		loadTextureBytes(context, config.textures.moonTexture, preferPreviewVariant)
-		loadTextureBytes(context, config.textures.flareTexture, preferPreviewVariant)
+		val uniqueTexturePaths = LinkedHashSet<String>(4)
+		addTexturePath(uniqueTexturePaths, config.textures.backgroundTexture)
+		addTexturePath(uniqueTexturePaths, config.textures.sunTexture)
+		addTexturePath(uniqueTexturePaths, config.textures.moonTexture)
+		addTexturePath(uniqueTexturePaths, config.textures.flareTexture)
+		uniqueTexturePaths.forEach { texturePath ->
+			loadTextureBytes(context, texturePath, preferPreviewVariant)
+		}
 	}
 
 	private fun resolvePreferredTextureBytes(
@@ -121,18 +128,26 @@ object RenderAssetCache {
 		assetPath: String
 	): ByteArray? {
 		synchronized(textureCache) {
-			textureCache.get(assetPath)?.let { return it }
+			textureCache.get(assetPath)?.let {
+				Logger.v(TAG, "texture byte cache hit path=$assetPath size=${it.size}")
+				return it
+			}
 		}
+		Logger.v(TAG, "texture byte cache miss path=$assetPath")
 		return withLoadLock(
 			lockStore = textureLoadLocks,
 			key = assetPath
 		) {
 			synchronized(textureCache) {
-				textureCache.get(assetPath)?.let { return@withLoadLock it }
+				textureCache.get(assetPath)?.let {
+					Logger.v(TAG, "texture byte cache hit path=$assetPath size=${it.size}")
+					return@withLoadLock it
+				}
 			}
 			val loaded = runCatching {
 				context.assets.open(assetPath).use { it.readBytes() }
 			}.getOrNull() ?: return@withLoadLock null
+			Logger.v(TAG, "texture asset read path=$assetPath size=${loaded.size}")
 			synchronized(textureCache) {
 				textureCache.put(assetPath, loaded)
 			}
@@ -154,6 +169,13 @@ object RenderAssetCache {
 			candidates.add("${originalPath.substring(0, dotIndex)}_preview.webp")
 		}
 		return candidates.toList()
+	}
+
+	private fun addTexturePath(
+		target: LinkedHashSet<String>,
+		assetPath: String?
+	) {
+		assetPath?.takeIf { it.isNotBlank() }?.let(target::add)
 	}
 
 	private fun cacheLookupKey(
@@ -218,5 +240,6 @@ object RenderAssetCache {
 	private const val MAX_FRAGMENT_ENTRIES = 24
 	private const val MAX_RESOLVED_TEXTURE_PATH_ENTRIES = 256
 	private const val MAX_TEXTURE_CACHE_BYTES = 28 * 1024 * 1024
+	private const val TAG = "RenderAssetCache"
 }
 

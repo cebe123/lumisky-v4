@@ -15,6 +15,7 @@ import com.example.core.api.SunTimesRepository
 import com.example.core.settings.AppSettingsDefaults
 import com.example.core.settings.AppSettingsRepository
 import com.example.core.settings.ManualCity
+import java.util.concurrent.TimeUnit
 
 internal fun buildBackupCityPrefetchCandidates(
 	languageTag: String,
@@ -75,6 +76,10 @@ class BackupCityPrefetchWorker(
 
 		val repository = SunTimesRepository()
 		return try {
+			Logger.i(
+				TAG,
+				"BACKUP_PREFETCH_START candidates=${candidates.size} thread=${Thread.currentThread().name}"
+			)
 			val refreshedCount = repository.prefetchBackupBlocking(
 				candidates = candidates,
 				minRefreshIntervalMs = BACKUP_CITY_REFRESH_INTERVAL_MS
@@ -97,6 +102,7 @@ class BackupCityPrefetchWorker(
 		private const val UNIQUE_WORK_NAME = "backup_city_prefetch_startup"
 		private const val KEY_MAX_CANDIDATE_COUNT = "max_candidate_count"
 		private const val BACKUP_CITY_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
+		private const val BACKUP_PREFETCH_INITIAL_DELAY_MS = 5_000L
 
 		fun enqueue(
 			context: Context,
@@ -106,8 +112,10 @@ class BackupCityPrefetchWorker(
 				.setConstraints(
 					Constraints.Builder()
 						.setRequiredNetworkType(NetworkType.CONNECTED)
+						.setRequiresBatteryNotLow(true)
 						.build()
 				)
+				.setInitialDelay(BACKUP_PREFETCH_INITIAL_DELAY_MS, TimeUnit.MILLISECONDS)
 				.setInputData(
 					workDataOf(KEY_MAX_CANDIDATE_COUNT to maxCandidateCount)
 				)

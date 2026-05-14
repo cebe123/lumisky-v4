@@ -9,7 +9,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import com.example.core.api.SunDaylight
-import com.example.core.api.SunLocation
 import com.example.core.api.SunTimesRepository
 import com.example.core.location.LastKnownLocationProvider
 import com.example.core.settings.AppSettingsRepository
@@ -23,7 +22,6 @@ import com.example.engine.config.WallpaperConfigStore
 import com.example.lumisky.data.WallpaperCatalog
 import com.example.lumisky.data.WallpaperCatalogRepository
 import com.example.lumisky.work.BackupCityPrefetchWorker
-import com.example.lumisky.work.buildBackupCityPrefetchCandidates
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -65,12 +63,6 @@ class HomeViewModel(
 	)
 
 	// ---- backup prefetch ----
-	private val backupCityRefreshRunnable = object : Runnable {
-		override fun run() {
-			prefetchBackupCityCache()
-			schedulePeriodicBackupCityRefresh()
-		}
-	}
 	private var startupBackupPrefetchEnqueued = false
 
 	val items: List<HomeWallpaperItem>
@@ -121,7 +113,7 @@ class HomeViewModel(
 		}
 		seedInitialCatalog(daylight)
 		locationCoordinator.init()
-		schedulePeriodicBackupCityRefresh()
+		enqueueBackupCityPrefetchIfNeeded()
 	}
 
 	fun activateLivePreview(id: String) {
@@ -137,6 +129,7 @@ class HomeViewModel(
 		val key = normalized.joinToString(separator = "|")
 		if (key == lastFocusedCategoryKey) return
 		lastFocusedCategoryKey = key
+		enqueueBackupCityPrefetch()
 	}
 
 	fun clearLivePreview() {
@@ -144,7 +137,7 @@ class HomeViewModel(
 	}
 
 	fun onUserInteraction() {
-		enqueueStartupBackupPrefetchIfNeeded()
+		enqueueBackupCityPrefetchIfNeeded()
 	}
 
 	fun onForegroundStarted() {
@@ -200,7 +193,7 @@ class HomeViewModel(
 
 	fun updateManualCity(city: ManualCity) {
 		locationCoordinator.updateManualCity(city)
-		prefetchBackupCityCache()
+		enqueueBackupCityPrefetch()
 	}
 
 	fun refreshLocationState() {
@@ -220,7 +213,6 @@ class HomeViewModel(
 		settingsChangeListenerHandle?.close()
 		settingsChangeListenerHandle = null
 		locationCoordinator.release()
-		mainHandler.removeCallbacks(backupCityRefreshRunnable)
 		catalogExecutor.shutdownNow()
 	}
 
@@ -321,36 +313,21 @@ class HomeViewModel(
 
 	// ---- backup prefetch ----
 
-	private fun schedulePeriodicBackupCityRefresh() {
-		mainHandler.removeCallbacks(backupCityRefreshRunnable)
-		mainHandler.postDelayed(backupCityRefreshRunnable, BACKUP_CITY_REFRESH_INTERVAL_MS)
-	}
-
-	private fun enqueueStartupBackupPrefetchIfNeeded() {
+	private fun enqueueBackupCityPrefetchIfNeeded() {
 		if (startupBackupPrefetchEnqueued) return
 		startupBackupPrefetchEnqueued = true
+		enqueueBackupCityPrefetch()
+	}
+
+	private fun enqueueBackupCityPrefetch() {
 		BackupCityPrefetchWorker.enqueue(
 			context = appContext,
 			maxCandidateCount = BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT
 		)
 	}
 
-	private fun prefetchBackupCityCache(maxCandidateCount: Int = Int.MAX_VALUE) {
-		val boundedCandidates = buildBackupCityPrefetchCandidates(
-			languageTag = languageTag,
-			manualCity = manualCity,
-			maxCandidateCount = maxCandidateCount
-		)
-		if (boundedCandidates.isEmpty()) return
-		sunTimesRepository.prefetchBackupAsync(
-			candidates = boundedCandidates,
-			minRefreshIntervalMs = BACKUP_CITY_REFRESH_INTERVAL_MS
-		)
-	}
-
 	companion object {
 		private const val CATEGORY_PRIORITIZE_LIMIT = 24
-		private const val BACKUP_CITY_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
 		private const val BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT = 8
 	}
 }
