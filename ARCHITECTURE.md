@@ -195,28 +195,15 @@ graph TD
 ```mermaid
 graph TB
     App["app<br/>Android App"]
-    Core["core<br/>Utilities"]
-    Engine["engine<br/>Graphics"]
+    Core["core<br/>Utilities<br/>Independent"]
+    Engine["engine<br/>Graphics<br/>Independent"]
     Wallpaper["wallpaper<br/>Service"]
-    Independent["(Independent layers)"]
     
     App --> Core
     App --> Engine
     App --> Wallpaper
     Wallpaper --> Engine
     Wallpaper --> Core
-    Engine -.-> Independent
-    Core -.-> Independent
-    
-    classDef appStyle fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    classDef coreStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef engineStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef wallpaperStyle fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
-    
-    class App appStyle
-    class Core coreStyle
-    class Engine engineStyle
-    class Wallpaper wallpaperStyle
 ```
 
 ## Technology Stack
