@@ -1,0 +1,1 @@
+Yeni Lumisky güncellemesiyle canlı duvar kağıdı deneyimi daha akıcı ve güvenilir. OpenGL tabanlı gökyüzü, güneş ve ay animasyonlarında performans iyileştirmeleri yapıldı. Duvar kağıdı önizleme ve günlük ışık geçişleri daha stabil çalışır. Daha sorunsuz, pil dostu ve görsel açıdan zengin bir live wallpaper deneyimi için güncelleyin.

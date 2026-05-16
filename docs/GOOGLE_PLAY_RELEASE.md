@@ -1,6 +1,6 @@
 # Google Play Release
 
-Last checked: 2026-05-04
+Last checked: 2026-05-16
 
 ## Build Requirements
 
@@ -22,8 +22,8 @@ Official references:
 
 ```properties
 lumisky.applicationId=com.lumisky.android
-lumisky.versionCode=5
-lumisky.versionName=1.0.1
+lumisky.versionCode=9
+lumisky.versionName=1.0.4
 ```
 
 The application ID is permanent after the first Play upload. Change it before the first upload if `com.lumisky.wallpaper` is not the final package name.
