@@ -79,6 +79,7 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
@@ -112,8 +113,7 @@ class MainActivity : AppCompatActivity() {
 		}.getOrNull()
 	}
 
-	@Volatile
-	private var applyingWallpaper: Boolean = false
+	private val applyingWallpaper = AtomicBoolean(false)
 	private var locationReceiverRegistered: Boolean = false
 	private var awaitingSystemLocationEnableResult: Boolean = false
 	private var pendingLockWallpaperIdBeforeSet: Int? = null
@@ -129,6 +129,7 @@ class MainActivity : AppCompatActivity() {
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		configureLogging()
+		Logger.d(TAG, "onCreate called, savedInstanceState=${savedInstanceState != null}")
 		launchThemeMode = appSettingsRepository.getAppThemeMode()
 		val launchLanguageTag = appSettingsRepository.getLanguageTag()
 		applyLanguage(launchLanguageTag)
@@ -157,7 +158,7 @@ class MainActivity : AppCompatActivity() {
 				val systemBarColor = if (startupAnimationsEnabled) {
 					animateColorAsState(
 						targetValue = targetSystemBarColor,
-						animationSpec = tween(durationMillis = 320),
+						animationSpec = tween(durationMillis = ANIMATION_SYSTEM_BAR_DURATION_MS),
 						label = "main_system_bar_color"
 					).value
 				} else {
@@ -303,26 +304,26 @@ class MainActivity : AppCompatActivity() {
 										slideIntoContainer(
 											towards = direction,
 											animationSpec = tween(
-												durationMillis = 360,
+												durationMillis = ANIMATION_SCREEN_SLIDE_DURATION_MS,
 												easing = FastOutSlowInEasing
 											),
 											initialOffset = { offset -> offset / 3 }
 										) + fadeIn(
 											animationSpec = tween(
-												durationMillis = 220,
-												delayMillis = 60
+												durationMillis = ANIMATION_FADE_IN_DURATION_MS,
+												delayMillis = ANIMATION_FADE_IN_DELAY_MS
 											)
 										)
 										).togetherWith(
 										slideOutOfContainer(
 											towards = direction,
 											animationSpec = tween(
-												durationMillis = 280,
+												durationMillis = ANIMATION_SCREEN_SLIDE_OUT_DURATION_MS,
 												easing = FastOutSlowInEasing
 											),
 											targetOffset = { offset -> offset / 4 }
 										) + fadeOut(
-											animationSpec = tween(durationMillis = 180)
+											animationSpec = tween(durationMillis = ANIMATION_FADE_OUT_DURATION_MS)
 										)
 									).using(SizeTransform(clip = false))
 							},
@@ -340,6 +341,7 @@ class MainActivity : AppCompatActivity() {
 	}
 
 	override fun onStart() {
+		Logger.d(TAG, "onStart called")
 		super.onStart()
 		completeExternalWallpaperSetFlowIfNeeded()
 		restoreLockScreenWallpaperSharingOnForegroundIfNeeded()
@@ -353,14 +355,16 @@ class MainActivity : AppCompatActivity() {
 	}
 
 	override fun onStop() {
+		Logger.d(TAG, "onStop called")
 		homeViewModelOrNull()?.onForegroundStopped()
 		unregisterLocationModeReceiver()
 		super.onStop()
 	}
 
 	override fun onDestroy() {
+		Logger.d(TAG, "onDestroy called, finishing=$isFinishing")
 		unregisterLocationModeReceiver()
-		setWallpaperExecutor.shutdownNow()
+		shutdownSetWallpaperExecutor()
 		sunTimesRepository.release()
 		homeViewModelOrNull()?.release()
 		super.onDestroy()
@@ -394,61 +398,95 @@ class MainActivity : AppCompatActivity() {
 
 	private fun unregisterLocationModeReceiver() {
 		if (!locationReceiverRegistered) return
-		runCatching { unregisterReceiver(locationModeReceiver) }
+		try {
+			unregisterReceiver(locationModeReceiver)
+			Logger.d(TAG, "location mode receiver unregistered")
+		} catch (e: IllegalArgumentException) {
+			Logger.w(TAG, "location mode receiver was not registered", e)
+		}
 		locationReceiverRegistered = false
 	}
 
 	private fun requestWallpaperApply(wallpaperId: String) {
 		val homeViewModel = homeViewModelOrNull() ?: return
-		val baseConfig = homeViewModel.configFor(wallpaperId)
+		val baseConfig = homeViewModel.configFor(wallpaperId) ?: run {
+			Logger.w(TAG, "set wallpaper ignored, missing config id=$wallpaperId")
+			return
+		}
 		applyWallpaperWithFreshSunTimes(baseConfig = baseConfig)
 	}
 
+	/**
+	 * Applies the selected wallpaper after a bounded sun-times refresh.
+	 * If refresh times out, the last known/default daylight values are used so the picker still opens.
+	 */
 	private fun applyWallpaperWithFreshSunTimes(baseConfig: WallpaperConfig) {
-		if (applyingWallpaper) {
+		if (!applyingWallpaper.compareAndSet(false, true)) {
 			Logger.w(TAG, "set wallpaper ignored, apply already in progress")
 			return
 		}
-		applyingWallpaper = true
-		setWallpaperExecutor.execute {
-			try {
-				val candidates = buildSunTimesCandidates()
-				val latch = CountDownLatch(1)
-				var resolvedDaylightResolution: SunDaylightResolution? = null
-				var resolvedDaylight = SunDaylight(
-					sunriseMinute = baseConfig.daylight.sunriseMinute,
-					sunsetMinute = baseConfig.daylight.sunsetMinute,
-					solarNoonMinute = baseConfig.daylight.solarNoonMinute,
-					timeZoneId = baseConfig.daylight.timeZoneId
-				)
-				sunTimesRepository.refreshResolvedAsyncWithCandidates(
-					candidates = candidates
-				) { resolution ->
-					resolvedDaylightResolution = resolution
-					resolvedDaylight = resolution.daylight
-					latch.countDown()
-				}
-				latch.await(SET_WALLPAPER_REFRESH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-				resolvedDaylightResolution?.let(::syncAutomaticLocationTimeZoneIfNeeded)
-
-				val finalConfig = baseConfig.copy(
-					daylight = DaylightConfig(
-						sunriseMinute = resolvedDaylight.sunriseMinute,
-						sunsetMinute = resolvedDaylight.sunsetMinute,
-						solarNoonMinute = resolvedDaylight.solarNoonMinute,
-						timeZoneId = resolvedDaylight.timeZoneId
+		try {
+			setWallpaperExecutor.execute {
+				try {
+					val candidates = buildSunTimesCandidates()
+					val latch = CountDownLatch(1)
+					var resolvedDaylightResolution: SunDaylightResolution? = null
+					var resolvedDaylight = SunDaylight(
+						sunriseMinute = baseConfig.daylight.sunriseMinute,
+						sunsetMinute = baseConfig.daylight.sunsetMinute,
+						solarNoonMinute = baseConfig.daylight.solarNoonMinute,
+						timeZoneId = baseConfig.daylight.timeZoneId
 					)
-				)
-				wallpaperConfigStore.savePreview(finalConfig)
-				runOnUiThread {
-					launchSystemWallpaperSetFlow()
+					sunTimesRepository.refreshResolvedAsyncWithCandidates(
+						candidates = candidates
+					) { resolution ->
+						resolvedDaylightResolution = resolution
+						resolvedDaylight = resolution.daylight
+						latch.countDown()
+					}
+					val refreshCompleted = latch.await(
+						SET_WALLPAPER_REFRESH_TIMEOUT_MS,
+						TimeUnit.MILLISECONDS
+					)
+					if (!refreshCompleted) {
+						Logger.w(
+							TAG,
+							"sun times refresh timed out after ${SET_WALLPAPER_REFRESH_TIMEOUT_MS}ms, " +
+								"using fallback values"
+						)
+					}
+					resolvedDaylightResolution?.let(::syncAutomaticLocationTimeZoneIfNeeded)
+
+					val finalConfig = baseConfig.copy(
+						daylight = DaylightConfig(
+							sunriseMinute = resolvedDaylight.sunriseMinute,
+							sunsetMinute = resolvedDaylight.sunsetMinute,
+							solarNoonMinute = resolvedDaylight.solarNoonMinute,
+							timeZoneId = resolvedDaylight.timeZoneId
+						)
+					)
+					Logger.d(
+						TAG,
+						"wallpaper config finalized sunrise=${resolvedDaylight.sunriseMinute} " +
+							"sunset=${resolvedDaylight.sunsetMinute} refreshCompleted=$refreshCompleted"
+					)
+					wallpaperConfigStore.savePreview(finalConfig)
+					runOnUiThread {
+						launchSystemWallpaperSetFlow()
+					}
+				} catch (t: Throwable) {
+					if (t is InterruptedException) {
+						Thread.currentThread().interrupt()
+					}
+					wallpaperConfigStore.clearPreview()
+					Logger.e(TAG, "applyWallpaperWithFreshSunTimes failed", t)
+				} finally {
+					applyingWallpaper.set(false)
 				}
-			} catch (t: Throwable) {
-				wallpaperConfigStore.clearPreview()
-				Logger.e(TAG, "applyWallpaperWithFreshSunTimes failed", t)
-			} finally {
-				applyingWallpaper = false
 			}
+		} catch (t: Throwable) {
+			applyingWallpaper.set(false)
+			throw t
 		}
 	}
 
@@ -551,7 +589,7 @@ class MainActivity : AppCompatActivity() {
 				EXTRA_LIVE_WALLPAPER_COMPONENT,
 				ComponentName(
 					this@MainActivity,
-					com.example.wallpaper.SkyWallpaperService::class.java
+					WALLPAPER_SERVICE_CLASS_NAME
 				)
 			)
 		}
@@ -604,15 +642,18 @@ class MainActivity : AppCompatActivity() {
 
 	private fun resolveRestoreLiveWallpaperOnLockScreenPreference(): Boolean {
 		val previousLockWallpaperId = pendingLockWallpaperIdBeforeSet
-		val currentLockWallpaperId = queryLockWallpaperId(applicationContext)
-		pendingLockWallpaperIdBeforeSet = null
-		return when {
-			currentLockWallpaperId == null -> {
-				appSettingsRepository.getRestoreLiveWallpaperOnLockScreen() ?: false
+		try {
+			val currentLockWallpaperId = queryLockWallpaperId(applicationContext)
+			return when {
+				currentLockWallpaperId == null -> {
+					appSettingsRepository.getRestoreLiveWallpaperOnLockScreen() ?: false
+				}
+				currentLockWallpaperId < 0 -> true
+				previousLockWallpaperId == null -> false
+				else -> currentLockWallpaperId != previousLockWallpaperId
 			}
-			currentLockWallpaperId < 0 -> true
-			previousLockWallpaperId == null -> false
-			else -> currentLockWallpaperId != previousLockWallpaperId
+		} finally {
+			pendingLockWallpaperIdBeforeSet = null
 		}
 	}
 
@@ -699,9 +740,16 @@ class MainActivity : AppCompatActivity() {
 		}
 	}
 
+	@Suppress("DEPRECATION")
 	private fun updateStatusBarBackground(color: Int) {
-		runCatching {
-			statusBarPaintMethod?.invoke(window, color)
+		try {
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+				window.statusBarColor = color
+			} else {
+				statusBarPaintMethod?.invoke(window, color)
+			}
+		} catch (e: Exception) {
+			Logger.w(TAG, "failed to update status bar background color=$color", e)
 		}
 	}
 
@@ -710,27 +758,50 @@ class MainActivity : AppCompatActivity() {
 		val appContext = applicationContext
 		val (previewWidthPx, previewHeightPx) = resolveHomeStartupPreviewSizePx()
 		val startedAtMs = SystemClock.elapsedRealtime()
-		withContext(Dispatchers.IO) {
-			val snapshotLoader = SnapshotPreviewAssetLoader(appContext)
-			items.forEach { item ->
-				snapshotLoader.loadBitmap(
-					configId = item.config.id,
-					targetWidthPx = previewWidthPx,
-					targetHeightPx = previewHeightPx
-				)
+		var snapshotLoadedCount = 0
+		var snapshotFailedCount = 0
+		var renderPrewarmedCount = 0
+		var renderFailedCount = 0
+		runCatching {
+			withContext(Dispatchers.IO) {
+				val snapshotLoader = SnapshotPreviewAssetLoader(appContext)
+				items.forEach { item ->
+					runCatching {
+						snapshotLoader.loadBitmap(
+							configId = item.config.id,
+							targetWidthPx = previewWidthPx,
+							targetHeightPx = previewHeightPx
+						)
+					}.onSuccess {
+						snapshotLoadedCount++
+					}.onFailure {
+						snapshotFailedCount++
+						Logger.w(TAG, "failed to warm startup snapshot configId=${item.config.id}", it)
+					}
+				}
+				items.take(STARTUP_RENDER_ASSET_WARM_LIMIT).forEach { item ->
+					runCatching {
+						RenderAssetCache.prewarmWallpaper(
+							context = appContext,
+							config = item.config,
+							preferPreviewVariant = true
+						)
+					}.onSuccess {
+						renderPrewarmedCount++
+					}.onFailure {
+						renderFailedCount++
+						Logger.w(TAG, "failed to prewarm render asset configId=${item.config.id}", it)
+					}
+				}
 			}
-			items.take(STARTUP_RENDER_ASSET_WARM_LIMIT).forEach { item ->
-				RenderAssetCache.prewarmWallpaper(
-					context = appContext,
-					config = item.config,
-					preferPreviewVariant = true
-				)
-			}
+		}.onFailure {
+			Logger.w(TAG, "home startup cache warming failed", it)
 		}
 		Logger.d(
 			TAG,
-			"home startup cache warmed items=${items.size} size=${previewWidthPx}x$previewHeightPx " +
-				"elapsedMs=${SystemClock.elapsedRealtime() - startedAtMs}"
+			"home startup cache warmed snapshots=$snapshotLoadedCount/$snapshotFailedCount " +
+				"renderAssets=$renderPrewarmedCount/$renderFailedCount " +
+				"size=${previewWidthPx}x$previewHeightPx elapsedMs=${SystemClock.elapsedRealtime() - startedAtMs}"
 		)
 	}
 
@@ -774,15 +845,39 @@ class MainActivity : AppCompatActivity() {
 				if (task.isSuccessful) {
 					val reviewInfo = task.result
 					val flow = manager.launchReviewFlow(this, reviewInfo)
-					flow.addOnCompleteListener { _ ->
-						// Flow completed
+					flow.addOnCompleteListener { flowTask ->
+						if (flowTask.isSuccessful) {
+							Logger.d(TAG, "in-app review flow completed")
+						} else {
+							Logger.w(TAG, "in-app review flow failed", flowTask.exception)
+						}
 					}
 				} else {
-					Logger.w(TAG, "In-app review request failed")
+					Logger.w(TAG, "In-app review request failed", task.exception)
 				}
 			}
 		} catch (e: Exception) {
 			Logger.e(TAG, "Failed to launch in-app review", e)
+		}
+	}
+
+	private fun shutdownSetWallpaperExecutor() {
+		setWallpaperExecutor.shutdown()
+		try {
+			if (!setWallpaperExecutor.awaitTermination(
+					WALLPAPER_EXECUTOR_SHUTDOWN_TIMEOUT_MS,
+					TimeUnit.MILLISECONDS
+				)
+			) {
+				val unfinished = setWallpaperExecutor.shutdownNow()
+				applyingWallpaper.set(false)
+				Logger.w(TAG, "wallpaper executor force shutdown unfinished=${unfinished.size}")
+			}
+		} catch (e: InterruptedException) {
+			Thread.currentThread().interrupt()
+			val unfinished = setWallpaperExecutor.shutdownNow()
+			applyingWallpaper.set(false)
+			Logger.w(TAG, "wallpaper executor shutdown interrupted unfinished=${unfinished.size}", e)
 		}
 	}
 
@@ -791,7 +886,15 @@ class MainActivity : AppCompatActivity() {
 		private const val SCREEN_HOME = "home"
 		private const val SCREEN_SETTINGS = "settings"
 		private const val SET_WALLPAPER_REFRESH_TIMEOUT_MS = 1_800L
+		private const val WALLPAPER_EXECUTOR_SHUTDOWN_TIMEOUT_MS = 2_000L
 		private const val HOME_STARTUP_CARD_WIDTH_DP = 276f
 		private const val STARTUP_RENDER_ASSET_WARM_LIMIT = 6
+		private const val WALLPAPER_SERVICE_CLASS_NAME = "com.example.wallpaper.SkyWallpaperService"
+		private const val ANIMATION_SYSTEM_BAR_DURATION_MS = 320
+		private const val ANIMATION_SCREEN_SLIDE_DURATION_MS = 360
+		private const val ANIMATION_SCREEN_SLIDE_OUT_DURATION_MS = 280
+		private const val ANIMATION_FADE_IN_DURATION_MS = 220
+		private const val ANIMATION_FADE_IN_DELAY_MS = 60
+		private const val ANIMATION_FADE_OUT_DURATION_MS = 180
 	}
 }

@@ -23,7 +23,9 @@ import com.example.core.settings.LocationMode
 import com.example.core.settings.ManualCity
 import java.util.Locale
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,7 +57,21 @@ internal class LocationSunTimesCoordinator(
 ) {
 	private val tag = "LocationSunTimesCoordinator"
 	private val mainHandler = Handler(Looper.getMainLooper())
-	private val locationLabelExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+	private val locationLabelExecutor: ExecutorService = ThreadPoolExecutor(
+		1,
+		1,
+		0L,
+		TimeUnit.MILLISECONDS,
+		LinkedBlockingQueue(LOCATION_LABEL_QUEUE_CAPACITY),
+		{ runnable ->
+			Thread(runnable, LOCATION_LABEL_THREAD_NAME).apply {
+				isDaemon = true
+			}
+		},
+		ThreadPoolExecutor.AbortPolicy()
+	)
+	@Volatile
+	private var released: Boolean = false
 
 	// ---- observable state ----
 	var locationMode: LocationMode by mutableStateOf(initialSettings.locationMode)
@@ -107,11 +123,13 @@ internal class LocationSunTimesCoordinator(
 	// ---- runnables ----
 	private val sunTimesRefreshRunnable = object : Runnable {
 		override fun run() {
+			if (released) return
 			refreshSunTimes()
 			schedulePeriodicSunTimesRefresh()
 		}
 	}
 	private val refreshLocationAndSunTimesRunnable = Runnable {
+		if (released) return@Runnable
 		refreshPipelineScheduled = false
 		val shouldRefreshSunTimes = refreshPipelineNeedsSunTimes
 		val shouldRequestGps = refreshPipelineNeedsGpsRequest
@@ -152,6 +170,7 @@ internal class LocationSunTimesCoordinator(
 		}
 	}
 	private val startupRefreshRunnable = Runnable {
+		if (released) return@Runnable
 		val resolvedState = resolveLocationState(forceRefresh = true)
 		refreshLocationStateNow(resolvedState)
 		if (locationMode == LocationMode.GPS && !resolvedState.systemEnabled) {
@@ -166,7 +185,10 @@ internal class LocationSunTimesCoordinator(
 	// ---- lifecycle ----
 
 	fun init() {
-		mainHandler.post(startupRefreshRunnable)
+		if (released) return
+		postToMain("startup_refresh") {
+			startupRefreshRunnable.run()
+		}
 		schedulePeriodicSunTimesRefresh()
 	}
 
@@ -180,11 +202,28 @@ internal class LocationSunTimesCoordinator(
 	}
 
 	fun release() {
+		if (released) return
+		released = true
+		Logger.d(tag, "release called")
 		stopPassiveLocationUpdates()
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
 		mainHandler.removeCallbacks(refreshLocationAndSunTimesRunnable)
 		mainHandler.removeCallbacks(startupRefreshRunnable)
-		locationLabelExecutor.shutdownNow()
+		locationLabelExecutor.shutdown()
+		try {
+			if (!locationLabelExecutor.awaitTermination(
+					LOCATION_LABEL_EXECUTOR_SHUTDOWN_TIMEOUT_MS,
+					TimeUnit.MILLISECONDS
+				)
+			) {
+				Logger.w(tag, "location label executor shutdown timed out")
+				locationLabelExecutor.shutdownNow()
+			}
+		} catch (e: InterruptedException) {
+			Thread.currentThread().interrupt()
+			Logger.w(tag, "location label executor shutdown interrupted", e)
+			locationLabelExecutor.shutdownNow()
+		}
 		sunTimesRepository.release()
 	}
 
@@ -195,6 +234,7 @@ internal class LocationSunTimesCoordinator(
 		locationRefreshInProgress = false
 		locationMode = mode
 		invalidateResolvedLocationStateCache()
+		invalidateLocationCandidatesCache()
 		settingsRepository.setLocationMode(mode)
 		refreshLocationAndSunTimesCoalesced(
 			reason = "location_mode",
@@ -204,6 +244,7 @@ internal class LocationSunTimesCoordinator(
 
 	fun updateManualCity(city: ManualCity) {
 		manualCity = city
+		invalidateLocationCandidatesCache()
 		settingsRepository.setManualCity(city)
 		if (city.id != LAST_KNOWN_CITY_ID) {
 			gpsPlaceLabel = null
@@ -268,6 +309,7 @@ internal class LocationSunTimesCoordinator(
 
 		if (newLanguageTag != null && languageTag != newLanguageTag) {
 			languageTag = newLanguageTag
+			invalidateLocationCandidatesCache()
 			shouldRefreshLocation = true
 			shouldRefreshSunTimes = true
 		}
@@ -275,11 +317,13 @@ internal class LocationSunTimesCoordinator(
 			locationMode = newLocationMode
 			locationRefreshInProgress = false
 			invalidateResolvedLocationStateCache()
+			invalidateLocationCandidatesCache()
 			shouldRefreshLocation = true
 			shouldRefreshSunTimes = true
 		}
 		if (newManualCity != null && manualCity != newManualCity) {
 			manualCity = newManualCity
+			invalidateLocationCandidatesCache()
 			shouldRefreshLocation = true
 			shouldRefreshSunTimes = true
 		}
@@ -293,6 +337,7 @@ internal class LocationSunTimesCoordinator(
 			gpsPlaceLabel = automaticLocationSnapshot?.label
 			lastGpsPlaceKey = lastKnownGpsLocation?.let(::gpsLocationKey)
 			updateLastKnownCity(automaticLocationSnapshot)
+			invalidateLocationCandidatesCache()
 			updateResolvedLocationStateCache()
 			shouldRefreshLocation = true
 			shouldRefreshSunTimes = true
@@ -447,10 +492,11 @@ internal class LocationSunTimesCoordinator(
 	}
 
 	private fun refreshSunTimesNow(resolvedState: ResolvedLocationState? = null) {
+		if (released) return
 		val candidates = resolveLocationCandidates(resolvedState)
 		if (candidates.isEmpty()) return
 		sunTimesRepository.refreshResolvedAsyncWithCandidates(candidates) { resolution ->
-			mainHandler.post {
+			postToMain("sun_times_result") {
 				syncAutomaticLocationTimeZoneIfNeeded(resolution)
 				val fetched = resolution.daylight
 				if (fetched != daylight) {
@@ -499,6 +545,12 @@ internal class LocationSunTimesCoordinator(
 		resolvedLocationStateCache = null
 	}
 
+	private fun invalidateLocationCandidatesCache() {
+		locationCandidatesCacheKey = null
+		locationCandidatesCache = emptyList()
+		locationCandidatesCacheAtMs = 0L
+	}
+
 	private fun updateResolvedLocationStateCache() {
 		resolvedLocationStateCache = ResolvedLocationState(
 			systemEnabled = systemLocationEnabled,
@@ -509,6 +561,7 @@ internal class LocationSunTimesCoordinator(
 	}
 
 	private fun requestImmediateGpsLocation(force: Boolean = false) {
+		if (released) return
 		if (locationMode != LocationMode.GPS || !lastKnownLocationProvider.hasLocationPermission()) {
 			locationRefreshInProgress = false
 			return
@@ -519,10 +572,10 @@ internal class LocationSunTimesCoordinator(
 		lastKnownLocationProvider.requestLastKnownLocation(
 			allowWhenLocationDisabled = true
 		) { location ->
-			mainHandler.post {
+			postToMain("last_known_location_result") {
 				if (locationMode != LocationMode.GPS) {
 					locationRefreshInProgress = false
-					return@post
+					return@postToMain
 				}
 				val shouldRequestCurrent = shouldRequestCurrentLocation(location)
 				val applied = location?.let { snapshot ->
@@ -536,7 +589,7 @@ internal class LocationSunTimesCoordinator(
 						refreshLocationStateNow(resolveLocationState(forceRefresh = false))
 					}
 					locationRefreshInProgress = false
-					return@post
+					return@postToMain
 				}
 				if (shouldRequestCurrent) {
 					requestCurrentGpsLocation()
@@ -551,21 +604,38 @@ internal class LocationSunTimesCoordinator(
 	}
 
 	private fun requestCurrentGpsLocation() {
+		if (released) return
+		val requestStartedAtMs = SystemClock.elapsedRealtime()
+		val safetyTimeout = Runnable {
+			if (released) return@Runnable
+			if (locationMode == LocationMode.GPS && locationRefreshInProgress) {
+				Logger.w(tag, "gps request safety timeout")
+				locationRefreshInProgress = false
+			}
+		}
+		mainHandler.postDelayed(safetyTimeout, GPS_REQUEST_RESPONSE_MAX_WAIT_MS)
 		val preferLowPower = shouldPreferLowPowerCurrentLocation()
 		lastKnownLocationProvider.requestCurrentLocation(
 			preferLowPower = preferLowPower,
 			maxUpdateAgeMillis = CURRENT_LOCATION_MAX_AGE_MS,
 			timeoutMillis = CURRENT_LOCATION_TIMEOUT_MS
 		) { location ->
-			mainHandler.post {
+			postToMain("current_location_result") {
+				mainHandler.removeCallbacks(safetyTimeout)
+				val elapsedMs = SystemClock.elapsedRealtime() - requestStartedAtMs
+				if (elapsedMs > GPS_REQUEST_RESPONSE_MAX_WAIT_MS) {
+					Logger.w(tag, "gps response too slow elapsedMs=$elapsedMs")
+					locationRefreshInProgress = false
+					return@postToMain
+				}
 				if (locationMode != LocationMode.GPS) {
 					locationRefreshInProgress = false
-					return@post
+					return@postToMain
 				}
 				if (location == null) {
 					Logger.w(tag, "gps_current_result null")
 					locationRefreshInProgress = false
-					return@post
+					return@postToMain
 				}
 				applyAutomaticLocationSample(location, refreshSunTimes = true)
 				locationRefreshInProgress = false
@@ -581,6 +651,24 @@ internal class LocationSunTimesCoordinator(
 		forceLocationState: Boolean = false,
 		handleProviderChange: Boolean = false
 	) {
+		if (released) return
+		if (Looper.myLooper() != mainHandler.looper) {
+			postToMain("refresh_coalesced:$reason") {
+				refreshLocationAndSunTimesCoalesced(
+					reason = reason,
+					requestGpsLocation = requestGpsLocation,
+					refreshSunTimes = refreshSunTimes,
+					debounceMs = debounceMs,
+					forceLocationState = forceLocationState,
+					handleProviderChange = handleProviderChange
+				)
+			}
+			return
+		}
+		Logger.d(
+			tag,
+			"LOCATION_REFRESH_QUEUE reason=$reason sunTimes=$refreshSunTimes gpsRequest=$requestGpsLocation"
+		)
 		refreshPipelineNeedsGpsRequest = refreshPipelineNeedsGpsRequest || requestGpsLocation
 		refreshPipelineNeedsSunTimes = refreshPipelineNeedsSunTimes || refreshSunTimes
 		refreshPipelineForceLocationState = refreshPipelineForceLocationState || forceLocationState
@@ -593,7 +681,10 @@ internal class LocationSunTimesCoordinator(
 		refreshPipelineScheduled = true
 		val delayMs = debounceMs.coerceAtLeast(0L)
 		mainHandler.removeCallbacks(refreshLocationAndSunTimesRunnable)
-		mainHandler.postDelayed(refreshLocationAndSunTimesRunnable, delayMs)
+		if (!mainHandler.postDelayed(refreshLocationAndSunTimesRunnable, delayMs)) {
+			Logger.w(tag, "failed to schedule location refresh pipeline reason=$reason")
+			refreshPipelineScheduled = false
+		}
 	}
 
 	private fun refreshOnForegroundIfStale(
@@ -615,15 +706,18 @@ internal class LocationSunTimesCoordinator(
 	}
 
 	private fun maybeResolveGpsPlaceLabel(location: SunLocation) {
+		if (released) return
 		val key = gpsLocationKey(location)
 		if (key == lastGpsPlaceKey && !gpsPlaceLabel.isNullOrBlank()) return
 		lastGpsPlaceKey = key
-		locationLabelExecutor.execute {
+		executeLocationLabelTask {
+			if (released) return@executeLocationLabelTask
 			val resolved =
-				lastKnownLocationProvider.resolveCityOrDistrict(location) ?: return@execute
-			mainHandler.post {
-				if (key != lastGpsPlaceKey) return@post
-				if (gpsPlaceLabel == resolved) return@post
+				lastKnownLocationProvider.resolveCityOrDistrict(location)
+					?: return@executeLocationLabelTask
+			postToMain("gps_place_label_result") {
+				if (key != lastGpsPlaceKey) return@postToMain
+				if (gpsPlaceLabel == resolved) return@postToMain
 				gpsPlaceLabel = resolved
 				automaticLocationSnapshot?.let { snapshot ->
 					if (gpsLocationKey(snapshot.toSunLocation(labelFallback = "gps_cached")) == key) {
@@ -656,6 +750,15 @@ internal class LocationSunTimesCoordinator(
 		location: LocationSnapshot,
 		refreshSunTimes: Boolean
 	): Boolean {
+		if (released) return false
+		if (!location.isFreshWithin(MAX_ACCEPTED_LOCATION_AGE_MS)) {
+			Logger.w(
+				tag,
+				"location sample rejected as stale source=${location.source} capturedAt=${location.capturedAtEpochMs}"
+			)
+			locationRefreshInProgress = false
+			return false
+		}
 		val previous = automaticLocationSnapshot
 		if (previous != null && previous.capturedAtEpochMs > location.capturedAtEpochMs) {
 			return false
@@ -677,6 +780,7 @@ internal class LocationSunTimesCoordinator(
 		if (!location.label.isNullOrBlank()) {
 			gpsPlaceLabel = location.label
 		}
+		invalidateLocationCandidatesCache()
 		updateResolvedLocationStateCache()
 		updateLocationLabelFromCachedGpsState()
 		maybeResolveGpsPlaceLabel(lastKnownGpsLocation ?: return true)
@@ -707,6 +811,7 @@ internal class LocationSunTimesCoordinator(
 		if (updated.source == LocationSource.CURRENT || updated.source == LocationSource.PASSIVE) {
 			liveGpsLocation = updated.toSunLocation(labelFallback = "gps_live")
 		}
+		invalidateLocationCandidatesCache()
 		updateResolvedLocationStateCache()
 		updateLocationLabelFromCachedGpsState()
 	}
@@ -717,8 +822,8 @@ internal class LocationSunTimesCoordinator(
 		if (!systemLocationEnabled || !lastKnownLocationProvider.hasLocationPermission()) return
 		passiveLocationUpdatesStarted = true
 		lastKnownLocationProvider.startPassiveLocationUpdates { location ->
-			mainHandler.post {
-				if (locationMode != LocationMode.GPS) return@post
+			postToMain("passive_location_result") {
+				if (locationMode != LocationMode.GPS) return@postToMain
 				applyAutomaticLocationSample(location, refreshSunTimes = true)
 			}
 		}
@@ -755,8 +860,40 @@ internal class LocationSunTimesCoordinator(
 	}
 
 	private fun schedulePeriodicSunTimesRefresh() {
+		if (released) return
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
-		mainHandler.postDelayed(sunTimesRefreshRunnable, SUN_TIMES_REFRESH_INTERVAL_MS)
+		if (!mainHandler.postDelayed(sunTimesRefreshRunnable, SUN_TIMES_REFRESH_INTERVAL_MS)) {
+			Logger.w(tag, "failed to schedule periodic sun-times refresh")
+		}
+	}
+
+	private fun postToMain(
+		reason: String,
+		task: () -> Unit
+	): Boolean {
+		if (released) return false
+		val posted = mainHandler.post {
+			if (released) return@post
+			task()
+		}
+		if (!posted) {
+			Logger.w(tag, "main handler post failed reason=$reason")
+		}
+		return posted
+	}
+
+	private fun executeLocationLabelTask(task: () -> Unit) {
+		if (released) return
+		runCatching {
+			locationLabelExecutor.execute(
+				Runnable {
+					if (released) return@Runnable
+					task()
+				}
+			)
+		}.onFailure { throwable ->
+			Logger.w(tag, "location label task rejected", throwable)
+		}
 	}
 
 	private fun resolveDefaultCity(): SunLocation {
@@ -862,7 +999,12 @@ internal class LocationSunTimesCoordinator(
 		private const val LOW_POWER_CURRENT_LOCATION_WINDOW_MS = 6L * 60L * 60L * 1000L
 		private const val CURRENT_LOCATION_MAX_AGE_MS = 10L * 60L * 1000L
 		private const val CURRENT_LOCATION_TIMEOUT_MS = 6_000L
+		private const val GPS_REQUEST_RESPONSE_MAX_WAIT_MS = CURRENT_LOCATION_TIMEOUT_MS + 2_000L
+		private const val MAX_ACCEPTED_LOCATION_AGE_MS = 24L * 60L * 60L * 1000L
 		private const val MAX_ACCEPTABLE_LAST_LOCATION_ACCURACY_METERS = 15_000f
 		private const val SUN_TIMES_REFRESH_LOCATION_BUCKET_SCALE = 100.0
+		private const val LOCATION_LABEL_QUEUE_CAPACITY = 10
+		private const val LOCATION_LABEL_EXECUTOR_SHUTDOWN_TIMEOUT_MS = 2_000L
+		private const val LOCATION_LABEL_THREAD_NAME = "LocationLabel"
 	}
 }

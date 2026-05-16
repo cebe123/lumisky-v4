@@ -2,8 +2,10 @@ package com.example.wallpaper.service
 
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
 import android.os.SystemClock
 import android.view.SurfaceHolder
+import com.example.core.Logger
 import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
@@ -11,7 +13,13 @@ import com.example.wallpaper.engine.WallpaperRenderEngine
 import com.example.wallpaper.render.SceneStateHasher
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
+/**
+ * Coordinates live wallpaper lifecycle calls on the service thread with render work on
+ * [RENDER_THREAD_NAME]. Surface/config/render state that can be observed across both threads must
+ * stay volatile, atomic, or guarded before it is used to skip/execute queued render work.
+ */
 internal class WallpaperRenderController(
 	private val renderEngine: WallpaperRenderEngine,
 	private val scheduler: MinuteTickScheduler,
@@ -23,6 +31,7 @@ internal class WallpaperRenderController(
 	private var lastStateHash: Int? = null
 	@Volatile
 	private var pendingStateHash: Int? = null
+	private val stateHashLock = Any()
 
 	@Volatile
 	private var visible: Boolean = false
@@ -41,11 +50,14 @@ internal class WallpaperRenderController(
 	private var currentConfig: WallpaperConfig? = null
 	private var pendingFullRedraw: Boolean = true
 	private var lastRenderElapsedMs: Long = 0L
-	private var surfaceGeneration: Int = 0
+	private val surfaceGeneration = AtomicInteger(0)
 	private val framePacingClock = FramePacingClock()
 
 	fun onCreate() {
-		if (renderThread != null) return
+		if (renderThread != null) {
+			Logger.w(TAG, "onCreate ignored, render thread already exists")
+			return
+		}
 		val thread = HandlerThread(RENDER_THREAD_NAME).apply { start() }
 		renderThread = thread
 		renderHandler = Handler(thread.looper)
@@ -55,6 +67,7 @@ internal class WallpaperRenderController(
 				shouldContinue = ::shouldDriveVsyncLoop
 			)
 			pendingConfig?.let { config ->
+				Logger.d(TAG, "applying pending config on render thread id=${config.id}")
 				renderEngine.setConfig(config)
 				pendingConfig = null
 			}
@@ -64,13 +77,22 @@ internal class WallpaperRenderController(
 
 	fun onSurfaceCreated(holder: SurfaceHolder) {
 		surfaceAttached = true
-		val generation = ++surfaceGeneration
+		val generation = surfaceGeneration.incrementAndGet()
 		displayRefreshRateHz = displayRefreshRateProvider()
 		pendingFullRedraw = true
 		updateSchedulerState()
 		postRenderTask {
 			if (!isCurrentSurfaceGeneration(generation)) return@postRenderTask
-			renderEngine.attachSurface(holder)
+			val attached = renderEngine.attachSurface(holder)
+			if (!attached) {
+				if (isCurrentSurfaceGeneration(generation)) {
+					surfaceAttached = false
+					pendingFullRedraw = true
+					clearStateHashes()
+					updateSchedulerState()
+				}
+				return@postRenderTask
+			}
 			if (visible && isCurrentSurfaceGeneration(generation)) {
 				updateRenderLoopsLocked()
 				renderCurrentScene(force = true)
@@ -100,12 +122,15 @@ internal class WallpaperRenderController(
 
 	fun onSurfaceDestroyed() {
 		surfaceAttached = false
-		surfaceGeneration++
+		surfaceGeneration.incrementAndGet()
 		pendingFullRedraw = true
 		updateSchedulerState()
-		postRenderTaskBlocking(SURFACE_DETACH_WAIT_TIMEOUT_MS) {
+		val detached = postRenderTaskBlocking(SURFACE_DETACH_WAIT_TIMEOUT_MS) {
 			stopRenderLoopsLocked()
 			renderEngine.detachSurface()
+		}
+		if (!detached) {
+			Logger.w(TAG, "surface detach did not complete within ${SURFACE_DETACH_WAIT_TIMEOUT_MS}ms")
 		}
 	}
 
@@ -136,16 +161,16 @@ internal class WallpaperRenderController(
 	fun setConfig(config: WallpaperConfig) {
 		if (config == currentConfig) return
 		currentConfig = config
-		lastStateHash = null
-		pendingStateHash = null
+		clearStateHashes()
 		pendingFullRedraw = true
 		val handler = renderHandler
 		if (handler == null) {
 			pendingConfig = config
+			Logger.d(TAG, "setConfig queued before render handler is ready id=${config.id}")
 			return
 		}
 		updateSchedulerState()
-		handler.post {
+		val posted = handler.post {
 			renderEngine.setConfig(config)
 			pendingConfig = null
 			if (visible && surfaceAttached) {
@@ -153,15 +178,24 @@ internal class WallpaperRenderController(
 				renderCurrentScene(force = true)
 			}
 		}
+		if (!posted) {
+			pendingConfig = config
+			Logger.w(TAG, "setConfig post failed, config kept pending id=${config.id}")
+		}
 	}
 
 	fun onDestroy() {
+		Logger.d(TAG, "onDestroy called")
 		scheduler.stop()
-		surfaceGeneration++
-		postRenderTaskBlocking {
+		surfaceGeneration.incrementAndGet()
+		val released = postRenderTaskBlocking {
+			Logger.d(TAG, "releasing render engine")
 			stopRenderLoopsLocked()
 			renderThreadVsyncLoop = null
 			renderEngine.release()
+		}
+		if (!released) {
+			Logger.w(TAG, "render engine release did not complete before timeout")
 		}
 		renderHandler?.removeCallbacksAndMessages(null)
 		renderHandler = null
@@ -171,13 +205,16 @@ internal class WallpaperRenderController(
 			thread.quitSafely()
 			try {
 				thread.join(THREAD_JOIN_TIMEOUT_MS)
-			} catch (_: InterruptedException) {
+				if (thread.isAlive) {
+					Logger.w(TAG, "render thread did not terminate within ${THREAD_JOIN_TIMEOUT_MS}ms")
+				}
+			} catch (e: InterruptedException) {
 				Thread.currentThread().interrupt()
+				Logger.w(TAG, "interrupted while joining render thread", e)
 			}
 		}
 		renderThread = null
-		lastStateHash = null
-		pendingStateHash = null
+		clearStateHashes()
 		pendingConfig = null
 		currentConfig = null
 		pendingFullRedraw = true
@@ -197,14 +234,19 @@ internal class WallpaperRenderController(
 	private fun renderMinuteTickIfNeeded() {
 		if (!visible || !surfaceAttached) return
 		if (resolvedLoopMode() != WallpaperLoopMode.MINUTE_TICK) return
-		val hash = computeSceneHash()
-		if (hash == lastStateHash || hash == pendingStateHash) return
-		pendingStateHash = hash
+		val hash = synchronized(stateHashLock) {
+			val candidate = computeSceneHash()
+			if (candidate == lastStateHash || candidate == pendingStateHash) return
+			pendingStateHash = candidate
+			candidate
+		}
 		try {
 			renderCurrentScene(force = false, expectedHash = hash)
 		} finally {
-			if (pendingStateHash == hash) {
-				pendingStateHash = null
+			synchronized(stateHashLock) {
+				if (pendingStateHash == hash) {
+					pendingStateHash = null
+				}
 			}
 		}
 	}
@@ -224,9 +266,9 @@ internal class WallpaperRenderController(
 			) ?: return
 			lastRenderElapsedMs = SystemClock.elapsedRealtime()
 			pendingFullRedraw = false
-			lastStateHash = computeSceneHash(renderedState)
+			setLastStateHash(computeSceneHash(renderedState))
 			if (expectedHash == null) {
-				pendingStateHash = null
+				clearPendingStateHash()
 			}
 			return
 		}
@@ -244,17 +286,17 @@ internal class WallpaperRenderController(
 			)
 		) {
 			if (expectedHash == null) {
-				pendingStateHash = null
+				clearPendingStateHash()
 			}
 			return
 		}
 
 		val renderedState = renderEngine.renderFrame(force = force, frameTimeNanos = frameTimeNanos) ?: return
-		lastStateHash = targetHash ?: computeSceneHash(renderedState)
+		setLastStateHash(targetHash ?: computeSceneHash(renderedState))
 		lastRenderElapsedMs = SystemClock.elapsedRealtime()
 		pendingFullRedraw = false
 		if (expectedHash == null) {
-			pendingStateHash = null
+			clearPendingStateHash()
 		}
 	}
 
@@ -272,7 +314,7 @@ internal class WallpaperRenderController(
 						frameIntervalMs = frameIntervalMs,
 						displayRefreshRateHz = displayRefreshRateHz
 					)
-				} ?: 1L
+				} ?: MIN_FRAME_INTERVAL_NANOS
 			)
 			resolvedPolicy.frameIntervalMs != null -> renderEngine.frameIntervalNanos(
 				frameIntervalMs = resolvedPolicy.frameIntervalMs,
@@ -296,7 +338,7 @@ internal class WallpaperRenderController(
 		debounceForcedRender: Boolean
 	): Boolean {
 		if (!force) {
-			return hash == lastStateHash
+			return isLastStateHash(hash)
 		}
 		if (!debounceForcedRender) {
 			return false
@@ -304,7 +346,7 @@ internal class WallpaperRenderController(
 		if (pendingFullRedraw) {
 			return false
 		}
-		if (hash != lastStateHash) {
+		if (!isLastStateHash(hash)) {
 			return false
 		}
 		val elapsedSinceLastRenderMs = SystemClock.elapsedRealtime() - lastRenderElapsedMs
@@ -321,11 +363,18 @@ internal class WallpaperRenderController(
 	}
 
 	private fun postRenderTask(task: () -> Unit) {
-		renderHandler?.post(task)
+		val handler = renderHandler
+		if (handler == null) {
+			Logger.w(TAG, "postRenderTask dropped, render handler is null")
+			return
+		}
+		if (!handler.post(task)) {
+			Logger.w(TAG, "postRenderTask rejected by render handler")
+		}
 	}
 
 	private fun isCurrentSurfaceGeneration(generation: Int): Boolean {
-		return surfaceAttached && surfaceGeneration == generation
+		return surfaceAttached && surfaceGeneration.get() == generation
 	}
 
 	private fun updateSchedulerState() {
@@ -363,12 +412,16 @@ internal class WallpaperRenderController(
 		targetFps: Int,
 		displayRefreshRateHz: Int
 	): Long {
-		val displayVsyncNanos = NANOS_PER_SECOND / displayRefreshRateHz
-			.coerceIn(MIN_DISPLAY_REFRESH_RATE_HZ, MAX_DISPLAY_REFRESH_RATE_HZ)
-			.toLong()
-		val targetIntervalNanos = NANOS_PER_SECOND / targetFps
-			.coerceIn(MIN_SETTINGS_FRAME_RATE_FPS, MAX_SETTINGS_FRAME_RATE_FPS)
-			.toLong()
+		val safeDisplayRefreshRate = displayRefreshRateHz.coerceIn(
+			MIN_DISPLAY_REFRESH_RATE_HZ,
+			MAX_DISPLAY_REFRESH_RATE_HZ
+		)
+		val displayVsyncNanos = NANOS_PER_SECOND / safeDisplayRefreshRate.toLong()
+		val safeTargetFps = targetFps.coerceIn(
+			MIN_SETTINGS_FRAME_RATE_FPS,
+			MAX_SETTINGS_FRAME_RATE_FPS
+		)
+		val targetIntervalNanos = NANOS_PER_SECOND / safeTargetFps.toLong()
 		return targetIntervalNanos.coerceAtLeast(displayVsyncNanos)
 	}
 
@@ -393,20 +446,68 @@ internal class WallpaperRenderController(
 	private fun postRenderTaskBlocking(
 		timeoutMs: Long = RELEASE_WAIT_TIMEOUT_MS,
 		task: () -> Unit
-	) {
-		val handler = renderHandler ?: return
+	): Boolean {
+		val handler = renderHandler
+		if (handler == null) {
+			Logger.w(TAG, "postRenderTaskBlocking dropped, render handler is null")
+			return false
+		}
+		if (handler.looper == Looper.myLooper()) {
+			task()
+			return true
+		}
 		val latch = CountDownLatch(1)
-		handler.post {
+		val posted = handler.post {
 			try {
 				task()
 			} finally {
 				latch.countDown()
 			}
 		}
-		latch.await(timeoutMs, TimeUnit.MILLISECONDS)
+		if (!posted) {
+			Logger.w(TAG, "postRenderTaskBlocking rejected by render handler")
+			return false
+		}
+		return try {
+			val completed = latch.await(timeoutMs, TimeUnit.MILLISECONDS)
+			if (!completed) {
+				Logger.w(TAG, "postRenderTaskBlocking timeout after ${timeoutMs}ms")
+			}
+			completed
+		} catch (e: InterruptedException) {
+			Thread.currentThread().interrupt()
+			Logger.w(TAG, "postRenderTaskBlocking interrupted", e)
+			false
+		}
+	}
+
+	private fun clearStateHashes() {
+		synchronized(stateHashLock) {
+			lastStateHash = null
+			pendingStateHash = null
+		}
+	}
+
+	private fun clearPendingStateHash() {
+		synchronized(stateHashLock) {
+			pendingStateHash = null
+		}
+	}
+
+	private fun setLastStateHash(hash: Int) {
+		synchronized(stateHashLock) {
+			lastStateHash = hash
+		}
+	}
+
+	private fun isLastStateHash(hash: Int): Boolean {
+		return synchronized(stateHashLock) {
+			lastStateHash == hash
+		}
 	}
 
 	companion object {
+		private const val TAG = "WallpaperRenderController"
 		private const val RENDER_THREAD_NAME = "WallpaperRenderThread"
 		private const val RELEASE_WAIT_TIMEOUT_MS = 1500L
 		private const val SURFACE_DETACH_WAIT_TIMEOUT_MS = 500L
@@ -418,5 +519,6 @@ internal class WallpaperRenderController(
 		private const val MIN_SETTINGS_FRAME_RATE_FPS = 30
 		private const val MAX_SETTINGS_FRAME_RATE_FPS = 90
 		private const val NANOS_PER_SECOND = 1_000_000_000L
+		private const val MIN_FRAME_INTERVAL_NANOS = 1L
 	}
 }

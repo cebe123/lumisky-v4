@@ -2,7 +2,6 @@ package com.example.lumisky.data
 
 import android.content.Context
 import com.example.core.api.SunDaylight
-import com.example.engine.config.DaylightConfig
 import com.example.engine.config.WallpaperConfig
 
 object WallpaperCatalog {
@@ -33,7 +32,7 @@ object WallpaperCatalog {
 		context: Context,
 		id: String,
 		daylight: SunDaylight = SunDaylight.fallback()
-	): WallpaperConfig {
+	): WallpaperConfig? {
 		return repository(context).configById(id = id, daylight = daylight)
 	}
 }
@@ -68,22 +67,15 @@ internal class WallpaperCatalogRepository(
 	fun configById(
 		id: String,
 		daylight: SunDaylight = SunDaylight.fallback()
-	): WallpaperConfig {
+	): WallpaperConfig? {
 		val daylightHash = daylight.hashCode()
 		val cacheKey = ConfigCacheKey(id = id, daylightHash = daylightHash)
 		synchronized(configCache) {
 			resetConfigCacheIfDaylightChangedLocked(daylightHash)
 			configCache[cacheKey]?.let { return it }
 		}
-		val entry = loadEntriesById()[id]
-		val config = entry?.resolve(daylight) ?: WallpaperConfig.default(id = id).copy(
-			daylight = DaylightConfig(
-				sunriseMinute = daylight.sunriseMinute,
-				sunsetMinute = daylight.sunsetMinute,
-				solarNoonMinute = daylight.solarNoonMinute,
-				timeZoneId = daylight.timeZoneId
-			)
-		)
+		val entry = loadEntriesById()[id] ?: return null
+		val config = entry.resolve(daylight)
 		synchronized(configCache) {
 			resetConfigCacheIfDaylightChangedLocked(daylightHash)
 			configCache[cacheKey] = config

@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
+import com.example.core.Logger
 import com.example.core.api.SunDaylight
 import com.example.core.api.SunTimesRepository
 import com.example.core.location.LastKnownLocationProvider
@@ -24,6 +25,8 @@ import com.example.lumisky.data.WallpaperCatalogRepository
 import com.example.lumisky.work.BackupCityPrefetchWorker
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 data class HomeWallpaperItem(
 	val config: WallpaperConfig
@@ -41,11 +44,18 @@ class HomeViewModel(
 	private val wallpaperCatalogRepository: WallpaperCatalogRepository =
 		WallpaperCatalog.repository(context)
 	private val mainHandler = Handler(Looper.getMainLooper())
-	private val catalogExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+	private val catalogExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
+		Thread(runnable, CATALOG_THREAD_NAME).apply {
+			isDaemon = true
+		}
+	}
 	private val _items = mutableStateListOf<HomeWallpaperItem>()
 	private var lastFocusedCategoryKey: String? = null
 	private var settingsChangeListenerHandle: AutoCloseable? = null
 	private val storedWallpaperId: String? = wallpaperConfigStore.loadSelected()?.id
+	@Volatile
+	private var released: Boolean = false
+	private val catalogGeneration = AtomicInteger(0)
 
 	private val locationCoordinator = LocationSunTimesCoordinator(
 		context = appContext,
@@ -107,7 +117,7 @@ class HomeViewModel(
 
 	init {
 		settingsChangeListenerHandle = settingsRepository.addChangeListener { snapshot ->
-			mainHandler.post {
+			postToMain("settings_change") {
 				applySettingsSnapshot(snapshot)
 			}
 		}
@@ -204,16 +214,40 @@ class HomeViewModel(
 		locationCoordinator.onSystemLocationProviderChanged()
 	}
 
-	fun configFor(id: String): WallpaperConfig {
+	fun configFor(id: String): WallpaperConfig? {
+		if (id.isBlank()) {
+			Logger.w(TAG, "configFor rejected blank id")
+			return null
+		}
 		return _items.firstOrNull { it.config.id == id }?.config
 			?: wallpaperCatalogRepository.configById(id = id, daylight = daylight)
+				.also { config ->
+					if (config == null) {
+						Logger.w(TAG, "configFor missing wallpaper id=$id")
+					}
+				}
 	}
 
 	fun release() {
+		if (released) return
+		released = true
+		Logger.d(TAG, "release called")
 		settingsChangeListenerHandle?.close()
 		settingsChangeListenerHandle = null
+		mainHandler.removeCallbacksAndMessages(null)
 		locationCoordinator.release()
-		catalogExecutor.shutdownNow()
+		catalogGeneration.incrementAndGet()
+		catalogExecutor.shutdown()
+		try {
+			if (!catalogExecutor.awaitTermination(CATALOG_EXECUTOR_SHUTDOWN_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+				Logger.w(TAG, "catalog executor shutdown timed out")
+				catalogExecutor.shutdownNow()
+			}
+		} catch (e: InterruptedException) {
+			Thread.currentThread().interrupt()
+			Logger.w(TAG, "catalog executor shutdown interrupted", e)
+			catalogExecutor.shutdownNow()
+		}
 	}
 
 	// ---- wallpaper selection ----
@@ -248,6 +282,7 @@ class HomeViewModel(
 	// ---- private catalog ----
 
 	private fun applySettingsSnapshot(snapshot: AppSettingsSnapshot) {
+		if (released) return
 		if (appThemeMode != snapshot.appThemeMode) {
 			appThemeMode = snapshot.appThemeMode
 		}
@@ -270,8 +305,38 @@ class HomeViewModel(
 	}
 
 	private fun seedInitialCatalog(currentDaylight: SunDaylight) {
-		val configs = wallpaperCatalogRepository.buildConfigs(daylight = currentDaylight)
-		publishItems(configs.map { config -> HomeWallpaperItem(config = config) })
+		runCatching {
+			val configs = wallpaperCatalogRepository.buildConfigs(daylight = currentDaylight)
+			publishCatalog(configs.map { config -> HomeWallpaperItem(config = config) })
+		}.onFailure { throwable ->
+			Logger.e(TAG, "initial catalog build failed", throwable)
+		}
+	}
+
+	private fun rebuildCatalog(currentDaylight: SunDaylight) {
+		val generation = catalogGeneration.incrementAndGet()
+		executeCatalogTask("rebuild_catalog") {
+			val configs = wallpaperCatalogRepository.buildConfigs(daylight = currentDaylight)
+			postCatalog(configs, generation)
+		}
+	}
+
+	private fun postCatalog(
+		configs: List<WallpaperConfig>,
+		generation: Int
+	) {
+		val mapped = configs.map { config -> HomeWallpaperItem(config = config) }
+		postToMain("catalog_publish") {
+			if (generation != catalogGeneration.get()) {
+				Logger.d(TAG, "stale catalog publish skipped generation=$generation")
+				return@postToMain
+			}
+			publishCatalog(mapped)
+		}
+	}
+
+	private fun publishCatalog(mapped: List<HomeWallpaperItem>) {
+		publishItems(mapped)
 		if (selectedWallpaperId != null && _items.none { it.config.id == selectedWallpaperId }) {
 			selectedWallpaperId = null
 		}
@@ -280,27 +345,8 @@ class HomeViewModel(
 		}
 	}
 
-	private fun rebuildCatalog(currentDaylight: SunDaylight) {
-		catalogExecutor.execute {
-			val configs = wallpaperCatalogRepository.buildConfigs(daylight = currentDaylight)
-			postCatalog(configs)
-		}
-	}
-
-	private fun postCatalog(configs: List<WallpaperConfig>) {
-		val mapped = configs.map { config -> HomeWallpaperItem(config = config) }
-		mainHandler.post {
-			publishItems(mapped)
-			if (selectedWallpaperId != null && _items.none { it.config.id == selectedWallpaperId }) {
-				selectedWallpaperId = null
-			}
-			if (liveWallpaperId != null && _items.none { it.config.id == liveWallpaperId }) {
-				liveWallpaperId = null
-			}
-		}
-	}
-
 	private fun publishItems(mapped: List<HomeWallpaperItem>): Boolean {
+		if (released) return false
 		if (_items.size == mapped.size && _items.indices.all { index -> _items[index] == mapped[index] }) {
 			return false
 		}
@@ -309,6 +355,39 @@ class HomeViewModel(
 			_items.addAll(mapped)
 		}
 		return true
+	}
+
+	private fun postToMain(
+		reason: String,
+		task: () -> Unit
+	): Boolean {
+		if (released) return false
+		val posted = mainHandler.post {
+			if (released) return@post
+			task()
+		}
+		if (!posted) {
+			Logger.w(TAG, "main handler post failed reason=$reason")
+		}
+		return posted
+	}
+
+	private fun executeCatalogTask(
+		reason: String,
+		task: () -> Unit
+	) {
+		if (released) return
+		runCatching {
+			catalogExecutor.execute {
+				if (released) return@execute
+				runCatching(task)
+					.onFailure { throwable ->
+						Logger.e(TAG, "catalog task failed reason=$reason", throwable)
+					}
+			}
+		}.onFailure { throwable ->
+			Logger.w(TAG, "catalog task rejected reason=$reason", throwable)
+		}
 	}
 
 	// ---- backup prefetch ----
@@ -327,7 +406,10 @@ class HomeViewModel(
 	}
 
 	companion object {
+		private const val TAG = "HomeViewModel"
 		private const val CATEGORY_PRIORITIZE_LIMIT = 24
 		private const val BACKUP_PREFETCH_STARTUP_CANDIDATE_LIMIT = 8
+		private const val CATALOG_EXECUTOR_SHUTDOWN_TIMEOUT_MS = 2_000L
+		private const val CATALOG_THREAD_NAME = "WallpaperCatalog"
 	}
 }

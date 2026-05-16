@@ -50,26 +50,22 @@ class WallpaperRenderEngine(
 		logEvery = 10
 	)
 
+	@Synchronized
 	fun init() {
 		skyEngine.init(config)
 		skyEngine.setRenderMode(renderMode)
-		fragmentShaderOverride = WallpaperShaderAssetLoader.loadFragment(
-			context = appContext,
-			assetPath = config.shader.fragmentAssetPath
-		)
+		fragmentShaderOverride = loadFragmentShaderFor(config)
 		stats.reset()
 	}
 
+	@Synchronized
 	fun setConfig(value: WallpaperConfig) {
 		config = value
 		sceneFingerprintHash = WallpaperSceneFingerprintHasher.compute(value)
 		skyEngine.setConfig(value)
 		previewLoopStartNanos = 0L
 		previewLoopConfigId = value.id
-		fragmentShaderOverride = WallpaperShaderAssetLoader.loadFragment(
-			context = appContext,
-			assetPath = config.shader.fragmentAssetPath
-		)
+		fragmentShaderOverride = loadFragmentShaderFor(config)
 		holder?.let { surfaceHolder ->
 			val reconfigured = eglSession.reconfigure(
 				config = config,
@@ -85,13 +81,15 @@ class WallpaperRenderEngine(
 					textureBytesLoader = textureBytesLoader
 				)
 				if (!attached) {
+					holder = null
 					Logger.e(TAG, "EGL reattach failed on config change")
 				}
 			}
 		}
 	}
 
-	fun attachSurface(surfaceHolder: SurfaceHolder) {
+	@Synchronized
+	fun attachSurface(surfaceHolder: SurfaceHolder): Boolean {
 		val attached = eglSession.attach(
 			holder = surfaceHolder,
 			config = config,
@@ -104,13 +102,16 @@ class WallpaperRenderEngine(
 			holder = null
 			Logger.e(TAG, "EGL attach failed")
 		}
+		return attached
 	}
 
+	@Synchronized
 	fun detachSurface() {
 		holder = null
 		eglSession.detachSurface()
 	}
 
+	@Synchronized
 	fun renderFrame(
 		force: Boolean = false,
 		previewLoop: Boolean = false,
@@ -156,6 +157,7 @@ class WallpaperRenderEngine(
 		return state
 	}
 
+	@Synchronized
 	fun computeSceneHash(
 		visible: Boolean,
 		surfaceAttached: Boolean,
@@ -178,6 +180,7 @@ class WallpaperRenderEngine(
 		)
 	}
 
+	@Synchronized
 	fun sceneFingerprint(): Int {
 		return sceneFingerprintHash
 	}
@@ -222,12 +225,20 @@ class WallpaperRenderEngine(
 		)
 	}
 
+	@Synchronized
 	fun release() {
+		holder = null
 		eglSession.release()
 		skyEngine.release()
 		synchronized(textureBytesCache) {
 			textureBytesCache.evictAll()
 		}
+		synchronized(textureLoadLocks) {
+			textureLoadLocks.clear()
+		}
+		fragmentShaderOverride = null
+		previewLoopStartNanos = 0L
+		previewLoopConfigId = config.id
 	}
 
 	companion object {
@@ -239,7 +250,8 @@ class WallpaperRenderEngine(
 		private const val NANOS_PER_MILLISECOND = 1_000_000L
 		private const val NANOS_PER_SECOND = 1_000_000_000L
 		private const val SIXTY_HZ_INTERVAL_NS = 16_666_667L
-		private const val MIN_REFRESH_RATE_HZ = 60
+		private const val DEFAULT_REFRESH_RATE_HZ = 60
+		private const val MIN_REFRESH_RATE_HZ = 30
 		private const val MAX_REFRESH_RATE_HZ = 120
 	}
 
@@ -281,16 +293,15 @@ class WallpaperRenderEngine(
 			textureLoadLocks.getOrPut(assetPath) { Any() }
 		}
 		return synchronized(lock) {
-			try {
-				block()
-			} finally {
-				synchronized(textureLoadLocks) {
-					if (textureLoadLocks[assetPath] === lock) {
-						textureLoadLocks.remove(assetPath)
-					}
-				}
-			}
+			block()
 		}
+	}
+
+	private fun loadFragmentShaderFor(config: WallpaperConfig): String? {
+		return WallpaperShaderAssetLoader.loadFragment(
+			context = appContext,
+			assetPath = config.shader.fragmentAssetPath
+		)
 	}
 
 	private fun isFlareActive(state: RenderFrameState?): Boolean {
@@ -312,7 +323,11 @@ class WallpaperRenderEngine(
 	}
 
 	private fun displayVsyncPeriodNanos(displayRefreshRateHz: Int): Long {
-		val refreshRate = displayRefreshRateHz.coerceIn(MIN_REFRESH_RATE_HZ, MAX_REFRESH_RATE_HZ)
+		val refreshRate = if (displayRefreshRateHz > 0) {
+			displayRefreshRateHz.coerceIn(MIN_REFRESH_RATE_HZ, MAX_REFRESH_RATE_HZ)
+		} else {
+			DEFAULT_REFRESH_RATE_HZ
+		}
 		return (NANOS_PER_SECOND / refreshRate.toLong()).coerceAtLeast(1L)
 	}
 }

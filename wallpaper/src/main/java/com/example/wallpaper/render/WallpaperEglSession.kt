@@ -12,6 +12,9 @@ import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
 import com.example.engine.shader.PreviewSkyProgram
 
+/**
+ * Owns a single EGL context/surface pair. Public calls must stay on the render thread.
+ */
 class WallpaperEglSession {
 
 	private val skyProgram = PreviewSkyProgram()
@@ -26,11 +29,14 @@ class WallpaperEglSession {
 	private val queriedWidth = IntArray(1)
 	private val queriedHeight = IntArray(1)
 
+	@Volatile
 	private var viewportWidth: Int = 0
+	@Volatile
 	private var viewportHeight: Int = 0
 	private var preservedSwapBehaviorRequested: Boolean = false
 	private var preservedSwapBehaviorEnabled: Boolean = false
 
+	@Synchronized
 	fun attach(
 		holder: SurfaceHolder,
 		config: WallpaperConfig = WallpaperConfig.default(),
@@ -39,41 +45,64 @@ class WallpaperEglSession {
 	): Boolean {
 		release()
 
-		if (!initDisplay()) return false
-		if (!chooseConfig()) return false
-		if (!createContext()) return false
-		if (!createSurface(holder)) return false
-		if (!makeCurrent()) return false
+		if (!initDisplay()) return failAttach("initDisplay")
+		if (!chooseConfig()) return failAttach("chooseConfig")
+		if (!createContext()) return failAttach("createContext")
+		if (!createSurface(holder)) return failAttach("createSurface")
+		if (!makeCurrent("attach.makeCurrent")) return failAttach("makeCurrent")
 		EGL14.eglSwapInterval(display, 1)
 		preservedSwapBehaviorEnabled = configureSwapBehavior()
 
 		val frame = holder.surfaceFrame
 		viewportWidth = frame.width()
 		viewportHeight = frame.height()
-		GLES20.glViewport(0, 0, viewportWidth, viewportHeight)
+		if (viewportWidth <= 0 || viewportHeight <= 0) {
+			queryViewportSize()
+		}
+		if (viewportWidth > 0 && viewportHeight > 0) {
+			GLES20.glViewport(0, 0, viewportWidth, viewportHeight)
+		}
 		GLES20.glClearColor(0f, 0f, 0f, 1f)
 		skyProgram.configure(config, textureBytesLoader)
 		skyProgram.init(fragmentShaderOverride)
-		skyProgram.setViewport(viewportWidth, viewportHeight)
+		if (viewportWidth > 0 && viewportHeight > 0) {
+			skyProgram.setViewport(viewportWidth, viewportHeight)
+		}
 		return true
 	}
 
+	@Synchronized
 	fun draw(state: RenderFrameState): Boolean {
 		if (surface == EGL14.EGL_NO_SURFACE) return false
-		if (!makeCurrent()) return false
+		if (!makeCurrent("draw.makeCurrent")) {
+			release()
+			return false
+		}
 
 		if (viewportWidth <= 0 || viewportHeight <= 0) {
 			queryViewportSize()
 		}
-		if (viewportWidth <= 0 || viewportHeight <= 0) return false
+		if (viewportWidth <= 0 || viewportHeight <= 0) {
+			Logger.e(TAG, "EGL draw skipped, viewport is invalid width=$viewportWidth height=$viewportHeight")
+			return false
+		}
 
 		GLES20.glViewport(0, 0, viewportWidth, viewportHeight)
 		skyProgram.setViewport(viewportWidth, viewportHeight)
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 		skyProgram.draw(state)
-		return EGL14.eglSwapBuffers(display, surface)
+		if (!EGL14.eglSwapBuffers(display, surface)) {
+			val error = EGL14.eglGetError()
+			Logger.e(TAG, "eglSwapBuffers failed error=${eglErrorString(error)}")
+			if (error == EGL14.EGL_BAD_SURFACE || error == EGL14.EGL_CONTEXT_LOST) {
+				release()
+			}
+			return false
+		}
+		return true
 	}
 
+	@Synchronized
 	fun reconfigure(
 		config: WallpaperConfig,
 		fragmentShaderOverride: String? = null,
@@ -85,7 +114,10 @@ class WallpaperEglSession {
 		) {
 			return false
 		}
-		if (!makeCurrent()) return false
+		if (!makeCurrent("reconfigure.makeCurrent")) {
+			release()
+			return false
+		}
 		skyProgram.release()
 		skyProgram.configure(config, textureBytesLoader)
 		skyProgram.init(fragmentShaderOverride)
@@ -98,11 +130,24 @@ class WallpaperEglSession {
 		return true
 	}
 
+	@Synchronized
 	fun detachSurface() {
 		release()
 	}
 
+	@Synchronized
 	fun release() {
+		val hasEglResources = display != EGL14.EGL_NO_DISPLAY ||
+			context != EGL14.EGL_NO_CONTEXT ||
+			surface != EGL14.EGL_NO_SURFACE
+		val canReleaseGlResources = display != EGL14.EGL_NO_DISPLAY &&
+			context != EGL14.EGL_NO_CONTEXT &&
+			surface != EGL14.EGL_NO_SURFACE &&
+			makeCurrent("release.makeCurrent")
+
+		if (hasEglResources && !canReleaseGlResources) {
+			Logger.d(TAG, "releasing EGL session without current GL context")
+		}
 		skyProgram.release()
 
 		if (display != EGL14.EGL_NO_DISPLAY) {
@@ -138,9 +183,16 @@ class WallpaperEglSession {
 
 	private fun initDisplay(): Boolean {
 		display = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
-		if (display == EGL14.EGL_NO_DISPLAY) return false
+		if (display == EGL14.EGL_NO_DISPLAY) {
+			logEglError("eglGetDisplay")
+			return false
+		}
 
-		return EGL14.eglInitialize(display, eglVersion, 0, eglVersion, 1)
+		if (!EGL14.eglInitialize(display, eglVersion, 0, eglVersion, 1)) {
+			logEglError("eglInitialize")
+			return false
+		}
+		return true
 	}
 
 	private fun chooseConfig(): Boolean {
@@ -172,7 +224,10 @@ class WallpaperEglSession {
 			eglConfigCount,
 			0
 		)
-		if (!ok || eglConfigCount[0] == 0) return false
+		if (!ok || eglConfigCount[0] == 0) {
+			logEglError("eglChooseConfig")
+			return false
+		}
 		config = eglConfigs[0]
 		return config != null
 	}
@@ -190,7 +245,11 @@ class WallpaperEglSession {
 			contextAttribs,
 			0
 		)
-		return context != EGL14.EGL_NO_CONTEXT
+		if (context == EGL14.EGL_NO_CONTEXT) {
+			logEglError("eglCreateContext")
+			return false
+		}
+		return true
 	}
 
 	private fun createSurface(holder: SurfaceHolder): Boolean {
@@ -203,16 +262,30 @@ class WallpaperEglSession {
 			surfaceAttribs,
 			0
 		)
-		return surface != EGL14.EGL_NO_SURFACE
+		if (surface == EGL14.EGL_NO_SURFACE) {
+			logEglError("eglCreateWindowSurface")
+			return false
+		}
+		return true
 	}
 
-	private fun makeCurrent(): Boolean {
-		return EGL14.eglMakeCurrent(display, surface, surface, context)
+	private fun makeCurrent(operation: String): Boolean {
+		val ok = EGL14.eglMakeCurrent(display, surface, surface, context)
+		if (!ok) {
+			logEglError(operation)
+		}
+		return ok
 	}
 
 	private fun queryViewportSize() {
-		EGL14.eglQuerySurface(display, surface, EGL14.EGL_WIDTH, queriedWidth, 0)
-		EGL14.eglQuerySurface(display, surface, EGL14.EGL_HEIGHT, queriedHeight, 0)
+		val widthOk = EGL14.eglQuerySurface(display, surface, EGL14.EGL_WIDTH, queriedWidth, 0)
+		val heightOk = EGL14.eglQuerySurface(display, surface, EGL14.EGL_HEIGHT, queriedHeight, 0)
+		if (!widthOk || !heightOk) {
+			logEglError("eglQuerySurface")
+			viewportWidth = 0
+			viewportHeight = 0
+			return
+		}
 		viewportWidth = queriedWidth[0]
 		viewportHeight = queriedHeight[0]
 	}
@@ -228,11 +301,31 @@ class WallpaperEglSession {
 			EGL_BUFFER_PRESERVED
 		)
 		if (!applied) {
+			logEglError("eglSurfaceAttrib")
 			Logger.d(TAG, "Preserved swap behavior unavailable, continuing with destroyed back buffer")
 			return false
 		}
 		Logger.d(TAG, "Preserved swap behavior enabled for wallpaper EGL surface")
 		return true
+	}
+
+	private fun failAttach(operation: String): Boolean {
+		Logger.e(TAG, "EGL attach failed at $operation")
+		release()
+		return false
+	}
+
+	private fun logEglError(operation: String) {
+		val error = EGL14.eglGetError()
+		if (error == EGL14.EGL_SUCCESS) {
+			Logger.e(TAG, "$operation failed")
+		} else {
+			Logger.e(TAG, "$operation failed error=${eglErrorString(error)}")
+		}
+	}
+
+	private fun eglErrorString(error: Int): String {
+		return "0x${error.toString(16)}"
 	}
 
 	companion object {
