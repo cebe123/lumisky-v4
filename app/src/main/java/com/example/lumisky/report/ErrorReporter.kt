@@ -14,6 +14,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.example.core.Logger
+import com.example.core.report.CrashDiagnostics
 import com.example.lumisky.R
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.io.File
@@ -32,6 +33,24 @@ object ErrorReporter {
 
 	@Volatile
 	private var crashCaptureInstalled = false
+
+	fun installCrashlyticsDiagnostics(context: Context) {
+		CrashDiagnostics.install(FirebaseCrashDiagnosticsSink())
+		runCatching {
+			val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+			CrashDiagnostics.setCustomKey("package_name", context.packageName)
+			CrashDiagnostics.setCustomKey("version_name", packageInfo.versionName.orEmpty())
+			CrashDiagnostics.setCustomKey("version_code", packageInfo.versionCodeCompat())
+			CrashDiagnostics.setCustomKey("installer", resolveInstallerPackage(context))
+			CrashDiagnostics.setCustomKey("device_manufacturer", Build.MANUFACTURER)
+			CrashDiagnostics.setCustomKey("device_model", Build.MODEL)
+			CrashDiagnostics.setCustomKey("android_sdk", Build.VERSION.SDK_INT)
+			CrashDiagnostics.setCustomKey("crashlytics_anr_tracking", true)
+			CrashDiagnostics.log("Crashlytics diagnostics initialized")
+		}.onFailure { error ->
+			Logger.w(TAG, "Crashlytics diagnostics install failed", error)
+		}
+	}
 
 	fun installCrashCapture(context: Context) {
 		if (crashCaptureInstalled) return
@@ -353,4 +372,45 @@ object ErrorReporter {
 	)
 
 	private class ManualErrorReportException : RuntimeException("Manual error report opened")
+
+	private class FirebaseCrashDiagnosticsSink : CrashDiagnostics.Sink {
+		override fun log(message: String) {
+			runCrashlytics("log") {
+				FirebaseCrashlytics.getInstance().log(message)
+			}
+		}
+
+		override fun setCustomKey(key: String, value: String) {
+			runCrashlytics("setCustomKey") {
+				FirebaseCrashlytics.getInstance().setCustomKey(key, value)
+			}
+		}
+
+		override fun setCustomKey(key: String, value: Boolean) {
+			runCrashlytics("setCustomKey") {
+				FirebaseCrashlytics.getInstance().setCustomKey(key, value)
+			}
+		}
+
+		override fun setCustomKey(key: String, value: Long) {
+			runCrashlytics("setCustomKey") {
+				FirebaseCrashlytics.getInstance().setCustomKey(key, value)
+			}
+		}
+
+		override fun recordException(throwable: Throwable) {
+			runCrashlytics("recordException") {
+				FirebaseCrashlytics.getInstance().recordException(throwable)
+			}
+		}
+
+		private inline fun runCrashlytics(
+			operation: String,
+			block: () -> Unit
+		) {
+			runCatching(block).onFailure { error ->
+				Logger.w(TAG, "Crashlytics $operation failed", error)
+			}
+		}
+	}
 }

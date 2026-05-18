@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.LruCache
 import com.example.core.Logger
 import com.example.core.assets.AssetTextLoader
+import com.example.core.report.CrashDiagnostics
 import com.example.engine.config.WallpaperConfig
 
 object RenderAssetCache {
@@ -30,7 +31,10 @@ object RenderAssetCache {
 			synchronized(fragmentCache) {
 				fragmentCache.get(normalized)?.let { return@withLoadLock it }
 			}
-			val loaded = AssetTextLoader.load(context, normalized) ?: return@withLoadLock null
+			val loaded = AssetTextLoader.load(context, normalized) ?: run {
+				CrashDiagnostics.recordException(AssetLoadException("Fragment asset load failed path=$normalized"))
+				return@withLoadLock null
+			}
 			synchronized(fragmentCache) {
 				fragmentCache.put(normalized, loaded)
 			}
@@ -146,7 +150,10 @@ object RenderAssetCache {
 			}
 			val loaded = runCatching {
 				context.assets.open(assetPath).use { it.readBytes() }
-			}.getOrNull() ?: return@withLoadLock null
+			}.getOrNull() ?: run {
+				CrashDiagnostics.recordException(TextureAssetLoadException("Texture asset read failed path=$assetPath"))
+				return@withLoadLock null
+			}
 			Logger.v(TAG, "texture asset read path=$assetPath size=${loaded.size}")
 			synchronized(textureCache) {
 				textureCache.put(assetPath, loaded)
@@ -236,6 +243,9 @@ object RenderAssetCache {
 		val path: String,
 		val bytes: ByteArray
 	)
+
+	private class AssetLoadException(message: String) : RuntimeException(message)
+	private class TextureAssetLoadException(message: String) : RuntimeException(message)
 
 	private const val MAX_FRAGMENT_ENTRIES = 24
 	private const val MAX_RESOLVED_TEXTURE_PATH_ENTRIES = 256

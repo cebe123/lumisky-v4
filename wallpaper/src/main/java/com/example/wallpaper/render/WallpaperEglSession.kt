@@ -8,6 +8,7 @@ import android.opengl.EGLSurface
 import android.opengl.GLES20
 import android.view.SurfaceHolder
 import com.example.core.Logger
+import com.example.core.report.CrashDiagnostics
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
 import com.example.engine.shader.PreviewSkyProgram
@@ -52,6 +53,7 @@ class WallpaperEglSession {
 		if (!makeCurrent("attach.makeCurrent")) return failAttach("makeCurrent")
 		EGL14.eglSwapInterval(display, 1)
 		preservedSwapBehaviorEnabled = configureSwapBehavior()
+		CrashDiagnostics.log("EGL context created")
 
 		val frame = holder.surfaceFrame
 		viewportWidth = frame.width()
@@ -90,10 +92,18 @@ class WallpaperEglSession {
 		GLES20.glViewport(0, 0, viewportWidth, viewportHeight)
 		skyProgram.setViewport(viewportWidth, viewportHeight)
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-		skyProgram.draw(state)
+		try {
+			skyProgram.draw(state)
+		} catch (e: Exception) {
+			CrashDiagnostics.recordException(e)
+			Logger.e(TAG, "EGL draw threw", e)
+			return false
+		}
 		if (!EGL14.eglSwapBuffers(display, surface)) {
 			val error = EGL14.eglGetError()
 			Logger.e(TAG, "eglSwapBuffers failed error=${eglErrorString(error)}")
+			CrashDiagnostics.setCustomKey("egl_last_error", eglErrorString(error))
+			CrashDiagnostics.log("eglSwapBuffers failed error=${eglErrorString(error)}")
 			if (error == EGL14.EGL_BAD_SURFACE || error == EGL14.EGL_CONTEXT_LOST) {
 				release()
 			}
@@ -311,6 +321,7 @@ class WallpaperEglSession {
 
 	private fun failAttach(operation: String): Boolean {
 		Logger.e(TAG, "EGL attach failed at $operation")
+		CrashDiagnostics.recordException(EglSessionException("EGL attach failed at $operation"))
 		release()
 		return false
 	}
@@ -319,14 +330,19 @@ class WallpaperEglSession {
 		val error = EGL14.eglGetError()
 		if (error == EGL14.EGL_SUCCESS) {
 			Logger.e(TAG, "$operation failed")
+			CrashDiagnostics.log("$operation failed")
 		} else {
 			Logger.e(TAG, "$operation failed error=${eglErrorString(error)}")
+			CrashDiagnostics.setCustomKey("egl_last_error", eglErrorString(error))
+			CrashDiagnostics.log("$operation failed error=${eglErrorString(error)}")
 		}
 	}
 
 	private fun eglErrorString(error: Int): String {
 		return "0x${error.toString(16)}"
 	}
+
+	private class EglSessionException(message: String) : RuntimeException(message)
 
 	companion object {
 		private const val TAG = "WallpaperEglSession"

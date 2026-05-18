@@ -2,7 +2,9 @@ package com.example.engine.preview
 
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
+import com.example.core.Logger
 import com.example.core.perf.RenderStatsTracker
+import com.example.core.report.CrashDiagnostics
 import com.example.core.settings.PerformanceMode
 import com.example.engine.SkyEngine
 import com.example.engine.config.WallpaperConfig
@@ -86,7 +88,7 @@ class PreviewGlRenderer(
 
 	private val skyProgram = PreviewSkyProgram()
 	private val stats = RenderStatsTracker(
-		tag = "PreviewGlRenderer",
+		tag = TAG,
 		logEvery = 120
 	)
 	@Volatile
@@ -104,6 +106,7 @@ class PreviewGlRenderer(
 		initializeFocusState()
 		GLES20.glClearColor(0f, 0f, 0f, 1f)
 		stats.reset()
+		reportRenderContext("Renderer initialized")
 	}
 
 	override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -114,24 +117,30 @@ class PreviewGlRenderer(
 
 	override fun onDrawFrame(gl: GL10?) {
 		if (released) return
-		val frameNowMillis = nowProvider()
-		val frameStartNs = System.nanoTime()
-		val state = resolveFrameState(frameNowMillis)
+		try {
+			val frameNowMillis = nowProvider()
+			val frameStartNs = System.nanoTime()
+			val state = resolveFrameState(frameNowMillis)
 
-		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-		if (state != null) {
-			state.parallax.set(parallaxX, parallaxY)
-			skyProgram.draw(state)
-			onRenderedDayProgressChanged?.invoke(state.dayProgress)
-			onFrameDrawn?.invoke()
-			val drawDurationNs = System.nanoTime() - frameStartNs
-			val drawDurationMs = drawDurationNs / 1_000_000f
-			movingAvgDrawMillis = (movingAvgDrawMillis * 0.9f) + (drawDurationMs * 0.1f)
-			currentTargetFps = resolveTargetFps()
-			updateAdaptiveQuality(drawDurationMs, currentTargetFps)
-			stats.onDraw(drawDurationNs)
-		} else {
-			stats.onSkip("state_null")
+			GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+			if (state != null) {
+				state.parallax.set(parallaxX, parallaxY)
+				skyProgram.draw(state)
+				onRenderedDayProgressChanged?.invoke(state.dayProgress)
+				onFrameDrawn?.invoke()
+				val drawDurationNs = System.nanoTime() - frameStartNs
+				val drawDurationMs = drawDurationNs / 1_000_000f
+				movingAvgDrawMillis = (movingAvgDrawMillis * 0.9f) + (drawDurationMs * 0.1f)
+				currentTargetFps = resolveTargetFps()
+				updateAdaptiveQuality(drawDurationMs, currentTargetFps)
+				stats.onDraw(drawDurationNs)
+			} else {
+				stats.onSkip("state_null")
+			}
+		} catch (e: Exception) {
+			CrashDiagnostics.recordException(e)
+			Logger.e(TAG, "preview renderer draw failed", e)
+			stats.onSkip("draw_exception")
 		}
 	}
 
@@ -308,6 +317,19 @@ class PreviewGlRenderer(
 		focusFinalState = null
 	}
 
+	private fun reportRenderContext(message: String) {
+		val isPreview = mode == RenderMode.PREVIEW
+		CrashDiagnostics.setCustomKey("wallpaper", config.name)
+		CrashDiagnostics.setCustomKey("wallpaper_id", config.id)
+		CrashDiagnostics.setCustomKey("preview_mode", isPreview)
+		CrashDiagnostics.setCustomKey("render_mode", mode.name)
+		CrashDiagnostics.setCustomKey("fps_mode", performanceMode.name)
+		CrashDiagnostics.setCustomKey("battery_saver", isPowerSaveModeProvider())
+		CrashDiagnostics.log("$message wallpaper=${config.id} renderMode=${mode.name}")
+		CrashDiagnostics.log("Wallpaper preview mode: $isPreview")
+		CrashDiagnostics.log("FPS mode: ${performanceMode.name}")
+	}
+
 	private fun initializeAdaptiveQualityState() {
 		val requested = qualityScale.coerceIn(0.3f, 1f)
 		val modeCap = when (performanceMode) {
@@ -414,6 +436,7 @@ class PreviewGlRenderer(
 		private const val BATTERY_THERMAL_MODERATE_FPS = 36
 		private const val THERMAL_STATUS_MODERATE = 2
 		private const val THERMAL_STATUS_SEVERE = 3
+		private const val TAG = "PreviewGlRenderer"
 
 		private const val QUALITY_OVER_BUDGET = 0.95f
 		private const val QUALITY_OVER_BUDGET_HARD = 1.10f

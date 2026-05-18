@@ -6,6 +6,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.SurfaceHolder
 import com.example.core.Logger
+import com.example.core.report.CrashDiagnostics
 import com.example.core.settings.PerformanceMode
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
@@ -58,6 +59,7 @@ internal class WallpaperRenderController(
 			Logger.w(TAG, "onCreate ignored, render thread already exists")
 			return
 		}
+		CrashDiagnostics.setCustomKey("fps_mode", performanceMode.name)
 		val thread = HandlerThread(RENDER_THREAD_NAME).apply { start() }
 		renderThread = thread
 		renderHandler = Handler(thread.looper)
@@ -136,6 +138,8 @@ internal class WallpaperRenderController(
 
 	fun setPreviewMode(enabled: Boolean) {
 		previewMode = enabled
+		CrashDiagnostics.setCustomKey("preview_mode", enabled)
+		CrashDiagnostics.log("Wallpaper preview mode: $enabled")
 		updateSchedulerState()
 		postRenderTask {
 			updateRenderLoopsLocked()
@@ -145,6 +149,8 @@ internal class WallpaperRenderController(
 	fun setPerformanceMode(mode: PerformanceMode) {
 		if (performanceMode == mode) return
 		performanceMode = mode
+		CrashDiagnostics.setCustomKey("fps_mode", mode.name)
+		CrashDiagnostics.log("FPS mode: ${mode.name}")
 		updateSchedulerState()
 		postRenderTask {
 			updateRenderLoopsLocked()
@@ -161,6 +167,9 @@ internal class WallpaperRenderController(
 	fun setConfig(config: WallpaperConfig) {
 		if (config == currentConfig) return
 		currentConfig = config
+		CrashDiagnostics.setCustomKey("wallpaper", config.name)
+		CrashDiagnostics.setCustomKey("wallpaper_id", config.id)
+		CrashDiagnostics.log("Current wallpaper: ${config.id}")
 		clearStateHashes()
 		pendingFullRedraw = true
 		val handler = renderHandler
@@ -368,8 +377,17 @@ internal class WallpaperRenderController(
 			Logger.w(TAG, "postRenderTask dropped, render handler is null")
 			return
 		}
-		if (!handler.post(task)) {
+		if (!handler.post { runRenderTask(task) }) {
 			Logger.w(TAG, "postRenderTask rejected by render handler")
+		}
+	}
+
+	private fun runRenderTask(task: () -> Unit) {
+		try {
+			task()
+		} catch (e: Exception) {
+			CrashDiagnostics.recordException(e)
+			Logger.e(TAG, "render task failed", e)
 		}
 	}
 
@@ -453,13 +471,13 @@ internal class WallpaperRenderController(
 			return false
 		}
 		if (handler.looper == Looper.myLooper()) {
-			task()
+			runRenderTask(task)
 			return true
 		}
 		val latch = CountDownLatch(1)
 		val posted = handler.post {
 			try {
-				task()
+				runRenderTask(task)
 			} finally {
 				latch.countDown()
 			}

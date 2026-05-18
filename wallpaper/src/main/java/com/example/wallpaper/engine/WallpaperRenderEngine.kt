@@ -5,6 +5,7 @@ import android.util.LruCache
 import android.view.SurfaceHolder
 import com.example.core.Logger
 import com.example.core.perf.RenderStatsTracker
+import com.example.core.report.CrashDiagnostics
 import com.example.engine.SkyEngine
 import com.example.engine.config.RenderPolicy
 import com.example.engine.config.ShaderProfile
@@ -56,6 +57,7 @@ class WallpaperRenderEngine(
 		skyEngine.setRenderMode(renderMode)
 		fragmentShaderOverride = loadFragmentShaderFor(config)
 		stats.reset()
+		reportRenderContext("Renderer initialized")
 	}
 
 	@Synchronized
@@ -66,6 +68,7 @@ class WallpaperRenderEngine(
 		previewLoopStartNanos = 0L
 		previewLoopConfigId = value.id
 		fragmentShaderOverride = loadFragmentShaderFor(config)
+		reportRenderContext("Current wallpaper: ${value.id}")
 		holder?.let { surfaceHolder ->
 			val reconfigured = eglSession.reconfigure(
 				config = config,
@@ -150,6 +153,7 @@ class WallpaperRenderEngine(
 		val drawn = eglSession.draw(state)
 		if (!drawn) {
 			Logger.e(TAG, "EGL draw failed")
+			CrashDiagnostics.log("EGL draw failed wallpaper=${config.id}")
 			stats.onSkip("egl_draw_failed")
 			return null
 		}
@@ -298,10 +302,25 @@ class WallpaperRenderEngine(
 	}
 
 	private fun loadFragmentShaderFor(config: WallpaperConfig): String? {
-		return WallpaperShaderAssetLoader.loadFragment(
+		val loaded = WallpaperShaderAssetLoader.loadFragment(
 			context = appContext,
 			assetPath = config.shader.fragmentAssetPath
 		)
+		if (!config.shader.fragmentAssetPath.isNullOrBlank() && loaded == null) {
+			CrashDiagnostics.recordException(
+				ShaderAssetException("Fragment shader load failed path=${config.shader.fragmentAssetPath}")
+			)
+		}
+		return loaded
+	}
+
+	private fun reportRenderContext(message: String) {
+		CrashDiagnostics.setCustomKey("wallpaper", config.name)
+		CrashDiagnostics.setCustomKey("wallpaper_id", config.id)
+		CrashDiagnostics.setCustomKey("render_mode", renderMode.name)
+		CrashDiagnostics.setCustomKey("render_policy", config.runtimeRenderPolicy.policy.name)
+		CrashDiagnostics.setCustomKey("fragment_shader", config.shader.fragmentAssetPath)
+		CrashDiagnostics.log("$message renderMode=${renderMode.name}")
 	}
 
 	private fun isFlareActive(state: RenderFrameState?): Boolean {
@@ -330,4 +349,6 @@ class WallpaperRenderEngine(
 		}
 		return (NANOS_PER_SECOND / refreshRate.toLong()).coerceAtLeast(1L)
 	}
+
+	private class ShaderAssetException(message: String) : RuntimeException(message)
 }

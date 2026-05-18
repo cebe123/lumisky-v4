@@ -6,6 +6,7 @@ import android.opengl.EGL14
 import android.opengl.GLES20
 import android.opengl.GLUtils
 import com.example.core.Logger
+import com.example.core.report.CrashDiagnostics
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
 import java.nio.ByteBuffer
@@ -159,6 +160,7 @@ class PreviewSkyProgram {
 		uForegroundTextureHandle = GLES20.glGetUniformLocation(programHandle, "u_ForegroundTexture")
 		uCloudTextureHandle = GLES20.glGetUniformLocation(programHandle, "u_CloudTexture")
 		loadConfiguredTextures()
+		reportGlContext()
 	}
 
 	fun setViewport(width: Int, height: Int) {
@@ -368,6 +370,7 @@ class PreviewSkyProgram {
 
 		val program = GLES20.glCreateProgram()
 		if (program == 0) {
+			CrashDiagnostics.recordException(ShaderProgramException("glCreateProgram returned 0"))
 			GLES20.glDeleteShader(vertexHandle)
 			GLES20.glDeleteShader(fragmentHandle)
 			return 0
@@ -384,10 +387,26 @@ class PreviewSkyProgram {
 		GLES20.glDeleteShader(fragmentHandle)
 		if (linkStatus[0] == 0) {
 			Logger.e(TAG, "Shader program link failed info=$linkInfo")
+			CrashDiagnostics.recordException(ShaderProgramException("Shader program link failed: $linkInfo"))
 			GLES20.glDeleteProgram(program)
 			return 0
 		}
 		return program
+	}
+
+	private fun reportGlContext() {
+		val renderer = GLES20.glGetString(GLES20.GL_RENDERER).orEmpty()
+		val vendor = GLES20.glGetString(GLES20.GL_VENDOR).orEmpty()
+		val version = GLES20.glGetString(GLES20.GL_VERSION).orEmpty()
+		CrashDiagnostics.setCustomKey("device_gpu", renderer)
+		CrashDiagnostics.setCustomKey("gl_vendor", vendor)
+		CrashDiagnostics.setCustomKey("gl_version", version)
+		CrashDiagnostics.setCustomKey("wallpaper", config.name)
+		CrashDiagnostics.setCustomKey("wallpaper_id", config.id)
+		CrashDiagnostics.setCustomKey("shader_mode", config.shader.mode)
+		CrashDiagnostics.setCustomKey("fragment_shader", config.shader.fragmentAssetPath)
+		CrashDiagnostics.log("EGL context created")
+		CrashDiagnostics.log("Current wallpaper: ${config.id}")
 	}
 
 	private fun mapToLegacyShaderY(value: Float): Float {
@@ -408,7 +427,11 @@ class PreviewSkyProgram {
 
 	private fun compileShader(type: Int, source: String): Int? {
 		val shader = GLES20.glCreateShader(type)
-		if (shader == 0) return null
+		val label = shaderTypeLabel(type)
+		if (shader == 0) {
+			CrashDiagnostics.recordException(ShaderCompileException("glCreateShader returned 0 type=$label"))
+			return null
+		}
 
 		GLES20.glShaderSource(shader, source)
 		GLES20.glCompileShader(shader)
@@ -418,11 +441,23 @@ class PreviewSkyProgram {
 		if (status[0] == 0) {
 			val info = GLES20.glGetShaderInfoLog(shader).orEmpty()
 			Logger.e(TAG, "Shader compile failed type=$type info=$info")
+			CrashDiagnostics.recordException(ShaderCompileException("Shader compile failed type=$label info=$info"))
 			GLES20.glDeleteShader(shader)
 			return null
 		}
 		return shader
 	}
+
+	private fun shaderTypeLabel(type: Int): String {
+		return when (type) {
+			GLES20.GL_VERTEX_SHADER -> "vertex"
+			GLES20.GL_FRAGMENT_SHADER -> "fragment"
+			else -> type.toString()
+		}
+	}
+
+	private class ShaderCompileException(message: String) : RuntimeException(message)
+	private class ShaderProgramException(message: String) : RuntimeException(message)
 
 	companion object {
 		private const val FLOAT_SIZE_BYTES = 4

@@ -11,6 +11,7 @@ import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
 import com.example.core.Logger
 import com.example.core.motion.TiltParallaxTracker
+import com.example.core.report.CrashDiagnostics
 import com.example.core.settings.AppSettingsRepository
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
@@ -33,7 +34,7 @@ open class SkyWallpaperService : WallpaperService() {
 			hasher = SceneStateHasher(),
 			policyResolver = ServiceRenderPolicyResolver(
 				isPowerSaveModeProvider = {
-					appContext.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
+					isBatterySaver()
 				},
 				thermalStatusProvider = {
 					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -80,6 +81,7 @@ open class SkyWallpaperService : WallpaperService() {
 			registerConfigRefreshReceiver()
 			registerUserUnlockReceiver()
 			applyUserUnlockedSettingsIfAvailable()
+			reportBatterySaver()
 			renderController.setPreviewMode(isPreview)
 			maybeStartDaylightSyncCoordinator()
 			daylightSyncCoordinator?.setPreviewMode(isPreview)
@@ -98,6 +100,7 @@ open class SkyWallpaperService : WallpaperService() {
 			maybeRestoreLockScreenWallpaperSharing()
 			if (visible) {
 				applyUserUnlockedSettingsIfAvailable()
+				reportBatterySaver()
 				applyStoredConfig()
 			}
 			daylightSyncCoordinator?.onVisibilityChanged(visible)
@@ -110,6 +113,7 @@ open class SkyWallpaperService : WallpaperService() {
 			engineSurfaceAttached = true
 			renderController.setPreviewMode(isPreview)
 			applyUserUnlockedSettingsIfAvailable()
+			reportBatterySaver()
 			maybeStartDaylightSyncCoordinator()
 			daylightSyncCoordinator?.setPreviewMode(isPreview)
 			maybeRestoreLockScreenWallpaperSharing()
@@ -186,6 +190,14 @@ open class SkyWallpaperService : WallpaperService() {
 
 		private fun refreshRenderSettings() {
 			renderController.setPerformanceMode(settingsRepository.getPerformanceMode())
+		}
+
+		private fun isBatterySaver(): Boolean {
+			return appContext.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
+		}
+
+		private fun reportBatterySaver() {
+			CrashDiagnostics.setCustomKey("battery_saver", isBatterySaver())
 		}
 
 		private fun applyStoredConfig() {

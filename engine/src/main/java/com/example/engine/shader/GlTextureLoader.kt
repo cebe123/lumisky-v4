@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.opengl.GLES20
 import android.opengl.GLUtils
 import com.example.core.Logger
+import com.example.core.report.CrashDiagnostics
 import kotlin.math.roundToInt
 
 internal class GlTextureLoader(
@@ -19,10 +20,12 @@ internal class GlTextureLoader(
 		val normalized = path?.takeIf { it.isNotBlank() } ?: return 0
 		val loader = textureBytesLoader ?: run {
 			Logger.w(TAG, "Texture loader unavailable path=$normalized")
+			CrashDiagnostics.recordException(TextureLoadException("Texture loader unavailable path=$normalized"))
 			return 0
 		}
 		val resolvedTexture = preferredTextureResolver.resolve(normalized, loader) ?: run {
 			Logger.w(TAG, "Texture asset unavailable path=$normalized")
+			CrashDiagnostics.recordException(TextureLoadException("Texture asset unavailable path=$normalized"))
 			return 0
 		}
 		val resolvedPath = resolvedTexture.path
@@ -39,6 +42,7 @@ internal class GlTextureLoader(
 			}
 		) ?: run {
 			Logger.w(TAG, "Texture decode failed path=$resolvedPath bytes=${bytes.size}")
+			CrashDiagnostics.recordException(TextureLoadException("Texture decode failed path=$resolvedPath bytes=${bytes.size}"))
 			return 0
 		}
 		val bitmap = preprocessTextureBitmap(
@@ -51,6 +55,7 @@ internal class GlTextureLoader(
 			val handle = handles[0]
 			if (handle == 0) {
 				Logger.w(TAG, "glGenTextures returned 0 path=$resolvedPath")
+				CrashDiagnostics.recordException(TextureLoadException("glGenTextures returned 0 path=$resolvedPath"))
 				return 0
 			}
 
@@ -74,6 +79,7 @@ internal class GlTextureLoader(
 				GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
 			}.onFailure { error ->
 				Logger.w(TAG, "Texture upload threw path=$resolvedPath", error)
+				CrashDiagnostics.recordException(error)
 				GLES20.glDeleteTextures(1, intArrayOf(handle), 0)
 				return 0
 			}
@@ -83,6 +89,11 @@ internal class GlTextureLoader(
 					TAG,
 					"Texture upload failed path=$resolvedPath size=${bitmap.width}x${bitmap.height} glError=$uploadError"
 				)
+				CrashDiagnostics.recordException(
+					TextureLoadException(
+						"Texture upload failed path=$resolvedPath size=${bitmap.width}x${bitmap.height} glError=$uploadError"
+					)
+				)
 				GLES20.glDeleteTextures(1, intArrayOf(handle), 0)
 				return 0
 			}
@@ -91,6 +102,9 @@ internal class GlTextureLoader(
 				val mipmapError = GLES20.glGetError()
 				if (mipmapError != GLES20.GL_NO_ERROR) {
 					Logger.w(TAG, "Texture mipmap generation failed path=$resolvedPath glError=$mipmapError")
+					CrashDiagnostics.recordException(
+						TextureLoadException("Texture mipmap generation failed path=$resolvedPath glError=$mipmapError")
+					)
 					GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
 				}
 			}
@@ -400,6 +414,8 @@ internal class GlTextureLoader(
 			if (GLES20.glGetError() == GLES20.GL_NO_ERROR) return
 		}
 	}
+
+	private class TextureLoadException(message: String) : RuntimeException(message)
 
 	companion object {
 		private const val TAG = "GlTextureLoader"

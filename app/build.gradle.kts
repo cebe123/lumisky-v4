@@ -1,5 +1,6 @@
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.Sync
+import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
 import java.awt.Graphics2D
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
@@ -378,6 +379,10 @@ android {
 		release {
 			isMinifyEnabled = true
 			isShrinkResources = true
+			configure<CrashlyticsExtension> {
+				mappingFileUploadEnabled = true
+				nativeSymbolUploadEnabled = true
+			}
 			ndk {
 				debugSymbolLevel = "SYMBOL_TABLE"
 			}
@@ -397,6 +402,7 @@ android {
 	}
 	buildFeatures {
 		compose = true
+		prefab = true
 	}
 	lint {
 		// Fast local lint by default; enable test-source lint in CI/full runs with:
@@ -447,6 +453,7 @@ tasks.matching { task ->
 		task.name == "packageReleaseBundle"
 }.configureEach {
 	dependsOn(validatePlayReleaseConfig)
+	dependsOn("uploadCrashlyticsSymbolFileRelease")
 }
 
 dependencies {
@@ -467,6 +474,7 @@ dependencies {
 	implementation("androidx.compose.material:material-icons-extended")
 	implementation(platform(libs.firebase.bom))
 	implementation(libs.firebase.crashlytics)
+	implementation(libs.firebase.crashlytics.ndk)
 	implementation(libs.firebase.analytics)
 	coreLibraryDesugaring(libs.desugar.jdk.libs)
 
