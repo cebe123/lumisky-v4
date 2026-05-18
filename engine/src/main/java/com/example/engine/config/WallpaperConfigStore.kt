@@ -310,7 +310,6 @@ internal object WallpaperConfigJsonCodec {
 			} ?: JSONObject.NULL)
 			put(KEY_PREVIEW_LOOP_DURATION_SECONDS, config.previewLoopDurationSeconds.toDouble())
 			put(KEY_FOCUS_CATCH_UP_DURATION_SECONDS, config.focusCatchUpDurationSeconds.toDouble())
-			put(KEY_ANIMATION_DURATION_SECONDS, config.previewLoopDurationSeconds.toDouble())
 			put(KEY_DAYLIGHT, JSONObject().apply {
 				put(KEY_SUNRISE_MINUTE, config.daylight.sunriseMinute)
 				put(KEY_SUNSET_MINUTE, config.daylight.sunsetMinute)
