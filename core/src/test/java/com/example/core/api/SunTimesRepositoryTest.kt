@@ -155,6 +155,45 @@ class SunTimesRepositoryTest {
 		}
 	}
 
+	@Test
+	fun refreshFallsBackWhenFetchTimesOut() {
+		val apiClient = FakeSunTimesApiClient(
+			responses = listOf(
+				SunDaylight(
+					sunriseMinute = 6 * 60 + 18,
+					sunsetMinute = 18 * 60 + 44,
+					solarNoonMinute = 12 * 60 + 31,
+					timeZoneId = "Europe/Istanbul"
+				)
+			),
+			delayMs = 250L
+		)
+		val repository = SunTimesRepository(
+			apiClient = apiClient,
+			fetchTimeoutMs = 50L
+		)
+		val candidate = SunLocation(
+			label = "gps_istanbul",
+			latitude = 41.0082,
+			longitude = 28.9784,
+			timeZoneId = "Europe/Istanbul"
+		)
+
+		try {
+			val startedAtNanos = System.nanoTime()
+
+			assertEquals(
+				SunDaylight.fallback().copy(timeZoneId = "Europe/Istanbul"),
+				awaitRefresh(repository, candidate)
+			)
+			val elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAtNanos)
+			assertTrue("refresh should not wait for the slow fetch", elapsedMs < 1_000L)
+			assertEquals(1, apiClient.fetchCount)
+		} finally {
+			repository.release()
+		}
+	}
+
 	private fun awaitRefresh(
 		repository: SunTimesRepository,
 		candidate: SunLocation
@@ -187,7 +226,8 @@ class SunTimesRepositoryTest {
 	}
 
 	private class FakeSunTimesApiClient(
-		private val responses: List<SunDaylight?>
+		private val responses: List<SunDaylight?>,
+		private val delayMs: Long = 0L
 	) : SunTimesApiClient() {
 		var fetchCount: Int = 0
 			private set
@@ -199,6 +239,9 @@ class SunTimesRepositoryTest {
 		): SunDaylight? {
 			val responseIndex = fetchCount
 			fetchCount += 1
+			if (delayMs > 0L) {
+				Thread.sleep(delayMs)
+			}
 			return responses.getOrNull(responseIndex)
 		}
 	}

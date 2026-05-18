@@ -25,7 +25,9 @@ class CelestialCalculator {
 		val peakY = resolvePeakY(horizonY, orbit, config)
 		val hiddenY = resolveHiddenY(horizonY, orbit)
 
-		val isDaytime = if (sunset > sunrise) {
+		val isDaytime = if (sunset == sunrise) {
+			true
+		} else if (sunset > sunrise) {
 			minute >= sunrise && minute <= sunset
 		} else if (sunset < sunrise) {
 			minute >= sunrise || minute <= sunset
@@ -72,7 +74,9 @@ class CelestialCalculator {
 		val peakY = resolvePeakY(horizonY, orbit, config)
 		val hiddenY = resolveHiddenY(horizonY, orbit)
 
-		val isDaytime = if (sunset > sunrise) {
+		val isDaytime = if (sunset == sunrise) {
+			true
+		} else if (sunset > sunrise) {
 			minute >= sunrise && minute <= sunset
 		} else if (sunset < sunrise) {
 			minute >= sunrise || minute <= sunset
@@ -154,7 +158,8 @@ class CelestialCalculator {
 		orbit: CelestialOrbitConfig,
 		config: WallpaperConfig
 	): Float {
-		return (orbit.peakY ?: config.peakY).coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
+		val minimumPeakY = (horizonY + MIN_PEAK_DELTA).coerceAtMost(1f)
+		return (orbit.peakY ?: config.peakY).coerceIn(minimumPeakY, 1f)
 	}
 
 	private fun resolveHiddenY(
@@ -192,6 +197,9 @@ class CelestialCalculator {
 		val normalizedSunrise = sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
 		val normalizedSunset = sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
 		val configuredZenith = config.daylight.solarNoonMinute.coerceIn(0, MINUTES_PER_DAY)
+		if (normalizedSunrise == normalizedSunset) {
+			return configuredZenith
+		}
 		return if (configuredZenith in normalizedSunrise..normalizedSunset) {
 			configuredZenith
 		} else {
@@ -207,7 +215,12 @@ class CelestialCalculator {
 	): Float {
 		val start = normalizeMinute(startMinute)
 		val peak = normalizeMinuteForward(peakMinute, anchorMinute = start)
-		val end = normalizeMinuteForward(endMinute, anchorMinute = start)
+		val normalizedEnd = normalizeMinute(endMinute)
+		val end = if (normalizedEnd == start) {
+			start + MINUTES_PER_DAY.toFloat()
+		} else {
+			normalizeMinuteForward(endMinute, anchorMinute = start)
+		}
 		val current = normalizeMinuteForward(currentMinute, anchorMinute = start)
 		if (current <= peak) {
 			val firstHalfDuration = (peak - start).coerceAtLeast(1f)
@@ -220,11 +233,15 @@ class CelestialCalculator {
 	}
 
 	private fun minuteOfDay(progress: Float): Float {
+		if (!progress.isFiniteValue()) return 0f
 		val wrapped = ((progress % 1f) + 1f) % 1f
-		return (wrapped * MINUTES_PER_DAY.toFloat()).coerceIn(0f, MINUTES_PER_DAY.toFloat())
+		if (!wrapped.isFiniteValue()) return 0f
+		val minute = wrapped * MINUTES_PER_DAY.toFloat()
+		return if (minute >= MINUTES_PER_DAY.toFloat()) 0f else minute.coerceAtLeast(0f)
 	}
 
 	private fun normalizeMinute(minute: Float): Float {
+		if (!minute.isFiniteValue()) return 0f
 		return minute.coerceIn(0f, MINUTES_PER_DAY.toFloat())
 	}
 
@@ -233,10 +250,17 @@ class CelestialCalculator {
 		anchorMinute: Float
 	): Float {
 		var normalized = normalizeMinute(minute)
-		while (normalized < anchorMinute) {
+		val anchor = normalizeMinute(anchorMinute)
+		var iterations = 0
+		while (normalized < anchor && iterations < MAX_MINUTE_WRAP_ITERATIONS) {
 			normalized += MINUTES_PER_DAY.toFloat()
+			iterations++
 		}
 		return normalized
+	}
+
+	private fun Float.isFiniteValue(): Boolean {
+		return !isNaN() && this != Float.POSITIVE_INFINITY && this != Float.NEGATIVE_INFINITY
 	}
 
 	private fun lerp(start: Float, end: Float, t: Float): Float {
@@ -250,6 +274,7 @@ class CelestialCalculator {
 		private const val ARC_PATH_START_X = 0f
 		private const val ARC_PATH_END_X = 1f
 		private const val MIN_PEAK_DELTA = 0.05f
+		private const val MAX_MINUTE_WRAP_ITERATIONS = 3
 		private const val HIDDEN_DEPTH = 0.75f
 		private const val HIDDEN_Y_MAX = -0.15f
 	}

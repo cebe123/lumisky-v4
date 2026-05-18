@@ -165,6 +165,52 @@ class CelestialCalculatorTest {
 		assertTrue(abs(moonB.x - moonA.x) > 0.00001f || abs(moonB.y - moonA.y) > 0.00001f)
 	}
 
+	@Test
+	fun equal_sunrise_and_sunset_keeps_sun_visible_at_solar_noon() {
+		val config = WallpaperConfig.default().copy(
+			horizon = HorizonConfig(offset = 0.25f),
+			peakY = 0.88f,
+			daylight = DaylightConfig(
+				sunriseMinute = 6 * 60,
+				sunsetMinute = 6 * 60,
+				solarNoonMinute = 12 * 60
+			)
+		)
+
+		val solarNoon = calculator.computeSunPosition(progress = 0.5f, config = config)
+
+		assertEquals(config.peakY, solarNoon.y, 0.0001f)
+	}
+
+	@Test
+	fun atmosphere_pre_sunrise_glow_wraps_progress_over_one_loop() {
+		val controller = AtmosphereController()
+		val config = WallpaperConfig.default().copy(
+			daylight = DaylightConfig(
+				sunriseMinute = 30,
+				sunsetMinute = 18 * 60,
+				solarNoonMinute = 12 * 60
+			)
+		)
+
+		val state = controller.resolveState(progress = 1.99f, sunY = 0f, moonY = 0f, config = config)
+
+		assertTrue(state.preSunriseGlowFactor > 0f)
+	}
+
+	@Test
+	fun atmosphere_handles_horizon_near_top_without_invalid_peak_range() {
+		val controller = AtmosphereController()
+		val config = WallpaperConfig.default().copy(
+			horizon = HorizonConfig(offset = 0.99f),
+			peakY = 0.2f
+		)
+
+		val state = controller.resolveState(progress = 0.5f, sunY = 0.99f, moonY = -1f, config = config)
+
+		assertTrue(state.nightBlendFactor in 0f..1f)
+	}
+
 	private fun luminance(color: Int): Int {
 		val r = (color shr 16) and 0xFF
 		val g = (color shr 8) and 0xFF

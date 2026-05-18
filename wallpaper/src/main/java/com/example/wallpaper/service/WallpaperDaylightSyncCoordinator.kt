@@ -79,6 +79,7 @@ class WallpaperDaylightSyncCoordinator(
 		settingsChangeListenerHandle?.close()
 		settingsChangeListenerHandle = null
 		mainHandler.removeCallbacks(periodicRefreshRunnable)
+		lastKnownLocationProvider.cancelCurrentLocationRequest()
 		stopPassiveLocationUpdates()
 		unregisterLocationModeReceiver()
 		sunTimesRepository.release()

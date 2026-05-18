@@ -205,6 +205,7 @@ internal class LocationSunTimesCoordinator(
 		if (released) return
 		released = true
 		Logger.d(tag, "release called")
+		lastKnownLocationProvider.cancelCurrentLocationRequest()
 		stopPassiveLocationUpdates()
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
 		mainHandler.removeCallbacks(refreshLocationAndSunTimesRunnable)

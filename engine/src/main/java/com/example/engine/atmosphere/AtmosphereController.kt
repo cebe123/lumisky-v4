@@ -4,6 +4,7 @@ import com.example.engine.config.SkyColors
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.resolvePeakYForAtmosphere
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class AtmosphereController {
 	fun resolveSkyColor(progress: Float, sunY: Float, config: WallpaperConfig): Int {
@@ -19,10 +20,11 @@ class AtmosphereController {
 	): AtmosphereState {
 		val palette = config.customSkyColors ?: DEFAULT_COLORS
 		val horizonY = config.horizon.offset.coerceIn(0f, 1f)
-		val peakY = config.resolvePeakYForAtmosphere().coerceIn(horizonY + MIN_PEAK_DELTA, 1f)
+		val peakY = resolvePeakY(horizonY, config)
+		val altitudeRange = (peakY - horizonY).coerceAtLeast(MIN_PEAK_DELTA)
 
-		val sunAltitude = ((sunY - horizonY) / (peakY - horizonY)).coerceIn(0f, 1f)
-		val moonAltitude = ((moonY - horizonY) / (peakY - horizonY)).coerceIn(0f, 1f)
+		val sunAltitude = ((sunY - horizonY) / altitudeRange).coerceIn(0f, 1f)
+		val moonAltitude = ((moonY - horizonY) / altitudeRange).coerceIn(0f, 1f)
 		val twilightFactor = (1f - abs(sunAltitude - 0.5f) * 2f).coerceIn(0f, 1f)
 		val twilightColor = if (progress < 0.5f) palette.sunriseColor else palette.sunsetColor
 		val preSunriseGlow = preSunriseGlow(progress = progress, config = config)
@@ -43,7 +45,8 @@ class AtmosphereController {
 		val skyTopColor = lerpColor(dayBlend, twilightColor, horizonWarm * TOP_BLEND_SCALE)
 		val skyHorizonColor = lerpColor(dayBlend, twilightColor, horizonWarm)
 		val skyColor = lerpColor(skyTopColor, skyHorizonColor, HORIZON_BIAS)
-		val nightBlend = (1f - maxOf(sunAltitude, moonAltitude * MOON_LIFT_SCALE)).coerceIn(0f, 1f)
+		val nightBlend = (1f - maxOf(sunAltitude, moonAltitude.coerceAtLeast(0f) * MOON_LIFT_SCALE))
+			.coerceIn(0f, 1f)
 
 		return outState.set(
 			skyTopColor = skyTopColor,
@@ -65,8 +68,9 @@ class AtmosphereController {
 	}
 
 	private fun Float.normalizeUnitDistance(): Float {
-		val wrapped = (this + 1f) % 1f
-		return wrapped
+		if (!isFiniteValue()) return 0f
+		val wrapped = ((this % 1f) + 1f) % 1f
+		return if (wrapped > 0.5f) wrapped - 1f else wrapped
 	}
 
 	private fun lerpColor(start: Int, end: Int, t: Float): Int {
@@ -83,7 +87,16 @@ class AtmosphereController {
 	}
 
 	private fun lerp(start: Int, end: Int, t: Float): Int {
-		return (start + ((end - start) * t)).toInt().coerceIn(0, 255)
+		return (start + ((end - start) * t)).roundToInt().coerceIn(0, 255)
+	}
+
+	private fun resolvePeakY(horizonY: Float, config: WallpaperConfig): Float {
+		val minimumPeakY = (horizonY + MIN_PEAK_DELTA).coerceAtMost(1f)
+		return config.resolvePeakYForAtmosphere().coerceIn(minimumPeakY, 1f)
+	}
+
+	private fun Float.isFiniteValue(): Boolean {
+		return !isNaN() && this != Float.POSITIVE_INFINITY && this != Float.NEGATIVE_INFINITY
 	}
 
 	companion object {

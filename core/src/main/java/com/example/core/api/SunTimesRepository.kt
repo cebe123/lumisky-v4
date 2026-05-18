@@ -1,6 +1,9 @@
 package com.example.core.api
 
 import com.example.core.Logger
+import java.time.DateTimeException
+import java.time.Instant
+import java.time.ZoneId
 import java.util.Calendar
 import java.util.LinkedHashMap
 import java.util.Locale
@@ -8,6 +11,9 @@ import java.util.TimeZone
 import java.util.concurrent.Executors
 import java.util.concurrent.Callable
 import java.util.concurrent.Future
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.roundToInt
@@ -44,12 +50,13 @@ private enum class CacheLayer {
 
 class SunTimesRepository(
 	private val apiClient: SunTimesApiClient = SunTimesApiClient(),
-	private val nowProvider: () -> Long = System::currentTimeMillis
+	private val nowProvider: () -> Long = System::currentTimeMillis,
+	private val fetchTimeoutMs: Long = DEFAULT_NETWORK_FETCH_TIMEOUT_MS
 ) {
 	private val cachedEntry = AtomicReference<CachedDaylightEntry?>(null)
 	private val refreshExecutor = Executors.newSingleThreadExecutor()
 	private val backupPrefetchExecutor = Executors.newSingleThreadExecutor()
-	private val networkExecutor = Executors.newCachedThreadPool()
+	private val networkExecutor = Executors.newFixedThreadPool(MAX_CONCURRENT_NETWORK_FETCHES)
 	private val requestVersion = AtomicInteger(0)
 
 	fun currentOrFallback(): SunDaylight {
@@ -124,7 +131,7 @@ class SunTimesRepository(
 
 		if (candidates.isEmpty()) {
 			val (fallback, source) = resolveFallback()
-			Logger.w(
+			logWarning(
 				TAG,
 				"Sun times decision=NO_CANDIDATE at=${toHourMinuteLabel(System.currentTimeMillis())} source=$source " +
 					"sunrise=${fallback.sunriseMinute}(${toClockLabel(fallback.sunriseMinute)}) " +
@@ -153,71 +160,71 @@ class SunTimesRepository(
 		}
 
 		val requestId = requestVersion.incrementAndGet()
-		refreshExecutor.execute {
-			if (requestId != requestVersion.get()) return@execute
+		try {
+			refreshExecutor.execute {
+				if (requestId != requestVersion.get()) return@execute
 
-			val latestCandidates = buildCandidates(candidates)
-			if (!forceRefresh) {
-				val cacheHit = findDailyHitByCandidatePriority(
-					candidates = latestCandidates,
-					epochMillis = nowProvider()
-				)
-				if (cacheHit != null) {
-					cacheResolvedEntry(cacheHit.entry)
+				val latestCandidates = buildCandidates(candidates)
+				if (!forceRefresh) {
+					val cacheHit = findDailyHitByCandidatePriority(
+						candidates = latestCandidates,
+						epochMillis = nowProvider()
+					)
+					if (cacheHit != null) {
+						cacheResolvedEntry(cacheHit.entry)
+						onUpdated(
+							SunDaylightResolution(
+								daylight = cacheHit.entry.daylight,
+								sourceLocation = cacheHit.candidate
+							)
+						)
+						return@execute
+					}
+				}
+
+				val futures = latestCandidates.mapNotNull { candidate ->
+					submitFetch(candidate)?.let { future -> candidate to future }
+				}
+
+				for ((candidate, future) in futures) {
+					if (requestId != requestVersion.get()) {
+						futures.cancelAllFetches()
+						return@execute
+					}
+					val fetched = awaitFetch(candidate, future, "active")
+					if (fetched == null) {
+						continue
+					}
+					if (requestId != requestVersion.get()) {
+						futures.cancelAllFetches()
+						return@execute
+					}
+
+					val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.ACTIVE)
+					cacheResolvedEntry(entry)
+					futures.cancelAllFetches()
 					onUpdated(
 						SunDaylightResolution(
-							daylight = cacheHit.entry.daylight,
-							sourceLocation = cacheHit.candidate
+							daylight = fetched,
+							sourceLocation = candidate
 						)
 					)
 					return@execute
 				}
-			}
 
-			val futures = latestCandidates.map { candidate ->
-				candidate to networkExecutor.submit(Callable {
-					apiClient.fetchDaylight(
-						latitude = candidate.latitude,
-						longitude = candidate.longitude,
-						timeZoneId = candidate.timeZoneId
-					)
-				})
-			}
-
-			for ((candidate, future) in futures) {
-				if (requestId != requestVersion.get()) {
-					futures.forEach { it.second.cancel(true) }
-					return@execute
-				}
-				val fetched = try { future.get() } catch (e: Exception) { null }
-				if (fetched == null) {
-					Logger.w(
-						TAG,
-						"Sun times fetch failed source=${candidate.label} at=${toHourMinuteLabel(System.currentTimeMillis())}"
-					)
-					continue
-				}
-
-				val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.ACTIVE)
-				cacheResolvedEntry(entry)
-				futures.forEach { it.second.cancel(true) }
-				onUpdated(
-					SunDaylightResolution(
-						daylight = fetched,
-						sourceLocation = candidate
-					)
-				)
-				return@execute
-			}
-
-			if (requestId != requestVersion.get()) return@execute
-			val (fallback, source) = resolveFallback(latestCandidates)
-			Logger.w(
-				TAG,
+				if (requestId != requestVersion.get()) return@execute
+				val (fallback, source) = resolveFallback(latestCandidates)
+				logWarning(
+					TAG,
 					"Sun times decision=FAILBACK at=${toHourMinuteLabel(System.currentTimeMillis())} source=$source " +
 						"sunrise=${fallback.sunriseMinute}(${toClockLabel(fallback.sunriseMinute)}) " +
 						"sunset=${fallback.sunsetMinute}(${toClockLabel(fallback.sunsetMinute)})"
-			)
+				)
+				onUpdated(SunDaylightResolution(daylight = fallback, sourceLocation = null))
+			}
+		} catch (e: RejectedExecutionException) {
+			logWarning(TAG, "Sun times refresh rejected", e)
+			val (fallback, _) = resolveFallback(orderedCandidates)
 			onUpdated(SunDaylightResolution(daylight = fallback, sourceLocation = null))
 		}
 	}
@@ -226,11 +233,15 @@ class SunTimesRepository(
 		candidates: List<SunLocation>,
 		minRefreshIntervalMs: Long = DEFAULT_BACKUP_REFRESH_INTERVAL_MS
 	) {
-		backupPrefetchExecutor.execute {
-			prefetchBackupInternal(
-				candidates = candidates,
-				minRefreshIntervalMs = minRefreshIntervalMs
-			)
+		try {
+			backupPrefetchExecutor.execute {
+				prefetchBackupInternal(
+					candidates = candidates,
+					minRefreshIntervalMs = minRefreshIntervalMs
+				)
+			}
+		} catch (e: RejectedExecutionException) {
+			logWarning(TAG, "Sun times backup prefetch rejected", e)
 		}
 	}
 
@@ -246,9 +257,9 @@ class SunTimesRepository(
 
 	fun release() {
 		requestVersion.incrementAndGet()
-		refreshExecutor.shutdownNow()
-		backupPrefetchExecutor.shutdownNow()
-		networkExecutor.shutdownNow()
+		refreshExecutor.shutdown()
+		backupPrefetchExecutor.shutdown()
+		networkExecutor.shutdown()
 	}
 
 	private fun findDailyHitByCandidatePriority(
@@ -454,22 +465,12 @@ class SunTimesRepository(
 			if (!shouldRefreshBackup(candidate, attemptAt, minRefreshIntervalMs)) {
 				null
 			} else {
-				candidate to networkExecutor.submit(Callable {
-					apiClient.fetchDaylight(
-						latitude = candidate.latitude,
-						longitude = candidate.longitude,
-						timeZoneId = candidate.timeZoneId
-					)
-				})
+				submitFetch(candidate)?.let { future -> candidate to future }
 			}
 		}
 		futures.forEach { (candidate, future) ->
-			val fetched = try { future.get() } catch (e: Exception) { null }
+			val fetched = awaitFetch(candidate, future, "backup")
 			if (fetched == null) {
-				Logger.w(
-					TAG,
-					"Sun times backup fetch failed source=${candidate.label} at=${toHourMinuteLabel(System.currentTimeMillis())}"
-				)
 				return@forEach
 			}
 			val entry = storeSuccessfulFetch(candidate, fetched, CacheLayer.BACKUP)
@@ -504,16 +505,61 @@ class SunTimesRepository(
 		timeZoneId: String?,
 		epochMillis: Long = nowProvider()
 	): String {
-		val calendar = Calendar.getInstance(resolveTimeZone(timeZoneId), Locale.US).apply {
-			timeInMillis = epochMillis
+		return Instant.ofEpochMilli(epochMillis)
+			.atZone(resolveZoneId(timeZoneId))
+			.toLocalDate()
+			.toString()
+	}
+
+	private fun submitFetch(candidate: SunLocation): Future<SunDaylight?>? {
+		return try {
+			networkExecutor.submit(Callable {
+				apiClient.fetchDaylight(
+					latitude = candidate.latitude,
+					longitude = candidate.longitude,
+					timeZoneId = candidate.timeZoneId
+				)
+			})
+		} catch (e: RejectedExecutionException) {
+			logWarning(TAG, "Sun times network fetch rejected source=${candidate.label}", e)
+			null
 		}
-		return String.format(
-			Locale.US,
-			"%04d-%02d-%02d",
-			calendar.get(Calendar.YEAR),
-			calendar.get(Calendar.MONTH) + 1,
-			calendar.get(Calendar.DAY_OF_MONTH)
-		)
+	}
+
+	private fun awaitFetch(
+		candidate: SunLocation,
+		future: Future<SunDaylight?>,
+		layer: String
+	): SunDaylight? {
+		return try {
+			future.get(fetchTimeoutMs, TimeUnit.MILLISECONDS)
+		} catch (e: TimeoutException) {
+			future.cancel(false)
+			logWarning(TAG, "Sun times $layer fetch timeout source=${candidate.label} timeoutMs=$fetchTimeoutMs", e)
+			null
+		} catch (e: InterruptedException) {
+			future.cancel(false)
+			Thread.currentThread().interrupt()
+			logWarning(TAG, "Sun times $layer fetch interrupted source=${candidate.label}", e)
+			null
+		} catch (e: Exception) {
+			logWarning(TAG, "Sun times $layer fetch failed source=${candidate.label}", e)
+			null
+		}
+	}
+
+	private fun logWarning(tag: String, message: String, throwable: Throwable? = null) {
+		try {
+			Logger.w(tag, message, throwable)
+		} catch (_: Throwable) {
+			// JVM unit tests do not provide Android logging classes.
+		}
+	}
+
+	private fun List<Pair<SunLocation, Future<SunDaylight?>>>.cancelAllFetches() {
+		forEach { (_, future) ->
+			future.cancel(false)
+		}
 	}
 
 	private fun toDailyCacheKey(locationKey: String, dayKey: String): String {
@@ -535,6 +581,16 @@ class SunTimesRepository(
 			TimeZone.getDefault()
 		} else {
 			resolved
+		}
+	}
+
+	private fun resolveZoneId(timeZoneId: String?): ZoneId {
+		val normalized = normalizeTimeZoneId(timeZoneId)
+		if (normalized.isBlank()) return ZoneId.systemDefault()
+		return try {
+			ZoneId.of(normalized)
+		} catch (_: DateTimeException) {
+			resolveTimeZone(normalized).toZoneId()
 		}
 	}
 
@@ -583,6 +639,8 @@ class SunTimesRepository(
 		private const val MAX_LOCATION_CACHE_ENTRIES = 48
 		private const val MAX_BACKUP_REFRESH_ENTRIES = 96
 		private const val DEFAULT_BACKUP_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
+		private const val DEFAULT_NETWORK_FETCH_TIMEOUT_MS = 10_000L
+		private const val MAX_CONCURRENT_NETWORK_FETCHES = 4
 		private val cacheLock = Any()
 		private val sharedDailyCache = LinkedHashMap<String, CachedDaylightEntry>(64, 0.75f, true)
 		private val sharedLocationCache = LinkedHashMap<String, CachedDaylightEntry>(32, 0.75f, true)

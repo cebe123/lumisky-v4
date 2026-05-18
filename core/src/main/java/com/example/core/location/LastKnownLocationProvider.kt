@@ -36,12 +36,14 @@ class LastKnownLocationProvider(
 		LocationServices.getFusedLocationProviderClient(appContext)
 	private val geocoderLock = Any()
 	private val passiveListenerLock = Any()
+	private val currentLocationLock = Any()
 	private val localityCache = object : LinkedHashMap<String, String>(32, 0.75f, true) {
 		override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean {
 			return size > MAX_LOCALITY_CACHE_SIZE
 		}
 	}
 	private var passiveLocationCallback: LocationCallback? = null
+	private var pendingCurrentLocationRequest: PendingLocationRequest? = null
 
 	fun hasLocationPermission(): Boolean {
 		return getLocationAccessLevel() != LocationAccessLevel.NONE
@@ -125,6 +127,7 @@ class LastKnownLocationProvider(
 			Priority.PRIORITY_BALANCED_POWER_ACCURACY
 		}
 		val cancellation = CancellationTokenSource()
+		val pendingRequest = beginCurrentLocationRequest(cancellation, onResult)
 		val request = CurrentLocationRequest.Builder()
 			.setGranularity(Granularity.GRANULARITY_PERMISSION_LEVEL)
 			.setPriority(priority)
@@ -133,22 +136,33 @@ class LastKnownLocationProvider(
 			.build()
 
 		runCatching {
+			if (!hasLocationPermission() || !isLocationEnabled()) {
+				throw SecurityException("Location permission or provider changed before current location request")
+			}
 			fusedLocationClient.getCurrentLocation(request, cancellation.token)
 				.addOnSuccessListener { location ->
 					if (location == null) {
 						Logger.w(TAG, "requestCurrentLocation returned null")
-						onResult(null)
+						completeCurrentLocationRequest(pendingRequest, null)
 						return@addOnSuccessListener
 					}
-					onResult(location.toSnapshot(source = LocationSource.CURRENT))
+					completeCurrentLocationRequest(
+						pending = pendingRequest,
+						snapshot = location.toSnapshot(source = LocationSource.CURRENT)
+					)
 				}
 				.addOnFailureListener { throwable ->
 					Logger.w(TAG, "requestCurrentLocation failed", throwable)
-					onResult(null)
+					completeCurrentLocationRequest(pendingRequest, null)
+				}
+				.addOnCanceledListener {
+					Logger.w(TAG, "requestCurrentLocation canceled")
+					completeCurrentLocationRequest(pendingRequest, null)
 				}
 		}.onFailure { throwable ->
 			Logger.w(TAG, "requestCurrentLocation setup failed", throwable)
-			onResult(null)
+			cancellation.cancel()
+			completeCurrentLocationRequest(pendingRequest, null)
 		}
 	}
 
@@ -158,10 +172,6 @@ class LastKnownLocationProvider(
 		onLocation: (LocationSnapshot) -> Unit
 	) {
 		if (!hasLocationPermission()) return
-		synchronized(passiveListenerLock) {
-			if (passiveLocationCallback != null) return
-		}
-
 		val request = LocationRequest.Builder(
 			Priority.PRIORITY_PASSIVE,
 			DEFAULT_PASSIVE_INTERVAL_MS
@@ -177,20 +187,25 @@ class LastKnownLocationProvider(
 				}
 			}
 		}
+		synchronized(passiveListenerLock) {
+			if (passiveLocationCallback != null) return
+			passiveLocationCallback = callback
+		}
 
 		runCatching {
+			if (!hasLocationPermission()) {
+				throw SecurityException("Location permission changed before passive listener registration")
+			}
 			fusedLocationClient.requestLocationUpdates(
 				request,
 				callback,
 				Looper.getMainLooper()
-			).addOnSuccessListener {
-				synchronized(passiveListenerLock) {
-					passiveLocationCallback = callback
-				}
-			}.addOnFailureListener { throwable ->
+			).addOnFailureListener { throwable ->
+				clearPassiveLocationCallback(callback)
 				Logger.w(TAG, "startPassiveLocationUpdates failed", throwable)
 			}
 		}.onFailure { throwable ->
+			clearPassiveLocationCallback(callback)
 			Logger.w(TAG, "startPassiveLocationUpdates setup failed", throwable)
 		}
 	}
@@ -206,6 +221,18 @@ class LastKnownLocationProvider(
 			.onFailure { throwable ->
 				Logger.w(TAG, "stopPassiveLocationUpdates failed", throwable)
 			}
+	}
+
+	fun cancelCurrentLocationRequest(notifyResult: Boolean = false) {
+		val pending = synchronized(currentLocationLock) {
+			val active = pendingCurrentLocationRequest
+			pendingCurrentLocationRequest = null
+			active
+		} ?: return
+		pending.cancellation.cancel()
+		if (notifyResult) {
+			pending.onResult(null)
+		}
 	}
 
 	fun resolveCityOrDistrict(location: SunLocation): String? {
@@ -233,6 +260,10 @@ class LastKnownLocationProvider(
 		geocoder: Geocoder,
 		location: SunLocation
 	): android.location.Address? {
+		if (Looper.myLooper() == Looper.getMainLooper()) {
+			Logger.w(TAG, "resolveAddress skipped on main thread")
+			return null
+		}
 		return runCatching {
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 				val result = AtomicReference<android.location.Address?>(null)
@@ -248,18 +279,70 @@ class LastKnownLocationProvider(
 						}
 
 						override fun onError(errorMessage: String?) {
+							Logger.w(TAG, "Geocoder error: $errorMessage")
 							latch.countDown()
 						}
 					}
 				)
-				latch.await(GEOCODER_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+				if (!latch.await(GEOCODER_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+					Logger.w(TAG, "Geocoder timeout")
+					return@runCatching null
+				}
 				result.get()
 			} else {
 				@Suppress("DEPRECATION")
-				geocoder.getFromLocation(location.latitude, location.longitude, 1)
-					?.firstOrNull()
+				try {
+					geocoder.getFromLocation(location.latitude, location.longitude, 1)
+						?.firstOrNull()
+				} catch (throwable: Throwable) {
+					Logger.w(TAG, "Geocoder legacy API failed", throwable)
+					null
+				}
 			}
+		}.onFailure { throwable ->
+			Logger.w(TAG, "Geocoder failed", throwable)
 		}.getOrNull()
+	}
+
+	private fun beginCurrentLocationRequest(
+		cancellation: CancellationTokenSource,
+		onResult: (LocationSnapshot?) -> Unit
+	): PendingLocationRequest {
+		val pending = PendingLocationRequest(
+			cancellation = cancellation,
+			onResult = onResult
+		)
+		val previous = synchronized(currentLocationLock) {
+			val active = pendingCurrentLocationRequest
+			pendingCurrentLocationRequest = pending
+			active
+		}
+		previous?.cancellation?.cancel()
+		previous?.onResult?.invoke(null)
+		return pending
+	}
+
+	private fun completeCurrentLocationRequest(
+		pending: PendingLocationRequest,
+		snapshot: LocationSnapshot?
+	) {
+		val callback = synchronized(currentLocationLock) {
+			if (pendingCurrentLocationRequest !== pending) {
+				null
+			} else {
+				pendingCurrentLocationRequest = null
+				pending.onResult
+			}
+		}
+		callback?.invoke(snapshot)
+	}
+
+	private fun clearPassiveLocationCallback(callback: LocationCallback) {
+		synchronized(passiveListenerLock) {
+			if (passiveLocationCallback === callback) {
+				passiveLocationCallback = null
+			}
+		}
 	}
 
 	private fun Location.toSnapshot(
@@ -292,4 +375,9 @@ class LastKnownLocationProvider(
 		private const val DEFAULT_PASSIVE_MIN_DISTANCE_METERS = 25_000f
 		private const val GEOCODER_TIMEOUT_MS = 2_000L
 	}
+
+	private data class PendingLocationRequest(
+		val cancellation: CancellationTokenSource,
+		val onResult: (LocationSnapshot?) -> Unit
+	)
 }
