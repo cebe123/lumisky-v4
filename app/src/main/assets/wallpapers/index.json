@@ -63,6 +63,10 @@
     {
       "id": "sky",
       "manifest": "wallpapers/sky/manifest.json"
+    },
+    {
+      "id": "dream_sunset",
+      "manifest": "wallpapers/dream_sunset/manifest.json"
     }
   ]
 }

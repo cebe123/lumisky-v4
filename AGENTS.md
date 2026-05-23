@@ -26,6 +26,7 @@ Always prefer:
 - architecture preservation
 - concise outputs
 - deterministic implementation
+- battery-friendly rendering
 
 ## Context Management
 
@@ -34,6 +35,7 @@ Before every task:
 2. Keep only the current task, active constraints, relevant architecture, and files directly required.
 3. Do not carry over previous failed approaches unless they are explicitly relevant.
 4. If context is too large, summarize only the necessary state and discard the rest.
+5. Do not repeat the same analysis when the relevant conclusion is already established.
 
 Preserve only:
 - current user request
@@ -75,6 +77,8 @@ When searching:
 - use specific keywords
 - search only the relevant module/folder if possible
 - avoid repeated searches
+- identify the minimum relevant files before editing
+- do not read large binary files unless they are directly required
 
 ## Code Change Rules
 
@@ -88,6 +92,7 @@ Rules:
 - Do not add abstractions unless needed.
 - Do not add dependencies unless necessary.
 - Do not modernize unrelated code.
+- Prefer incremental migration over large refactors.
 - Preserve existing APIs when possible.
 - Preserve package structure.
 - Preserve naming conventions.
@@ -111,6 +116,7 @@ Preserve:
 - lifecycle-aware state handling
 - existing navigation structure
 - existing resource organization
+- wallpaper extensibility
 
 Avoid:
 - unnecessary Gradle changes
@@ -133,6 +139,7 @@ Do not break:
 - FPS limit logic
 - minute-based rendering mode
 - preview rendering mode
+- separation between preview mode and home screen mode
 - low battery wallpaper behavior
 
 Avoid:
@@ -141,6 +148,8 @@ Avoid:
 - loading textures repeatedly
 - recompiling shaders unnecessarily
 - adding heavy per-frame CPU work
+- blocking the render thread or UI thread
+- rendering every wallpaper list item at the same time
 - breaking modular wallpaper configuration
 
 ## Shader Rules
@@ -149,11 +158,13 @@ When modifying shaders:
 - change only the required shader file
 - preserve existing uniforms when possible
 - do not rename uniforms unless all usages are updated
+- preserve shared shader ownership and reuse
 - avoid expensive loops
 - avoid unnecessary branches
 - keep mobile GPU performance in mind
 - preserve aspect-ratio correction logic
 - preserve sun/moon/horizon behavior unless the task targets it
+- avoid texture duplication and unnecessary asset copies
 
 ## Token Optimization Rules
 
@@ -189,9 +200,15 @@ For each task:
 6. Report concisely.
 
 If the task is large:
+- create a short plan first
 - split it into small phases
 - implement only the first safe phase
 - do not attempt a giant refactor
+- summarize changed files, risks, and the next safe step after each phase
+
+If a change is risky:
+- explain the reason before editing
+- keep the patch reversible and isolated
 
 If unsure:
 - inspect the smallest relevant file first
@@ -210,6 +227,37 @@ Do not include:
 - long background explanations
 
 Use code blocks only for changed snippets or new files.
+
+## Performance Rules
+
+Priority order:
+1. Stability
+2. Battery efficiency
+3. Smooth rendering
+4. Maintainability
+5. Visual quality
+
+For performance tasks, evaluate:
+- FPS
+- jank
+- memory
+- GPU load
+- battery impact
+
+## MCP Awareness
+
+When using filesystem MCP:
+- stay inside the workspace
+- do not inspect files outside the project unless explicitly requested
+- avoid reading large binary files unnecessarily
+
+When using Sequential Thinking:
+- prefer short plans over long reasoning
+- split work into small checkpoints
+
+When using GitHub MCP:
+- keep PR descriptions concise
+- keep commit messages short
 
 ## Safety Rule
 

@@ -37,10 +37,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.lumisky.android" />
+                  <option name="mobileSdkAppId" value="1:525539300072:android:5aa1eba9134ab5a1586f5d" />
+                  <option name="projectId" value="lumisky" />
+                  <option name="projectNumber" value="525539300072" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
