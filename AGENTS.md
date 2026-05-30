@@ -170,6 +170,13 @@ When modifying shaders:
 
 Keep responses compact.
 
+For every task response, include:
+- Files read:
+  - list only files actually opened/read
+  - include one short reason per file
+  - do not include command outputs as files unless a file was opened
+  - do not paste unchanged file content
+
 Avoid:
 - long explanations
 - repeated task summaries
@@ -183,11 +190,21 @@ Avoid:
 
 Prefer final output format:
 
+- Files read:
 - Changed files:
 - What changed:
 - What was not touched:
 - Validation:
 - Next smallest step:
+
+For development tasks:
+- Ask for or infer the smallest target area before reading files.
+- Start with `git status --short`, then only the directly affected files.
+- Use scoped `rg -n "symbol" path/to/module` instead of broad repository searches.
+- Read interfaces/base classes only after the target file proves they are needed.
+- Avoid generated/cache folders from `.gitignore`: `build/`, `.gradle/`, `.kotlin/`, `.codex-local/`, `.understand-anything/`, `snapshot-output/`.
+- Prefer focused validation tasks over full builds unless release/runtime confidence requires a full build.
+- If the requested change is broad, split it into phases and implement only the first safe phase.
 
 ## Task Execution Protocol
 
@@ -280,4 +297,3 @@ When using GitHub MCP:
 ## Safety Rule
 
 Consistency, low token usage, and minimal diffs are more important than aggressive refactoring.
-

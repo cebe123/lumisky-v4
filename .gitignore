@@ -20,3 +20,4 @@ keystore.properties
 *.keystore
 /snapshot-output/
 /.codex-local/
+/.understand-anything/
