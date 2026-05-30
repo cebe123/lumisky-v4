@@ -2,298 +2,106 @@
 
 ## Project Type
 
-This is a production-grade Android live wallpaper application using Kotlin, MVVM, Compose, and OpenGL ES rendering.
+This is an Android live wallpaper app using Kotlin, MVVM, Compose, and OpenGL ES.
 
 The project may include:
-- WallpaperService
-- GLSurfaceView / renderer lifecycle
-- Modular wallpaper definitions
-- Shader-based wallpapers
-- Static image / texture layers
-- Time-based sun, moon, sky, and effect systems
-- Preview screens
-- Wallpaper list UI
-- Repository / ViewModel architecture
+- WallpaperService and GLSurfaceView lifecycle
+- Modular wallpaper definitions and shader-based rendering
+- Time-based sun/moon/sky effects and preview screens
+- Wallpaper selection UI, repository/ViewModel architecture
 - FPS and battery optimization logic
 
 ## Primary Objective
 
-Work with minimum token usage, maximum consistency, and minimal code changes.
+Use minimum tokens in assistant responses (≤300 unless requested), preserve existing architecture, and make minimal code changes.
 
 Always prefer:
-- small patches
+- small patches (prefer single-file edits or ≤30 changed lines)
 - targeted file access
-- architecture preservation
+- preserving APIs and architecture
 - concise outputs
-- deterministic implementation
 - battery-friendly rendering
+- When constraints conflict, apply precedence: (1) preserve lifecycle/renderer safety, (2) avoid battery regressions, (3) preserve APIs, (4) minimize files changed, (5) minimize response tokens.
 
 ## Context Management
 
 Before every task:
-1. Ignore unrelated previous conversations, old plans, obsolete TODOs, and stale assumptions.
-2. Keep only the current task, active constraints, relevant architecture, and files directly required.
-3. Do not carry over previous failed approaches unless they are explicitly relevant.
-4. If context is too large, summarize only the necessary state and discard the rest.
-5. Do not repeat the same analysis when the relevant conclusion is already established.
-
-Preserve only:
-- current user request
-- current target files
-- active build/runtime constraints
-- important project architecture
-- renderer lifecycle requirements
-- wallpaper performance requirements
-
-Discard:
-- unrelated logs
-- unrelated previous refactor ideas
-- old failed solutions
-- unused file references
-- stale TODO lists
-- unrelated dependency discussions
-- full repository memory
+1. Keep only current task, target files, active constraints, and relevant architecture.
+2. Do not reuse unrelated old plans, TODOs, or logs.
+3. If total context exceeds 3000 tokens, summarize only: request, referenced files, active constraints.
+4. If a required file is missing or unreadable, report: 'MISSING: path/to/file' and ask: 'Can I open the file or should I infer changes?'
+5. Do not repeat the same conclusion once established.
 
 ## File Access Rules
 
-Do not scan the whole repository unless explicitly requested.
-
-File priority:
-1. AGENTS.md
-2. Files directly related to the current task
-3. Interfaces/base classes used by those files
-4. Required Gradle/config files
-5. Manifest/resources only if necessary
-
-Forbidden unless explicitly requested:
-- opening all files
-- full repository exploration
-- broad grep/search over the entire project
-- reading unrelated packages
-- large dependency analysis
-- unrelated module inspection
-
-When searching:
-- use specific keywords
-- search only the relevant module/folder if possible
-- avoid repeated searches
-- identify the minimum relevant files before editing
-- do not read large binary files unless they are directly required
+Do not scan the whole repo unless explicitly requested.
+Priority: AGENTS.md, task files, related interfaces/base classes, Gradle/config, manifest/resources.
+Avoid broad repo searches, large dependency analysis, unrelated module inspection, and reading binary files unless needed.
 
 ## Code Change Rules
 
 Use SMALL PATCH MODE.
-
-Rules:
-- Do not rewrite full files.
+- Do not rewrite full files unless necessary.
 - Do not change unrelated code.
-- Do not rename files/classes unless required.
+- Do not rename files/classes unless required. If a rename is needed, propose it with risk analysis and get approval first.
 - Do not perform formatting-only changes.
-- Do not add abstractions unless needed.
 - Do not add dependencies unless necessary.
-- Do not modernize unrelated code.
-- Prefer incremental migration over large refactors.
-- Preserve existing APIs when possible.
-- Preserve package structure.
-- Preserve naming conventions.
-- Preserve current architecture.
+- Prefer incremental changes.
+- Preserve APIs, package structure, naming, and architecture.
+- Change only affected functions/blocks whenever possible.
 
-Prefer:
-- changing only affected functions
-- changing only affected blocks
-- extending existing systems
-- keeping diffs small
-- making one logical change at a time
+## Android / Wallpaper Rules
 
-## Android Rules
-
-Respect the existing Android architecture.
-
-Preserve:
-- MVVM structure
-- Repository/ViewModel boundaries
-- Compose UI structure
-- lifecycle-aware state handling
-- existing navigation structure
-- existing resource organization
-- wallpaper extensibility
-
-Avoid:
-- unnecessary Gradle changes
-- unnecessary manifest changes
-- unnecessary permission additions
-- unnecessary Compose rewrites
-- converting XML to Compose or Compose to XML unless requested
-
-## OpenGL ES / Wallpaper Rules
-
-Preserve rendering correctness and battery efficiency.
-
-Do not break:
-- WallpaperService lifecycle
-- GLSurfaceView lifecycle
-- renderer initialization
-- EGL context behavior
-- shader loading system
-- texture loading system
-- FPS limit logic
-- minute-based rendering mode
-- preview rendering mode
-- separation between preview mode and home screen mode
-- low battery wallpaper behavior
-
-Avoid:
-- introducing continuous rendering unless required
-- increasing render frequency unnecessarily
-- loading textures repeatedly
-- recompiling shaders unnecessarily
-- adding heavy per-frame CPU work
-- blocking the render thread or UI thread
-- rendering every wallpaper list item at the same time
-- breaking modular wallpaper configuration
+Respect Android architecture and wallpaper lifecycle.
+- Preserve MVVM, repository/ViewModel boundaries, Compose UI structure, lifecycle-aware state handling, navigation, resources, and wallpaper extensibility.
+- Avoid unnecessary Gradle, manifest, permissions, or UI rewrites.
+- Preserve WallpaperService and GLSurfaceView lifecycle, EGL context, shader loading, texture loading, FPS limit logic, minute-based home rendering, preview mode, and low-battery behavior.
+- Avoid continuous rendering, extra per-frame CPU work, repeated texture loading, shader recompilation, and UI thread blocking.
 
 ## Shader Rules
 
-When modifying shaders:
-- change only the required shader file
-- preserve existing uniforms when possible
-- do not rename uniforms unless all usages are updated
-- preserve shared shader ownership and reuse
-- avoid expensive loops
-- avoid unnecessary branches
+When changing shaders:
+- edit only the required shader file
+- preserve existing uniforms and shared shader reuse
+- avoid expensive loops and unnecessary branches
 - keep mobile GPU performance in mind
-- preserve aspect-ratio correction logic
-- preserve sun/moon/horizon behavior unless the task targets it
-- avoid texture duplication and unnecessary asset copies
+- preserve aspect-ratio, sun/moon/horizon behavior unless targeted
 
-## Token Optimization Rules
+## Output Style
 
-Keep responses compact.
+Be concise, technical, and focused.
+Do not include hidden reasoning, unnecessary theory, unchanged file dumps, or verbose reports.
+Use code blocks only for changed snippets or new files.
 
-For every task response, include:
-- Files read:
-  - list only files actually opened/read
-  - include one short reason per file
-  - do not include command outputs as files unless a file was opened
-  - do not paste unchanged file content
-
-Avoid:
-- long explanations
-- repeated task summaries
-- dumping entire files
-- showing unchanged code
-- listing many alternatives
-- verbose reasoning
-- unnecessary logs
-- unnecessary markdown tables
-- unrelated suggestions
-
-Prefer final output format:
-
+Prefer final report format:
 - Files read:
 - Changed files:
 - What changed:
 - What was not touched:
 - Validation:
 - Next smallest step:
-
-For development tasks:
-- Ask for or infer the smallest target area before reading files.
-- Start with `git status --short`, then only the directly affected files.
-- Use scoped `rg -n "symbol" path/to/module` instead of broad repository searches.
-- Read interfaces/base classes only after the target file proves they are needed.
-- Avoid generated/cache folders from `.gitignore`: `build/`, `.gradle/`, `.kotlin/`, `.codex-local/`, `.understand-anything/`, `snapshot-output/`.
-- Prefer focused validation tasks over full builds unless release/runtime confidence requires a full build.
-- If the requested change is broad, split it into phases and implement only the first safe phase.
+- Keep responses compact; limit each section to 1-3 short bullet points.
 
 ## Task Execution Protocol
 
 For each task:
-1. Briefly restate the task in one sentence.
-2. List the minimum files needed.
-3. Explain why each file is needed in one short phrase.
+1. Restate the task in one sentence.
+2. List minimum files needed.
+3. Explain why each file is needed.
 4. Make the smallest safe change.
 5. Validate if possible.
+- Validation means: (a) project compiles, (b) existing unit tests pass; if impossible, state which validations were skipped.
 6. Report concisely.
 
-If the task is large:
-- create a short plan first
-- split it into small phases
-- implement only the first safe phase
-- do not attempt a giant refactor
-- summarize changed files, risks, and the next safe step after each phase
-
-If a change is risky:
-- explain the reason before editing
-- keep the patch reversible and isolated
-
-If unsure:
-- inspect the smallest relevant file first
-- avoid assumptions
-- ask only when blocked
-- otherwise make the smallest safe implementation
-
-## Output Style
-
-Be concise, technical, and implementation-focused.
-
-Do not include:
-- hidden reasoning
-- unnecessary theory
-- full unchanged files
-- long background explanations
-
-Use code blocks only for changed snippets or new files.
+If a task is large (>3 files or >200 changed lines): plan in phases, implement only phase 1, and summarize changed files, risks, and next step.
+If a change is risky: explain why, keep the patch reversible, and if constraints prevent a viable fix, offer up to 3 options with trade-offs.
 
 ## Performance Rules
 
-Priority order:
-1. Stability
-2. Battery efficiency
-3. Smooth rendering
-4. Maintainability
-5. Visual quality
-
-For performance tasks, evaluate:
-- FPS
-- jank
-- memory
-- GPU load
-- battery impact
-
-## MCP Awareness
-
-When using filesystem MCP:
-- stay inside the workspace
-- do not inspect files outside the project unless explicitly requested
-- avoid reading large binary files unnecessarily
-
-When using Sequential Thinking:
-- prefer short plans over long reasoning
-- split work into small checkpoints
-
-When using GitHub MCP:
-- keep PR descriptions concise
-- keep commit messages short
-
-
-## Crucial Development Rules
-
-- Do not perform large refactors/rewrites.
-- Read only the required files.
-- Always write a short plan before starting any task.
-- Android WallpaperService lifecycle must not be broken.
-- OpenGL ES renderer thread safety must be preserved.
-- Preview mode and set wallpaper mode must remain separated.
-- Minute-based render logic on the home screen must be preserved.
-- Continuous rendering should only be applied if explicitly requested.
-- Battery optimization is the highest priority.
-- OpenGL ES compatibility must be preserved in shader changes.
-- Avoid duplicate textures or asset copies.
-- Write a risk analysis before any change to Gradle, Manifest, Service, Renderer, or shader loader.
-- Every patch must be small and reversible.
-- At the end of the task, report the changed files and the next safe step.
+Priority: stability, battery efficiency, smooth rendering, maintainability, visual quality.
+For performance tasks, include metrics: FPS, jank, memory, GPU load, battery impact.
+Report against targets: FPS ≥30 home, ≥60 preview, frame time P95 <33ms, memory delta <10MB, battery CPU increase <5%.
 
 ## Safety Rule
 
-Consistency, low token usage, and minimal diffs are more important than aggressive refactoring.
+Favor consistency, low token usage, and minimal diffs over aggressive refactoring.
