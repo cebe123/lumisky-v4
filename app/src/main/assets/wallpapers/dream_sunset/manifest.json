@@ -2,7 +2,7 @@
   "id": "dream_sunset",
   "name": "Dream Sunset",
   "horizon": {
-    "offset": 0.74
+    "offset": 0.50
   },
   "celestial": {
     "sunPathType": "VERTICAL",
@@ -11,15 +11,15 @@
       "pathType": "VERTICAL",
       "startX": 0.50,
       "endX": 0.50,
-      "peakY": 0.72,
-      "hiddenY": 0.42,
+      "peakY": 0.86,
+      "hiddenY": 0.43,
       "curve": "LINEAR"
     },
     "moonOrbit": {
       "pathType": "VERTICAL",
       "startX": 0.50,
       "endX": 0.50,
-      "peakY": 0.70,
+      "peakY": 0.88,
       "hiddenY": 0.40,
       "curve": "LINEAR"
     }
@@ -29,32 +29,35 @@
     "lensFlareEnabled": false,
     "starsEnabled": false
   },
+  "textures": {
+    "backgroundTexture": "dreamsunset/sunset_reference.webp"
+  },
   "effects": {
     "clouds": {
       "enabled": true,
-      "speed": 0.16,
-      "density": 0.34,
-      "intensity": 0.26
+      "speed": 0.08,
+      "density": 0.48,
+      "intensity": 0.44
     }
   },
   "shader": {
     "fragmentAssetPath": "shaders/dreamsunset/fragment.glsl",
     "mode": "external_theme",
     "uniformOverrides": {
-      "cloudAlpha": 0.24,
+      "cloudAlpha": 0.58,
       "cloudOffset": 0.0
     }
   },
   "previewLoopDurationSeconds": 8.0,
   "focusCatchUpDurationSeconds": 2.0,
-  "peakY": 0.72,
-  "belowHorizonOffset": 0.08,
+  "peakY": 0.86,
+  "belowHorizonOffset": 0.02,
   "runtimeRenderPolicy": {
-    "policy": "MINUTE_TICK",
-    "continuousFrameIntervalMs": 16
+    "policy": "CONTINUOUS",
+    "continuousFrameIntervalMs": 100
   },
   "capabilities": {
-    "dynamicMotion": false,
+    "dynamicMotion": true,
     "dynamicTextures": false,
     "locationAwareLighting": true,
     "supportsCloudLayer": true,

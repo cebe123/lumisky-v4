@@ -1,0 +1,1180 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "3733ea8cdf69c74bb49a5de258165f942f76cebe",
+  "generatedAt": "2026-05-23T17:05:52.191Z",
+  "files": {
+    "GenerateWallpaperZenithSnapshots.cmd": {
+      "filePath": "GenerateWallpaperZenithSnapshots.cmd",
+      "contentHash": "233a4503b738e8307b16d02e9154b6b13ea3603993138962b9489800a1275b3c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 177,
+      "hasStructuralAnalysis": false
+    },
+    "app/build.gradle.kts": {
+      "filePath": "app/build.gradle.kts",
+      "contentHash": "01ab87c5acd22b3317ce60d0f02670fa817a4131af707fe561245885693bb18f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1087,
+      "hasStructuralAnalysis": false
+    },
+    "app/proguard-rules.pro": {
+      "filePath": "app/proguard-rules.pro",
+      "contentHash": "214548ee581715ccec0f65a43ec1735dbfcb7bcdef47179cb7cc801a37ca88d2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/anime_sakura/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/anime_sakura/fragment.glsl",
+      "contentHash": "9d0fb208be2c40548d10b629c6a55a578349b3da24fd606ffb7aad92ac173487",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 155,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/city/fragment_shader.glsl": {
+      "filePath": "app/src/main/assets/shaders/city/fragment_shader.glsl",
+      "contentHash": "172c8c8aa3b9d22399f4cf597e7f10f11ed4672d2cfb2780a65be6d72cb57c63",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 349,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/dreamsunset/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/dreamsunset/fragment.glsl",
+      "contentHash": "45d6f6710c107688ca83f58a10ab5cdde03ddc2575e4dd454fe8e980e8ec383d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 180,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/flower/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/flower/fragment.glsl",
+      "contentHash": "d341fa86548b92789342a4a89a136e477f5df93aa3f0eddbf1c36185a79974fa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 192,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/lighthouse/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/lighthouse/fragment.glsl",
+      "contentHash": "f6a03a2059c2bd5e3792ac6fd6d463fdb3fea4ae3c18bfb409967ad0dc933e7a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 137,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/lisbon/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/lisbon/fragment.glsl",
+      "contentHash": "1aed6089798991d65a148657467d56fc298cc5e7513651e512701e5f68e92d80",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 237,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/mars/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/mars/fragment.glsl",
+      "contentHash": "f1994c760b023e6184e0b79b6b920e818e575858f348511e78bac4bac713935e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 158,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/opticalsunset/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/opticalsunset/fragment.glsl",
+      "contentHash": "6a3e0fc95fdf48d0e22773c726ccd8d57ca652bb19512b954a7ed02552a5d8ef",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 211,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/pixelforest/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/pixelforest/fragment.glsl",
+      "contentHash": "ef1239b99d6c1a0eedf14a78845e65b24fe54100a6e870aad5d5f411e2af7599",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 148,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/sky/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/sky/fragment.glsl",
+      "contentHash": "1183b5f64b32d1517da994335ec6ebefb0fcf8af35f8bece2e23c301e83f3d5b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 319,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/solar/fragment_shader.glsl": {
+      "filePath": "app/src/main/assets/shaders/solar/fragment_shader.glsl",
+      "contentHash": "8a4cd390786245efcdbe891fce7382831c6342281c52b032ceb95d3566fcd74e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 227,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/tablo/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/tablo/fragment.glsl",
+      "contentHash": "483881bf4029bd7b84c0fa449b0b10c14fe0c20a41465bd65ace638f0af623ab",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 151,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/teemo/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/teemo/fragment.glsl",
+      "contentHash": "df3ab0d9288fd4552cbadba9091a022144c5ea1f9ee5e8b3dfb96f50059f4b0d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 260,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/assets/shaders/warrior/fragment.glsl": {
+      "filePath": "app/src/main/assets/shaders/warrior/fragment.glsl",
+      "contentHash": "d3902f6def4d993274e7f3598824163ec626aa7792483a4170476eb3441a54d6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 156,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/LumiskyApplication.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/LumiskyApplication.kt",
+      "contentHash": "d3ce2eb2d4c27c962959fd997d28c34f91836ba77419e24b2064af073942040a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 17,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/MainActivity.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/MainActivity.kt",
+      "contentHash": "87b810a76355cc00eed2735dd45b46260120f280248cd606abee6ed4da6ce751",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 901,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/data/WallpaperCatalog.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/data/WallpaperCatalog.kt",
+      "contentHash": "584fc8245a4f0315e0519e7c84b3da743a29846c02f54125b00de2b2fe639550",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 137,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/data/WallpaperCatalogModels.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/data/WallpaperCatalogModels.kt",
+      "contentHash": "0734f7786dbaa2e8b5d7034972e8ca428dcbb931d3099c6c4f5b04381541d5ac",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/data/WallpaperManifestCatalogSource.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/data/WallpaperManifestCatalogSource.kt",
+      "contentHash": "47d667731c803e4bbdc05f0c812c0db859b2748d0fb1e756c857cd4ade1439a9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 475,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/report/ErrorReporter.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/report/ErrorReporter.kt",
+      "contentHash": "ae9b1ea70f8e3e3d478b8f868958ce11e071674888bf6efa46c913cff2f91fc4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 417,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/shader/RenderAssetCache.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/shader/RenderAssetCache.kt",
+      "contentHash": "00bb5fe4de937e02aa98094650b3a15704180a7788c37cdffa9659c62b02e366",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 267,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/snapshot/ZenithSnapshotActivity.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/snapshot/ZenithSnapshotActivity.kt",
+      "contentHash": "9be1bce6416cd807b9786f2b75a955722c136e0be1f9593be6de9a543a0e908a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 691,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/common/ChoreographerFrameLoop.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/common/ChoreographerFrameLoop.kt",
+      "contentHash": "97275dc115ac9731bb635b1ed6292226878b22ef4042eb7fe88926690845a233",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 32,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/common/DisplayRefreshRateResolver.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/common/DisplayRefreshRateResolver.kt",
+      "contentHash": "933ac998bae5d805aea01e86e744b6e5ad2f65bb23eaa3245cc332110a76f2a4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 20,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/common/PreviewRendererSurfaceView.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/common/PreviewRendererSurfaceView.kt",
+      "contentHash": "faa64e985b8ba31a3a509fe07d9e4657c7c9bf55f6dc3062496d6068e23a6f1b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 155,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/components/BottomNavBar.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/components/BottomNavBar.kt",
+      "contentHash": "b87886d93963d502870c2c3341e190b6aa3d9328a74c7d314ecc2f3c459c9a0a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 284,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/home/HomePreviewFrameSpec.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/home/HomePreviewFrameSpec.kt",
+      "contentHash": "a25f5573c334d86bece31e57d9af4d87491b0621a9e5857aec238a50203f7d25",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 19,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/home/HomeScreen.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/home/HomeScreen.kt",
+      "contentHash": "fc271a3cb39a7310e957e4713da987ff93aefbc6c40888471b68719786fd1c9e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1229,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/home/SnapshotPreviewAssetLoader.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/home/SnapshotPreviewAssetLoader.kt",
+      "contentHash": "d2bdc1a85eefba686e33e909dcf0137cbfb3ccb1b9ecac8992b357dfedf04c42",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 211,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/settings/SettingsCelestialTimeline.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/settings/SettingsCelestialTimeline.kt",
+      "contentHash": "f9e86b5e4e8028f3724dfb940559a6870e6b6d0f5af1f6debe407a7279115fd8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 140,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/settings/SettingsScreen.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/settings/SettingsScreen.kt",
+      "contentHash": "5f2c90734375be0aaf2f2595a4b7617a12d3d28a0d044f485a842ef7dfab2246",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1538,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/theme/Color.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/theme/Color.kt",
+      "contentHash": "4051769556915a97699f5ab7e7ee63aedb44e528d50108fd8b01ee6f288a09ca",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/theme/Theme.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/theme/Theme.kt",
+      "contentHash": "e72d67714f5b7935991ade79a3c8f69d0475d6ed4c1db7655b6d6506375568a2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 62,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/ui/theme/Type.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/ui/theme/Type.kt",
+      "contentHash": "99c255678a2d33b216de1212ef6e45ac6502f46e1f8fbac98004de092c5e8d7f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 18,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/viewmodel/HomeViewModel.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/viewmodel/HomeViewModel.kt",
+      "contentHash": "51020ff4a9825e2c44d37c720feafaff722910e531e62a2c3f35cf0c816ed75e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 416,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/viewmodel/LastKnownCityMapper.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/viewmodel/LastKnownCityMapper.kt",
+      "contentHash": "eccb614e26131d6670ad4a4a8da6a4f4c7c5d188bd4bed384770f7cd04aa18dd",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/viewmodel/LocationSunTimesCoordinator.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/viewmodel/LocationSunTimesCoordinator.kt",
+      "contentHash": "fb3c93b47bc09425759565e4bd1799699c1e92979b7c77b681d2eb0bbbf0448b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1012,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/main/java/com/example/lumisky/work/BackupCityPrefetchWorker.kt": {
+      "filePath": "app/src/main/java/com/example/lumisky/work/BackupCityPrefetchWorker.kt",
+      "contentHash": "235c2d6cd8f1e32530ce17d5690079fd587fa4b3542bc4a776f18b1dcbe59e61",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 132,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/test/java/com/example/lumisky/ui/settings/SettingsCelestialTimelineTest.kt": {
+      "filePath": "app/src/test/java/com/example/lumisky/ui/settings/SettingsCelestialTimelineTest.kt",
+      "contentHash": "09f848eba93385026e26bb4b1813efdd28a611db2614d33243e88f10d4d26c43",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 89,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/test/java/com/example/lumisky/viewmodel/LastKnownCityMapperTest.kt": {
+      "filePath": "app/src/test/java/com/example/lumisky/viewmodel/LastKnownCityMapperTest.kt",
+      "contentHash": "2d2d3fc0dadbf38bcd0e717d10bec4eb252364bf8fa386d16a99642fd272bfd3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 55,
+      "hasStructuralAnalysis": false
+    },
+    "app/src/test/java/com/example/lumisky/work/BackupCityPrefetchWorkerTest.kt": {
+      "filePath": "app/src/test/java/com/example/lumisky/work/BackupCityPrefetchWorkerTest.kt",
+      "contentHash": "979e24ee563954b0df8979cd81b79225d0947f60d9366be3b05454dae52f2ae4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 51,
+      "hasStructuralAnalysis": false
+    },
+    "build.gradle.kts": {
+      "filePath": "build.gradle.kts",
+      "contentHash": "8ab22a0f36198f971dc42e804ca0cdb7ce1b0519688f4153691364968340cdd7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": false
+    },
+    "core/build.gradle.kts": {
+      "filePath": "core/build.gradle.kts",
+      "contentHash": "c72be415cd82e7aa13d857ad0016bed7044b5792fd743d52c1b60ab4d2fab66e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/Logger.kt": {
+      "filePath": "core/src/main/java/com/example/core/Logger.kt",
+      "contentHash": "8de6c11ef8e0f642512df24cd9dbf9e12d0395253cae0527b0c5373ff24000b4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 98,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/TimeProvider.kt": {
+      "filePath": "core/src/main/java/com/example/core/TimeProvider.kt",
+      "contentHash": "41bf4874a3684961b1752c8d5eb41e9b3a99ddcc15b3806e83cb44a59069b8e3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/api/SunTimesApiClient.kt": {
+      "filePath": "core/src/main/java/com/example/core/api/SunTimesApiClient.kt",
+      "contentHash": "ab3c500fa7dc3f4740e69d53947aac64d4bc17f07158a41f84c7b85235152466",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 140,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/api/SunTimesRepository.kt": {
+      "filePath": "core/src/main/java/com/example/core/api/SunTimesRepository.kt",
+      "contentHash": "b326f997052c4a2af76009cfaa8e59a8c4d8b0e2df125cf58eb93026d5204fff",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 637,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/assets/AssetTextLoader.kt": {
+      "filePath": "core/src/main/java/com/example/core/assets/AssetTextLoader.kt",
+      "contentHash": "1c8d4d0e03646132f2adc88b1fbb883cdb91638c38a05bce65c347b36182fcb8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 13,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/location/LastKnownLocationProvider.kt": {
+      "filePath": "core/src/main/java/com/example/core/location/LastKnownLocationProvider.kt",
+      "contentHash": "d1a829b740b912ddfbf44a0c7c5c5e1be7312c72ec6c6262a0cdc499e40cb79b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 384,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/location/LocationSnapshot.kt": {
+      "filePath": "core/src/main/java/com/example/core/location/LocationSnapshot.kt",
+      "contentHash": "ab7a36e605a4bc26bc8b70226402c83457c6bbf0a91729f97257248c4a0a637b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 48,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/location/SunLocationExtensions.kt": {
+      "filePath": "core/src/main/java/com/example/core/location/SunLocationExtensions.kt",
+      "contentHash": "018345b34e0d7e252586fcb125ac752050d93a64bf65acf89e6ed4bd12b6a228",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 40,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/motion/TiltParallaxTracker.kt": {
+      "filePath": "core/src/main/java/com/example/core/motion/TiltParallaxTracker.kt",
+      "contentHash": "eb7858226b0917d5c71afd6f42e962ad062d7bedfe1b46cc450b2419999e3756",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 129,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/perf/RenderStatsTracker.kt": {
+      "filePath": "core/src/main/java/com/example/core/perf/RenderStatsTracker.kt",
+      "contentHash": "6c5140b7852d86ad905dd851dd8c5f8b8c21f21b424f5d7616b38dd811d206b2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 13,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/report/CrashDiagnostics.kt": {
+      "filePath": "core/src/main/java/com/example/core/report/CrashDiagnostics.kt",
+      "contentHash": "88efdf464ceeb16368ab69d290a83c0104e0a69266240f4521ed60c0ae0b899e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 43,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/settings/AppSettings.kt": {
+      "filePath": "core/src/main/java/com/example/core/settings/AppSettings.kt",
+      "contentHash": "7af01606095251d13a2ad7b62492240c9b294ecead4e8e794dd480e870794906",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 429,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/main/java/com/example/core/settings/AppSettingsRepository.kt": {
+      "filePath": "core/src/main/java/com/example/core/settings/AppSettingsRepository.kt",
+      "contentHash": "d53958fc81ccc635d7cac1ea3ed1d27966e941b4a0f37c28a7bdf2e2fb0e87be",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 496,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/test/java/com/example/core/api/SunTimesRepositoryTest.kt": {
+      "filePath": "core/src/test/java/com/example/core/api/SunTimesRepositoryTest.kt",
+      "contentHash": "9ea3c7cb152621e31c0bfef6bca6b5bcc18ff26568c317abe747bdda77901687",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 249,
+      "hasStructuralAnalysis": false
+    },
+    "core/src/test/java/com/example/core/location/SunLocationExtensionsTest.kt": {
+      "filePath": "core/src/test/java/com/example/core/location/SunLocationExtensionsTest.kt",
+      "contentHash": "467e50fe2160f2757083ac9c137ebb9a6bec412ee15a41b6aa37d31e9429ee92",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 83,
+      "hasStructuralAnalysis": false
+    },
+    "engine/build.gradle.kts": {
+      "filePath": "engine/build.gradle.kts",
+      "contentHash": "e2e8804f259b08f360d44f1c232d904fefbf93cc682e30a5f7c8bf5eadc033ab",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 35,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/SkyEngine.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/SkyEngine.kt",
+      "contentHash": "2b97666f1a775ff3baeb25b6634fffcf10890fb3465c36261ce19cd85617f77f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 94,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/atmosphere/AtmosphereController.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/atmosphere/AtmosphereController.kt",
+      "contentHash": "742f3212e12f2ba3ad653f3fbbcbd6488783f9dc10ada5752df0b30d12628c9d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 154,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/celestial/CelestialCalculator.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/celestial/CelestialCalculator.kt",
+      "contentHash": "07997a9436e516000347bc13ddf0ef9f3e3fbf9ff0008257075b27a2a6110ff9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 308,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/config/WallpaperConfig.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/config/WallpaperConfig.kt",
+      "contentHash": "4aada785529869e36c1d08c9f223b6c5a700c7383319e39eab3f22c0ba35260c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 216,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/config/WallpaperConfigStore.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/config/WallpaperConfigStore.kt",
+      "contentHash": "aa83958c957d85998d488d8ec7abcc651ef7b86efe3cc64204d70bbce16b5150",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 771,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/manifest/WallpaperManifest.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/manifest/WallpaperManifest.kt",
+      "contentHash": "c0a23e92ad43053ffee1cb6041a7587f3995bec6206c710e03cd36e139649a2a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 126,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/preview/PreviewGlRenderer.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/preview/PreviewGlRenderer.kt",
+      "contentHash": "4c1b1ef5ef5fdbd7b8920893eeaa3b50dcc541f41b2c1b541adc0e50909244de",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 454,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/renderer/BaseRenderer.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/renderer/BaseRenderer.kt",
+      "contentHash": "b6c8f617f5345ec667ebe8a5d872d2f98ea5859e4225fc7ca3b74cfba97dbe50",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 15,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/renderer/FrameScheduler.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/renderer/FrameScheduler.kt",
+      "contentHash": "2d9843746458932ec297c5cdb96e53a4c26fc90be6b0887cd9c7c70ba81f15ad",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/renderer/RenderFrameState.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/renderer/RenderFrameState.kt",
+      "contentHash": "d50e4ddae550bcd83eca0bfd3141bb13ef1df4a7115e22eb5672643d8ff6f151",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 30,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/renderer/RenderModeController.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/renderer/RenderModeController.kt",
+      "contentHash": "182269e4b4cefb1a16d8062f912b834eeaf7b042515975d379a7c0f2137be58e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 22,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/renderer/SkyRenderer.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/renderer/SkyRenderer.kt",
+      "contentHash": "293bd3fa53a095185c12a464ab51f9720cfe2bad3dd1fcd022e179d3aa49ab26",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 166,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/shader/GlTextureLoader.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/shader/GlTextureLoader.kt",
+      "contentHash": "9fc3e6f5c490cc0bff379089587532054c19f0d9a8cdac6f4cfec38b42af4986",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 439,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/shader/LegacyThemeAdapter.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/shader/LegacyThemeAdapter.kt",
+      "contentHash": "1a135e7df89b719aab55ddc5a94ddc9ec3a731a0b7a923bcbb85c4f7cefd5d2b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 311,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/shader/PreferredTextureResolver.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/shader/PreferredTextureResolver.kt",
+      "contentHash": "1f64d8b6de52e1ea67682e2979f031ef336b3876322e544ed95cf18603445935",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 86,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/shader/PreviewEffectAdapter.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/shader/PreviewEffectAdapter.kt",
+      "contentHash": "7900578aab4204c833201960133be4309ca2a8e89b5d0bfbfb8cfbb8a326da44",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 46,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/shader/PreviewSkyProgram.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/shader/PreviewSkyProgram.kt",
+      "contentHash": "09d7b41f96f223aecd328b8bb90d9d3e517641db991cfc13da4f6a86e4dae048",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 511,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/shader/PreviewTextureBinder.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/shader/PreviewTextureBinder.kt",
+      "contentHash": "cdeb4ce7c523842b43a549f8686aac62a1f2aa3654caa8b0836c9694a0db3c6b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 63,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/sky/SkyScene.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/sky/SkyScene.kt",
+      "contentHash": "48ac14a2f87f52f7738100a742e7810cfe9dea851a0d47eee15f2d0cfbfaa939",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 35,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/main/java/com/example/engine/time/TimeManager.kt": {
+      "filePath": "engine/src/main/java/com/example/engine/time/TimeManager.kt",
+      "contentHash": "0c26589039c88ecf8418b121dd7a404f017776df3219e6f1cd3d2c3e1ceadd4b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 219,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/test/java/com/example/engine/CelestialCalculatorTest.kt": {
+      "filePath": "engine/src/test/java/com/example/engine/CelestialCalculatorTest.kt",
+      "contentHash": "1e56ffa8e0908de759686f27883ec752bd90c45e0d74c52a4a5a6102c1463f54",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 221,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/test/java/com/example/engine/TimeManagerTest.kt": {
+      "filePath": "engine/src/test/java/com/example/engine/TimeManagerTest.kt",
+      "contentHash": "7415ed05eeef8be67f6eca001bdb35fc8b31e359e0fb811f9160c2b743a8aa0f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 227,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/test/java/com/example/engine/preview/PreviewGlRendererFocusCatchUpTest.kt": {
+      "filePath": "engine/src/test/java/com/example/engine/preview/PreviewGlRendererFocusCatchUpTest.kt",
+      "contentHash": "ac27155f6c01eeb4e3bdd1c733a6708ee075c0246a6692c9f53253dc5cb25064",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 44,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/test/java/com/example/engine/shader/LegacyThemeAdapterTest.kt": {
+      "filePath": "engine/src/test/java/com/example/engine/shader/LegacyThemeAdapterTest.kt",
+      "contentHash": "813662daa243ece60d673e08ca58d346d925bc793e7e4a81d937ffef85a7d046",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 55,
+      "hasStructuralAnalysis": false
+    },
+    "engine/src/test/java/com/example/engine/shader/PreferredTextureResolverTest.kt": {
+      "filePath": "engine/src/test/java/com/example/engine/shader/PreferredTextureResolverTest.kt",
+      "contentHash": "b40f42da998408b54a5badc3228e83b906c02674693567046fc529317b9d00b0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 52,
+      "hasStructuralAnalysis": false
+    },
+    "gradle.properties": {
+      "filePath": "gradle.properties",
+      "contentHash": "de51dd8be43a03d392cea045c375e7af7f13307ebc6db014b78426f34f976d4c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 35,
+      "hasStructuralAnalysis": false
+    },
+    "gradle/gradle-daemon-jvm.properties": {
+      "filePath": "gradle/gradle-daemon-jvm.properties",
+      "contentHash": "6236e35faff25067fc6068db331f861333f1c0950164178520139ff090a6214b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": false
+    },
+    "gradle/wrapper/gradle-wrapper.properties": {
+      "filePath": "gradle/wrapper/gradle-wrapper.properties",
+      "contentHash": "182807858dbaf4ea85f9a9c885f6793076691ddac02ff50dd99d692454cd8ea7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 9,
+      "hasStructuralAnalysis": false
+    },
+    "gradlew": {
+      "filePath": "gradlew",
+      "contentHash": "5901fd800994ef6b176e86345b1c980ea8918e1c557e06967fef8fffd555a49d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 249,
+      "hasStructuralAnalysis": false
+    },
+    "keystore.properties.template": {
+      "filePath": "keystore.properties.template",
+      "contentHash": "8b9a0e9d656361b4f7114b579a2fc16cab040de3b0a1e4a89a64698316b331c6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": false
+    },
+    "settings.gradle.kts": {
+      "filePath": "settings.gradle.kts",
+      "contentHash": "39f97a290edad709b21c1e61f8d164005f77803ca5e5364861a2a193316b556f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 30,
+      "hasStructuralAnalysis": false
+    },
+    "translate.py": {
+      "filePath": "translate.py",
+      "contentHash": "2b235f2d0dfcc1c6c9a701fbad7ca765554d8dad79a939b3c47541b23c73dd27",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 113,
+      "hasStructuralAnalysis": true
+    },
+    "wallpaper/build.gradle.kts": {
+      "filePath": "wallpaper/build.gradle.kts",
+      "contentHash": "4602c8c5adaac50712917d88323008329efecbf96d02b4a5ace90957097b9c65",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/SkyWallpaperService.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/SkyWallpaperService.kt",
+      "contentHash": "82eb6d8e982ace9ffc4ffe6f881961d553764a429ad7656d60b192c099c68d5a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 4,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/engine/WallpaperRenderEngine.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/engine/WallpaperRenderEngine.kt",
+      "contentHash": "1effa9a1fa6841b5f038c8b3fbf8ee80afa38c83dbe43b48ceeaac7a495d4a45",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 355,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/render/SceneStateHasher.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/render/SceneStateHasher.kt",
+      "contentHash": "450ddd98e6e1bdc587e40e2cc1d1ad3b3cf219b406373e94764b1f07003171b8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 34,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/render/WallpaperEglSession.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/render/WallpaperEglSession.kt",
+      "contentHash": "6afead5ddd32031f512ee5fcbaf5095c7e9fd48e1030b38cdca13828077ea465",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 354,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/render/WallpaperSceneFingerprintHasher.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/render/WallpaperSceneFingerprintHasher.kt",
+      "contentHash": "e4792b420c39606cc101ef74734ab175dc3c52a616f98dd3f34fe95f8869dade",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 27,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/render/WallpaperShaderAssetLoader.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/render/WallpaperShaderAssetLoader.kt",
+      "contentHash": "a6db2c83b8c2e548197e9227e4501fe4e1f8e37ab1e84cba197ac860e73ca61f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/FramePacingClock.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/FramePacingClock.kt",
+      "contentHash": "9a339892c059294a371f842531f51949469c323211bd555e78e3b39e1ad93f2a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 39,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/MinuteTickScheduler.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/MinuteTickScheduler.kt",
+      "contentHash": "a18f3be1c38405d9992b87eefda5d4a2200122fdf59ba4c52c43c8e63178cf22",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 51,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/RenderThreadVsyncLoop.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/RenderThreadVsyncLoop.kt",
+      "contentHash": "915c138f86bdabcc06d7748bc713abf8991f540aa262674b2f8fab92f0b677fb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 33,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/ServiceRenderPolicyResolver.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/ServiceRenderPolicyResolver.kt",
+      "contentHash": "dfcb3aa86a96ac5dc05f8bd1fd8d70e06c0fb1ac032b48b6e61892418c3caf7f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 133,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/SkyWallpaperService.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/SkyWallpaperService.kt",
+      "contentHash": "d5c2d2710d6cbf49894ad8123a161155f5aeb0fc4d5ed4e9ddfa7fa687e905b9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 296,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperConfigActions.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperConfigActions.kt",
+      "contentHash": "636f2a2328c2544fb193b5d97189a407885e410412c3b5740ae402a9b930fb1b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 10,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperDaylightSyncCoordinator.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperDaylightSyncCoordinator.kt",
+      "contentHash": "7cb23a235754830e3992482b484e69b55b1ff6e4f1063c8a405f1867feee0e3d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 440,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperDisplayRefreshRateResolver.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperDisplayRefreshRateResolver.kt",
+      "contentHash": "e79fe25adcec5edbc351cb1db97ca693b2cecadda5c18c578d8a825cb02af8da",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 18,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperRenderController.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperRenderController.kt",
+      "contentHash": "36effc3f67b993ca265a8cab32cb1528fd0f120813fcbbaa34191eee411eeea2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 543,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperRestoreReceiver.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperRestoreReceiver.kt",
+      "contentHash": "42bf5f9d362db3858ad0cb4e212fd1549b62aa09c02c054b585504b2af29019e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 69,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperSelectionState.kt": {
+      "filePath": "wallpaper/src/main/java/com/example/wallpaper/service/WallpaperSelectionState.kt",
+      "contentHash": "9d48a41ac47b6776456084884c0f8eb9a4dadbeeb3b0a3180564620d01f25acf",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 47,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/test/java/com/example/wallpaper/render/SceneStateHasherTest.kt": {
+      "filePath": "wallpaper/src/test/java/com/example/wallpaper/render/SceneStateHasherTest.kt",
+      "contentHash": "6064508b79fd24ec25f4b2b2b6b80ef5741f28a9396dfc1de32b6f020b9f5cf2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 75,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/test/java/com/example/wallpaper/render/WallpaperSceneFingerprintHasherTest.kt": {
+      "filePath": "wallpaper/src/test/java/com/example/wallpaper/render/WallpaperSceneFingerprintHasherTest.kt",
+      "contentHash": "37efd7a67d833aeb10d11e96e3b702000d26275dd7db735bfe8e037994de7af6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 23,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/test/java/com/example/wallpaper/service/FramePacingClockTest.kt": {
+      "filePath": "wallpaper/src/test/java/com/example/wallpaper/service/FramePacingClockTest.kt",
+      "contentHash": "7fb07d6eb8ab9b90c5216eea68cadb5cbdd995eb4bea258c4b61f9f97c0d7d85",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 70,
+      "hasStructuralAnalysis": false
+    },
+    "wallpaper/src/test/java/com/example/wallpaper/service/ServiceRenderPolicyResolverTest.kt": {
+      "filePath": "wallpaper/src/test/java/com/example/wallpaper/service/ServiceRenderPolicyResolverTest.kt",
+      "contentHash": "9cb909cf252be8ae8f4a0727e43053a51891682e004bb506e17e0c48e4fec055",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 196,
+      "hasStructuralAnalysis": false
+    }
+  }
+}

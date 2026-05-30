@@ -259,6 +259,25 @@ When using GitHub MCP:
 - keep PR descriptions concise
 - keep commit messages short
 
+
+## Crucial Development Rules
+
+- Do not perform large refactors/rewrites.
+- Read only the required files.
+- Always write a short plan before starting any task.
+- Android WallpaperService lifecycle must not be broken.
+- OpenGL ES renderer thread safety must be preserved.
+- Preview mode and set wallpaper mode must remain separated.
+- Minute-based render logic on the home screen must be preserved.
+- Continuous rendering should only be applied if explicitly requested.
+- Battery optimization is the highest priority.
+- OpenGL ES compatibility must be preserved in shader changes.
+- Avoid duplicate textures or asset copies.
+- Write a risk analysis before any change to Gradle, Manifest, Service, Renderer, or shader loader.
+- Every patch must be small and reversible.
+- At the end of the task, report the changed files and the next safe step.
+
 ## Safety Rule
 
 Consistency, low token usage, and minimal diffs are more important than aggressive refactoring.
+

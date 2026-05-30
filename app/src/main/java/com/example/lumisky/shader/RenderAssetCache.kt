@@ -101,7 +101,11 @@ object RenderAssetCache {
 	): ResolvedTextureBytes? {
 		if (preferPreviewVariant) {
 			previewVariantCandidates(originalPath).forEach { previewVariantPath ->
-				val previewBytes = loadTextureBytesForResolvedPath(context, previewVariantPath)
+				val previewBytes = loadTextureBytesForResolvedPath(
+					context = context,
+					assetPath = previewVariantPath,
+					recordFailure = false
+				)
 				if (previewBytes != null) {
 					return ResolvedTextureBytes(previewVariantPath, previewBytes)
 				}
@@ -117,7 +121,11 @@ object RenderAssetCache {
 		val dot = originalPath.lastIndexOf('.')
 		if (dot >= 0) {
 			val webpPath = "${originalPath.substring(0, dot)}.webp"
-			val webpBytes = loadTextureBytesForResolvedPath(context, webpPath)
+			val webpBytes = loadTextureBytesForResolvedPath(
+				context = context,
+				assetPath = webpPath,
+				recordFailure = false
+			)
 			if (webpBytes != null) {
 				return ResolvedTextureBytes(webpPath, webpBytes)
 			}
@@ -129,7 +137,8 @@ object RenderAssetCache {
 
 	private fun loadTextureBytesForResolvedPath(
 		context: Context,
-		assetPath: String
+		assetPath: String,
+		recordFailure: Boolean = true
 	): ByteArray? {
 		synchronized(textureCache) {
 			textureCache.get(assetPath)?.let {
@@ -151,7 +160,9 @@ object RenderAssetCache {
 			val loaded = runCatching {
 				context.assets.open(assetPath).use { it.readBytes() }
 			}.getOrNull() ?: run {
-				CrashDiagnostics.recordException(TextureAssetLoadException("Texture asset read failed path=$assetPath"))
+				if (recordFailure) {
+					CrashDiagnostics.recordException(TextureAssetLoadException("Texture asset read failed path=$assetPath"))
+				}
 				return@withLoadLock null
 			}
 			Logger.v(TAG, "texture asset read path=$assetPath size=${loaded.size}")
