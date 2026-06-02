@@ -1,0 +1,169 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: L
+      - generic [ref=e7]: Lumisky Visual Creator
+    - generic [ref=e8]:
+      - button "Import Layout" [ref=e9] [cursor=pointer]
+      - button "Export JSON" [ref=e10] [cursor=pointer]
+  - main [ref=e11]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]: Interactive Canvas
+        - generic [ref=e15]:
+          - generic [ref=e16] [cursor=pointer]:
+            - checkbox "Parallax Effect" [checked] [ref=e17]
+            - text: Parallax Effect
+          - button "Stop Day Cycle" [ref=e18] [cursor=pointer]:
+            - img [ref=e19]
+      - generic [ref=e23]:
+        - generic:
+          - img "Layer 0"
+        - generic:
+          - img "Layer 1"
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: Daytime Simulator (Auto Cycle)
+            - generic [ref=e29]: 00:00
+          - slider [disabled] [ref=e30]: "0"
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - text: Parallax Simulator
+            - generic [ref=e33]: (Sensors Active)
+          - generic [ref=e34]:
+            - generic [ref=e35]:
+              - generic [ref=e36]:
+                - generic [ref=e37]: Tilt X
+                - generic [ref=e38]: "0.00"
+              - slider [disabled] [ref=e39]: "0"
+            - generic [ref=e40]:
+              - generic [ref=e41]:
+                - generic [ref=e42]: Tilt Y
+                - generic [ref=e43]: "0.00"
+              - slider [disabled] [ref=e44]: "0"
+    - generic [ref=e45]:
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - generic [ref=e48]: Layers Layout (2/15)
+          - button "+ Add Layer" [ref=e49] [cursor=pointer]
+        - generic [ref=e50]:
+          - generic [ref=e51] [cursor=pointer]:
+            - generic [ref=e52]:
+              - generic [ref=e53]: warrior1.webp
+              - generic [ref=e54]: "Z-Index: 0 | STATIC"
+            - generic [ref=e55]:
+              - button "▲" [disabled] [ref=e56]
+              - button "▼" [ref=e57]
+              - button "Delete Layer" [ref=e58]:
+                - img [ref=e59]
+          - generic [ref=e61] [cursor=pointer]:
+            - generic [ref=e62]:
+              - generic [ref=e63]: warrior2.webp
+              - generic [ref=e64]: "Z-Index: 1 | WAVE"
+            - generic [ref=e65]:
+              - button "▲" [ref=e66]
+              - button "▼" [disabled] [ref=e67]
+              - button "Delete Layer" [ref=e68]:
+                - img [ref=e69]
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - generic [ref=e73]: Edit Layer 0 Properties
+          - combobox [ref=e74]:
+            - option "Layer 0" [selected]
+            - option "Layer 1"
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - generic [ref=e77]: Texture Path (Assets)
+            - textbox [ref=e78]: warrior/warrior1.webp
+          - generic [ref=e79]:
+            - generic [ref=e80]: Replace Preview Image (PNG/GIF/SVG/WebP)
+            - button "Choose Graphic File Choose File" [ref=e82] [cursor=pointer]:
+              - text: Choose Graphic File
+              - button "Choose File" [ref=e83]
+          - generic [ref=e84]:
+            - generic [ref=e85]: "Offset X: 0.00"
+            - slider [ref=e86]: "0"
+          - generic [ref=e87]:
+            - generic [ref=e88]: "Offset Y: 0.10"
+            - slider [ref=e89]: "0.1"
+          - generic [ref=e90]:
+            - generic [ref=e91]: "Scale X: 1.00"
+            - slider [ref=e92]: "1"
+          - generic [ref=e93]:
+            - generic [ref=e94]: "Scale Y: 1.00"
+            - slider [ref=e95]: "1"
+          - generic [ref=e96]:
+            - generic [ref=e97]: "Z-Index: 0"
+            - spinbutton [ref=e98]: "0"
+          - generic [ref=e99]:
+            - generic [ref=e100]: "Night Tint Influence: 0.50"
+            - slider [ref=e101]: "0.5"
+          - generic [ref=e102]:
+            - generic [ref=e103]: Motion Type
+            - combobox [ref=e104]:
+              - option "STATIC (No movement)" [selected]
+              - option "PARALLAX (Gyro/Scroll responds)"
+              - option "BOB (Vertical float)"
+              - option "FLOAT (Horizontal float)"
+              - option "WAVE (Directional Float Angle)"
+              - option "SPIN (Clockwise rotation)"
+      - generic [ref=e105]:
+        - generic [ref=e107]: Background & Celestial GLSL Editor
+        - generic [ref=e108]:
+          - generic [ref=e110]: Sun Properties
+          - generic [ref=e111]:
+            - generic [ref=e112]: Sun Motion Path
+            - combobox [ref=e113]:
+              - option "ARCH (Orbiting curve)" [selected]
+              - option "LINEAR (Horizontal line)"
+              - option "STATIC (Locked position)"
+          - generic [ref=e114]:
+            - generic [ref=e115]: Sun Color
+            - generic [ref=e116]:
+              - textbox [ref=e117] [cursor=pointer]: "#ffd54f"
+              - textbox [ref=e118]: "#ffd54f"
+          - generic [ref=e119]:
+            - generic [ref=e120]: "Sun Radius Size: 0.060"
+            - slider [ref=e121]: "0.06"
+          - generic [ref=e122]:
+            - generic [ref=e123]: "Sun Max Altitude (Zenith): 0.50"
+            - slider [ref=e124]: "0.5"
+          - generic [ref=e126]: Moon Properties
+          - generic [ref=e127]:
+            - generic [ref=e128]: Moon Motion Path
+            - combobox [ref=e129]:
+              - option "ARCH (Orbiting curve)" [selected]
+              - option "LINEAR (Horizontal line)"
+              - option "STATIC (Locked position)"
+          - generic [ref=e130]:
+            - generic [ref=e131]: Moon Color
+            - generic [ref=e132]:
+              - textbox [ref=e133] [cursor=pointer]: "#eceff1"
+              - textbox [ref=e134]: "#eceff1"
+          - generic [ref=e135]:
+            - generic [ref=e136]: "Moon Radius Size: 0.050"
+            - slider [ref=e137]: "0.05"
+          - generic [ref=e138]:
+            - generic [ref=e139]: "Moon Max Altitude (Zenith): 0.50"
+            - slider [ref=e140]: "0.5"
+          - generic [ref=e142]: Skyline Multi-Point Horizon
+          - generic [ref=e143]:
+            - generic [ref=e144]: "Horizon Left (x=0.0): 0.16"
+            - slider [ref=e145]: "0.16"
+          - generic [ref=e146]:
+            - generic [ref=e147]: "Horizon Mid-Left (x=0.33): 0.20"
+            - slider [ref=e148]: "0.2"
+          - generic [ref=e149]:
+            - generic [ref=e150]: "Horizon Mid-Right (x=0.66): 0.17"
+            - slider [ref=e151]: "0.17"
+          - generic [ref=e152]:
+            - generic [ref=e153]: "Horizon Right (x=1.0): 0.22"
+            - slider [ref=e154]: "0.22"
+        - generic [ref=e155]:
+          - generic [ref=e156]: WebGL Fragment Shader (GLSL)
+          - textbox [ref=e157]: "precision mediump float; varying vec2 v_TexCoord; uniform vec2 u_Resolution; uniform float u_Time; uniform float u_TimeOfDay; // 0 to 24 uniform vec2 u_SunPos; uniform vec2 u_MoonPos; uniform vec3 u_SunColor; uniform vec3 u_MoonColor; uniform float u_SunSize; uniform float u_MoonSize; uniform vec4 u_HorizonPoints; // left, mid-left, mid-right, right uniform float u_NightBlend; // Interpolate horizon curve height based on X coordinate float getHorizonHeight(float x) { if (x < 0.33) { return mix(u_HorizonPoints.x, u_HorizonPoints.y, smoothstep(0.0, 0.33, x)); } else if (x < 0.66) { return mix(u_HorizonPoints.y, u_HorizonPoints.z, smoothstep(0.33, 0.66, x)); } else { return mix(u_HorizonPoints.z, u_HorizonPoints.w, smoothstep(0.66, 1.0, x)); } } void main() { vec2 uv = v_TexCoord; // Sky base colors based on daylight time vec3 nightColor = vec3(0.01, 0.02, 0.05); vec3 sunriseColor = vec3(0.88, 0.43, 0.28); vec3 noonColor = vec3(0.22, 0.52, 0.90); vec3 sunsetColor = vec3(0.84, 0.27, 0.29); vec3 skyColor = nightColor; if (u_TimeOfDay >= 5.0 && u_TimeOfDay < 7.0) { float t = (u_TimeOfDay - 5.0) / 2.0; skyColor = mix(mix(nightColor, vec3(0.17, 0.20, 0.31), uv.y), mix(nightColor, sunriseColor, uv.y), t); } else if (u_TimeOfDay >= 7.0 && u_TimeOfDay < 11.0) { float t = (u_TimeOfDay - 7.0) / 4.0; skyColor = mix(mix(nightColor, sunriseColor, uv.y), mix(noonColor, vec3(0.55, 0.75, 0.95), uv.y), t); } else if (u_TimeOfDay >= 11.0 && u_TimeOfDay < 15.0) { skyColor = mix(noonColor, vec3(0.55, 0.75, 0.95), uv.y); } else if (u_TimeOfDay >= 15.0 && u_TimeOfDay < 18.0) { float t = (u_TimeOfDay - 15.0) / 3.0; skyColor = mix(mix(noonColor, vec3(0.55, 0.75, 0.95), uv.y), mix(sunsetColor, vec3(0.92, 0.63, 0.50), uv.y), t); } else if (u_TimeOfDay >= 18.0 && u_TimeOfDay < 20.0) { float t = (u_TimeOfDay - 18.0) / 2.0; skyColor = mix(mix(sunsetColor, vec3(0.92, 0.63, 0.50), uv.y), nightColor, t); } else { skyColor = mix(nightColor, vec3(0.02, 0.04, 0.08), uv.y); } // Render stars at night if (u_NightBlend > 0.0) { // simple noise stars float starPattern = fract(sin(dot(uv.xy, vec2(12.9898, 78.233))) * 43758.5453); if (starPattern > 0.992) { float blink = 0.5 + 0.5 * sin(u_Time * 3.0 + starPattern * 10.0); skyColor += vec3(0.9, 0.95, 1.0) * blink * u_NightBlend * (1.0 - uv.y); } } // Render celestial bodies (Sun) float distToSun = distance(uv, u_SunPos); float sunMask = smoothstep(u_SunSize, u_SunSize - 0.015, distToSun); float sunGlow = exp(-distToSun * 12.0) * 0.4; skyColor = mix(skyColor, u_SunColor, sunMask + sunGlow * (1.0 - u_NightBlend)); // Render celestial bodies (Moon) float distToMoon = distance(uv, u_MoonPos); float moonMask = smoothstep(u_MoonSize, u_MoonSize - 0.015, distToMoon); float moonGlow = exp(-distToMoon * 15.0) * 0.2; // moon crescent shape carve float crescentMask = smoothstep(u_MoonSize, u_MoonSize - 0.015, distance(uv - vec2(0.01, 0.005), u_MoonPos)); skyColor = mix(skyColor, u_MoonColor, max(0.0, moonMask - crescentMask) + moonGlow * u_NightBlend); // Render Horizon float horizonHeight = getHorizonHeight(uv.x); float horizonMask = smoothstep(horizonHeight + 0.003, horizonHeight - 0.003, uv.y); vec3 groundColor = mix(vec3(0.02, 0.03, 0.05), vec3(0.05, 0.06, 0.08), uv.y / horizonHeight); skyColor = mix(skyColor, groundColor, horizonMask); gl_FragColor = vec4(skyColor, 1.0); }"
+          - generic [ref=e158]:
+            - button "Reset Shader" [ref=e159] [cursor=pointer]
+            - button "Compile & Apply" [ref=e160] [cursor=pointer]
+          - generic [ref=e161]: WebGL program compiled successfully!
