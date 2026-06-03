@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import './App.css';
 
 const DEFAULT_GLSL_SHADER = `precision mediump float;
@@ -93,7 +93,6 @@ void main() {
 const DEFAULT_LAYERS = [
   {
     texturePath: 'warrior/warrior1.webp',
-    zIndex: 0,
     offsetX: 0,
     offsetY: 0.1,
     scaleX: 1.0,
@@ -102,13 +101,19 @@ const DEFAULT_LAYERS = [
     motionSpeed: 1,
     motionAmplitude: 0,
     motionDirection: 0,
+    motionDuration: 5,
+    motionStartX: 0,
+    motionStartY: 0,
+    motionEndX: 0.2,
+    motionEndY: 0,
+    parallaxStrengthX: 0.05,
+    parallaxStrengthY: 0.03,
     nightTintFactor: 0.5,
     opacity: 1.0,
     localUrl: null
   },
   {
     texturePath: 'warrior/warrior2.webp',
-    zIndex: 1,
     offsetX: 0,
     offsetY: -0.1,
     scaleX: 1.0,
@@ -117,6 +122,13 @@ const DEFAULT_LAYERS = [
     motionSpeed: 3,
     motionAmplitude: 0.05,
     motionDirection: 90,
+    motionDuration: 5,
+    motionStartX: 0,
+    motionStartY: 0,
+    motionEndX: 0.35,
+    motionEndY: 0,
+    parallaxStrengthX: 0.08,
+    parallaxStrengthY: 0.04,
     nightTintFactor: 0.6,
     opacity: 1.0,
     localUrl: null
@@ -130,20 +142,82 @@ const DEFAULT_HORIZON = [
   { id: 4, x: 1.0, y: 0.22 }
 ];
 
+const DEFAULT_FEATURES = {
+  parallax: true,
+  sun: true,
+  moon: true,
+  stars: true,
+  atmosphere: true,
+  lensFlare: true,
+  clouds: true,
+  lowPowerThrottle: true
+};
+
+const READY_WALLPAPER_PRESETS = [
+  {
+    id: 'warrior',
+    name: 'Warrior Fantasy HD',
+    layers: DEFAULT_LAYERS
+  }
+];
+
+const normalizeLayerOrder = (list) => list.map((layer) => {
+  const normalizedLayer = { visible: true, ...layer };
+  delete normalizedLayer.zIndex;
+  return normalizedLayer;
+});
+
 const formatTime = (time) => {
   const hours = Math.floor(time);
   const minutes = Math.floor((time - hours) * 60);
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 };
 
+const SNAPSHOT_TIMES = [
+  { label: 'Sunrise', value: 6.5 },
+  { label: 'Noon', value: 12 },
+  { label: 'Sunset', value: 18.5 },
+  { label: 'Night', value: 22 }
+];
+
+const mapMotionPathToAndroid = (motionType) => (motionType === 'ARCH' ? 'ARC' : 'VERTICAL');
+
+const averageHorizonOffset = (points) => {
+  if (!points.length) return 0.2;
+  const total = points.reduce((sum, point) => sum + point.y, 0);
+  return parseFloat((total / points.length).toFixed(4));
+};
+
+const sortedLayerPaths = (layers) =>
+  layers.map((layer) => layer.texturePath);
+
+const progressFromDuration = (time, duration) => {
+  const safeDuration = Math.max(0.1, duration || 5);
+  return (time % safeDuration) / safeDuration;
+};
+
+const hexToRgb = (hex) => {
+  const cleanHex = hex.replace('#', '');
+  const bigint = parseInt(cleanHex, 16);
+  const r = ((bigint >> 16) & 255) / 255;
+  const g = ((bigint >> 8) & 255) / 255;
+  const b = (bigint & 255) / 255;
+  return [r, g, b];
+};
+
 function App() {
+  const [wallpaperId, setWallpaperId] = useState('creator_draft');
+  const [wallpaperName, setWallpaperName] = useState('Creator Draft HD');
   const [layers, setLayers] = useState(DEFAULT_LAYERS);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [daylightTime, setDaylightTime] = useState(12); // 0 to 24 hours
+  const [workspaceScale, setWorkspaceScale] = useState(1.35);
+  const [showSafeFrame, setShowSafeFrame] = useState(true);
   
   // Parallax state
-  const [enableParallax, setEnableParallax] = useState(true);
+  const [featureFlags, setFeatureFlags] = useState(DEFAULT_FEATURES);
+  const enableParallax = featureFlags.parallax;
   const [parallaxX, setParallaxX] = useState(0);
   const [parallaxY, setParallaxY] = useState(0);
   const [timeState, setTimeState] = useState(0);
@@ -155,25 +229,28 @@ function App() {
   // Sun configurations
   const [sunSize, setSunSize] = useState(0.06);
   const [sunColor, setSunColor] = useState('#ffd54f');
-  const [sunZenith, setSunZenith] = useState(0.5);
+  const [sunZenith, setSunZenith] = useState(0.82);
   const [sunMotionType, setSunMotionType] = useState('ARCH'); // ARCH, LINEAR, STATIC
   const [sunStaticX, setSunStaticX] = useState(0.5);
-  const [sunStaticY, setSunStaticY] = useState(0.7);
+  const [sunStaticY, setSunStaticY] = useState(0.16);
   const [sunGlow, setSunGlow] = useState(0.4);
 
   // Moon configurations
   const [moonSize, setMoonSize] = useState(0.05);
   const [moonColor, setMoonColor] = useState('#eceff1');
-  const [moonZenith, setMoonZenith] = useState(0.5);
+  const [moonZenith, setMoonZenith] = useState(0.78);
   const [moonMotionType, setMoonMotionType] = useState('ARCH'); // ARCH, LINEAR, STATIC
   const [moonStaticX, setMoonStaticX] = useState(0.3);
-  const [moonStaticY, setMoonStaticY] = useState(0.8);
+  const [moonStaticY, setMoonStaticY] = useState(0.14);
   const [moonGlow, setMoonGlow] = useState(0.25);
 
   // Extended sky parameters
-  const [starsEnabled, setStarsEnabled] = useState(true);
+  const starsEnabled = featureFlags.stars;
   const [starsDensity, setStarsDensity] = useState(0.5);
   const [atmosphereIntensity, setAtmosphereIntensity] = useState(1.0);
+  const [cloudSpeed, setCloudSpeed] = useState(0.28);
+  const [cloudDensity, setCloudDensity] = useState(0.46);
+  const [cloudIntensity, setCloudIntensity] = useState(0.3);
 
   // Skyline Multi-Point Horizon
   const [horizonPoints, setHorizonPoints] = useState(DEFAULT_HORIZON);
@@ -182,6 +259,7 @@ function App() {
   // Dialog Modals
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [exportMode, setExportMode] = useState('manifest');
   const [importText, setImportText] = useState('');
 
   // Refs
@@ -192,26 +270,43 @@ function App() {
   const webglBufferRef = useRef(null);
   const horizonTextureRef = useRef(null);
   const animationFrameRef = useRef(null);
+  const renderFrameRef = useRef(null);
+  const renderStateRef = useRef({});
+  const timeStateRef = useRef(0);
+  const localUrlsRef = useRef([]);
   const startTimeRef = useRef(null);
 
   const activeLayer = layers[selectedIndex];
+  const effectiveAtmosphereIntensity = featureFlags.atmosphere ? atmosphereIntensity : 0;
+  const effectiveSunSize = featureFlags.sun ? sunSize : 0;
+  const effectiveMoonSize = featureFlags.moon ? moonSize : 0;
 
-  // Sort layers by zIndex for rendering order
+  // Render order follows the layer list order.
   const sortedLayers = useMemo(() => {
-    return layers
-      .map((layer, index) => ({ layer, index }))
-      .sort((a, b) => a.layer.zIndex - b.layer.zIndex);
+    return layers.map((layer, index) => ({ layer, index }));
   }, [layers]);
 
-  // Helper: Hex Color to RGB floats
-  const hexToRgb = (hex) => {
-    const cleanHex = hex.replace('#', '');
-    const bigint = parseInt(cleanHex, 16);
-    const r = ((bigint >> 16) & 255) / 255;
-    const g = ((bigint >> 8) & 255) / 255;
-    const b = (bigint & 255) / 255;
-    return [r, g, b];
-  };
+  const sceneStackItems = useMemo(() => {
+    const systemItems = [
+      { key: 'system-atmosphere', label: 'Atmosphere', detail: 'Sky shader', type: 'system', featureKey: 'atmosphere', visible: featureFlags.atmosphere },
+      { key: 'system-stars', label: 'Stars', detail: `Density ${starsDensity.toFixed(2)}`, type: 'system', featureKey: 'stars', visible: featureFlags.stars },
+      { key: 'system-clouds', label: 'Clouds', detail: `Speed ${cloudSpeed.toFixed(2)}`, type: 'system', featureKey: 'clouds', visible: featureFlags.clouds },
+      { key: 'system-sun', label: 'Sun', detail: sunMotionType, type: 'system', featureKey: 'sun', visible: featureFlags.sun },
+      { key: 'system-moon', label: 'Moon', detail: moonMotionType, type: 'system', featureKey: 'moon', visible: featureFlags.moon }
+    ];
+
+    return [
+      ...systemItems,
+      ...layers.map((layer, index) => ({
+        key: `texture-${index}`,
+        label: layer.texturePath.split('/').pop() || `Layer ${index}`,
+        detail: layer.motionType,
+        type: 'texture',
+        visible: layer.visible !== false,
+        textureIndex: index
+      }))
+    ];
+  }, [layers, featureFlags, starsDensity, cloudSpeed, sunMotionType, moonMotionType]);
 
   // Layer editing dispatcher
   const updateActiveLayer = (field, val) => {
@@ -223,19 +318,74 @@ function App() {
     }));
   };
 
+  const updateLayerAtIndex = (index, patch) => {
+    setLayers(prev => prev.map((layer, layerIndex) => (
+      layerIndex === index ? { ...layer, ...patch } : layer
+    )));
+  };
+
+  const moveLayerToIndex = (fromIndex, toIndex) => {
+    const targetIndex = Math.max(0, Math.min(layers.length - 1, toIndex));
+    setLayers(prev => {
+      const list = [...prev];
+      const [item] = list.splice(fromIndex, 1);
+      list.splice(targetIndex, 0, item);
+      return normalizeLayerOrder(list);
+    });
+    setSelectedIndex(targetIndex);
+  };
+
+  const loadReadyPreset = (presetId) => {
+    const preset = READY_WALLPAPER_PRESETS.find((item) => item.id === presetId);
+    if (!preset) return;
+    setWallpaperId(preset.id);
+    setWallpaperName(preset.name);
+    setLayers(normalizeLayerOrder(preset.layers.map((layer) => ({ ...layer, localUrl: null }))));
+    setSelectedIndex(0);
+  };
+
+  const updateFeatureFlag = (key, value) => {
+    setFeatureFlags(prev => ({ ...prev, [key]: value }));
+  };
+
+  useEffect(() => {
+    localUrlsRef.current = layers.map((layer) => layer.localUrl).filter(Boolean);
+  }, [layers]);
+
+  useEffect(() => {
+    return () => {
+      localUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
+  const clearActiveLayerPreview = () => {
+    if (activeLayer?.localUrl) {
+      URL.revokeObjectURL(activeLayer.localUrl);
+    }
+    updateActiveLayer('localUrl', null);
+  };
+
   // File replacement inside properties editor
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file && activeLayer) {
+      if (activeLayer.localUrl) {
+        URL.revokeObjectURL(activeLayer.localUrl);
+      }
       const url = URL.createObjectURL(file);
       updateActiveLayer('localUrl', url);
       updateActiveLayer('texturePath', `wallpapers/custom/${file.name}`);
     }
+    e.target.value = null;
   };
 
   // 12-Second Daylight Cycle Loop & Animation Timer
   useEffect(() => {
-    startTimeRef.current = Date.now() - (timeState * 1000);
+    timeStateRef.current = timeState;
+  }, [timeState]);
+
+  useEffect(() => {
+    startTimeRef.current = Date.now() - (timeStateRef.current * 1000);
     
     const animate = () => {
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
@@ -272,17 +422,18 @@ function App() {
     if (sunMotionType === 'STATIC') {
       return [sunStaticX, sunStaticY];
     }
-    const isSun = daylightTime >= 6 && daylightTime < 18;
-    const progress = isSun ? (daylightTime - 6) / 12 : 0;
+    if (daylightTime < 6 || daylightTime >= 18) {
+      return [sunStaticX, -0.2];
+    }
+    const progress = (daylightTime - 6) / 12;
+    const arcY = sunStaticY + (sunZenith - sunStaticY) * Math.sin(Math.PI * progress);
     
     if (sunMotionType === 'LINEAR') {
-      return [sunStaticX, 0.1 + progress * 0.8]; // vertical motion
+      return [sunStaticX, arcY];
     }
     // ARCH
-    const angle = Math.PI * (1 - progress);
-    const sX = 0.5 + 0.38 * Math.cos(angle);
-    const sY = sunZenith - 0.2 + 0.45 * Math.sin(angle);
-    return [sX, sY];
+    const sX = sunStaticX + (progress - 0.5) * 0.76;
+    return [sX, arcY];
   }, [daylightTime, sunMotionType, sunStaticX, sunStaticY, sunZenith]);
 
   // Interpolate Moon Position Y vertically on LINEAR
@@ -290,26 +441,24 @@ function App() {
     if (moonMotionType === 'STATIC') {
       return [moonStaticX, moonStaticY];
     }
-    const isMoon = daylightTime < 6 || daylightTime >= 18;
-    const progress = isMoon 
-      ? (daylightTime >= 18 ? daylightTime - 18 : daylightTime + 6) / 12
-      : 0;
+    if (daylightTime >= 6 && daylightTime < 18) {
+      return [moonStaticX, -0.2];
+    }
+    const nightTime = daylightTime >= 18 ? daylightTime : daylightTime + 24;
+    const progress = (nightTime - 18) / 12;
+    const arcY = moonStaticY + (moonZenith - moonStaticY) * Math.sin(Math.PI * progress);
 
     if (moonMotionType === 'LINEAR') {
-      return [moonStaticX, 0.1 + progress * 0.8]; // vertical motion
+      return [moonStaticX, arcY];
     }
     // ARCH
-    const angle = Math.PI * (1 - progress);
-    const mX = 0.5 + 0.38 * Math.cos(angle);
-    const mY = moonZenith - 0.2 + 0.45 * Math.sin(angle);
-    return [mX, mY];
+    const mX = moonStaticX + (progress - 0.5) * 0.76;
+    return [mX, arcY];
   }, [daylightTime, moonMotionType, moonStaticX, moonStaticY, moonZenith]);
 
   // Parallax Device Orientation Handlers
   useEffect(() => {
     if (!enableParallax) {
-      setParallaxX(0);
-      setParallaxY(0);
       return;
     }
 
@@ -334,7 +483,12 @@ function App() {
   // Request Mobile Gyro Permission
   const handleParallaxCheckboxChange = async (e) => {
     const checked = e.target.checked;
-    setEnableParallax(checked);
+    updateFeatureFlag('parallax', checked);
+    if (!checked) {
+      setParallaxX(0);
+      setParallaxY(0);
+      return;
+    }
     
     if (checked && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
       try {
@@ -491,12 +645,36 @@ function App() {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 256, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, data);
   }, [horizonPoints]);
 
+  useEffect(() => {
+    renderStateRef.current = {
+      timeState,
+      daylightTime,
+      sunPosition,
+      moonPosition,
+      sunColor,
+      moonColor,
+      sunSize: effectiveSunSize,
+      moonSize: effectiveMoonSize,
+      nightBlend,
+      sunGlow,
+      moonGlow,
+      starsEnabled,
+      starsDensity,
+      atmosphereIntensity: effectiveAtmosphereIntensity
+    };
+  }, [timeState, daylightTime, sunPosition, moonPosition, sunColor, moonColor, effectiveSunSize, effectiveMoonSize, nightBlend, sunGlow, moonGlow, starsEnabled, starsDensity, effectiveAtmosphereIntensity]);
+
   // WebGL Render Loop
   useEffect(() => {
     let active = true;
     
     const draw = () => {
       if (!active) return;
+      const state = renderStateRef.current;
+      if (!state.sunPosition || !state.moonPosition) {
+        renderFrameRef.current = requestAnimationFrame(draw);
+        return;
+      }
       
       const canvas = canvasRef.current;
       if (canvas) {
@@ -521,42 +699,49 @@ function App() {
 
           // Bind Uniform variables
           gl.uniform2f(gl.getUniformLocation(program, 'u_Resolution'), canvas.width, canvas.height);
-          gl.uniform1f(gl.getUniformLocation(program, 'u_Time'), timeState);
-          gl.uniform1f(gl.getUniformLocation(program, 'u_TimeOfDay'), daylightTime);
-          gl.uniform2f(gl.getUniformLocation(program, 'u_SunPos'), sunPosition[0], sunPosition[1]);
-          gl.uniform2f(gl.getUniformLocation(program, 'u_MoonPos'), moonPosition[0], moonPosition[1]);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_Time'), state.timeState);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_TimeOfDay'), state.daylightTime);
+          gl.uniform2f(gl.getUniformLocation(program, 'u_SunPos'), state.sunPosition[0], state.sunPosition[1]);
+          gl.uniform2f(gl.getUniformLocation(program, 'u_MoonPos'), state.moonPosition[0], state.moonPosition[1]);
           
-          const sunRgb = hexToRgb(sunColor);
-          const moonRgb = hexToRgb(moonColor);
+          const sunRgb = hexToRgb(state.sunColor);
+          const moonRgb = hexToRgb(state.moonColor);
           gl.uniform3f(gl.getUniformLocation(program, 'u_SunColor'), sunRgb[0], sunRgb[1], sunRgb[2]);
           gl.uniform3f(gl.getUniformLocation(program, 'u_MoonColor'), moonRgb[0], moonRgb[1], moonRgb[2]);
           
-          gl.uniform1f(gl.getUniformLocation(program, 'u_SunSize'), sunSize);
-          gl.uniform1f(gl.getUniformLocation(program, 'u_MoonSize'), moonSize);
-          gl.uniform1f(gl.getUniformLocation(program, 'u_NightBlend'), nightBlend);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_SunSize'), state.sunSize);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_MoonSize'), state.moonSize);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_NightBlend'), state.nightBlend);
 
           // Bind extended parameters uniforms
-          gl.uniform1f(gl.getUniformLocation(program, 'u_SunGlow'), sunGlow);
-          gl.uniform1f(gl.getUniformLocation(program, 'u_MoonGlow'), moonGlow);
-          gl.uniform1f(gl.getUniformLocation(program, 'u_StarsEnabled'), starsEnabled ? 1.0 : 0.0);
-          gl.uniform1f(gl.getUniformLocation(program, 'u_StarsDensity'), starsDensity);
-          gl.uniform1f(gl.getUniformLocation(program, 'u_AtmosphereIntensity'), atmosphereIntensity);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_SunGlow'), state.sunGlow);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_MoonGlow'), state.moonGlow);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_StarsEnabled'), state.starsEnabled ? 1.0 : 0.0);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_StarsDensity'), state.starsDensity);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_AtmosphereIntensity'), state.atmosphereIntensity);
 
           gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
       }
-      requestAnimationFrame(draw);
+      renderFrameRef.current = requestAnimationFrame(draw);
     };
 
     draw();
     return () => {
       active = false;
+      if (renderFrameRef.current) {
+        cancelAnimationFrame(renderFrameRef.current);
+      }
     };
-  }, [timeState, daylightTime, sunPosition, moonPosition, sunColor, moonColor, sunSize, moonSize, nightBlend, sunGlow, moonGlow, starsEnabled, starsDensity, atmosphereIntensity]);
+  }, []);
 
   // Drag and Drop positioning (Mapped to cover size coordinates)
-  const handleDragStart = (e) => {
-    if (!activeLayer) return;
+  const handleDragStart = (e, layerIndex = selectedIndex) => {
+    const targetLayer = layers[layerIndex];
+    if (!targetLayer) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setSelectedIndex(layerIndex);
 
     const isTouch = e.type === 'touchstart';
     const clientX = isTouch ? e.touches[0].clientX : e.clientX;
@@ -564,10 +749,11 @@ function App() {
 
     const startX = clientX;
     const startY = clientY;
-    const startOffsetX = activeLayer.offsetX;
-    const startOffsetY = activeLayer.offsetY;
+    const startOffsetX = targetLayer.offsetX;
+    const startOffsetY = targetLayer.offsetY;
 
     const handleDragMove = (moveEvent) => {
+      moveEvent.preventDefault();
       const currentIsTouch = moveEvent.type === 'touchmove';
       const currentX = currentIsTouch ? moveEvent.touches[0].clientX : moveEvent.clientX;
       const currentY = currentIsTouch ? moveEvent.touches[0].clientY : moveEvent.clientY;
@@ -579,8 +765,10 @@ function App() {
       const newOffsetX = startOffsetX + (deltaX / 340);
       const newOffsetY = startOffsetY - (deltaY / 620);
 
-      updateActiveLayer('offsetX', parseFloat(Math.max(-2.5, Math.min(2.5, newOffsetX)).toFixed(4)));
-      updateActiveLayer('offsetY', parseFloat(Math.max(-2.5, Math.min(2.5, newOffsetY)).toFixed(4)));
+      updateLayerAtIndex(layerIndex, {
+        offsetX: parseFloat(Math.max(-2.5, Math.min(2.5, newOffsetX)).toFixed(4)),
+        offsetY: parseFloat(Math.max(-2.5, Math.min(2.5, newOffsetY)).toFixed(4))
+      });
     };
 
     const handleDragEnd = () => {
@@ -594,6 +782,46 @@ function App() {
     window.addEventListener('mouseup', handleDragEnd);
     window.addEventListener('touchmove', handleDragMove, { passive: false });
     window.addEventListener('touchend', handleDragEnd);
+  };
+
+  const handleResizeStart = (e, layerIndex) => {
+    const targetLayer = layers[layerIndex];
+    if (!targetLayer) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setSelectedIndex(layerIndex);
+
+    const isTouch = e.type === 'touchstart';
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+    const startX = clientX;
+    const startY = clientY;
+    const startScaleX = targetLayer.scaleX;
+    const startScaleY = targetLayer.scaleY;
+
+    const handleResizeMove = (moveEvent) => {
+      moveEvent.preventDefault();
+      const currentIsTouch = moveEvent.type === 'touchmove';
+      const currentX = currentIsTouch ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = currentIsTouch ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      const delta = ((currentX - startX) + (currentY - startY)) / 360;
+      updateLayerAtIndex(layerIndex, {
+        scaleX: parseFloat(Math.max(0.1, Math.min(4, startScaleX + delta)).toFixed(3)),
+        scaleY: parseFloat(Math.max(0.1, Math.min(4, startScaleY + delta)).toFixed(3))
+      });
+    };
+
+    const handleResizeEnd = () => {
+      window.removeEventListener('mousemove', handleResizeMove);
+      window.removeEventListener('mouseup', handleResizeEnd);
+      window.removeEventListener('touchmove', handleResizeMove);
+      window.removeEventListener('touchend', handleResizeEnd);
+    };
+
+    window.addEventListener('mousemove', handleResizeMove);
+    window.addEventListener('mouseup', handleResizeEnd);
+    window.addEventListener('touchmove', handleResizeMove, { passive: false });
+    window.addEventListener('touchend', handleResizeEnd);
   };
 
   // Add Layer with File dialog trigger
@@ -613,7 +841,6 @@ function App() {
       const url = URL.createObjectURL(file);
       const newLayer = {
         texturePath: `wallpapers/custom/${file.name}`,
-        zIndex: layers.length,
         offsetX: 0,
         offsetY: 0,
         scaleX: 1.0,
@@ -622,11 +849,19 @@ function App() {
         motionSpeed: 1,
         motionAmplitude: 0,
         motionDirection: 0,
+        motionDuration: 5,
+        motionStartX: 0,
+        motionStartY: 0,
+        motionEndX: 0.25,
+        motionEndY: 0,
+        parallaxStrengthX: 0.05,
+        parallaxStrengthY: 0.03,
         nightTintFactor: 0.5,
         opacity: 1.0,
+        visible: true,
         localUrl: url
       };
-      setLayers([...layers, newLayer]);
+      setLayers(normalizeLayerOrder([...layers, newLayer]));
       setSelectedIndex(layers.length);
     }
     e.target.value = null;
@@ -636,32 +871,21 @@ function App() {
   const moveLayerUp = (index, e) => {
     e.stopPropagation();
     if (index === 0) return;
-    setLayers(prev => {
-      const list = [...prev];
-      const temp = list[index];
-      list[index] = list[index - 1];
-      list[index - 1] = temp;
-      return list.map((l, i) => ({ ...l, zIndex: i }));
-    });
-    setSelectedIndex(index - 1);
+    moveLayerToIndex(index, index - 1);
   };
 
   const moveLayerDown = (index, e) => {
     e.stopPropagation();
     if (index === layers.length - 1) return;
-    setLayers(prev => {
-      const list = [...prev];
-      const temp = list[index];
-      list[index] = list[index + 1];
-      list[index + 1] = temp;
-      return list.map((l, i) => ({ ...l, zIndex: i }));
-    });
-    setSelectedIndex(index + 1);
+    moveLayerToIndex(index, index + 1);
   };
 
   const deleteLayer = (idx) => {
     if (layers.length <= 1) return;
-    setLayers(prev => prev.filter((_, i) => i !== idx).map((l, i) => ({ ...l, zIndex: i })));
+    if (layers[idx]?.localUrl) {
+      URL.revokeObjectURL(layers[idx].localUrl);
+    }
+    setLayers(prev => normalizeLayerOrder(prev.filter((_, i) => i !== idx)));
     setSelectedIndex(0);
   };
 
@@ -702,11 +926,10 @@ function App() {
     return [...horizonPoints].sort((a, b) => a.x - b.x);
   }, [horizonPoints]);
 
-  // Extended JSON Schema serializer
-  const generatedJson = useMemo(() => {
-    const outputLayers = layers.map(l => ({
+  const generatedLayoutJson = useMemo(() => {
+    const outputLayers = layers.map((l, index) => ({
       texturePath: l.texturePath,
-      zIndex: l.zIndex,
+      zIndex: index,
       offsetX: parseFloat(l.offsetX.toFixed(4)),
       offsetY: parseFloat(l.offsetY.toFixed(4)),
       scaleX: parseFloat(l.scaleX.toFixed(4)),
@@ -715,8 +938,16 @@ function App() {
       motionSpeed: parseFloat(l.motionSpeed.toFixed(2)),
       motionAmplitude: parseFloat(l.motionAmplitude.toFixed(4)),
       motionDirection: l.motionDirection || 0,
+      motionDuration: parseFloat((l.motionDuration ?? 5).toFixed(2)),
+      motionStartX: parseFloat((l.motionStartX ?? 0).toFixed(4)),
+      motionStartY: parseFloat((l.motionStartY ?? 0).toFixed(4)),
+      motionEndX: parseFloat((l.motionEndX ?? 0).toFixed(4)),
+      motionEndY: parseFloat((l.motionEndY ?? 0).toFixed(4)),
+      parallaxStrengthX: parseFloat((l.parallaxStrengthX ?? 0.05).toFixed(4)),
+      parallaxStrengthY: parseFloat((l.parallaxStrengthY ?? 0.03).toFixed(4)),
       nightTintFactor: parseFloat(l.nightTintFactor.toFixed(4)),
-      opacity: parseFloat((l.opacity ?? 1.0).toFixed(4))
+      opacity: parseFloat((l.opacity ?? 1.0).toFixed(4)),
+      visible: l.visible !== false
     }));
 
     const outputHorizon = sortedHorizonPoints.map(p => ({
@@ -725,6 +956,11 @@ function App() {
     }));
 
     return JSON.stringify({
+      meta: {
+        id: wallpaperId,
+        name: wallpaperName,
+        type: 'creator_draft'
+      },
       layers: outputLayers,
       skyShader: {
         glslCode: glslCode,
@@ -747,22 +983,116 @@ function App() {
           glow: moonGlow
         },
         horizonPoints: outputHorizon,
+        features: featureFlags,
         starsEnabled: starsEnabled,
         starsDensity: starsDensity,
-        atmosphereIntensity: atmosphereIntensity
+        atmosphereIntensity: atmosphereIntensity,
+        clouds: {
+          speed: cloudSpeed,
+          density: cloudDensity,
+          intensity: cloudIntensity
+        }
       }
     }, null, 2);
-  }, [layers, glslCode, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonGlow, sortedHorizonPoints, starsEnabled, starsDensity, atmosphereIntensity]);
+  }, [wallpaperId, wallpaperName, layers, glslCode, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonGlow, sortedHorizonPoints, featureFlags, starsEnabled, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity]);
+
+  const generatedManifestJson = useMemo(() => {
+    const layerPaths = sortedLayerPaths(layers);
+    const hasMotion = layers.some((layer) => layer.motionType !== 'STATIC');
+    const intervalMs = hasMotion ? 16 : 100;
+
+    return JSON.stringify({
+      id: wallpaperId.trim() || 'creator_draft',
+      name: wallpaperName.trim() || 'Creator Draft HD',
+      horizon: {
+        offset: averageHorizonOffset(horizonPoints)
+      },
+      textures: {
+        backgroundTexture: layerPaths[0] ?? null,
+        flareTexture: layerPaths[1] ?? null,
+        moonTexture: layerPaths[2] ?? null
+      },
+      features: {
+        atmosphereEnabled: featureFlags.atmosphere,
+        lensFlareEnabled: featureFlags.lensFlare,
+        starsEnabled: featureFlags.stars
+      },
+      effects: {
+        clouds: {
+          enabled: featureFlags.clouds,
+          speed: parseFloat(cloudSpeed.toFixed(2)),
+          density: parseFloat(cloudDensity.toFixed(2)),
+          intensity: parseFloat(cloudIntensity.toFixed(2))
+        },
+        stars: {
+          enabled: featureFlags.stars,
+          density: parseFloat(starsDensity.toFixed(2)),
+          intensity: parseFloat(Math.min(1, atmosphereIntensity).toFixed(2))
+        }
+      },
+      celestial: {
+        sunPathType: mapMotionPathToAndroid(sunMotionType),
+        moonPathType: mapMotionPathToAndroid(moonMotionType),
+        sunOrbit: {
+          pathType: mapMotionPathToAndroid(sunMotionType),
+          startX: parseFloat(sunStaticX.toFixed(4)),
+          endX: 0.5,
+          peakY: parseFloat(sunZenith.toFixed(4)),
+          curve: 'LINEAR'
+        },
+        moonOrbit: {
+          pathType: mapMotionPathToAndroid(moonMotionType),
+          startX: parseFloat(moonStaticX.toFixed(4)),
+          endX: 0.5,
+          peakY: parseFloat(moonZenith.toFixed(4)),
+          curve: 'LINEAR'
+        }
+      },
+      shader: {
+        fragmentAssetPath: `shaders/${wallpaperId.trim() || 'creator_draft'}/fragment.glsl`,
+        mode: 'external_theme',
+        uniformOverrides: {}
+      },
+      previewLoopDurationSeconds: 12.0,
+      runtimeRenderPolicy: {
+        policy: hasMotion ? 'CONTINUOUS' : 'MINUTE_TICK',
+        continuousFrameIntervalMs: intervalMs
+      },
+      capabilities: {
+        dynamicMotion: hasMotion,
+        dynamicTextures: false,
+        locationAwareLighting: true,
+        supportsCloudLayer: featureFlags.clouds,
+        supportsStarLayer: featureFlags.stars
+      },
+      serviceRenderPolicy: {
+        overridePolicy: hasMotion ? 'CONTINUOUS' : 'MINUTE_TICK',
+        overrideFrameIntervalMs: intervalMs,
+        usePowerSaverThrottle: featureFlags.lowPowerThrottle,
+        useThermalThrottle: featureFlags.lowPowerThrottle
+      }
+    }, null, 2);
+  }, [wallpaperId, wallpaperName, layers, horizonPoints, atmosphereIntensity, starsDensity, sunMotionType, moonMotionType, sunStaticX, moonStaticX, sunZenith, moonZenith, featureFlags, cloudSpeed, cloudDensity, cloudIntensity]);
+
+  const generatedJson = exportMode === 'manifest' ? generatedManifestJson : generatedLayoutJson;
+  const exportModeLabel = exportMode === 'manifest' ? 'Lumisky Manifest' : 'Creator Draft';
 
   const handleImport = () => {
     try {
       const parsed = JSON.parse(importText);
-      const importedLayers = parsed.layers || (Array.isArray(parsed) ? parsed : null);
+      if (parsed.meta?.id || parsed.id) setWallpaperId(parsed.meta?.id ?? parsed.id);
+      if (parsed.meta?.name || parsed.name) setWallpaperName(parsed.meta?.name ?? parsed.name);
+
+      const manifestTexturePaths = parsed.textures ? [
+        parsed.textures.backgroundTexture,
+        parsed.textures.flareTexture,
+        parsed.textures.moonTexture
+      ].filter(Boolean).map((texturePath) => ({ texturePath })) : null;
+      const importedLayers = parsed.layers || (Array.isArray(parsed) ? parsed : manifestTexturePaths);
       if (!importedLayers) throw new Error('Invalid structure');
 
-      const sanitizedLayers = importedLayers.map(l => ({
+      const sanitizedLayers = importedLayers.map((l) => ({
         texturePath: l.texturePath || 'warrior/warrior1.webp',
-        zIndex: typeof l.zIndex === 'number' ? l.zIndex : 0,
         offsetX: typeof l.offsetX === 'number' ? l.offsetX : 0,
         offsetY: typeof l.offsetY === 'number' ? l.offsetY : 0,
         scaleX: typeof l.scaleX === 'number' ? l.scaleX : 1,
@@ -771,13 +1101,53 @@ function App() {
         motionSpeed: typeof l.motionSpeed === 'number' ? l.motionSpeed : 1,
         motionAmplitude: typeof l.motionAmplitude === 'number' ? l.motionAmplitude : 0,
         motionDirection: typeof l.motionDirection === 'number' ? l.motionDirection : 0,
+        motionDuration: typeof l.motionDuration === 'number' ? l.motionDuration : 5,
+        motionStartX: typeof l.motionStartX === 'number' ? l.motionStartX : 0,
+        motionStartY: typeof l.motionStartY === 'number' ? l.motionStartY : 0,
+        motionEndX: typeof l.motionEndX === 'number' ? l.motionEndX : 0.25,
+        motionEndY: typeof l.motionEndY === 'number' ? l.motionEndY : 0,
+        parallaxStrengthX: typeof l.parallaxStrengthX === 'number' ? l.parallaxStrengthX : 0.05,
+        parallaxStrengthY: typeof l.parallaxStrengthY === 'number' ? l.parallaxStrengthY : 0.03,
         nightTintFactor: typeof l.nightTintFactor === 'number' ? l.nightTintFactor : 0.5,
         opacity: typeof l.opacity === 'number' ? l.opacity : 1.0,
+        visible: l.visible !== false,
         localUrl: null
       }));
 
-      setLayers(sanitizedLayers.slice(0, 15));
+      setLayers(normalizeLayerOrder(sanitizedLayers.slice(0, 15)));
       setSelectedIndex(0);
+
+      if (parsed.horizon?.offset !== undefined) {
+        const offset = Number(parsed.horizon.offset);
+        if (!Number.isNaN(offset)) {
+          setHorizonPoints([
+            { id: 1, x: 0.0, y: offset },
+            { id: 2, x: 1.0, y: offset }
+          ]);
+        }
+      }
+
+      if (parsed.features) {
+        setFeatureFlags(prev => ({
+          ...prev,
+          atmosphere: parsed.features.atmosphereEnabled ?? prev.atmosphere,
+          lensFlare: parsed.features.lensFlareEnabled ?? prev.lensFlare,
+          stars: parsed.features.starsEnabled ?? prev.stars
+        }));
+        setAtmosphereIntensity(parsed.features.atmosphereEnabled === false ? 0 : 1.0);
+      }
+
+      if (parsed.effects?.clouds) {
+        setFeatureFlags(prev => ({ ...prev, clouds: parsed.effects.clouds.enabled ?? prev.clouds }));
+        setCloudSpeed(parsed.effects.clouds.speed ?? 0.28);
+        setCloudDensity(parsed.effects.clouds.density ?? 0.46);
+        setCloudIntensity(parsed.effects.clouds.intensity ?? 0.3);
+      }
+
+      if (parsed.celestial) {
+        setSunMotionType(parsed.celestial.sunPathType === 'ARC' ? 'ARCH' : 'LINEAR');
+        setMoonMotionType(parsed.celestial.moonPathType === 'ARC' ? 'ARCH' : 'LINEAR');
+      }
 
       // Load sky configurations if present
       if (parsed.skyShader) {
@@ -786,19 +1156,19 @@ function App() {
         if (s.sun) {
           setSunSize(s.sun.size ?? 0.06);
           setSunColor(s.sun.color ?? '#ffd54f');
-          setSunZenith(s.sun.zenith ?? 0.5);
+          setSunZenith(s.sun.zenith ?? 0.82);
           setSunMotionType(s.sun.motionType ?? 'ARCH');
           setSunStaticX(s.sun.staticX ?? 0.5);
-          setSunStaticY(s.sun.staticY ?? 0.7);
+          setSunStaticY(s.sun.staticY ?? 0.16);
           setSunGlow(s.sun.glow ?? 0.4);
         }
         if (s.moon) {
           setMoonSize(s.moon.size ?? 0.05);
           setMoonColor(s.moon.color ?? '#eceff1');
-          setMoonZenith(s.moon.zenith ?? 0.5);
+          setMoonZenith(s.moon.zenith ?? 0.78);
           setMoonMotionType(s.moon.motionType ?? 'ARCH');
           setMoonStaticX(s.moon.staticX ?? 0.3);
-          setMoonStaticY(s.moon.staticY ?? 0.8);
+          setMoonStaticY(s.moon.staticY ?? 0.14);
           setMoonGlow(s.moon.glow ?? 0.25);
         }
         if (s.horizonPoints && Array.isArray(s.horizonPoints)) {
@@ -808,15 +1178,21 @@ function App() {
             y: p.y ?? 0.2
           })));
         }
-        setStarsEnabled(s.starsEnabled ?? true);
+        setFeatureFlags(prev => ({ ...prev, stars: s.starsEnabled ?? true }));
+        if (s.features) setFeatureFlags(prev => ({ ...prev, ...s.features }));
         setStarsDensity(s.starsDensity ?? 0.5);
         setAtmosphereIntensity(s.atmosphereIntensity ?? 1.0);
+        if (s.clouds) {
+          setCloudSpeed(s.clouds.speed ?? 0.28);
+          setCloudDensity(s.clouds.density ?? 0.46);
+          setCloudIntensity(s.clouds.intensity ?? 0.3);
+        }
       }
 
       setShowImportModal(false);
       setImportText('');
-    } catch (e) {
-      alert('Failed to parse JSON. Please check formatting.');
+    } catch (error) {
+      alert(`Failed to parse JSON: ${error.message}`);
     }
   };
 
@@ -871,8 +1247,8 @@ function App() {
             </div>
           </div>
 
-          <div 
-            className="phone-frame"
+          <div
+            className="phone-stage"
             ref={phoneScreenRef}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
@@ -880,27 +1256,41 @@ function App() {
             onTouchStart={handleDragStart}
             style={{ cursor: activeLayer ? 'grab' : 'default' }}
           >
-            <div className="notch"></div>
+            <div className="phone-frame">
+              <div className="notch"></div>
+            </div>
             <div className="phone-screen">
               {/* WebGL background canvas */}
               <canvas 
                 ref={canvasRef} 
                 width="340" 
                 height="620" 
-                style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }} 
+                style={{
+                  width: `${workspaceScale * 100}%`,
+                  height: `${workspaceScale * 100}%`,
+                  display: 'block',
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)'
+                }}
               />
 
               {/* Overlapping layers resized to cover aspect ratio */}
               {sortedLayers.map(({ layer, index }) => {
+                if (layer.visible === false) return null;
                 let tx = layer.offsetX;
                 let ty = layer.offsetY;
                 let rot = 0;
+                const duration = layer.motionDuration ?? 5;
+                const progress = progressFromDuration(timeState, duration);
+                const pingPong = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
 
                 if (isPlaying) {
                   switch (layer.motionType) {
                     case 'PARALLAX':
-                      tx += parallaxX * layer.motionAmplitude;
-                      ty += parallaxY * layer.motionAmplitude;
+                      tx += parallaxX * (layer.parallaxStrengthX ?? layer.motionAmplitude);
+                      ty += parallaxY * (layer.parallaxStrengthY ?? layer.motionAmplitude);
                       break;
                     case 'BOB':
                       ty += Math.sin(timeState * layer.motionSpeed) * layer.motionAmplitude;
@@ -915,14 +1305,24 @@ function App() {
                       ty += Math.sin(rad) * wave;
                       break;
                     }
+                    case 'SCROLL': {
+                      const rad = (layer.motionDirection || 0) * Math.PI / 180;
+                      tx += Math.cos(rad) * layer.motionAmplitude * progress;
+                      ty += Math.sin(rad) * layer.motionAmplitude * progress;
+                      break;
+                    }
+                    case 'POINTS':
+                      tx += (layer.motionStartX ?? 0) + ((layer.motionEndX ?? 0) - (layer.motionStartX ?? 0)) * pingPong;
+                      ty += (layer.motionStartY ?? 0) + ((layer.motionEndY ?? 0) - (layer.motionStartY ?? 0)) * pingPong;
+                      break;
                     case 'SPIN':
                       rot = timeState * layer.motionSpeed * 57.2958;
                       break;
                   }
                 } else {
                   if (layer.motionType === 'PARALLAX') {
-                    tx += parallaxX * layer.motionAmplitude;
-                    ty += parallaxY * layer.motionAmplitude;
+                    tx += parallaxX * (layer.parallaxStrengthX ?? layer.motionAmplitude);
+                    ty += parallaxY * (layer.parallaxStrengthY ?? layer.motionAmplitude);
                   }
                   if (layer.motionType === 'WAVE') {
                     const rad = (layer.motionDirection || 0) * Math.PI / 180;
@@ -939,7 +1339,13 @@ function App() {
                   <div 
                     key={index} 
                     className={`canvas-layer ${index === selectedIndex ? 'selected-indicator' : ''}`}
-                    style={{ zIndex: layer.zIndex + 10 }}
+                    onMouseDown={(e) => handleDragStart(e, index)}
+                    onTouchStart={(e) => handleDragStart(e, index)}
+                    style={{
+                      zIndex: index + 10,
+                      width: `${workspaceScale * 100}%`,
+                      height: `${workspaceScale * 100}%`
+                    }}
                   >
                     <img 
                       src={layer.localUrl || `/${layer.texturePath}`}
@@ -953,12 +1359,26 @@ function App() {
                         e.target.style.opacity = '0.3';
                       }}
                     />
+                    {index === selectedIndex && (
+                      <button
+                        type="button"
+                        className="resize-handle"
+                        title="Resize layer"
+                        onMouseDown={(e) => handleResizeStart(e, index)}
+                        onTouchStart={(e) => handleResizeStart(e, index)}
+                      />
+                    )}
                   </div>
                 );
               })}
+              {showSafeFrame && <div className="production-frame" />}
             </div>
           </div>
 
+        </section>
+
+        {/* Right: Properties sidebar */}
+        <section className="editor-panel">
           {/* Environmental Simulators */}
           <div className="simulation-controls">
             <div className="sim-slider-row">
@@ -975,6 +1395,45 @@ function App() {
                 disabled={isPlaying}
                 onChange={(e) => setDaylightTime(parseFloat(e.target.value))} 
               />
+              <div className="snapshot-strip">
+                {SNAPSHOT_TIMES.map((snapshot) => (
+                  <button
+                    key={snapshot.label}
+                    type="button"
+                    className="snapshot-chip"
+                    onClick={() => {
+                      setIsPlaying(false);
+                      setDaylightTime(snapshot.value);
+                    }}
+                  >
+                    <span>{snapshot.label}</span>
+                    <strong>{formatTime(snapshot.value)}</strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="sim-slider-row">
+              <div className="sim-slider-header">
+                <span>Workspace Outside Frame</span>
+                <span className="sim-slider-val">{workspaceScale.toFixed(2)}x</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="1.8"
+                step="0.05"
+                value={workspaceScale}
+                onChange={(e) => setWorkspaceScale(parseFloat(e.target.value))}
+              />
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={showSafeFrame}
+                  onChange={(e) => setShowSafeFrame(e.target.checked)}
+                />
+                Show dashed production frame
+              </label>
             </div>
 
             <div className="sim-slider-row">
@@ -1013,41 +1472,153 @@ function App() {
               </div>
             </div>
           </div>
-        </section>
 
-        {/* Right: Properties sidebar */}
-        <section className="editor-panel">
+          <div className="editor-card">
+            <div className="card-header">
+              <span className="card-title">Wallpaper Target</span>
+              <span className="status-pill">{exportModeLabel}</span>
+            </div>
+            <div className="inputs-grid">
+              <div className="form-group">
+                <label>Manifest ID</label>
+                <input
+                  type="text"
+                  value={wallpaperId}
+                  onChange={(e) => setWallpaperId(e.target.value.replace(/\s+/g, '_').toLowerCase())}
+                />
+              </div>
+              <div className="form-group">
+                <label>Display Name</label>
+                <input
+                  type="text"
+                  value={wallpaperName}
+                  onChange={(e) => setWallpaperName(e.target.value)}
+                />
+              </div>
+              <div className="form-group form-group-full">
+                <label>Export Format</label>
+                <select value={exportMode} onChange={(e) => setExportMode(e.target.value)}>
+                  <option value="manifest">Lumisky Manifest (app/assets/wallpapers/id/manifest.json)</option>
+                  <option value="draft">Creator Draft (re-importable workspace)</option>
+                </select>
+              </div>
+              <div className="form-group form-group-full">
+                <label>Ready Wallpaper</label>
+                <select onChange={(e) => e.target.value && loadReadyPreset(e.target.value)} defaultValue="">
+                  <option value="">Select preset</option>
+                  {READY_WALLPAPER_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>{preset.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="editor-card">
+            <div className="card-header">
+              <span className="card-title">Wallpaper Features</span>
+            </div>
+            <div className="feature-grid">
+              {[
+                ['parallax', 'Parallax'],
+                ['sun', 'Sun'],
+                ['moon', 'Moon'],
+                ['atmosphere', 'Atmosphere'],
+                ['stars', 'Stars'],
+                ['clouds', 'Clouds'],
+                ['lensFlare', 'Lens Flare'],
+                ['lowPowerThrottle', 'Power Throttle']
+              ].map(([key, label]) => (
+                <label key={key} className="feature-toggle">
+                  <input
+                    type="checkbox"
+                    checked={featureFlags[key]}
+                    onChange={(e) => updateFeatureFlag(key, e.target.checked)}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="inputs-grid feature-settings">
+              {featureFlags.atmosphere && (
+                <div className="form-group form-group-full">
+                  <label>Atmosphere Intensity: {atmosphereIntensity.toFixed(2)}</label>
+                  <input type="range" min="0" max="1.5" step="0.05" value={atmosphereIntensity} onChange={(e) => setAtmosphereIntensity(parseFloat(e.target.value))} />
+                </div>
+              )}
+              {featureFlags.stars && (
+                <div className="form-group form-group-full">
+                  <label>Stars Density: {starsDensity.toFixed(2)}</label>
+                  <input type="range" min="0.1" max="1.0" step="0.05" value={starsDensity} onChange={(e) => setStarsDensity(parseFloat(e.target.value))} />
+                </div>
+              )}
+              {featureFlags.clouds && (
+                <>
+                  <div className="form-group">
+                    <label>Cloud Speed: {cloudSpeed.toFixed(2)}</label>
+                    <input type="range" min="0" max="2" step="0.02" value={cloudSpeed} onChange={(e) => setCloudSpeed(parseFloat(e.target.value))} />
+                  </div>
+                  <div className="form-group">
+                    <label>Cloud Density: {cloudDensity.toFixed(2)}</label>
+                    <input type="range" min="0" max="1" step="0.02" value={cloudDensity} onChange={(e) => setCloudDensity(parseFloat(e.target.value))} />
+                  </div>
+                  <div className="form-group form-group-full">
+                    <label>Cloud Intensity: {cloudIntensity.toFixed(2)}</label>
+                    <input type="range" min="0" max="1" step="0.02" value={cloudIntensity} onChange={(e) => setCloudIntensity(parseFloat(e.target.value))} />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
           {/* Card: Layer Manager */}
           <div className="editor-card">
             <div className="card-header">
-              <span className="card-title">Layers Layout ({layers.length}/15)</span>
+              <span className="card-title">Scene Layers ({sceneStackItems.length})</span>
               <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', borderRadius: '0.5rem', fontSize: '0.8rem' }} onClick={triggerAddLayerFile}>+ Add Layer</button>
             </div>
             
             <div className="layers-list">
-              {layers.map((layer, index) => (
+              {sceneStackItems.map((item, sceneIndex) => (
                 <div 
-                  key={index}
-                  className={`layer-item ${index === selectedIndex ? 'active' : ''}`}
-                  onClick={() => setSelectedIndex(index)}
+                  key={item.key}
+                  className={`layer-item ${item.type === 'texture' && item.textureIndex === selectedIndex ? 'active' : ''} ${item.type === 'system' ? 'system-layer' : ''} ${item.visible ? '' : 'hidden-layer'}`}
+                  onClick={() => item.type === 'texture' && setSelectedIndex(item.textureIndex)}
                 >
+                  <label className="visibility-toggle" title={item.visible ? 'Hide layer' : 'Show layer'} onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={item.visible}
+                      onChange={(e) => {
+                        if (item.type === 'texture') {
+                          updateLayerAtIndex(item.textureIndex, { visible: e.target.checked });
+                        } else {
+                          updateFeatureFlag(item.featureKey, e.target.checked);
+                        }
+                      }}
+                    />
+                  </label>
                   <div className="layer-info" style={{ flex: 1 }}>
-                    <span className="layer-name">{layer.texturePath.split('/').pop() || `layer_${index}`}</span>
-                    <span className="layer-sub">Z-Index: {layer.zIndex} | {layer.motionType}</span>
+                    <span className="layer-name">{item.label}</span>
+                    <span className="layer-sub">Index: {sceneIndex} | {item.visible ? item.detail : 'Hidden'}</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
-                    <button className="layer-actions-btn" style={{ color: '#3886e7' }} onClick={(e) => moveLayerUp(index, e)} disabled={index === 0} title="Move Up">
-                      ▲
-                    </button>
-                    <button className="layer-actions-btn" style={{ color: '#3886e7' }} onClick={(e) => moveLayerDown(index, e)} disabled={index === layers.length - 1} title="Move Down">
-                      ▼
-                    </button>
-                    {layers.length > 1 && (
-                      <button className="layer-actions-btn" onClick={(e) => { e.stopPropagation(); deleteLayer(index); }} title="Delete Layer">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                  {item.type === 'texture' ? (
+                    <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                      <button className="layer-actions-btn" style={{ color: '#3886e7' }} onClick={(e) => moveLayerUp(item.textureIndex, e)} disabled={item.textureIndex === 0} title="Move Up">
+                        ▲
                       </button>
-                    )}
-                  </div>
+                      <button className="layer-actions-btn" style={{ color: '#3886e7' }} onClick={(e) => moveLayerDown(item.textureIndex, e)} disabled={item.textureIndex === layers.length - 1} title="Move Down">
+                        ▼
+                      </button>
+                      {layers.length > 1 && (
+                        <button className="layer-actions-btn" onClick={(e) => { e.stopPropagation(); deleteLayer(item.textureIndex); }} title="Delete Layer">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="system-layer-badge">auto</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -1089,7 +1660,7 @@ function App() {
                       <input type="file" accept="image/*" onChange={handleFileUpload} />
                     </button>
                     {activeLayer.localUrl && (
-                      <button className="btn btn-secondary" style={{ color: '#d6444b' }} onClick={() => updateActiveLayer('localUrl', null)}>Clear</button>
+                      <button className="btn btn-secondary" style={{ color: '#d6444b' }} onClick={clearActiveLayerPreview}>Clear</button>
                     )}
                   </div>
                 </div>
@@ -1142,16 +1713,7 @@ function App() {
                   />
                 </div>
 
-                {/* Z Index & Opacity */}
-                <div className="form-group">
-                  <label>Z-Index: {activeLayer.zIndex}</label>
-                  <input 
-                    type="number" 
-                    value={activeLayer.zIndex} 
-                    onChange={(e) => updateActiveLayer('zIndex', parseInt(e.target.value) || 0)} 
-                    style={{ padding: '0.45rem', fontSize: '0.85rem' }}
-                  />
-                </div>
+                {/* Opacity */}
                 <div className="form-group">
                   <label>Opacity (Opaklık): {(activeLayer.opacity ?? 1.0).toFixed(2)}</label>
                   <input 
@@ -1189,6 +1751,8 @@ function App() {
                     <option value="BOB">BOB (Vertical float)</option>
                     <option value="FLOAT">FLOAT (Horizontal float)</option>
                     <option value="WAVE">WAVE (Directional Float Angle)</option>
+                    <option value="SCROLL">SCROLL (Timed texture slide)</option>
+                    <option value="POINTS">POINTS (Between two positions)</option>
                     <option value="SPIN">SPIN (Clockwise rotation)</option>
                   </select>
                 </div>
@@ -1196,7 +1760,7 @@ function App() {
                 {activeLayer.motionType !== 'STATIC' && (
                   <>
                     <div className="form-group">
-                      <label>Motion Speed: {activeLayer.motionSpeed.toFixed(1)}</label>
+                      <label>Motion Speed: {(activeLayer.motionSpeed ?? 1).toFixed(1)}</label>
                       <input 
                         type="range" 
                         min="0.1" 
@@ -1207,7 +1771,7 @@ function App() {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Motion Amplitude: {activeLayer.motionAmplitude.toFixed(3)}</label>
+                      <label>Motion Amount: {(activeLayer.motionAmplitude ?? 0).toFixed(3)}</label>
                       <input 
                         type="range" 
                         min="0" 
@@ -1217,10 +1781,21 @@ function App() {
                         onChange={(e) => updateActiveLayer('motionAmplitude', parseFloat(e.target.value))} 
                       />
                     </div>
+                    <div className="form-group form-group-full">
+                      <label>Loop Duration: {(activeLayer.motionDuration ?? 5).toFixed(1)}s</label>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="30"
+                        step="0.5"
+                        value={activeLayer.motionDuration ?? 5}
+                        onChange={(e) => updateActiveLayer('motionDuration', parseFloat(e.target.value))}
+                      />
+                    </div>
                   </>
                 )}
 
-                {activeLayer.motionType === 'WAVE' && (
+                {['WAVE', 'SCROLL'].includes(activeLayer.motionType) && (
                   <div className="form-group form-group-full">
                     <label>Motion Direction Angle: {activeLayer.motionDirection || 0}°</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1248,6 +1823,41 @@ function App() {
                       </div>
                     </div>
                   </div>
+                )}
+
+                {activeLayer.motionType === 'POINTS' && (
+                  <>
+                    <div className="form-group form-group-full subpanel-title">Two Point Motion</div>
+                    <div className="form-group">
+                      <label>Start X: {(activeLayer.motionStartX ?? 0).toFixed(2)}</label>
+                      <input type="range" min="-1" max="1" step="0.01" value={activeLayer.motionStartX ?? 0} onChange={(e) => updateActiveLayer('motionStartX', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Start Y: {(activeLayer.motionStartY ?? 0).toFixed(2)}</label>
+                      <input type="range" min="-1" max="1" step="0.01" value={activeLayer.motionStartY ?? 0} onChange={(e) => updateActiveLayer('motionStartY', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>End X: {(activeLayer.motionEndX ?? 0).toFixed(2)}</label>
+                      <input type="range" min="-1" max="1" step="0.01" value={activeLayer.motionEndX ?? 0} onChange={(e) => updateActiveLayer('motionEndX', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>End Y: {(activeLayer.motionEndY ?? 0).toFixed(2)}</label>
+                      <input type="range" min="-1" max="1" step="0.01" value={activeLayer.motionEndY ?? 0} onChange={(e) => updateActiveLayer('motionEndY', parseFloat(e.target.value))} />
+                    </div>
+                  </>
+                )}
+
+                {activeLayer.motionType === 'PARALLAX' && (
+                  <>
+                    <div className="form-group">
+                      <label>Parallax X: {(activeLayer.parallaxStrengthX ?? 0.05).toFixed(3)}</label>
+                      <input type="range" min="0" max="0.4" step="0.005" value={activeLayer.parallaxStrengthX ?? 0.05} onChange={(e) => updateActiveLayer('parallaxStrengthX', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Parallax Y: {(activeLayer.parallaxStrengthY ?? 0.03).toFixed(3)}</label>
+                      <input type="range" min="0" max="0.4" step="0.005" value={activeLayer.parallaxStrengthY ?? 0.03} onChange={(e) => updateActiveLayer('parallaxStrengthY', parseFloat(e.target.value))} />
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -1287,23 +1897,18 @@ function App() {
                 <label>Sun Glow Intensity: {sunGlow.toFixed(2)}</label>
                 <input type="range" min="0.0" max="1.5" step="0.05" value={sunGlow} onChange={(e) => setSunGlow(parseFloat(e.target.value))} />
               </div>
-              {sunMotionType === 'STATIC' ? (
-                <>
-                  <div className="form-group">
-                    <label>Sun Static X: {sunStaticX.toFixed(2)}</label>
-                    <input type="range" min="0" max="1" step="0.01" value={sunStaticX} onChange={(e) => setSunStaticX(parseFloat(e.target.value))} />
-                  </div>
-                  <div className="form-group">
-                    <label>Sun Static Y: {sunStaticY.toFixed(2)}</label>
-                    <input type="range" min="0" max="1" step="0.01" value={sunStaticY} onChange={(e) => setSunStaticY(parseFloat(e.target.value))} />
-                  </div>
-                </>
-              ) : (
-                <div className="form-group form-group-full">
-                  <label>Sun Max Altitude (Zenith Y): {sunZenith.toFixed(2)}</label>
-                  <input type="range" min="0.1" max="0.9" step="0.02" value={sunZenith} onChange={(e) => setSunZenith(parseFloat(e.target.value))} />
-                </div>
-              )}
+              <div className="form-group">
+                <label>Sun X / Line Anchor: {sunStaticX.toFixed(2)}</label>
+                <input type="range" min="0" max="1" step="0.01" value={sunStaticX} onChange={(e) => setSunStaticX(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group">
+                <label>Sun Y / Static Height: {sunStaticY.toFixed(2)}</label>
+                <input type="range" min="0" max="1" step="0.01" value={sunStaticY} onChange={(e) => setSunStaticY(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group form-group-full">
+                <label>Sun Max Altitude (Zenith Y): {sunZenith.toFixed(2)}</label>
+                <input type="range" min="0.1" max="0.9" step="0.02" value={sunZenith} onChange={(e) => setSunZenith(parseFloat(e.target.value))} />
+              </div>
 
               {/* Moon Config */}
               <div className="form-group form-group-full" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>
@@ -1332,23 +1937,18 @@ function App() {
                 <label>Moon Glow Intensity: {moonGlow.toFixed(2)}</label>
                 <input type="range" min="0.0" max="1.5" step="0.05" value={moonGlow} onChange={(e) => setMoonGlow(parseFloat(e.target.value))} />
               </div>
-              {moonMotionType === 'STATIC' ? (
-                <>
-                  <div className="form-group">
-                    <label>Moon Static X: {moonStaticX.toFixed(2)}</label>
-                    <input type="range" min="0" max="1" step="0.01" value={moonStaticX} onChange={(e) => setMoonStaticX(parseFloat(e.target.value))} />
-                  </div>
-                  <div className="form-group">
-                    <label>Moon Static Y: {moonStaticY.toFixed(2)}</label>
-                    <input type="range" min="0" max="1" step="0.01" value={moonStaticY} onChange={(e) => setMoonStaticY(parseFloat(e.target.value))} />
-                  </div>
-                </>
-              ) : (
-                <div className="form-group form-group-full">
-                  <label>Moon Max Altitude (Zenith Y): {moonZenith.toFixed(2)}</label>
-                  <input type="range" min="0.1" max="0.9" step="0.02" value={moonZenith} onChange={(e) => setMoonZenith(parseFloat(e.target.value))} />
-                </div>
-              )}
+              <div className="form-group">
+                <label>Moon X / Line Anchor: {moonStaticX.toFixed(2)}</label>
+                <input type="range" min="0" max="1" step="0.01" value={moonStaticX} onChange={(e) => setMoonStaticX(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group">
+                <label>Moon Y / Static Height: {moonStaticY.toFixed(2)}</label>
+                <input type="range" min="0" max="1" step="0.01" value={moonStaticY} onChange={(e) => setMoonStaticY(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group form-group-full">
+                <label>Moon Max Altitude (Zenith Y): {moonZenith.toFixed(2)}</label>
+                <input type="range" min="0.1" max="0.9" step="0.02" value={moonZenith} onChange={(e) => setMoonZenith(parseFloat(e.target.value))} />
+              </div>
 
               {/* Skyline Horizon Points Config */}
               <div className="form-group form-group-full" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>
@@ -1407,26 +2007,6 @@ function App() {
                 ))}
               </div>
 
-              {/* Atmosphere & Stars Config */}
-              <div className="form-group form-group-full" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.5rem', paddingTop: '0.5rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#6366f1' }}>Atmosphere & Stars</span>
-              </div>
-              <div className="form-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={starsEnabled} onChange={(e) => setStarsEnabled(e.target.checked)} />
-                  Enable Stars
-                </label>
-              </div>
-              <div className="form-group">
-                <label>Atmosphere Intensity: {atmosphereIntensity.toFixed(2)}</label>
-                <input type="range" min="0" max="1.5" step="0.05" value={atmosphereIntensity} onChange={(e) => setAtmosphereIntensity(parseFloat(e.target.value))} />
-              </div>
-              {starsEnabled && (
-                <div className="form-group form-group-full">
-                  <label>Stars Density Factor: {starsDensity.toFixed(2)}</label>
-                  <input type="range" min="0.1" max="1.0" step="0.05" value={starsDensity} onChange={(e) => setStarsDensity(parseFloat(e.target.value))} />
-                </div>
-              )}
             </div>
 
             {/* GLSL Code editor section */}
@@ -1468,11 +2048,31 @@ function App() {
         <div className="modal-overlay" onClick={() => setShowExportModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <span className="modal-title">Export Wallpaper Configuration JSON</span>
+              <span className="modal-title">Export {exportModeLabel} JSON</span>
               <button className="modal-close" onClick={() => setShowExportModal(false)}>&times;</button>
             </div>
             <div className="modal-body">
-              <p style={{ fontSize: '0.85rem', color: '#8f96a9' }}>Copy the JSON content below and configure it in your Lumisky wallpaper manifest asset file.</p>
+              <div className="export-mode-toggle">
+                <button
+                  type="button"
+                  className={`mode-btn ${exportMode === 'manifest' ? 'active' : ''}`}
+                  onClick={() => setExportMode('manifest')}
+                >
+                  Lumisky Manifest
+                </button>
+                <button
+                  type="button"
+                  className={`mode-btn ${exportMode === 'draft' ? 'active' : ''}`}
+                  onClick={() => setExportMode('draft')}
+                >
+                  Creator Draft
+                </button>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#8f96a9' }}>
+                {exportMode === 'manifest'
+                  ? 'Copy this JSON into the selected wallpaper manifest asset file.'
+                  : 'Copy this draft when you want to reopen the same creator workspace later.'}
+              </p>
               <textarea 
                 className="json-textarea" 
                 readOnly 
