@@ -316,6 +316,8 @@ const sortedLayerPaths = (layers) =>
   layers.map((layer) => layer.texturePath);
 
 const WORKSPACE_STORAGE_KEY = 'lumisky.creator.workspace.v1';
+const LOCAL_IMAGE_DB_NAME = 'lumisky.creator.localImages.v1';
+const LOCAL_IMAGE_STORE = 'images';
 
 const loadSavedWorkspace = () => {
   if (typeof window === 'undefined') return null;
@@ -336,7 +338,54 @@ const saveWorkspace = (snapshot) => {
   }
 };
 
-const stripRuntimeLayerFields = (layer) => ({ ...layer, localUrl: null });
+const openLocalImageDb = () => new Promise((resolve, reject) => {
+  if (typeof indexedDB === 'undefined') {
+    reject(new Error('IndexedDB unavailable'));
+    return;
+  }
+  const request = indexedDB.open(LOCAL_IMAGE_DB_NAME, 1);
+  request.onupgradeneeded = () => request.result.createObjectStore(LOCAL_IMAGE_STORE);
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error);
+});
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(reader.error);
+  reader.readAsDataURL(file);
+});
+
+const saveLocalImageData = async (key, dataUrl) => {
+  const db = await openLocalImageDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(LOCAL_IMAGE_STORE, 'readwrite');
+    tx.objectStore(LOCAL_IMAGE_STORE).put(dataUrl, key);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+};
+
+const loadLocalImageData = async (key) => {
+  const db = await openLocalImageDb();
+  const result = await new Promise((resolve, reject) => {
+    const request = db.transaction(LOCAL_IMAGE_STORE, 'readonly').objectStore(LOCAL_IMAGE_STORE).get(key);
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return result;
+};
+
+const createLocalImageKey = (file) => `local-image-${Date.now()}-${file.name}-${file.size}`;
+
+const stripRuntimeLayerFields = (layer) => {
+  const persistedLayer = { ...layer };
+  delete persistedLayer.localUrl;
+  delete persistedLayer.localDataUrl;
+  return { ...persistedLayer, localUrl: null };
+};
 
 const progressFromDuration = (time, duration) => {
   const safeDuration = Math.max(0.1, duration || 5);
@@ -390,6 +439,7 @@ function App() {
   const [sunMotionType, setSunMotionType] = useState(() => savedValue('sunMotionType', 'ARCH')); // ARCH, LINEAR, STATIC
   const [sunStaticX, setSunStaticX] = useState(() => savedValue('sunStaticX', 0.5));
   const [sunStaticY, setSunStaticY] = useState(() => savedValue('sunStaticY', 0.16));
+  const [sunMinAltitude, setSunMinAltitude] = useState(() => savedValue('sunMinAltitude', 0));
   const [sunGlow, setSunGlow] = useState(() => savedValue('sunGlow', 0.4));
 
   // Moon configurations
@@ -399,6 +449,7 @@ function App() {
   const [moonMotionType, setMoonMotionType] = useState(() => savedValue('moonMotionType', 'ARCH')); // ARCH, LINEAR, STATIC
   const [moonStaticX, setMoonStaticX] = useState(() => savedValue('moonStaticX', 0.3));
   const [moonStaticY, setMoonStaticY] = useState(() => savedValue('moonStaticY', 0.14));
+  const [moonMinAltitude, setMoonMinAltitude] = useState(() => savedValue('moonMinAltitude', 0));
   const [moonGlow, setMoonGlow] = useState(() => savedValue('moonGlow', 0.25));
 
   // Extended sky parameters
@@ -441,7 +492,7 @@ function App() {
   const effectiveSunSize = featureFlags.sun ? sunSize : 0;
   const effectiveMoonSize = featureFlags.moon ? moonSize : 0;
   const effectiveSunGlow = featureFlags.sun && featureFlags.lensFlare ? sunGlow : 0;
-  const effectiveMoonGlow = featureFlags.moon && featureFlags.lensFlare ? moonGlow : 0;
+  const effectiveMoonGlow = featureFlags.lensFlare ? moonGlow : 0;
   const effectiveCloudIntensity = featureFlags.clouds ? cloudIntensity : 0;
 
   // Render order follows the layer list order.
@@ -546,6 +597,8 @@ function App() {
     if (typeof celestial.moonOrbit?.startX === 'number') setMoonStaticX(celestial.moonOrbit.startX);
     if (typeof celestial.sunOrbit?.peakY === 'number') setSunZenith(celestial.sunOrbit.peakY);
     if (typeof celestial.moonOrbit?.peakY === 'number') setMoonZenith(celestial.moonOrbit.peakY);
+    if (typeof celestial.sunOrbit?.minY === 'number') setSunMinAltitude(celestial.sunOrbit.minY);
+    if (typeof celestial.moonOrbit?.minY === 'number') setMoonMinAltitude(celestial.moonOrbit.minY);
   };
 
   const updateFeatureFlag = (key, value) => {
@@ -592,6 +645,31 @@ function App() {
   }, [layers]);
 
   useEffect(() => {
+    const missingImages = layers
+      .map((layer, index) => ({ index, key: layer.localImageKey, hasPreview: layer.localUrl || layer.localDataUrl }))
+      .filter((item) => item.key && !item.hasPreview);
+    if (!missingImages.length) return undefined;
+
+    let cancelled = false;
+    Promise.all(missingImages.map(async (item) => ({
+      index: item.index,
+      dataUrl: await loadLocalImageData(item.key).catch(() => null)
+    }))).then((loadedImages) => {
+      if (cancelled) return;
+      const availableImages = loadedImages.filter((item) => item.dataUrl);
+      if (!availableImages.length) return;
+      setLayers(prev => prev.map((layer, index) => {
+        const match = availableImages.find((item) => item.index === index);
+        return match ? { ...layer, localDataUrl: match.dataUrl } : layer;
+      }));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [layers]);
+
+  useEffect(() => {
     return () => {
       localUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     };
@@ -617,6 +695,7 @@ function App() {
       sunMotionType,
       sunStaticX,
       sunStaticY,
+      sunMinAltitude,
       sunGlow,
       moonSize,
       moonColor,
@@ -624,6 +703,7 @@ function App() {
       moonMotionType,
       moonStaticX,
       moonStaticY,
+      moonMinAltitude,
       moonGlow,
       starsDensity,
       atmosphereIntensity,
@@ -634,45 +714,57 @@ function App() {
       exportMode,
       importText
     });
-  }, [wallpaperId, wallpaperName, layers, selectedIndex, selectedSystemLayer, isPlaying, daylightTime, workspaceScale, showSafeFrame, featureFlags, glslCode, shaderAssetPath, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonGlow, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity, horizonPoints, exportMode, importText]);
+  }, [wallpaperId, wallpaperName, layers, selectedIndex, selectedSystemLayer, isPlaying, daylightTime, workspaceScale, showSafeFrame, featureFlags, glslCode, shaderAssetPath, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunMinAltitude, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonMinAltitude, moonGlow, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity, horizonPoints, exportMode, importText]);
 
   const clearActiveLayerPreview = () => {
     if (activeLayer?.localUrl) {
       URL.revokeObjectURL(activeLayer.localUrl);
     }
-    updateActiveLayer('localUrl', null);
+    updateLayerAtIndex(selectedIndex, { localUrl: null, localDataUrl: null, localImageKey: null });
   };
 
-  const createLayerFromFile = (file) => ({
-    texturePath: `wallpapers/custom/${file.name}`,
-    offsetX: 0,
-    offsetY: 0,
-    scaleX: 1.0,
-    scaleY: 1.0,
-    motionType: 'STATIC',
-    motionSpeed: 1,
-    motionAmplitude: 0,
-    motionDirection: 0,
-    motionDuration: 5,
-    motionStartX: 0,
-    motionStartY: 0,
-    motionEndX: 0.25,
-    motionEndY: 0,
-    parallaxStrengthX: 0.05,
-    parallaxStrengthY: 0.03,
-    celestialFollowX: 1,
-    celestialFollowY: 1,
-    celestialOffsetX: 0,
-    celestialOffsetY: 0,
-    nightTintFactor: 0.5,
-    opacity: 1.0,
-    fitMode: 'contain',
-    photoRole: 'NONE',
-    visible: true,
-    localUrl: URL.createObjectURL(file)
-  });
+  const createLayerFromFile = async (file) => {
+    const localImageKey = createLocalImageKey(file);
+    const localUrl = URL.createObjectURL(file);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      await saveLocalImageData(localImageKey, dataUrl);
+    } catch {
+      // The live object URL still works for this session if persistent storage is unavailable.
+    }
 
-  const addLayerFiles = (fileList) => {
+    return {
+      texturePath: `wallpapers/custom/${file.name}`,
+      offsetX: 0,
+      offsetY: 0,
+      scaleX: 1.0,
+      scaleY: 1.0,
+      motionType: 'STATIC',
+      motionSpeed: 1,
+      motionAmplitude: 0,
+      motionDirection: 0,
+      motionDuration: 5,
+      motionStartX: 0,
+      motionStartY: 0,
+      motionEndX: 0.25,
+      motionEndY: 0,
+      parallaxStrengthX: 0.05,
+      parallaxStrengthY: 0.03,
+      celestialFollowX: 1,
+      celestialFollowY: 1,
+      celestialOffsetX: 0,
+      celestialOffsetY: 0,
+      nightTintFactor: 0.5,
+      opacity: 1.0,
+      fitMode: 'contain',
+      photoRole: 'NONE',
+      visible: true,
+      localImageKey,
+      localUrl
+    };
+  };
+
+  const addLayerFiles = async (fileList) => {
     const imageFiles = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
     if (!imageFiles.length) return;
     const availableSlots = Math.max(0, 15 - layers.length);
@@ -681,25 +773,37 @@ function App() {
       return;
     }
     const filesToAdd = imageFiles.slice(0, availableSlots);
-    const newLayers = filesToAdd.map(createLayerFromFile);
+    const newLayers = await Promise.all(filesToAdd.map(createLayerFromFile));
     setLayers(prev => normalizeLayerOrder([...prev, ...newLayers]));
     setSelectedIndex(layers.length);
+    setSelectedSystemLayer(null);
     if (imageFiles.length > availableSlots) {
       alert(`Only ${availableSlots} layer(s) added. Maximum limit is 15.`);
     }
   };
 
   // File replacement inside properties editor
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (file && activeLayer) {
       if (activeLayer.localUrl) {
         URL.revokeObjectURL(activeLayer.localUrl);
       }
       const url = URL.createObjectURL(file);
-      updateActiveLayer('localUrl', url);
-      updateActiveLayer('texturePath', `wallpapers/custom/${file.name}`);
-      updateActiveLayer('fitMode', 'contain');
+      const localImageKey = createLocalImageKey(file);
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        await saveLocalImageData(localImageKey, dataUrl);
+      } catch {
+        // Keep the session preview even if persistent storage fails.
+      }
+      updateLayerAtIndex(selectedIndex, {
+        localUrl: url,
+        localDataUrl: null,
+        localImageKey,
+        texturePath: `wallpapers/custom/${file.name}`,
+        fitMode: 'contain'
+      });
     }
     e.target.value = null;
   };
@@ -747,7 +851,7 @@ function App() {
     if (sunMotionType === 'STATIC') {
       return [sunStaticX, sunStaticY];
     }
-    const sunHorizonY = getHiddenBehindHorizonY(horizonPoints, sunSize);
+    const sunHorizonY = Math.max(getHiddenBehindHorizonY(horizonPoints, sunSize), sunMinAltitude);
     if (daylightTime < 6 || daylightTime >= 18) {
       return [sunStaticX, sunHorizonY];
     }
@@ -760,14 +864,14 @@ function App() {
     // ARCH
     const sX = sunStaticX + (progress - 0.5) * 0.76;
     return [sX, arcY];
-  }, [daylightTime, sunMotionType, sunStaticX, sunStaticY, sunZenith, horizonPoints, sunSize]);
+  }, [daylightTime, sunMotionType, sunStaticX, sunStaticY, sunZenith, sunMinAltitude, horizonPoints, sunSize]);
 
   // Interpolate Moon Position Y vertically on LINEAR
   const moonPosition = useMemo(() => {
     if (moonMotionType === 'STATIC') {
       return [moonStaticX, moonStaticY];
     }
-    const moonHorizonY = getHiddenBehindHorizonY(horizonPoints, moonSize);
+    const moonHorizonY = Math.max(getHiddenBehindHorizonY(horizonPoints, moonSize), moonMinAltitude);
     if (daylightTime >= 6 && daylightTime < 18) {
       return [moonStaticX, moonHorizonY];
     }
@@ -781,7 +885,7 @@ function App() {
     // ARCH
     const mX = moonStaticX + (progress - 0.5) * 0.76;
     return [mX, arcY];
-  }, [daylightTime, moonMotionType, moonStaticX, moonStaticY, moonZenith, horizonPoints, moonSize]);
+  }, [daylightTime, moonMotionType, moonStaticX, moonStaticY, moonZenith, moonMinAltitude, horizonPoints, moonSize]);
 
   // Parallax Device Orientation Handlers
   useEffect(() => {
@@ -1172,8 +1276,9 @@ function App() {
   };
 
   const handleAddLayerFile = (e) => {
-    addLayerFiles(e.target.files);
+    const selectedFiles = Array.from(e.target.files || []);
     e.target.value = null;
+    addLayerFiles(selectedFiles);
   };
 
   const handleLayerDragEnter = (e) => {
@@ -1312,6 +1417,7 @@ function App() {
           motionType: sunMotionType,
           staticX: sunStaticX,
           staticY: sunStaticY,
+          minimumAltitude: sunMinAltitude,
           glow: sunGlow
         },
         moon: {
@@ -1321,6 +1427,7 @@ function App() {
           motionType: moonMotionType,
           staticX: moonStaticX,
           staticY: moonStaticY,
+          minimumAltitude: moonMinAltitude,
           glow: moonGlow
         },
         horizonPoints: outputHorizon,
@@ -1335,7 +1442,7 @@ function App() {
         }
       }
     }, null, 2);
-  }, [wallpaperId, wallpaperName, layers, glslCode, shaderAssetPath, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonGlow, sortedHorizonPoints, featureFlags, starsEnabled, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity]);
+  }, [wallpaperId, wallpaperName, layers, glslCode, shaderAssetPath, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunMinAltitude, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonMinAltitude, moonGlow, sortedHorizonPoints, featureFlags, starsEnabled, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity]);
 
   const generatedManifestJson = useMemo(() => {
     const layerPaths = sortedLayerPaths(layers);
@@ -1379,6 +1486,7 @@ function App() {
           startX: parseFloat(sunStaticX.toFixed(4)),
           endX: 0.5,
           peakY: parseFloat(sunZenith.toFixed(4)),
+          minY: parseFloat(sunMinAltitude.toFixed(4)),
           curve: 'LINEAR'
         },
         moonOrbit: {
@@ -1386,6 +1494,7 @@ function App() {
           startX: parseFloat(moonStaticX.toFixed(4)),
           endX: 0.5,
           peakY: parseFloat(moonZenith.toFixed(4)),
+          minY: parseFloat(moonMinAltitude.toFixed(4)),
           curve: 'LINEAR'
         }
       },
@@ -1413,7 +1522,7 @@ function App() {
         useThermalThrottle: featureFlags.lowPowerThrottle
       }
     }, null, 2);
-  }, [wallpaperId, wallpaperName, layers, horizonPoints, atmosphereIntensity, starsDensity, sunMotionType, moonMotionType, sunStaticX, moonStaticX, sunZenith, moonZenith, shaderAssetPath, featureFlags, cloudSpeed, cloudDensity, cloudIntensity]);
+  }, [wallpaperId, wallpaperName, layers, horizonPoints, atmosphereIntensity, starsDensity, sunMotionType, moonMotionType, sunStaticX, moonStaticX, sunZenith, moonZenith, sunMinAltitude, moonMinAltitude, shaderAssetPath, featureFlags, cloudSpeed, cloudDensity, cloudIntensity]);
 
   const generatedJson = exportMode === 'manifest' ? generatedManifestJson : generatedLayoutJson;
   const exportModeLabel = exportMode === 'manifest' ? 'Lumisky Manifest' : 'Creator Draft';
@@ -1494,6 +1603,8 @@ function App() {
       if (parsed.celestial) {
         setSunMotionType(parsed.celestial.sunPathType === 'ARC' ? 'ARCH' : 'LINEAR');
         setMoonMotionType(parsed.celestial.moonPathType === 'ARC' ? 'ARCH' : 'LINEAR');
+        if (typeof parsed.celestial.sunOrbit?.minY === 'number') setSunMinAltitude(parsed.celestial.sunOrbit.minY);
+        if (typeof parsed.celestial.moonOrbit?.minY === 'number') setMoonMinAltitude(parsed.celestial.moonOrbit.minY);
       }
 
       const importedShaderPath = parsed.skyShader?.fragmentAssetPath ?? parsed.shader?.fragmentAssetPath;
@@ -1514,6 +1625,7 @@ function App() {
           setSunMotionType(s.sun.motionType ?? 'ARCH');
           setSunStaticX(s.sun.staticX ?? 0.5);
           setSunStaticY(s.sun.staticY ?? 0.16);
+          setSunMinAltitude(s.sun.minimumAltitude ?? 0);
           setSunGlow(s.sun.glow ?? 0.4);
         }
         if (s.moon) {
@@ -1523,6 +1635,7 @@ function App() {
           setMoonMotionType(s.moon.motionType ?? 'ARCH');
           setMoonStaticX(s.moon.staticX ?? 0.3);
           setMoonStaticY(s.moon.staticY ?? 0.14);
+          setMoonMinAltitude(s.moon.minimumAltitude ?? 0);
           setMoonGlow(s.moon.glow ?? 0.25);
         }
         if (s.horizonPoints && Array.isArray(s.horizonPoints)) {
@@ -1716,7 +1829,7 @@ function App() {
                     }}
                   >
                     <img 
-                      src={layer.localUrl || `/${layer.texturePath}`}
+                      src={layer.localUrl || layer.localDataUrl || `/${layer.texturePath}`}
                       alt={`Layer ${index}`}
                       style={{
                         transform: `translate(${tx * 100}%, ${-ty * 100}%) scale(${layer.scaleX}, ${layer.scaleY}) rotate(${rot}deg)`,
@@ -2123,12 +2236,12 @@ function App() {
 
                 {/* Opacity */}
                 <div className="form-group">
-                  <label>Opacity (Opaklık): {(activeLayer.opacity ?? 1.0).toFixed(2)}</label>
+                  <label>Opacity (Opaklık): {Math.round((activeLayer.opacity ?? 1.0) * 100)}%</label>
                   <input 
                     type="range" 
                     min="0" 
-                    max="1" 
-                    step="0.05" 
+                    max="2" 
+                    step="0.01" 
                     value={activeLayer.opacity ?? 1.0} 
                     onChange={(e) => updateActiveLayer('opacity', parseFloat(e.target.value))} 
                   />
@@ -2339,6 +2452,10 @@ function App() {
                 <label>Sun Y / Static Height: {sunStaticY.toFixed(2)}</label>
                 <input type="range" min="0" max="1" step="0.01" value={sunStaticY} onChange={(e) => setSunStaticY(parseFloat(e.target.value))} />
               </div>
+              <div className="form-group">
+                <label>Sun Minimum Altitude: {sunMinAltitude.toFixed(2)}</label>
+                <input type="range" min="-0.6" max="0.6" step="0.01" value={sunMinAltitude} onChange={(e) => setSunMinAltitude(parseFloat(e.target.value))} />
+              </div>
               <div className="form-group form-group-full">
                 <label>Sun Max Altitude (Zenith Y): {sunZenith.toFixed(2)}</label>
                 <input type="range" min="0.1" max="0.9" step="0.02" value={sunZenith} onChange={(e) => setSunZenith(parseFloat(e.target.value))} />
@@ -2378,6 +2495,10 @@ function App() {
               <div className="form-group">
                 <label>Moon Y / Static Height: {moonStaticY.toFixed(2)}</label>
                 <input type="range" min="0" max="1" step="0.01" value={moonStaticY} onChange={(e) => setMoonStaticY(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group">
+                <label>Moon Minimum Altitude: {moonMinAltitude.toFixed(2)}</label>
+                <input type="range" min="-0.6" max="0.6" step="0.01" value={moonMinAltitude} onChange={(e) => setMoonMinAltitude(parseFloat(e.target.value))} />
               </div>
               <div className="form-group form-group-full">
                 <label>Moon Max Altitude (Zenith Y): {moonZenith.toFixed(2)}</label>

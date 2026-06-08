@@ -25,6 +25,7 @@ plugins {
 	alias(libs.plugins.kotlin.compose)
 	alias(libs.plugins.google.services)
 	alias(libs.plugins.firebase.crashlytics)
+	alias(libs.plugins.firebase.perf)
 }
 
 val lintIncludeTestSources = providers.gradleProperty("lumisky.lint.includeTestSources")
@@ -476,6 +477,7 @@ dependencies {
 	implementation(libs.firebase.crashlytics)
 	implementation(libs.firebase.crashlytics.ndk)
 	implementation(libs.firebase.analytics)
+	implementation(libs.firebase.perf)
 	coreLibraryDesugaring(libs.desugar.jdk.libs)
 
 	implementation(project(":core"))
