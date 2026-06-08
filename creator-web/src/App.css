@@ -133,6 +133,28 @@ body {
   overflow-x: visible;
   overflow-y: auto;
   padding-bottom: 1rem;
+  position: relative;
+}
+
+.canvas-panel.drop-active {
+  outline: 2px dashed rgba(56, 134, 231, 0.65);
+  outline-offset: -0.35rem;
+}
+
+.drop-hint {
+  background: rgba(56, 134, 231, 0.16);
+  border: 1px solid rgba(56, 134, 231, 0.45);
+  border-radius: 0.75rem;
+  color: #f1f3f9;
+  font-size: 0.85rem;
+  font-weight: 700;
+  left: 50%;
+  padding: 0.55rem 0.8rem;
+  pointer-events: none;
+  position: absolute;
+  top: 0.75rem;
+  transform: translateX(-50%);
+  z-index: 180;
 }
 
 .canvas-header {
@@ -455,6 +477,12 @@ input[type="range"]:disabled::-webkit-slider-thumb {
   max-height: 180px;
   overflow-y: auto;
   padding-right: 0.25rem;
+}
+
+.layers-list.drop-active {
+  border-radius: 0.85rem;
+  outline: 1px dashed rgba(56, 134, 231, 0.5);
+  outline-offset: 0.25rem;
 }
 
 .layer-item {

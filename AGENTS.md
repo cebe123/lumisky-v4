@@ -96,6 +96,20 @@ For each task:
 If a task is large (>3 files or >200 changed lines): plan in phases, implement only phase 1, and summarize changed files, risks, and next step.
 If a change is risky: explain why, keep the patch reversible, and if constraints prevent a viable fix, offer up to 3 options with trade-offs.
 
+## Repo Workflows / Commands
+
+Prefer repo-native Gradle tasks over ad-hoc commands:
+- Quick local lint: `.\gradlew.bat :app:lintDebugLocal`
+- Full debug lint with test sources: `.\gradlew.bat :app:lintDebugFull -Plumisky.lint.includeTestSources=true`
+- Shader continuity check: `.\gradlew.bat :app:validateShaderCelestialMotionContinuity`
+- Debug deploy to a connected device: `.\gradlew.bat :app:deployDebugToConnectedDevice`
+- Phone run preferences: `.\gradlew.bat :app:showPhoneRunPreferences`, `:app:enablePhoneAutoRun`, `:app:disablePhoneAutoRun`
+- Play release config preflight: `.\gradlew.bat :app:validatePlayReleaseConfig`
+
+Deployment notes:
+- `deployDebugToConnectedDevice` assembles, installs, and launches the debug APK; it prefers a physical phone over an emulator.
+- The deploy task resolves `adb` from `ANDROID_SDK_ROOT`, `ANDROID_HOME`, or `local.properties` `sdk.dir`, and stores local preferences under `.codex-local/`.
+
 ## Performance Rules
 
 Priority: stability, battery efficiency, smooth rendering, maintainability, visual quality.
