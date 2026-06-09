@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -68,10 +69,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.example.core.settings.PerformanceMode
 import com.example.engine.config.RenderPolicy
 import com.example.engine.config.WallpaperConfig
@@ -922,6 +926,7 @@ private fun FocusedWallpaperPreview(
 	onRenderedDayProgressChanged: (Float) -> Unit,
 	onFirstFrameRendered: () -> Unit
 ) {
+	val lifecycleOwner = LocalLifecycleOwner.current
 	val appContext = LocalContext.current.applicationContext
 	val preferPreviewVariant = !preferFullQuality
 	val previewQualityScale = if (preferFullQuality) {
@@ -971,6 +976,22 @@ private fun FocusedWallpaperPreview(
 		previewQualityScale,
 		renderAssetState.fragmentOverride
 	) {
+		var previewView by remember { mutableStateOf<PreviewRendererSurfaceView?>(null) }
+		DisposableEffect(lifecycleOwner, previewView) {
+			val view = previewView
+			val observer = LifecycleEventObserver { _, event ->
+				when (event) {
+					Lifecycle.Event.ON_PAUSE -> view?.pauseRendering()
+					Lifecycle.Event.ON_RESUME -> view?.resumeRendering()
+					else -> Unit
+				}
+			}
+			lifecycleOwner.lifecycle.addObserver(observer)
+			onDispose {
+				lifecycleOwner.lifecycle.removeObserver(observer)
+				view?.pauseRendering()
+			}
+		}
 		AndroidView(
 			modifier = modifier,
 			factory = { context ->
@@ -1032,9 +1053,11 @@ private fun FocusedWallpaperPreview(
 					}
 				).apply {
 					setPlaybackEnabled(playbackEnabled)
+					previewView = this
 				}
 			},
 			update = { view ->
+				if (previewView !== view) previewView = view
 				view.setParallaxEnabled(parallaxEnabled)
 				view.setPlaybackEnabled(playbackEnabled)
 			}

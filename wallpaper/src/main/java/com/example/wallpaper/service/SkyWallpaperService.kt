@@ -13,6 +13,7 @@ import com.example.core.Logger
 import com.example.core.motion.TiltParallaxTracker
 import com.example.core.report.CrashDiagnostics
 import com.example.core.settings.AppSettingsRepository
+import com.example.engine.config.RenderPolicy
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.config.WallpaperConfigStore
 import com.example.wallpaper.engine.WallpaperRenderEngine
@@ -57,6 +58,7 @@ open class SkyWallpaperService : WallpaperService() {
 		private var engineVisible: Boolean = false
 		private var engineSurfaceAttached: Boolean = false
 		private var lastAppliedConfigSignature: String? = null
+		private var currentConfigUsesLiveParallax: Boolean = false
 		private val tiltParallaxTracker = TiltParallaxTracker(appContext) { x, y ->
 			renderController.setParallaxOffset(x, y)
 		}
@@ -141,11 +143,15 @@ open class SkyWallpaperService : WallpaperService() {
 		}
 
 		private fun updateParallaxTrackingState() {
-			if (engineVisible && engineSurfaceAttached) {
+			if (engineVisible && engineSurfaceAttached && shouldTrackParallax()) {
 				tiltParallaxTracker.start()
 			} else {
 				tiltParallaxTracker.stop()
 			}
+		}
+
+		private fun shouldTrackParallax(): Boolean {
+			return isPreview || currentConfigUsesLiveParallax
 		}
 
 		private fun maybeStartDaylightSyncCoordinator() {
@@ -208,7 +214,9 @@ open class SkyWallpaperService : WallpaperService() {
 					return
 				}
 				lastAppliedConfigSignature = signature
+				currentConfigUsesLiveParallax = usesLiveParallax(it)
 				renderController.setConfig(it)
+				updateParallaxTrackingState()
 			} ?: run {
 				Logger.w("SkyWallpaperService", "apply_stored_config skipped: no saved config")
 			}
@@ -233,6 +241,12 @@ open class SkyWallpaperService : WallpaperService() {
 				isPreview -> configStore.loadPreview() ?: configStore.loadSelected() ?: DEFAULT_WALLPAPER_CONFIG
 				else -> configStore.loadSelected() ?: configStore.loadPreview() ?: DEFAULT_WALLPAPER_CONFIG
 			}
+
+		private fun usesLiveParallax(config: WallpaperConfig): Boolean {
+			return config.runtimeRenderPolicy.policy == RenderPolicy.CONTINUOUS ||
+				config.capabilities.dynamicMotion ||
+				config.capabilities.dynamicTextures
+		}
 
 		private fun buildConfigSignature(
 			config: WallpaperConfig,

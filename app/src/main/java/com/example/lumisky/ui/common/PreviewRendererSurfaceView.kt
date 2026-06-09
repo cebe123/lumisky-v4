@@ -22,6 +22,7 @@ class PreviewRendererSurfaceView(
 	private var lastRenderFrameNs: Long = 0L
 	private var lastParallaxRenderNs: Long = 0L
 	private var warmupFramesRemaining: Int = 0
+	private var activityPaused: Boolean = false
 	private val tiltParallaxTracker = TiltParallaxTracker(context) { x, y ->
 		previewRenderer.setParallaxOffset(x, y)
 		if (parallaxEnabled &&
@@ -69,7 +70,7 @@ class PreviewRendererSurfaceView(
 				queueEvent { callback(enabled, enteringEnabled) }
 			}
 		}
-		if (enabled && windowVisibility == View.VISIBLE) {
+		if (enabled && !activityPaused && windowVisibility == View.VISIBLE) {
 			armWarmupFrames()
 			lastRenderFrameNs = 0L
 			frameLoop.postIfNeeded()
@@ -82,7 +83,7 @@ class PreviewRendererSurfaceView(
 	fun setParallaxEnabled(enabled: Boolean) {
 		if (parallaxEnabled == enabled) return
 		parallaxEnabled = enabled
-		if (enabled && isAttachedToWindow && windowVisibility == View.VISIBLE) {
+		if (enabled && !activityPaused && isAttachedToWindow && windowVisibility == View.VISIBLE) {
 			tiltParallaxTracker.start()
 		} else {
 			tiltParallaxTracker.stop()
@@ -92,7 +93,7 @@ class PreviewRendererSurfaceView(
 	override fun onAttachedToWindow() {
 		super.onAttachedToWindow()
 		lastRenderFrameNs = 0L
-		if (parallaxEnabled) {
+		if (parallaxEnabled && !activityPaused) {
 			tiltParallaxTracker.start()
 		}
 		if (requestRenderOnAttach) {
@@ -105,16 +106,38 @@ class PreviewRendererSurfaceView(
 
 	override fun onWindowVisibilityChanged(visibility: Int) {
 		super.onWindowVisibilityChanged(visibility)
-		if (visibility == View.VISIBLE && shouldScheduleFrame()) {
+		if (visibility == View.VISIBLE && !activityPaused && shouldScheduleFrame()) {
 			frameLoop.postIfNeeded()
 		} else {
 			frameLoop.remove()
 		}
 		if (!parallaxEnabled) return
-		if (visibility == View.VISIBLE) {
+		if (visibility == View.VISIBLE && !activityPaused) {
 			tiltParallaxTracker.start()
 		} else {
 			tiltParallaxTracker.stop()
+		}
+	}
+
+	fun pauseRendering() {
+		if (activityPaused) return
+		activityPaused = true
+		warmupFramesRemaining = 0
+		frameLoop.remove()
+		tiltParallaxTracker.stop()
+		onPause()
+	}
+
+	fun resumeRendering() {
+		if (!activityPaused) return
+		activityPaused = false
+		onResume()
+		if (parallaxEnabled && isAttachedToWindow && windowVisibility == View.VISIBLE) {
+			tiltParallaxTracker.start()
+		}
+		if (shouldScheduleFrame()) {
+			lastRenderFrameNs = 0L
+			frameLoop.postIfNeeded()
 		}
 	}
 
@@ -137,7 +160,7 @@ class PreviewRendererSurfaceView(
 	}
 
 	private fun shouldScheduleFrame(): Boolean {
-		if (windowVisibility != View.VISIBLE || !playbackEnabled) return false
+		if (activityPaused || windowVisibility != View.VISIBLE || !playbackEnabled) return false
 		return previewRenderer.shouldContinueRendering() || warmupFramesRemaining > 0
 	}
 
