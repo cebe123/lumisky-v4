@@ -105,6 +105,60 @@ data class WallpaperCapabilities(
 	val supportsStarLayer: Boolean = true
 )
 
+data class CreatorLayerConfig(
+	val texturePath: String = "",
+	val mediaType: String = "image",
+	val mimeType: String = "",
+	val motionType: String = "STATIC",
+	val motionSpeed: Float = 1f,
+	val motionAmplitude: Float = 0f,
+	val motionDirection: Float = 0f,
+	val motionDuration: Float = 5f,
+	val motionStartX: Float = 0f,
+	val motionStartY: Float = 0f,
+	val motionEndX: Float = 0f,
+	val motionEndY: Float = 0f,
+	val keyframeStartX: Float = 0f,
+	val keyframeStartY: Float = 0f,
+	val keyframeEndX: Float = 0f,
+	val keyframeEndY: Float = 0f,
+	val keyframeStartScale: Float = 1f,
+	val keyframeEndScale: Float = 1f,
+	val keyframeStartOpacity: Float = 1f,
+	val keyframeEndOpacity: Float = 1f,
+	val keyframeStartRotation: Float = 0f,
+	val keyframeEndRotation: Float = 0f,
+	val keyframeEasing: String = "LINEAR",
+	val keyframePingPong: Boolean = true,
+	val offsetX: Float = 0f,
+	val offsetY: Float = 0f,
+	val scaleX: Float = 1f,
+	val scaleY: Float = 1f,
+	val opacity: Float = 1f,
+	val blendMode: String = "normal",
+	val maskEnabled: Boolean = false,
+	val maskShape: String = "RADIAL",
+	val maskX: Float = 0.5f,
+	val maskY: Float = 0.5f,
+	val maskRadius: Float = 0.45f,
+	val maskSoftness: Float = 0.15f,
+	val maskAngle: Float = 90f,
+	val particlePreset: String = "STARS",
+	val particleCount: Int = 80,
+	val particleSize: Float = 0.012f,
+	val particleSpeed: Float = 0.25f,
+	val particleSpread: Float = 1f,
+	val particleOpacity: Float = 0.8f,
+	val fitMode: String = "cover",
+	val photoRole: String = "NONE",
+	val visible: Boolean = true
+)
+
+data class CreatorConfig(
+	val schemaVersion: Int = 1,
+	val layers: List<CreatorLayerConfig> = emptyList()
+)
+
 data class ServiceRenderPolicy(
 	val overridePolicy: RenderPolicy? = null,
 	val overrideFrameIntervalMs: Long? = null,
@@ -132,6 +186,7 @@ data class WallpaperConfig(
 	val shader: ShaderProfile = ShaderProfile(),
 	val runtimeRenderPolicy: RuntimeRenderPolicy = RuntimeRenderPolicy(),
 	val capabilities: WallpaperCapabilities = WallpaperCapabilities(),
+	val creator: CreatorConfig = CreatorConfig(),
 	val serviceRenderPolicy: ServiceRenderPolicy = ServiceRenderPolicy()
 ) {
 	companion object {

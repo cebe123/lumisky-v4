@@ -267,7 +267,9 @@ body {
   transform: translate(-50%, -50%);
 }
 
-.canvas-layer img {
+.canvas-layer img,
+.canvas-layer video,
+.canvas-layer > div {
   width: 100%;
   height: 100%;
   object-fit: cover;

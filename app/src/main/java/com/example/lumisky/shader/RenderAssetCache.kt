@@ -89,6 +89,11 @@ object RenderAssetCache {
 		addTexturePath(uniqueTexturePaths, config.textures.sunTexture)
 		addTexturePath(uniqueTexturePaths, config.textures.moonTexture)
 		addTexturePath(uniqueTexturePaths, config.textures.flareTexture)
+		config.creator.layers.forEach { layer ->
+			if (layer.mediaType == "image") {
+				addTexturePath(uniqueTexturePaths, layer.texturePath)
+			}
+		}
 		uniqueTexturePaths.forEach { texturePath ->
 			loadTextureBytes(context, texturePath, preferPreviewVariant)
 		}

@@ -4,6 +4,8 @@ import android.content.Context
 import com.example.core.Logger
 import com.example.engine.config.CelestialConfig
 import com.example.engine.config.CelestialOrbitConfig
+import com.example.engine.config.CreatorConfig
+import com.example.engine.config.CreatorLayerConfig
 import com.example.engine.config.DaylightConfig
 import com.example.engine.config.EffectConfig
 import com.example.engine.config.HorizonConfig
@@ -186,6 +188,7 @@ internal class WallpaperManifestParser {
 				json = root.optJSONObject(KEY_SERVICE_RENDER_POLICY),
 				fallback = defaults.serviceRenderPolicy
 			)
+			val creator = decodeCreatorConfig(root.optJSONObject(KEY_CREATOR))
 
 			val previewLoopDurationSeconds = root.optDouble(
 				KEY_PREVIEW_LOOP_DURATION_SECONDS,
@@ -223,6 +226,7 @@ internal class WallpaperManifestParser {
 					shader = shader,
 					runtimeRenderPolicy = runtimeRenderPolicy,
 					capabilities = capabilities,
+					creator = creator,
 					serviceRenderPolicy = serviceRenderPolicy
 				)
 			)
@@ -366,6 +370,69 @@ internal class WallpaperManifestParser {
 		)
 	}
 
+	private fun decodeCreatorConfig(json: JSONObject?): CreatorConfig {
+		json ?: return CreatorConfig()
+		val layersJson = json.optJSONArray(KEY_LAYERS)
+		val layers = ArrayList<CreatorLayerConfig>(layersJson?.length() ?: 0)
+		if (layersJson != null) {
+			for (index in 0 until layersJson.length()) {
+				val layer = layersJson.optJSONObject(index) ?: continue
+				layers += CreatorLayerConfig(
+					texturePath = layer.optString(KEY_TEXTURE_PATH, ""),
+					mediaType = layer.optString(KEY_MEDIA_TYPE, "image"),
+					mimeType = layer.optString(KEY_MIME_TYPE, ""),
+					motionType = layer.optString(KEY_MOTION_TYPE, "STATIC"),
+					motionSpeed = layer.optDouble(KEY_MOTION_SPEED, 1.0).toFloat(),
+					motionAmplitude = layer.optDouble(KEY_MOTION_AMPLITUDE, 0.0).toFloat(),
+					motionDirection = layer.optDouble(KEY_MOTION_DIRECTION, 0.0).toFloat(),
+					motionDuration = layer.optDouble(KEY_MOTION_DURATION, 5.0).toFloat(),
+					motionStartX = layer.optDouble(KEY_MOTION_START_X, 0.0).toFloat(),
+					motionStartY = layer.optDouble(KEY_MOTION_START_Y, 0.0).toFloat(),
+					motionEndX = layer.optDouble(KEY_MOTION_END_X, 0.0).toFloat(),
+					motionEndY = layer.optDouble(KEY_MOTION_END_Y, 0.0).toFloat(),
+					keyframeStartX = layer.optDouble(KEY_KEYFRAME_START_X, 0.0).toFloat(),
+					keyframeStartY = layer.optDouble(KEY_KEYFRAME_START_Y, 0.0).toFloat(),
+					keyframeEndX = layer.optDouble(KEY_KEYFRAME_END_X, 0.0).toFloat(),
+					keyframeEndY = layer.optDouble(KEY_KEYFRAME_END_Y, 0.0).toFloat(),
+					keyframeStartScale = layer.optDouble(KEY_KEYFRAME_START_SCALE, 1.0).toFloat(),
+					keyframeEndScale = layer.optDouble(KEY_KEYFRAME_END_SCALE, 1.0).toFloat(),
+					keyframeStartOpacity = layer.optDouble(KEY_KEYFRAME_START_OPACITY, 1.0).toFloat(),
+					keyframeEndOpacity = layer.optDouble(KEY_KEYFRAME_END_OPACITY, 1.0).toFloat(),
+					keyframeStartRotation = layer.optDouble(KEY_KEYFRAME_START_ROTATION, 0.0).toFloat(),
+					keyframeEndRotation = layer.optDouble(KEY_KEYFRAME_END_ROTATION, 0.0).toFloat(),
+					keyframeEasing = layer.optString(KEY_KEYFRAME_EASING, "LINEAR"),
+					keyframePingPong = layer.optBoolean(KEY_KEYFRAME_PING_PONG, true),
+					offsetX = layer.optDouble(KEY_OFFSET_X, 0.0).toFloat(),
+					offsetY = layer.optDouble(KEY_OFFSET_Y, 0.0).toFloat(),
+					scaleX = layer.optDouble(KEY_SCALE_X, 1.0).toFloat(),
+					scaleY = layer.optDouble(KEY_SCALE_Y, 1.0).toFloat(),
+					opacity = layer.optDouble(KEY_OPACITY, 1.0).toFloat(),
+					blendMode = layer.optString(KEY_BLEND_MODE, "normal"),
+					maskEnabled = layer.optBoolean(KEY_MASK_ENABLED, false),
+					maskShape = layer.optString(KEY_MASK_SHAPE, "RADIAL"),
+					maskX = layer.optDouble(KEY_MASK_X, 0.5).toFloat(),
+					maskY = layer.optDouble(KEY_MASK_Y, 0.5).toFloat(),
+					maskRadius = layer.optDouble(KEY_MASK_RADIUS, 0.45).toFloat(),
+					maskSoftness = layer.optDouble(KEY_MASK_SOFTNESS, 0.15).toFloat(),
+					maskAngle = layer.optDouble(KEY_MASK_ANGLE, 90.0).toFloat(),
+					particlePreset = layer.optString(KEY_PARTICLE_PRESET, "STARS"),
+					particleCount = layer.optInt(KEY_PARTICLE_COUNT, 80),
+					particleSize = layer.optDouble(KEY_PARTICLE_SIZE, 0.012).toFloat(),
+					particleSpeed = layer.optDouble(KEY_PARTICLE_SPEED, 0.25).toFloat(),
+					particleSpread = layer.optDouble(KEY_PARTICLE_SPREAD, 1.0).toFloat(),
+					particleOpacity = layer.optDouble(KEY_PARTICLE_OPACITY, 0.8).toFloat(),
+					fitMode = layer.optString(KEY_FIT_MODE, "cover"),
+					photoRole = layer.optString(KEY_PHOTO_ROLE, "NONE"),
+					visible = layer.optBoolean(KEY_VISIBLE, true)
+				)
+			}
+		}
+		return CreatorConfig(
+			schemaVersion = json.optInt(KEY_SCHEMA_VERSION, 1),
+			layers = layers
+		)
+	}
+
 	private fun parsePathType(
 		raw: String?,
 		fallback: PathType
@@ -460,6 +527,55 @@ internal class WallpaperManifestParser {
 		const val KEY_SUPPORTS_CLOUD_LAYER = "supportsCloudLayer"
 		const val KEY_SUPPORTS_STAR_LAYER = "supportsStarLayer"
 		const val KEY_SERVICE_RENDER_POLICY = "serviceRenderPolicy"
+		const val KEY_CREATOR = "creator"
+		const val KEY_SCHEMA_VERSION = "schemaVersion"
+		const val KEY_LAYERS = "layers"
+		const val KEY_TEXTURE_PATH = "texturePath"
+		const val KEY_MEDIA_TYPE = "mediaType"
+		const val KEY_MIME_TYPE = "mimeType"
+		const val KEY_MOTION_TYPE = "motionType"
+		const val KEY_MOTION_SPEED = "motionSpeed"
+		const val KEY_MOTION_AMPLITUDE = "motionAmplitude"
+		const val KEY_MOTION_DIRECTION = "motionDirection"
+		const val KEY_MOTION_DURATION = "motionDuration"
+		const val KEY_MOTION_START_X = "motionStartX"
+		const val KEY_MOTION_START_Y = "motionStartY"
+		const val KEY_MOTION_END_X = "motionEndX"
+		const val KEY_MOTION_END_Y = "motionEndY"
+		const val KEY_KEYFRAME_START_X = "keyframeStartX"
+		const val KEY_KEYFRAME_START_Y = "keyframeStartY"
+		const val KEY_KEYFRAME_END_X = "keyframeEndX"
+		const val KEY_KEYFRAME_END_Y = "keyframeEndY"
+		const val KEY_KEYFRAME_START_SCALE = "keyframeStartScale"
+		const val KEY_KEYFRAME_END_SCALE = "keyframeEndScale"
+		const val KEY_KEYFRAME_START_OPACITY = "keyframeStartOpacity"
+		const val KEY_KEYFRAME_END_OPACITY = "keyframeEndOpacity"
+		const val KEY_KEYFRAME_START_ROTATION = "keyframeStartRotation"
+		const val KEY_KEYFRAME_END_ROTATION = "keyframeEndRotation"
+		const val KEY_KEYFRAME_EASING = "keyframeEasing"
+		const val KEY_KEYFRAME_PING_PONG = "keyframePingPong"
+		const val KEY_OFFSET_X = "offsetX"
+		const val KEY_OFFSET_Y = "offsetY"
+		const val KEY_SCALE_X = "scaleX"
+		const val KEY_SCALE_Y = "scaleY"
+		const val KEY_OPACITY = "opacity"
+		const val KEY_BLEND_MODE = "blendMode"
+		const val KEY_MASK_ENABLED = "maskEnabled"
+		const val KEY_MASK_SHAPE = "maskShape"
+		const val KEY_MASK_X = "maskX"
+		const val KEY_MASK_Y = "maskY"
+		const val KEY_MASK_RADIUS = "maskRadius"
+		const val KEY_MASK_SOFTNESS = "maskSoftness"
+		const val KEY_MASK_ANGLE = "maskAngle"
+		const val KEY_PARTICLE_PRESET = "particlePreset"
+		const val KEY_PARTICLE_COUNT = "particleCount"
+		const val KEY_PARTICLE_SIZE = "particleSize"
+		const val KEY_PARTICLE_SPEED = "particleSpeed"
+		const val KEY_PARTICLE_SPREAD = "particleSpread"
+		const val KEY_PARTICLE_OPACITY = "particleOpacity"
+		const val KEY_FIT_MODE = "fitMode"
+		const val KEY_PHOTO_ROLE = "photoRole"
+		const val KEY_VISIBLE = "visible"
 		const val KEY_OVERRIDE_POLICY = "overridePolicy"
 		const val KEY_OVERRIDE_FRAME_INTERVAL_MS = "overrideFrameIntervalMs"
 		const val KEY_USE_POWER_SAVER_THROTTLE = "usePowerSaverThrottle"

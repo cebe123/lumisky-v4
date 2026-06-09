@@ -14,6 +14,7 @@ internal object WallpaperSceneFingerprintHasher {
 		result = 31 * result + config.shader.hashCode()
 		result = 31 * result + config.runtimeRenderPolicy.hashCode()
 		result = 31 * result + config.capabilities.hashCode()
+		result = 31 * result + config.creator.hashCode()
 		result = 31 * result + config.serviceRenderPolicy.hashCode()
 		result = 31 * result + config.daylight.hashCode()
 		result = 31 * result + config.previewLoopDurationSeconds.toBits()

@@ -7,6 +7,7 @@ import android.opengl.GLES20
 import android.opengl.GLUtils
 import com.example.core.Logger
 import com.example.core.report.CrashDiagnostics
+import com.example.engine.config.CreatorLayerConfig
 import com.example.engine.config.WallpaperConfig
 import com.example.engine.renderer.RenderFrameState
 import java.nio.ByteBuffer
@@ -29,6 +30,16 @@ class PreviewSkyProgram {
 
 	private var programHandle: Int = 0
 	private var positionHandle: Int = -1
+	private var creatorProgramHandle: Int = 0
+	private var creatorPositionHandle: Int = -1
+	private var creatorTexCoordHandle: Int = -1
+	private var creatorTextureHandle: Int = -1
+	private var creatorOpacityHandle: Int = -1
+	private val creatorVertexBuffer: FloatBuffer =
+		ByteBuffer.allocateDirect(CREATOR_VERTEX_FLOAT_COUNT * FLOAT_SIZE_BYTES)
+			.order(ByteOrder.nativeOrder())
+			.asFloatBuffer()
+	private val creatorTextureHandles = LinkedHashMap<String, Int>()
 
 	private var skyColorHandle: Int = -1
 	private var sunHandle: Int = -1
@@ -115,6 +126,14 @@ class PreviewSkyProgram {
 			programHandle = buildProgram(VERTEX_SHADER, BUILTIN_FRAGMENT_SHADER)
 		}
 		if (programHandle == 0) return
+
+		creatorProgramHandle = buildProgram(CREATOR_VERTEX_SHADER, CREATOR_FRAGMENT_SHADER)
+		if (creatorProgramHandle != 0) {
+			creatorPositionHandle = GLES20.glGetAttribLocation(creatorProgramHandle, "a_Position")
+			creatorTexCoordHandle = GLES20.glGetAttribLocation(creatorProgramHandle, "a_TexCoord")
+			creatorTextureHandle = GLES20.glGetUniformLocation(creatorProgramHandle, "u_Texture")
+			creatorOpacityHandle = GLES20.glGetUniformLocation(creatorProgramHandle, "u_Opacity")
+		}
 
 		positionHandle = GLES20.glGetAttribLocation(programHandle, "a_Position")
 		skyColorHandle = GLES20.glGetUniformLocation(programHandle, "uSkyColor")
@@ -272,6 +291,7 @@ class PreviewSkyProgram {
 
 		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_COUNT)
 		GLES20.glDisableVertexAttribArray(positionHandle)
+		drawCreatorLayers()
 	}
 
 	fun release() {
@@ -283,11 +303,17 @@ class PreviewSkyProgram {
 			sunTextureHandle = 0
 			moonTextureHandle = 0
 			flareTextureHandle = 0
+			creatorProgramHandle = 0
+			creatorTextureHandles.clear()
 			return
 		}
 		if (programHandle != 0) {
 			GLES20.glDeleteProgram(programHandle)
 			programHandle = 0
+		}
+		if (creatorProgramHandle != 0) {
+			GLES20.glDeleteProgram(creatorProgramHandle)
+			creatorProgramHandle = 0
 		}
 		if (fallbackSolidTextureHandle != 0) {
 			GLES20.glDeleteTextures(1, intArrayOf(fallbackSolidTextureHandle), 0)
@@ -343,6 +369,15 @@ class PreviewSkyProgram {
 		sunTextureHandle = glTextureLoader.loadTexture(config.textures.sunTexture, textureBytesLoader, qualityScale)
 		moonTextureHandle = glTextureLoader.loadTexture(config.textures.moonTexture, textureBytesLoader, qualityScale)
 		flareTextureHandle = glTextureLoader.loadTexture(config.textures.flareTexture, textureBytesLoader, qualityScale)
+		config.creator.layers
+			.asSequence()
+			.filter { it.visible && it.mediaType == "image" && it.texturePath.isNotBlank() }
+			.map { it.texturePath }
+			.distinct()
+			.take(MAX_CREATOR_LAYER_TEXTURES)
+			.forEach { path ->
+				creatorTextureHandles[path] = glTextureLoader.loadTexture(path, textureBytesLoader, qualityScale)
+			}
 	}
 
 	private fun deleteConfiguredTextures() {
@@ -351,7 +386,7 @@ class PreviewSkyProgram {
 			sunTextureHandle,
 			moonTextureHandle,
 			flareTextureHandle
-		).filter { it != 0 }
+		).filter { it != 0 } + creatorTextureHandles.values.filter { it != 0 }
 		if (handles.isNotEmpty()) {
 			GLES20.glDeleteTextures(handles.size, handles.toIntArray(), 0)
 		}
@@ -359,6 +394,74 @@ class PreviewSkyProgram {
 		sunTextureHandle = 0
 		moonTextureHandle = 0
 		flareTextureHandle = 0
+		creatorTextureHandles.clear()
+	}
+
+	private fun drawCreatorLayers() {
+		if (creatorProgramHandle == 0) return
+		if (creatorPositionHandle < 0 || creatorTexCoordHandle < 0 || creatorTextureHandle < 0) return
+		val layers = config.creator.layers
+			.asSequence()
+			.filter { it.visible && it.mediaType == "image" }
+			.take(MAX_CREATOR_LAYER_TEXTURES)
+			.toList()
+		if (layers.isEmpty()) return
+
+		GLES20.glUseProgram(creatorProgramHandle)
+		GLES20.glEnable(GLES20.GL_BLEND)
+		GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+		GLES20.glEnableVertexAttribArray(creatorPositionHandle)
+		GLES20.glEnableVertexAttribArray(creatorTexCoordHandle)
+
+		layers.forEach { layer ->
+			val textureHandle = creatorTextureHandles[layer.texturePath] ?: return@forEach
+			if (textureHandle == 0) return@forEach
+			fillCreatorLayerVertices(layer)
+			creatorVertexBuffer.position(0)
+			GLES20.glVertexAttribPointer(
+				creatorPositionHandle,
+				2,
+				GLES20.GL_FLOAT,
+				false,
+				CREATOR_VERTEX_STRIDE_BYTES,
+				creatorVertexBuffer
+			)
+			creatorVertexBuffer.position(2)
+			GLES20.glVertexAttribPointer(
+				creatorTexCoordHandle,
+				2,
+				GLES20.GL_FLOAT,
+				false,
+				CREATOR_VERTEX_STRIDE_BYTES,
+				creatorVertexBuffer
+			)
+			textureBinder.bindTextureUnit(creatorTextureHandle, 0, textureHandle)
+			setFloat(creatorOpacityHandle, layer.opacity.coerceIn(0f, 2f))
+			GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, VERTEX_COUNT)
+		}
+
+		GLES20.glDisableVertexAttribArray(creatorPositionHandle)
+		GLES20.glDisableVertexAttribArray(creatorTexCoordHandle)
+		GLES20.glDisable(GLES20.GL_BLEND)
+	}
+
+	private fun fillCreatorLayerVertices(layer: CreatorLayerConfig) {
+		val width = layer.scaleX.coerceAtLeast(0.01f) * 2f
+		val height = layer.scaleY.coerceAtLeast(0.01f) * 2f
+		val centerX = layer.offsetX * 2f
+		val centerY = layer.offsetY * 2f
+		val left = centerX - width / 2f
+		val right = centerX + width / 2f
+		val bottom = centerY - height / 2f
+		val top = centerY + height / 2f
+		creatorVertexBuffer.position(0)
+		creatorVertexBuffer.put(floatArrayOf(
+			left, bottom, 0f, 1f,
+			left, top, 0f, 0f,
+			right, bottom, 1f, 1f,
+			right, top, 1f, 0f
+		))
+		creatorVertexBuffer.position(0)
 	}
 
 	private fun buildProgram(vertexShader: String, fragmentShader: String): Int {
@@ -462,6 +565,9 @@ class PreviewSkyProgram {
 	companion object {
 		private const val FLOAT_SIZE_BYTES = 4
 		private const val VERTEX_COUNT = 4
+		private const val CREATOR_VERTEX_FLOAT_COUNT = 16
+		private const val CREATOR_VERTEX_STRIDE_BYTES = 4 * FLOAT_SIZE_BYTES
+		private const val MAX_CREATOR_LAYER_TEXTURES = 8
 		private const val MINUTES_PER_DAY = 1440
 		private const val TAG = "PreviewSkyProgram"
 		private const val QUALITY_ATMOSPHERE_THRESHOLD = 0.45f
@@ -484,6 +590,27 @@ class PreviewSkyProgram {
 				gl_Position = a_Position;
 				v_Uv = a_Position.xy * 0.5 + 0.5;
 				v_TexCoord = vec2(v_Uv.x, 1.0 - v_Uv.y);
+			}
+		"""
+
+		private const val CREATOR_VERTEX_SHADER = """
+			attribute vec4 a_Position;
+			attribute vec2 a_TexCoord;
+			varying vec2 v_TexCoord;
+			void main() {
+				gl_Position = a_Position;
+				v_TexCoord = a_TexCoord;
+			}
+		"""
+
+		private const val CREATOR_FRAGMENT_SHADER = """
+			precision mediump float;
+			varying vec2 v_TexCoord;
+			uniform sampler2D u_Texture;
+			uniform float u_Opacity;
+			void main() {
+				vec4 color = texture2D(u_Texture, v_TexCoord);
+				gl_FragColor = vec4(color.rgb, color.a * u_Opacity);
 			}
 		"""
 

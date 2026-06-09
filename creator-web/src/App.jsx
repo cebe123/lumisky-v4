@@ -133,9 +133,46 @@ void main() {
   gl_FragColor = vec4(skyColor, 1.0);
 }`;
 
+const DEFAULT_KEYFRAME_FIELDS = {
+  keyframeStartX: 0,
+  keyframeStartY: 0,
+  keyframeEndX: 0,
+  keyframeEndY: 0,
+  keyframeStartScale: 1,
+  keyframeEndScale: 1,
+  keyframeStartOpacity: 1,
+  keyframeEndOpacity: 1,
+  keyframeStartRotation: 0,
+  keyframeEndRotation: 0,
+  keyframeEasing: 'LINEAR',
+  keyframePingPong: true
+};
+
+const DEFAULT_PARTICLE_FIELDS = {
+  particlePreset: 'STARS',
+  particleCount: 80,
+  particleSize: 0.012,
+  particleSpeed: 0.25,
+  particleSpread: 1,
+  particleOpacity: 0.8
+};
+
+const DEFAULT_BLEND_MASK_FIELDS = {
+  blendMode: 'normal',
+  maskEnabled: false,
+  maskShape: 'RADIAL',
+  maskX: 0.5,
+  maskY: 0.5,
+  maskRadius: 0.45,
+  maskSoftness: 0.15,
+  maskAngle: 90
+};
+
 const DEFAULT_LAYERS = [
   {
     texturePath: 'warrior/warrior1.webp',
+    mediaType: 'image',
+    mimeType: '',
     offsetX: 0,
     offsetY: 0.1,
     scaleX: 1.0,
@@ -149,6 +186,7 @@ const DEFAULT_LAYERS = [
     motionStartY: 0,
     motionEndX: 0.2,
     motionEndY: 0,
+    ...DEFAULT_KEYFRAME_FIELDS,
     parallaxStrengthX: 0.05,
     parallaxStrengthY: 0.03,
     celestialFollowX: 1,
@@ -157,12 +195,15 @@ const DEFAULT_LAYERS = [
     celestialOffsetY: 0,
     nightTintFactor: 0.5,
     opacity: 1.0,
+    ...DEFAULT_BLEND_MASK_FIELDS,
     fitMode: 'cover',
     photoRole: 'NONE',
     localUrl: null
   },
   {
     texturePath: 'warrior/warrior2.webp',
+    mediaType: 'image',
+    mimeType: '',
     offsetX: 0,
     offsetY: -0.1,
     scaleX: 1.0,
@@ -176,6 +217,7 @@ const DEFAULT_LAYERS = [
     motionStartY: 0,
     motionEndX: 0.35,
     motionEndY: 0,
+    ...DEFAULT_KEYFRAME_FIELDS,
     parallaxStrengthX: 0.08,
     parallaxStrengthY: 0.04,
     celestialFollowX: 1,
@@ -184,6 +226,7 @@ const DEFAULT_LAYERS = [
     celestialOffsetY: 0,
     nightTintFactor: 0.6,
     opacity: 1.0,
+    ...DEFAULT_BLEND_MASK_FIELDS,
     fitMode: 'cover',
     photoRole: 'NONE',
     localUrl: null
@@ -223,6 +266,70 @@ const resolveAndroidShaderSource = (shaderPath) => ANDROID_SHADER_SOURCE_BY_PATH
 
 const uniqueValues = (values) => [...new Set(values.filter(Boolean))];
 
+const mediaTypeFromMime = (mimeType = '') => (mimeType.startsWith('video/') ? 'video' : 'image');
+const mediaTypeFromPath = (path = '') => (/\.(mp4|webm|mov|m4v)$/i.test(path) ? 'video' : 'image');
+
+const particleColorForPreset = (preset) => ({
+  STARS: 'rgba(255, 248, 220, 0.95)',
+  SNOW: 'rgba(235, 247, 255, 0.95)',
+  EMBERS: 'rgba(255, 139, 56, 0.9)'
+}[preset] ?? 'rgba(255, 248, 220, 0.95)');
+
+const renderParticleLayer = (layer, timeState) => {
+  const count = Math.max(1, Math.min(300, Math.round(layer.particleCount ?? 80)));
+  const preset = layer.particlePreset ?? 'STARS';
+  const size = `${Math.max(0.002, layer.particleSize ?? 0.012) * 100}%`;
+  const opacity = layer.particleOpacity ?? 0.8;
+  const speed = layer.particleSpeed ?? 0.25;
+  const spread = layer.particleSpread ?? 1;
+  const color = particleColorForPreset(preset);
+
+  return Array.from({ length: count }, (_, i) => {
+    const seedA = Math.sin((i + 1) * 12.9898) * 43758.5453;
+    const seedB = Math.sin((i + 1) * 78.233) * 24634.6345;
+    const baseX = seedA - Math.floor(seedA);
+    const baseY = seedB - Math.floor(seedB);
+    const drift = ((timeState * speed * (0.2 + baseX)) + baseY) % 1;
+    const x = ((baseX - 0.5) * spread + 0.5) * 100;
+    const y = preset === 'STARS' ? baseY * 100 : drift * 100;
+    const blur = preset === 'EMBERS' ? '4px' : '1px';
+
+    return (
+      <span
+        key={i}
+        style={{
+          position: 'absolute',
+          left: `${x}%`,
+          top: `${y}%`,
+          width: size,
+          aspectRatio: '1',
+          borderRadius: '50%',
+          background: color,
+          boxShadow: `0 0 ${blur} ${color}`,
+          opacity: opacity * (0.35 + baseX * 0.65)
+        }}
+      />
+    );
+  });
+};
+
+const maskStyleForLayer = (layer) => {
+  if (!layer.maskEnabled) return {};
+  const softness = Math.max(0, Math.min(0.5, layer.maskSoftness ?? 0.15)) * 100;
+  const radius = Math.max(0.02, Math.min(1, layer.maskRadius ?? 0.45)) * 100;
+  const x = Math.max(0, Math.min(1, layer.maskX ?? 0.5)) * 100;
+  const y = Math.max(0, Math.min(1, layer.maskY ?? 0.5)) * 100;
+  const shape = layer.maskShape ?? 'RADIAL';
+  const gradient = shape === 'LINEAR'
+    ? `linear-gradient(${layer.maskAngle ?? 90}deg, transparent 0%, black ${softness}%, black ${100 - softness}%, transparent 100%)`
+    : `radial-gradient(circle at ${x}% ${y}%, black 0%, black ${radius}%, transparent ${Math.min(100, radius + softness)}%)`;
+
+  return {
+    WebkitMaskImage: gradient,
+    maskImage: gradient
+  };
+};
+
 const texturePathsFromManifest = (manifest) => {
   const textures = manifest.textures ?? {};
   return uniqueValues([
@@ -235,6 +342,8 @@ const texturePathsFromManifest = (manifest) => {
 
 const createLayerFromTexturePath = (texturePath, index) => ({
   texturePath,
+  mediaType: mediaTypeFromPath(texturePath),
+  mimeType: '',
   offsetX: 0,
   offsetY: 0,
   scaleX: 1,
@@ -248,6 +357,7 @@ const createLayerFromTexturePath = (texturePath, index) => ({
   motionStartY: 0,
   motionEndX: 0.25,
   motionEndY: 0,
+  ...DEFAULT_KEYFRAME_FIELDS,
   parallaxStrengthX: index === 0 ? 0.04 : 0.08,
   parallaxStrengthY: index === 0 ? 0.02 : 0.04,
   celestialFollowX: 1,
@@ -256,6 +366,7 @@ const createLayerFromTexturePath = (texturePath, index) => ({
   celestialOffsetY: 0,
   nightTintFactor: index === 0 ? 0.5 : 0.6,
   opacity: 1,
+  ...DEFAULT_BLEND_MASK_FIELDS,
   fitMode: 'cover',
   photoRole: 'NONE',
   visible: true,
@@ -313,7 +424,9 @@ const averageHorizonOffset = (points) => {
 const getHiddenBehindHorizonY = (points, radius) => averageHorizonOffset(points) - radius - 0.02;
 
 const sortedLayerPaths = (layers) =>
-  layers.map((layer) => layer.texturePath);
+  layers
+    .filter((layer) => layer.visible !== false && (layer.mediaType ?? 'image') === 'image')
+    .map((layer) => layer.texturePath);
 
 const WORKSPACE_STORAGE_KEY = 'lumisky.creator.workspace.v1';
 const LOCAL_IMAGE_DB_NAME = 'lumisky.creator.localImages.v1';
@@ -392,6 +505,23 @@ const progressFromDuration = (time, duration) => {
   return (time % safeDuration) / safeDuration;
 };
 
+const lerp = (from, to, progress) => from + (to - from) * progress;
+
+const easeProgress = (progress, easing = 'LINEAR') => {
+  switch (easing) {
+    case 'EASE_IN':
+      return progress * progress;
+    case 'EASE_OUT':
+      return 1 - ((1 - progress) * (1 - progress));
+    case 'EASE_IN_OUT':
+      return progress < 0.5
+        ? 2 * progress * progress
+        : 1 - (Math.pow(-2 * progress + 2, 2) / 2);
+    default:
+      return progress;
+  }
+};
+
 const hexToRgb = (hex) => {
   const cleanHex = hex.replace('#', '');
   const bigint = parseInt(cleanHex, 16);
@@ -419,6 +549,7 @@ function App() {
   const [daylightTime, setDaylightTime] = useState(() => savedValue('daylightTime', 12)); // 0 to 24 hours
   const [workspaceScale, setWorkspaceScale] = useState(() => savedValue('workspaceScale', 1.35));
   const [showSafeFrame, setShowSafeFrame] = useState(() => savedValue('showSafeFrame', true));
+  const [previewLoopDuration, setPreviewLoopDuration] = useState(() => savedValue('previewLoopDuration', 12));
   
   // Parallax state
   const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURES, ...(restored?.featureFlags ?? {}) }));
@@ -513,8 +644,8 @@ function App() {
       ...systemItems,
       ...layers.map((layer, index) => ({
         key: `texture-${index}`,
-        label: layer.texturePath.split('/').pop() || `Layer ${index}`,
-        detail: layer.motionType,
+        label: layer.mediaType === 'particle' ? `Particle Layer ${index}` : (layer.texturePath.split('/').pop() || `Layer ${index}`),
+        detail: layer.mediaType === 'particle' ? layer.particlePreset : layer.motionType,
         type: 'texture',
         visible: layer.visible !== false,
         textureIndex: index,
@@ -686,6 +817,7 @@ function App() {
       daylightTime,
       workspaceScale,
       showSafeFrame,
+      previewLoopDuration,
       featureFlags,
       glslCode,
       shaderAssetPath,
@@ -714,7 +846,7 @@ function App() {
       exportMode,
       importText
     });
-  }, [wallpaperId, wallpaperName, layers, selectedIndex, selectedSystemLayer, isPlaying, daylightTime, workspaceScale, showSafeFrame, featureFlags, glslCode, shaderAssetPath, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunMinAltitude, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonMinAltitude, moonGlow, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity, horizonPoints, exportMode, importText]);
+  }, [wallpaperId, wallpaperName, layers, selectedIndex, selectedSystemLayer, isPlaying, daylightTime, workspaceScale, showSafeFrame, previewLoopDuration, featureFlags, glslCode, shaderAssetPath, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunMinAltitude, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonMinAltitude, moonGlow, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity, horizonPoints, exportMode, importText]);
 
   const clearActiveLayerPreview = () => {
     if (activeLayer?.localUrl) {
@@ -726,6 +858,7 @@ function App() {
   const createLayerFromFile = async (file) => {
     const localImageKey = createLocalImageKey(file);
     const localUrl = URL.createObjectURL(file);
+    const mediaType = mediaTypeFromMime(file.type);
     try {
       const dataUrl = await readFileAsDataUrl(file);
       await saveLocalImageData(localImageKey, dataUrl);
@@ -735,6 +868,8 @@ function App() {
 
     return {
       texturePath: `wallpapers/custom/${file.name}`,
+      mediaType,
+      mimeType: file.type,
       offsetX: 0,
       offsetY: 0,
       scaleX: 1.0,
@@ -748,6 +883,7 @@ function App() {
       motionStartY: 0,
       motionEndX: 0.25,
       motionEndY: 0,
+      ...DEFAULT_KEYFRAME_FIELDS,
       parallaxStrengthX: 0.05,
       parallaxStrengthY: 0.03,
       celestialFollowX: 1,
@@ -756,6 +892,7 @@ function App() {
       celestialOffsetY: 0,
       nightTintFactor: 0.5,
       opacity: 1.0,
+      ...DEFAULT_BLEND_MASK_FIELDS,
       fitMode: 'contain',
       photoRole: 'NONE',
       visible: true,
@@ -765,21 +902,64 @@ function App() {
   };
 
   const addLayerFiles = async (fileList) => {
-    const imageFiles = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
-    if (!imageFiles.length) return;
+    const mediaFiles = Array.from(fileList || []).filter((file) => file.type.startsWith('image/') || file.type.startsWith('video/'));
+    if (!mediaFiles.length) return;
     const availableSlots = Math.max(0, 15 - layers.length);
     if (!availableSlots) {
       alert('Maximum limit of 15 layers reached!');
       return;
     }
-    const filesToAdd = imageFiles.slice(0, availableSlots);
+    const filesToAdd = mediaFiles.slice(0, availableSlots);
     const newLayers = await Promise.all(filesToAdd.map(createLayerFromFile));
     setLayers(prev => normalizeLayerOrder([...prev, ...newLayers]));
     setSelectedIndex(layers.length);
     setSelectedSystemLayer(null);
-    if (imageFiles.length > availableSlots) {
+    if (mediaFiles.length > availableSlots) {
       alert(`Only ${availableSlots} layer(s) added. Maximum limit is 15.`);
     }
+  };
+
+  const addParticleLayer = () => {
+    if (layers.length >= 15) {
+      alert('Maximum limit of 15 layers reached!');
+      return;
+    }
+    const particleLayer = {
+      texturePath: 'procedural/particles',
+      mediaType: 'particle',
+      mimeType: '',
+      offsetX: 0,
+      offsetY: 0,
+      scaleX: 1,
+      scaleY: 1,
+      motionType: 'STATIC',
+      motionSpeed: 1,
+      motionAmplitude: 0,
+      motionDirection: 0,
+      motionDuration: 5,
+      motionStartX: 0,
+      motionStartY: 0,
+      motionEndX: 0.25,
+      motionEndY: 0,
+      ...DEFAULT_KEYFRAME_FIELDS,
+      ...DEFAULT_PARTICLE_FIELDS,
+      parallaxStrengthX: 0.04,
+      parallaxStrengthY: 0.02,
+      celestialFollowX: 1,
+      celestialFollowY: 1,
+      celestialOffsetX: 0,
+      celestialOffsetY: 0,
+      nightTintFactor: 0,
+      opacity: 1,
+      ...DEFAULT_BLEND_MASK_FIELDS,
+      fitMode: 'cover',
+      photoRole: 'NONE',
+      visible: true,
+      localUrl: null
+    };
+    setLayers(prev => normalizeLayerOrder([...prev, particleLayer]));
+    setSelectedIndex(layers.length);
+    setSelectedSystemLayer(null);
   };
 
   // File replacement inside properties editor
@@ -791,6 +971,7 @@ function App() {
       }
       const url = URL.createObjectURL(file);
       const localImageKey = createLocalImageKey(file);
+      const mediaType = mediaTypeFromMime(file.type);
       try {
         const dataUrl = await readFileAsDataUrl(file);
         await saveLocalImageData(localImageKey, dataUrl);
@@ -802,13 +983,24 @@ function App() {
         localDataUrl: null,
         localImageKey,
         texturePath: `wallpapers/custom/${file.name}`,
+        mediaType,
+        mimeType: file.type,
         fitMode: 'contain'
       });
     }
     e.target.value = null;
   };
 
-  // 12-Second Daylight Cycle Loop & Animation Timer
+  const setLoopPreviewTime = (value, durationOverride = previewLoopDuration) => {
+    const safeDuration = Math.max(1, durationOverride || 12);
+    const nextTime = Math.max(0, Math.min(safeDuration, value));
+    setTimeState(nextTime);
+    timeStateRef.current = nextTime;
+    startTimeRef.current = Date.now() - (nextTime * 1000);
+    setDaylightTime((nextTime / safeDuration * 24) % 24);
+  };
+
+  // Preview loop clock.
   useEffect(() => {
     timeStateRef.current = timeState;
   }, [timeState]);
@@ -817,12 +1009,13 @@ function App() {
     startTimeRef.current = Date.now() - (timeStateRef.current * 1000);
     
     const animate = () => {
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
-      setTimeState(elapsed);
+      const safeDuration = Math.max(1, previewLoopDuration || 12);
+      const rawElapsed = (Date.now() - startTimeRef.current) / 1000;
+      const elapsed = ((rawElapsed % safeDuration) + safeDuration) % safeDuration;
       
       if (isPlaying) {
-        // Full daylight cycle loop in 12 seconds
-        const newDaylight = (elapsed / 12 * 24) % 24;
+        setTimeState(elapsed);
+        const newDaylight = (elapsed / safeDuration * 24) % 24;
         setDaylightTime(newDaylight);
       }
       
@@ -831,7 +1024,7 @@ function App() {
     
     animationFrameRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrameRef.current);
-  }, [isPlaying]);
+  }, [isPlaying, previewLoopDuration]);
 
   // Night Blend calculation
   const nightBlend = useMemo(() => {
@@ -1368,6 +1561,8 @@ function App() {
   const generatedLayoutJson = useMemo(() => {
     const outputLayers = layers.map((l, index) => ({
       texturePath: l.texturePath,
+      mediaType: l.mediaType ?? mediaTypeFromPath(l.texturePath),
+      mimeType: l.mimeType ?? '',
       zIndex: index,
       offsetX: parseFloat(l.offsetX.toFixed(4)),
       offsetY: parseFloat(l.offsetY.toFixed(4)),
@@ -1382,6 +1577,18 @@ function App() {
       motionStartY: parseFloat((l.motionStartY ?? 0).toFixed(4)),
       motionEndX: parseFloat((l.motionEndX ?? 0).toFixed(4)),
       motionEndY: parseFloat((l.motionEndY ?? 0).toFixed(4)),
+      keyframeStartX: parseFloat((l.keyframeStartX ?? 0).toFixed(4)),
+      keyframeStartY: parseFloat((l.keyframeStartY ?? 0).toFixed(4)),
+      keyframeEndX: parseFloat((l.keyframeEndX ?? 0).toFixed(4)),
+      keyframeEndY: parseFloat((l.keyframeEndY ?? 0).toFixed(4)),
+      keyframeStartScale: parseFloat((l.keyframeStartScale ?? 1).toFixed(4)),
+      keyframeEndScale: parseFloat((l.keyframeEndScale ?? 1).toFixed(4)),
+      keyframeStartOpacity: parseFloat((l.keyframeStartOpacity ?? 1).toFixed(4)),
+      keyframeEndOpacity: parseFloat((l.keyframeEndOpacity ?? 1).toFixed(4)),
+      keyframeStartRotation: parseFloat((l.keyframeStartRotation ?? 0).toFixed(2)),
+      keyframeEndRotation: parseFloat((l.keyframeEndRotation ?? 0).toFixed(2)),
+      keyframeEasing: l.keyframeEasing ?? 'LINEAR',
+      keyframePingPong: l.keyframePingPong !== false,
       parallaxStrengthX: parseFloat((l.parallaxStrengthX ?? 0.05).toFixed(4)),
       parallaxStrengthY: parseFloat((l.parallaxStrengthY ?? 0.03).toFixed(4)),
       celestialFollowX: parseFloat((l.celestialFollowX ?? 1).toFixed(4)),
@@ -1390,6 +1597,20 @@ function App() {
       celestialOffsetY: parseFloat((l.celestialOffsetY ?? 0).toFixed(4)),
       nightTintFactor: parseFloat(l.nightTintFactor.toFixed(4)),
       opacity: parseFloat((l.opacity ?? 1.0).toFixed(4)),
+      blendMode: l.blendMode ?? 'normal',
+      maskEnabled: l.maskEnabled === true,
+      maskShape: l.maskShape ?? 'RADIAL',
+      maskX: parseFloat((l.maskX ?? 0.5).toFixed(4)),
+      maskY: parseFloat((l.maskY ?? 0.5).toFixed(4)),
+      maskRadius: parseFloat((l.maskRadius ?? 0.45).toFixed(4)),
+      maskSoftness: parseFloat((l.maskSoftness ?? 0.15).toFixed(4)),
+      maskAngle: parseFloat((l.maskAngle ?? 90).toFixed(2)),
+      particlePreset: l.particlePreset ?? 'STARS',
+      particleCount: Math.round(l.particleCount ?? 80),
+      particleSize: parseFloat((l.particleSize ?? 0.012).toFixed(4)),
+      particleSpeed: parseFloat((l.particleSpeed ?? 0.25).toFixed(4)),
+      particleSpread: parseFloat((l.particleSpread ?? 1).toFixed(4)),
+      particleOpacity: parseFloat((l.particleOpacity ?? 0.8).toFixed(4)),
       fitMode: l.fitMode ?? 'cover',
       photoRole: l.photoRole ?? 'NONE',
       visible: l.visible !== false
@@ -1406,6 +1627,7 @@ function App() {
         name: wallpaperName,
         type: 'creator_draft'
       },
+      previewLoopDurationSeconds: parseFloat(previewLoopDuration.toFixed(2)),
       layers: outputLayers,
       skyShader: {
         fragmentAssetPath: shaderAssetPath,
@@ -1442,12 +1664,13 @@ function App() {
         }
       }
     }, null, 2);
-  }, [wallpaperId, wallpaperName, layers, glslCode, shaderAssetPath, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunMinAltitude, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonMinAltitude, moonGlow, sortedHorizonPoints, featureFlags, starsEnabled, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity]);
+  }, [wallpaperId, wallpaperName, layers, glslCode, shaderAssetPath, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunMinAltitude, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonMinAltitude, moonGlow, sortedHorizonPoints, featureFlags, starsEnabled, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity, previewLoopDuration]);
 
   const generatedManifestJson = useMemo(() => {
     const layerPaths = sortedLayerPaths(layers);
     const hasMotion = layers.some((layer) => layer.motionType !== 'STATIC');
     const intervalMs = hasMotion ? 16 : 100;
+    const creatorLayers = JSON.parse(generatedLayoutJson).layers ?? [];
 
     return JSON.stringify({
       id: wallpaperId.trim() || 'creator_draft',
@@ -1503,7 +1726,11 @@ function App() {
         mode: 'external_theme',
         uniformOverrides: {}
       },
-      previewLoopDurationSeconds: 12.0,
+      creator: {
+        schemaVersion: 1,
+        layers: creatorLayers
+      },
+      previewLoopDurationSeconds: parseFloat(previewLoopDuration.toFixed(2)),
       runtimeRenderPolicy: {
         policy: hasMotion ? 'CONTINUOUS' : 'MINUTE_TICK',
         continuousFrameIntervalMs: intervalMs
@@ -1522,7 +1749,7 @@ function App() {
         useThermalThrottle: featureFlags.lowPowerThrottle
       }
     }, null, 2);
-  }, [wallpaperId, wallpaperName, layers, horizonPoints, atmosphereIntensity, starsDensity, sunMotionType, moonMotionType, sunStaticX, moonStaticX, sunZenith, moonZenith, sunMinAltitude, moonMinAltitude, shaderAssetPath, featureFlags, cloudSpeed, cloudDensity, cloudIntensity]);
+  }, [wallpaperId, wallpaperName, layers, horizonPoints, atmosphereIntensity, starsDensity, sunMotionType, moonMotionType, sunStaticX, moonStaticX, sunZenith, moonZenith, sunMinAltitude, moonMinAltitude, shaderAssetPath, featureFlags, cloudSpeed, cloudDensity, cloudIntensity, previewLoopDuration, generatedLayoutJson]);
 
   const generatedJson = exportMode === 'manifest' ? generatedManifestJson : generatedLayoutJson;
   const exportModeLabel = exportMode === 'manifest' ? 'Lumisky Manifest' : 'Creator Draft';
@@ -1532,6 +1759,7 @@ function App() {
       const parsed = JSON.parse(importText);
       if (parsed.meta?.id || parsed.id) setWallpaperId(parsed.meta?.id ?? parsed.id);
       if (parsed.meta?.name || parsed.name) setWallpaperName(parsed.meta?.name ?? parsed.name);
+      if (typeof parsed.previewLoopDurationSeconds === 'number') setPreviewLoopDuration(parsed.previewLoopDurationSeconds);
 
       const manifestTexturePaths = parsed.textures ? [
         parsed.textures.backgroundTexture,
@@ -1543,6 +1771,8 @@ function App() {
 
       const sanitizedLayers = importedLayers.map((l) => ({
         texturePath: l.texturePath || 'warrior/warrior1.webp',
+        mediaType: ['image', 'video', 'particle'].includes(l.mediaType) ? l.mediaType : mediaTypeFromPath(l.texturePath),
+        mimeType: typeof l.mimeType === 'string' ? l.mimeType : '',
         offsetX: typeof l.offsetX === 'number' ? l.offsetX : 0,
         offsetY: typeof l.offsetY === 'number' ? l.offsetY : 0,
         scaleX: typeof l.scaleX === 'number' ? l.scaleX : 1,
@@ -1556,6 +1786,18 @@ function App() {
         motionStartY: typeof l.motionStartY === 'number' ? l.motionStartY : 0,
         motionEndX: typeof l.motionEndX === 'number' ? l.motionEndX : 0.25,
         motionEndY: typeof l.motionEndY === 'number' ? l.motionEndY : 0,
+        keyframeStartX: typeof l.keyframeStartX === 'number' ? l.keyframeStartX : 0,
+        keyframeStartY: typeof l.keyframeStartY === 'number' ? l.keyframeStartY : 0,
+        keyframeEndX: typeof l.keyframeEndX === 'number' ? l.keyframeEndX : 0,
+        keyframeEndY: typeof l.keyframeEndY === 'number' ? l.keyframeEndY : 0,
+        keyframeStartScale: typeof l.keyframeStartScale === 'number' ? l.keyframeStartScale : 1,
+        keyframeEndScale: typeof l.keyframeEndScale === 'number' ? l.keyframeEndScale : 1,
+        keyframeStartOpacity: typeof l.keyframeStartOpacity === 'number' ? l.keyframeStartOpacity : 1,
+        keyframeEndOpacity: typeof l.keyframeEndOpacity === 'number' ? l.keyframeEndOpacity : 1,
+        keyframeStartRotation: typeof l.keyframeStartRotation === 'number' ? l.keyframeStartRotation : 0,
+        keyframeEndRotation: typeof l.keyframeEndRotation === 'number' ? l.keyframeEndRotation : 0,
+        keyframeEasing: ['LINEAR', 'EASE_IN', 'EASE_OUT', 'EASE_IN_OUT'].includes(l.keyframeEasing) ? l.keyframeEasing : 'LINEAR',
+        keyframePingPong: l.keyframePingPong !== false,
         parallaxStrengthX: typeof l.parallaxStrengthX === 'number' ? l.parallaxStrengthX : 0.05,
         parallaxStrengthY: typeof l.parallaxStrengthY === 'number' ? l.parallaxStrengthY : 0.03,
         celestialFollowX: typeof l.celestialFollowX === 'number' ? l.celestialFollowX : 1,
@@ -1564,6 +1806,20 @@ function App() {
         celestialOffsetY: typeof l.celestialOffsetY === 'number' ? l.celestialOffsetY : 0,
         nightTintFactor: typeof l.nightTintFactor === 'number' ? l.nightTintFactor : 0.5,
         opacity: typeof l.opacity === 'number' ? l.opacity : 1.0,
+        blendMode: ['normal', 'screen', 'multiply', 'overlay', 'soft-light', 'lighten', 'darken'].includes(l.blendMode) ? l.blendMode : 'normal',
+        maskEnabled: l.maskEnabled === true,
+        maskShape: ['RADIAL', 'LINEAR'].includes(l.maskShape) ? l.maskShape : 'RADIAL',
+        maskX: typeof l.maskX === 'number' ? l.maskX : 0.5,
+        maskY: typeof l.maskY === 'number' ? l.maskY : 0.5,
+        maskRadius: typeof l.maskRadius === 'number' ? l.maskRadius : 0.45,
+        maskSoftness: typeof l.maskSoftness === 'number' ? l.maskSoftness : 0.15,
+        maskAngle: typeof l.maskAngle === 'number' ? l.maskAngle : 90,
+        particlePreset: ['STARS', 'SNOW', 'EMBERS'].includes(l.particlePreset) ? l.particlePreset : 'STARS',
+        particleCount: typeof l.particleCount === 'number' ? l.particleCount : 80,
+        particleSize: typeof l.particleSize === 'number' ? l.particleSize : 0.012,
+        particleSpeed: typeof l.particleSpeed === 'number' ? l.particleSpeed : 0.25,
+        particleSpread: typeof l.particleSpread === 'number' ? l.particleSpread : 1,
+        particleOpacity: typeof l.particleOpacity === 'number' ? l.particleOpacity : 0.8,
         fitMode: l.fitMode === 'contain' ? 'contain' : 'cover',
         photoRole: ['SUN_PHOTO', 'MOON_PHOTO'].includes(l.photoRole) ? l.photoRole : 'NONE',
         visible: l.visible !== false,
@@ -1685,7 +1941,7 @@ function App() {
         type="file" 
         ref={addLayerFileRef} 
         style={{ display: 'none' }} 
-        accept="image/png, image/jpeg, image/webp, image/gif, image/svg+xml"
+        accept="image/png, image/jpeg, image/webp, image/gif, image/svg+xml, video/mp4, video/webm, video/quicktime"
         multiple
         onChange={handleAddLayerFile} 
       />
@@ -1757,6 +2013,9 @@ function App() {
                 let tx = layer.offsetX;
                 let ty = layer.offsetY;
                 let rot = 0;
+                let drawScaleX = layer.scaleX;
+                let drawScaleY = layer.scaleY;
+                let drawOpacity = layer.opacity ?? 1.0;
                 const duration = layer.motionDuration ?? 5;
                 const progress = progressFromDuration(timeState, duration);
                 const pingPong = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
@@ -1765,6 +2024,17 @@ function App() {
                   const [bodyX, bodyY] = layer.motionType === 'SUN_PATH' ? sunPosition : moonPosition;
                   tx += ((bodyX ?? 0.5) - 0.5) * (layer.celestialFollowX ?? 1) + (layer.celestialOffsetX ?? 0);
                   ty += ((bodyY ?? 0.5) - 0.5) * (layer.celestialFollowY ?? 1) + (layer.celestialOffsetY ?? 0);
+                }
+
+                if (layer.motionType === 'KEYFRAME') {
+                  const keyframeProgress = layer.keyframePingPong === false ? progress : pingPong;
+                  const eased = easeProgress(keyframeProgress, layer.keyframeEasing);
+                  tx = lerp(layer.keyframeStartX ?? layer.offsetX, layer.keyframeEndX ?? layer.offsetX, eased);
+                  ty = lerp(layer.keyframeStartY ?? layer.offsetY, layer.keyframeEndY ?? layer.offsetY, eased);
+                  drawScaleX = lerp(layer.keyframeStartScale ?? layer.scaleX, layer.keyframeEndScale ?? layer.scaleX, eased);
+                  drawScaleY = drawScaleX;
+                  drawOpacity = lerp(layer.keyframeStartOpacity ?? drawOpacity, layer.keyframeEndOpacity ?? drawOpacity, eased);
+                  rot = lerp(layer.keyframeStartRotation ?? 0, layer.keyframeEndRotation ?? 0, eased);
                 }
 
                 if (isPlaying) {
@@ -1815,6 +2085,15 @@ function App() {
 
                 const tint = 1 - nightBlend * layer.nightTintFactor;
                 const layerFilter = `brightness(${tint * 100}%) contrast(${100 - nightBlend * 8}%) saturate(${100 - nightBlend * 15}%)`;
+                const mediaSrc = layer.localUrl || layer.localDataUrl || `/${layer.texturePath}`;
+                const mediaStyle = {
+                  transform: `translate(${tx * 100}%, ${-ty * 100}%) scale(${drawScaleX}, ${drawScaleY}) rotate(${rot}deg)`,
+                  objectFit: layer.fitMode ?? 'cover',
+                  filter: layerFilter,
+                  opacity: drawOpacity,
+                  mixBlendMode: layer.blendMode ?? 'normal',
+                  ...maskStyleForLayer(layer)
+                };
 
                 return (
                   <div 
@@ -1828,19 +2107,38 @@ function App() {
                       height: `${workspaceScale * 100}%`
                     }}
                   >
-                    <img 
-                      src={layer.localUrl || layer.localDataUrl || `/${layer.texturePath}`}
-                      alt={`Layer ${index}`}
-                      style={{
-                        transform: `translate(${tx * 100}%, ${-ty * 100}%) scale(${layer.scaleX}, ${layer.scaleY}) rotate(${rot}deg)`,
-                        objectFit: layer.fitMode ?? 'cover',
-                        filter: layerFilter,
-                        opacity: layer.opacity ?? 1.0
-                      }}
-                      onError={(e) => {
-                        e.target.style.opacity = '0.3';
-                      }}
-                    />
+                    {layer.mediaType === 'particle' ? (
+                      <div
+                        style={{
+                          ...mediaStyle,
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {renderParticleLayer(layer, timeState)}
+                      </div>
+                    ) : layer.mediaType === 'video' ? (
+                      <video
+                        src={mediaSrc}
+                        muted
+                        loop
+                        autoPlay
+                        playsInline
+                        style={mediaStyle}
+                        onError={(e) => {
+                          e.currentTarget.style.opacity = '0.3';
+                        }}
+                      />
+                    ) : (
+                      <img 
+                        src={mediaSrc}
+                        alt={`Layer ${index}`}
+                        style={mediaStyle}
+                        onError={(e) => {
+                          e.target.style.opacity = '0.3';
+                        }}
+                      />
+                    )}
                     {index === selectedIndex && (
                       <button
                         type="button"
@@ -1892,6 +2190,54 @@ function App() {
                     <strong>{formatTime(snapshot.value)}</strong>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="sim-slider-row">
+              <div className="sim-slider-header">
+                <span>Preview Loop</span>
+                <span className="sim-slider-val">{timeState.toFixed(2)}s / {previewLoopDuration.toFixed(1)}s</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="30"
+                step="0.5"
+                value={previewLoopDuration}
+                onChange={(e) => {
+                  const nextDuration = parseFloat(e.target.value);
+                  setPreviewLoopDuration(nextDuration);
+                  setLoopPreviewTime(Math.min(timeState, nextDuration), nextDuration);
+                }}
+              />
+              <div className="sim-slider-header">
+                <span>Loop Scrub</span>
+                <span>{Math.round((timeState / Math.max(1, previewLoopDuration)) * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max={previewLoopDuration}
+                step="0.05"
+                value={Math.min(timeState, previewLoopDuration)}
+                onChange={(e) => {
+                  setIsPlaying(false);
+                  setLoopPreviewTime(parseFloat(e.target.value));
+                }}
+              />
+              <div className="snapshot-strip">
+                <button type="button" className="snapshot-chip" onClick={() => { setIsPlaying(false); setLoopPreviewTime(0); }}>
+                  <span>Start</span>
+                  <strong>0%</strong>
+                </button>
+                <button type="button" className="snapshot-chip" onClick={() => { setIsPlaying(false); setLoopPreviewTime(previewLoopDuration / 2); }}>
+                  <span>Halfway</span>
+                  <strong>50%</strong>
+                </button>
+                <button type="button" className="snapshot-chip" onClick={() => { setIsPlaying(false); setLoopPreviewTime(previewLoopDuration); }}>
+                  <span>End</span>
+                  <strong>100%</strong>
+                </button>
               </div>
             </div>
 
@@ -2057,7 +2403,10 @@ function App() {
           <div className="editor-card">
             <div className="card-header">
               <span className="card-title">Scene Layers ({sceneStackItems.length})</span>
-              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', borderRadius: '0.5rem', fontSize: '0.8rem' }} onClick={triggerAddLayerFile}>+ Add Layers</button>
+              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                <button className="btn btn-secondary" style={{ padding: '0.4rem 0.7rem', borderRadius: '0.5rem', fontSize: '0.8rem' }} onClick={addParticleLayer}>+ Particles</button>
+                <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', borderRadius: '0.5rem', fontSize: '0.8rem' }} onClick={triggerAddLayerFile}>+ Add Layers</button>
+              </div>
             </div>
             
             <div
@@ -2172,19 +2521,111 @@ function App() {
                   </select>
                 </div>
 
+                <div className="form-group">
+                  <label>Blend Mode</label>
+                  <select value={activeLayer.blendMode ?? 'normal'} onChange={(e) => updateActiveLayer('blendMode', e.target.value)}>
+                    <option value="normal">Normal</option>
+                    <option value="screen">Screen</option>
+                    <option value="multiply">Multiply</option>
+                    <option value="overlay">Overlay</option>
+                    <option value="soft-light">Soft Light</option>
+                    <option value="lighten">Lighten</option>
+                    <option value="darken">Darken</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Mask Enabled</label>
+                  <label className="checkbox-row">
+                    <input type="checkbox" checked={activeLayer.maskEnabled === true} onChange={(e) => updateActiveLayer('maskEnabled', e.target.checked)} />
+                    Clip layer
+                  </label>
+                </div>
+
+                {activeLayer.maskEnabled === true && (
+                  <>
+                    <div className="form-group">
+                      <label>Mask Shape</label>
+                      <select value={activeLayer.maskShape ?? 'RADIAL'} onChange={(e) => updateActiveLayer('maskShape', e.target.value)}>
+                        <option value="RADIAL">Radial</option>
+                        <option value="LINEAR">Linear</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Mask Softness: {(activeLayer.maskSoftness ?? 0.15).toFixed(2)}</label>
+                      <input type="range" min="0" max="0.5" step="0.01" value={activeLayer.maskSoftness ?? 0.15} onChange={(e) => updateActiveLayer('maskSoftness', parseFloat(e.target.value))} />
+                    </div>
+                    {activeLayer.maskShape !== 'LINEAR' && (
+                      <>
+                        <div className="form-group">
+                          <label>Mask X: {(activeLayer.maskX ?? 0.5).toFixed(2)}</label>
+                          <input type="range" min="0" max="1" step="0.01" value={activeLayer.maskX ?? 0.5} onChange={(e) => updateActiveLayer('maskX', parseFloat(e.target.value))} />
+                        </div>
+                        <div className="form-group">
+                          <label>Mask Y: {(activeLayer.maskY ?? 0.5).toFixed(2)}</label>
+                          <input type="range" min="0" max="1" step="0.01" value={activeLayer.maskY ?? 0.5} onChange={(e) => updateActiveLayer('maskY', parseFloat(e.target.value))} />
+                        </div>
+                        <div className="form-group">
+                          <label>Mask Radius: {(activeLayer.maskRadius ?? 0.45).toFixed(2)}</label>
+                          <input type="range" min="0.02" max="1" step="0.01" value={activeLayer.maskRadius ?? 0.45} onChange={(e) => updateActiveLayer('maskRadius', parseFloat(e.target.value))} />
+                        </div>
+                      </>
+                    )}
+                    {activeLayer.maskShape === 'LINEAR' && (
+                      <div className="form-group">
+                        <label>Mask Angle: {activeLayer.maskAngle ?? 90}°</label>
+                        <input type="range" min="0" max="360" step="5" value={activeLayer.maskAngle ?? 90} onChange={(e) => updateActiveLayer('maskAngle', parseFloat(e.target.value))} />
+                      </div>
+                    )}
+                  </>
+                )}
+
                 {/* Upload Local Image override */}
                 <div className="form-group form-group-full">
-                  <label>Replace Preview Image (PNG/GIF/SVG/WebP)</label>
+                  <label>Replace Preview Media (PNG/GIF/SVG/WebP/Video)</label>
                   <div className="file-input-wrapper">
                     <button className="btn btn-secondary btn-upload" style={{ width: '100%' }}>
                       Choose Graphic File
-                      <input type="file" accept="image/*" onChange={handleFileUpload} />
+                      <input type="file" accept="image/*,video/*" onChange={handleFileUpload} />
                     </button>
                     {activeLayer.localUrl && (
                       <button className="btn btn-secondary" style={{ color: '#d6444b' }} onClick={clearActiveLayerPreview}>Clear</button>
                     )}
                   </div>
                 </div>
+
+                {activeLayer.mediaType === 'particle' && (
+                  <>
+                    <div className="form-group form-group-full subpanel-title">Particle Layer</div>
+                    <div className="form-group">
+                      <label>Particle Preset</label>
+                      <select value={activeLayer.particlePreset ?? 'STARS'} onChange={(e) => updateActiveLayer('particlePreset', e.target.value)}>
+                        <option value="STARS">Stars</option>
+                        <option value="SNOW">Snow</option>
+                        <option value="EMBERS">Embers</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Particle Count: {Math.round(activeLayer.particleCount ?? 80)}</label>
+                      <input type="range" min="1" max="300" step="1" value={activeLayer.particleCount ?? 80} onChange={(e) => updateActiveLayer('particleCount', parseInt(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Particle Size: {(activeLayer.particleSize ?? 0.012).toFixed(3)}</label>
+                      <input type="range" min="0.002" max="0.06" step="0.001" value={activeLayer.particleSize ?? 0.012} onChange={(e) => updateActiveLayer('particleSize', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Particle Speed: {(activeLayer.particleSpeed ?? 0.25).toFixed(2)}</label>
+                      <input type="range" min="0" max="2" step="0.02" value={activeLayer.particleSpeed ?? 0.25} onChange={(e) => updateActiveLayer('particleSpeed', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Particle Spread: {(activeLayer.particleSpread ?? 1).toFixed(2)}</label>
+                      <input type="range" min="0.2" max="2" step="0.02" value={activeLayer.particleSpread ?? 1} onChange={(e) => updateActiveLayer('particleSpread', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Particle Opacity: {Math.round((activeLayer.particleOpacity ?? 0.8) * 100)}%</label>
+                      <input type="range" min="0" max="2" step="0.01" value={activeLayer.particleOpacity ?? 0.8} onChange={(e) => updateActiveLayer('particleOpacity', parseFloat(e.target.value))} />
+                    </div>
+                  </>
+                )}
 
                 {/* Offsets */}
                 <div className="form-group">
@@ -2274,13 +2715,14 @@ function App() {
                     <option value="WAVE">WAVE (Directional Float Angle)</option>
                     <option value="SCROLL">SCROLL (Timed texture slide)</option>
                     <option value="POINTS">POINTS (Between two positions)</option>
+                    <option value="KEYFRAME">KEYFRAME (Timeline transform)</option>
                     <option value="SUN_PATH">SUN PATH (Follow sun position)</option>
                     <option value="MOON_PATH">MOON PATH (Follow moon position)</option>
                     <option value="SPIN">SPIN (Clockwise rotation)</option>
                   </select>
                 </div>
 
-                {activeLayer.motionType !== 'STATIC' && !['SUN_PATH', 'MOON_PATH'].includes(activeLayer.motionType) && (
+                {activeLayer.motionType !== 'STATIC' && !['SUN_PATH', 'MOON_PATH', 'KEYFRAME'].includes(activeLayer.motionType) && (
                   <>
                     <div className="form-group">
                       <label>Motion Speed: {(activeLayer.motionSpeed ?? 1).toFixed(1)}</label>
@@ -2366,6 +2808,72 @@ function App() {
                     <div className="form-group">
                       <label>End Y: {(activeLayer.motionEndY ?? 0).toFixed(2)}</label>
                       <input type="range" min="-1" max="1" step="0.01" value={activeLayer.motionEndY ?? 0} onChange={(e) => updateActiveLayer('motionEndY', parseFloat(e.target.value))} />
+                    </div>
+                  </>
+                )}
+
+                {activeLayer.motionType === 'KEYFRAME' && (
+                  <>
+                    <div className="form-group form-group-full subpanel-title">Timeline Keyframes</div>
+                    <div className="form-group form-group-full">
+                      <label>Loop Duration: {(activeLayer.motionDuration ?? 5).toFixed(1)}s</label>
+                      <input type="range" min="0.5" max="30" step="0.5" value={activeLayer.motionDuration ?? 5} onChange={(e) => updateActiveLayer('motionDuration', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Easing</label>
+                      <select value={activeLayer.keyframeEasing ?? 'LINEAR'} onChange={(e) => updateActiveLayer('keyframeEasing', e.target.value)}>
+                        <option value="LINEAR">Linear</option>
+                        <option value="EASE_IN">Ease In</option>
+                        <option value="EASE_OUT">Ease Out</option>
+                        <option value="EASE_IN_OUT">Ease In Out</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Ping Pong</label>
+                      <label className="checkbox-row">
+                        <input type="checkbox" checked={activeLayer.keyframePingPong !== false} onChange={(e) => updateActiveLayer('keyframePingPong', e.target.checked)} />
+                        Return to start
+                      </label>
+                    </div>
+                    <div className="form-group">
+                      <label>Start X: {(activeLayer.keyframeStartX ?? 0).toFixed(2)}</label>
+                      <input type="range" min="-1" max="1" step="0.01" value={activeLayer.keyframeStartX ?? 0} onChange={(e) => updateActiveLayer('keyframeStartX', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Start Y: {(activeLayer.keyframeStartY ?? 0).toFixed(2)}</label>
+                      <input type="range" min="-1" max="1" step="0.01" value={activeLayer.keyframeStartY ?? 0} onChange={(e) => updateActiveLayer('keyframeStartY', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>End X: {(activeLayer.keyframeEndX ?? 0).toFixed(2)}</label>
+                      <input type="range" min="-1" max="1" step="0.01" value={activeLayer.keyframeEndX ?? 0} onChange={(e) => updateActiveLayer('keyframeEndX', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>End Y: {(activeLayer.keyframeEndY ?? 0).toFixed(2)}</label>
+                      <input type="range" min="-1" max="1" step="0.01" value={activeLayer.keyframeEndY ?? 0} onChange={(e) => updateActiveLayer('keyframeEndY', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Start Scale: {(activeLayer.keyframeStartScale ?? 1).toFixed(2)}</label>
+                      <input type="range" min="0.1" max="4" step="0.01" value={activeLayer.keyframeStartScale ?? 1} onChange={(e) => updateActiveLayer('keyframeStartScale', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>End Scale: {(activeLayer.keyframeEndScale ?? 1).toFixed(2)}</label>
+                      <input type="range" min="0.1" max="4" step="0.01" value={activeLayer.keyframeEndScale ?? 1} onChange={(e) => updateActiveLayer('keyframeEndScale', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Start Opacity: {Math.round((activeLayer.keyframeStartOpacity ?? 1) * 100)}%</label>
+                      <input type="range" min="0" max="2" step="0.01" value={activeLayer.keyframeStartOpacity ?? 1} onChange={(e) => updateActiveLayer('keyframeStartOpacity', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>End Opacity: {Math.round((activeLayer.keyframeEndOpacity ?? 1) * 100)}%</label>
+                      <input type="range" min="0" max="2" step="0.01" value={activeLayer.keyframeEndOpacity ?? 1} onChange={(e) => updateActiveLayer('keyframeEndOpacity', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>Start Rotation: {activeLayer.keyframeStartRotation ?? 0}°</label>
+                      <input type="range" min="-360" max="360" step="5" value={activeLayer.keyframeStartRotation ?? 0} onChange={(e) => updateActiveLayer('keyframeStartRotation', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label>End Rotation: {activeLayer.keyframeEndRotation ?? 0}°</label>
+                      <input type="range" min="-360" max="360" step="5" value={activeLayer.keyframeEndRotation ?? 0} onChange={(e) => updateActiveLayer('keyframeEndRotation', parseFloat(e.target.value))} />
                     </div>
                   </>
                 )}
