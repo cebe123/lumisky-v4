@@ -30,11 +30,17 @@ uniform vec3 u_SunColor;
 uniform vec3 u_MoonColor;
 uniform float u_SunSize;
 uniform float u_MoonSize;
+uniform vec2 u_SunScale;
+uniform vec2 u_MoonScale;
 uniform sampler2D u_HorizonTexture;
 uniform float u_NightBlend;
 
 uniform float u_SunGlow;
 uniform float u_MoonGlow;
+uniform float u_SunAtmosphereBlend;
+uniform float u_MoonAtmosphereBlend;
+uniform float u_SunTransitionSoftness;
+uniform float u_MoonTransitionSoftness;
 uniform float u_StarsEnabled;
 uniform float u_StarsDensity;
 uniform float u_AtmosphereIntensity;
@@ -57,6 +63,10 @@ float valueNoise(vec2 p) {
   vec2 f = fract(p);
   vec2 u = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+float ellipseDistance(vec2 uv, vec2 center, vec2 radius) {
+  return length((uv - center) / max(radius, vec2(0.001)));
 }
 
 void main() {
@@ -112,17 +122,23 @@ void main() {
   }
   
   // Render celestial bodies (Sun)
-  float distToSun = distance(uv, u_SunPos);
-  float sunMask = smoothstep(u_SunSize, u_SunSize - 0.015, distToSun);
-  float sunGlow = exp(-distToSun * 12.0) * u_SunGlow;
-  skyColor = mix(skyColor, u_SunColor, sunMask + sunGlow * (1.0 - u_NightBlend));
+  if (u_SunSize > 0.0) {
+    float distToSun = ellipseDistance(uv, u_SunPos, u_SunScale);
+    float sunMask = smoothstep(1.0, 1.0 - u_SunTransitionSoftness, distToSun);
+    float sunGlow = exp(-distToSun * 1.6) * u_SunGlow;
+    vec3 sunAtmosphereColor = mix(u_SunColor, mix(u_SunColor, skyColor, 0.55), u_SunAtmosphereBlend * u_AtmosphereIntensity);
+    skyColor = mix(skyColor, sunAtmosphereColor, sunMask + sunGlow * (1.0 - u_NightBlend));
+  }
   
   // Render celestial bodies (Moon)
-  float distToMoon = distance(uv, u_MoonPos);
-  float moonMask = smoothstep(u_MoonSize, u_MoonSize - 0.015, distToMoon);
-  float moonGlow = exp(-distToMoon * 15.0) * u_MoonGlow;
-  float crescentMask = smoothstep(u_MoonSize, u_MoonSize - 0.015, distance(uv - vec2(0.01, 0.005), u_MoonPos));
-  skyColor = mix(skyColor, u_MoonColor, max(0.0, moonMask - crescentMask) + moonGlow * u_NightBlend);
+  if (u_MoonSize > 0.0) {
+    float distToMoon = ellipseDistance(uv, u_MoonPos, u_MoonScale);
+    float moonMask = smoothstep(1.0, 1.0 - u_MoonTransitionSoftness, distToMoon);
+    float moonGlow = exp(-distToMoon * 1.8) * u_MoonGlow;
+    float crescentMask = smoothstep(1.0, 1.0 - u_MoonTransitionSoftness, ellipseDistance(uv - vec2(0.01, 0.005), u_MoonPos, u_MoonScale));
+    vec3 moonAtmosphereColor = mix(u_MoonColor, mix(u_MoonColor, skyColor, 0.55), u_MoonAtmosphereBlend * u_AtmosphereIntensity);
+    skyColor = mix(skyColor, moonAtmosphereColor, max(0.0, moonMask - crescentMask) + moonGlow * u_NightBlend);
+  }
   
   // Render Horizon
   float horizonHeight = getHorizonHeight(uv.x);
@@ -132,6 +148,27 @@ void main() {
 
   gl_FragColor = vec4(skyColor, 1.0);
 }`;
+
+const normalizeDefaultCelestialShader = (shaderSource) => {
+  if (
+    typeof shaderSource === 'string' &&
+    (
+      (
+        !shaderSource.includes('u_SunScale') &&
+        shaderSource.includes('float distToSun = distance(uv, u_SunPos);') &&
+        shaderSource.includes('float moonMask = smoothstep(u_MoonSize')
+      ) ||
+      (
+        shaderSource.includes('u_SunScale') &&
+        !shaderSource.includes('u_SunAtmosphereBlend') &&
+        shaderSource.includes('float sunMask = smoothstep(1.0, 0.78')
+      )
+    )
+  ) {
+    return DEFAULT_GLSL_SHADER;
+  }
+  return shaderSource;
+};
 
 const DEFAULT_KEYFRAME_FIELDS = {
   keyframeStartX: 0,
@@ -423,6 +460,18 @@ const averageHorizonOffset = (points) => {
 
 const getHiddenBehindHorizonY = (points, radius) => averageHorizonOffset(points) - radius - 0.02;
 
+const HORIZON_LAYER_ORDER_INDEX = 5;
+const TEXTURE_LAYER_ORDER_OFFSET = HORIZON_LAYER_ORDER_INDEX + 1;
+
+const horizonClipPath = (points) => {
+  const sorted = [...points].sort((a, b) => a.x - b.x);
+  if (!sorted.length) return undefined;
+  const cssPoint = (point) => `${Math.max(0, Math.min(1, point.x)) * 100}% ${Math.max(0, Math.min(1, 1 - point.y)) * 100}%`;
+  const leftY = Math.max(0, Math.min(1, 1 - sorted[0].y)) * 100;
+  const rightY = Math.max(0, Math.min(1, 1 - sorted[sorted.length - 1].y)) * 100;
+  return `polygon(0% 0%, 100% 0%, 100% ${rightY}%, ${sorted.slice().reverse().map(cssPoint).join(', ')}, 0% ${leftY}%)`;
+};
+
 const sortedLayerPaths = (layers) =>
   layers
     .filter((layer) => layer.visible !== false && (layer.mediaType ?? 'image') === 'image')
@@ -559,12 +608,14 @@ function App() {
   const [timeState, setTimeState] = useState(() => savedValue('timeState', 0));
 
   // GLSL Shader properties
-  const [glslCode, setGlslCode] = useState(() => savedValue('glslCode', DEFAULT_GLSL_SHADER));
+  const [glslCode, setGlslCode] = useState(() => normalizeDefaultCelestialShader(savedValue('glslCode', DEFAULT_GLSL_SHADER)));
   const [shaderAssetPath, setShaderAssetPath] = useState(() => savedValue('shaderAssetPath', 'shaders/creator_draft/fragment.glsl'));
   const [shaderError, setShaderError] = useState(null);
 
   // Sun configurations
   const [sunSize, setSunSize] = useState(() => savedValue('sunSize', 0.06));
+  const [sunWidth, setSunWidth] = useState(() => savedValue('sunWidth', savedValue('sunSize', 0.06)));
+  const [sunHeight, setSunHeight] = useState(() => savedValue('sunHeight', savedValue('sunSize', 0.06)));
   const [sunColor, setSunColor] = useState(() => savedValue('sunColor', '#ffd54f'));
   const [sunZenith, setSunZenith] = useState(() => savedValue('sunZenith', 0.82));
   const [sunMotionType, setSunMotionType] = useState(() => savedValue('sunMotionType', 'ARCH')); // ARCH, LINEAR, STATIC
@@ -572,9 +623,13 @@ function App() {
   const [sunStaticY, setSunStaticY] = useState(() => savedValue('sunStaticY', 0.16));
   const [sunMinAltitude, setSunMinAltitude] = useState(() => savedValue('sunMinAltitude', 0));
   const [sunGlow, setSunGlow] = useState(() => savedValue('sunGlow', 0.4));
+  const [sunAtmosphereBlend, setSunAtmosphereBlend] = useState(() => savedValue('sunAtmosphereBlend', 0.25));
+  const [sunTransitionSoftness, setSunTransitionSoftness] = useState(() => savedValue('sunTransitionSoftness', 0.22));
 
   // Moon configurations
   const [moonSize, setMoonSize] = useState(() => savedValue('moonSize', 0.05));
+  const [moonWidth, setMoonWidth] = useState(() => savedValue('moonWidth', savedValue('moonSize', 0.05)));
+  const [moonHeight, setMoonHeight] = useState(() => savedValue('moonHeight', savedValue('moonSize', 0.05)));
   const [moonColor, setMoonColor] = useState(() => savedValue('moonColor', '#eceff1'));
   const [moonZenith, setMoonZenith] = useState(() => savedValue('moonZenith', 0.78));
   const [moonMotionType, setMoonMotionType] = useState(() => savedValue('moonMotionType', 'ARCH')); // ARCH, LINEAR, STATIC
@@ -582,6 +637,8 @@ function App() {
   const [moonStaticY, setMoonStaticY] = useState(() => savedValue('moonStaticY', 0.14));
   const [moonMinAltitude, setMoonMinAltitude] = useState(() => savedValue('moonMinAltitude', 0));
   const [moonGlow, setMoonGlow] = useState(() => savedValue('moonGlow', 0.25));
+  const [moonAtmosphereBlend, setMoonAtmosphereBlend] = useState(() => savedValue('moonAtmosphereBlend', 0.35));
+  const [moonTransitionSoftness, setMoonTransitionSoftness] = useState(() => savedValue('moonTransitionSoftness', 0.22));
 
   // Extended sky parameters
   const starsEnabled = featureFlags.stars;
@@ -622,14 +679,42 @@ function App() {
   const effectiveAtmosphereIntensity = featureFlags.atmosphere ? atmosphereIntensity : 0;
   const effectiveSunSize = featureFlags.sun ? sunSize : 0;
   const effectiveMoonSize = featureFlags.moon ? moonSize : 0;
+  const effectiveSunWidth = featureFlags.sun ? sunWidth : 0;
+  const effectiveSunHeight = featureFlags.sun ? sunHeight : 0;
+  const effectiveMoonWidth = featureFlags.moon ? moonWidth : 0;
+  const effectiveMoonHeight = featureFlags.moon ? moonHeight : 0;
   const effectiveSunGlow = featureFlags.sun && featureFlags.lensFlare ? sunGlow : 0;
   const effectiveMoonGlow = featureFlags.lensFlare ? moonGlow : 0;
   const effectiveCloudIntensity = featureFlags.clouds ? cloudIntensity : 0;
+  const sunVisibilityRadius = Math.max(sunWidth, sunHeight);
+  const moonVisibilityRadius = Math.max(moonWidth, moonHeight);
+
+  const updateSunWidth = (value) => {
+    setSunWidth(value);
+    setSunSize((value + sunHeight) / 2);
+  };
+
+  const updateSunHeight = (value) => {
+    setSunHeight(value);
+    setSunSize((sunWidth + value) / 2);
+  };
+
+  const updateMoonWidth = (value) => {
+    setMoonWidth(value);
+    setMoonSize((value + moonHeight) / 2);
+  };
+
+  const updateMoonHeight = (value) => {
+    setMoonHeight(value);
+    setMoonSize((moonWidth + value) / 2);
+  };
 
   // Render order follows the layer list order.
   const sortedLayers = useMemo(() => {
     return layers.map((layer, index) => ({ layer, index }));
   }, [layers]);
+
+  const horizonOcclusionClipPath = useMemo(() => horizonClipPath(horizonPoints), [horizonPoints]);
 
   const sceneStackItems = useMemo(() => {
     const systemItems = [
@@ -637,7 +722,8 @@ function App() {
       { key: 'system-stars', label: 'Stars', detail: `Density ${starsDensity.toFixed(2)}`, type: 'system', featureKey: 'stars', visible: featureFlags.stars, orderIndex: 1 },
       { key: 'system-clouds', label: 'Clouds', detail: `Speed ${cloudSpeed.toFixed(2)}`, type: 'system', featureKey: 'clouds', visible: featureFlags.clouds, orderIndex: 2 },
       { key: 'system-sun', label: 'Sun', detail: sunMotionType, type: 'system', featureKey: 'sun', visible: featureFlags.sun, orderIndex: 3 },
-      { key: 'system-moon', label: 'Moon', detail: moonMotionType, type: 'system', featureKey: 'moon', visible: featureFlags.moon, orderIndex: 4 }
+      { key: 'system-moon', label: 'Moon', detail: moonMotionType, type: 'system', featureKey: 'moon', visible: featureFlags.moon, orderIndex: 4 },
+      { key: 'system-horizon', label: 'Horizon', detail: 'Occlusion boundary', type: 'system', featureKey: 'horizon', visible: true, locked: true, orderIndex: HORIZON_LAYER_ORDER_INDEX }
     ];
 
     return [
@@ -649,7 +735,7 @@ function App() {
         type: 'texture',
         visible: layer.visible !== false,
         textureIndex: index,
-        orderIndex: systemItems.length + index
+        orderIndex: TEXTURE_LAYER_ORDER_OFFSET + index
       }))
     ].sort((a, b) => a.orderIndex - b.orderIndex);
   }, [layers, featureFlags, starsDensity, cloudSpeed, sunMotionType, moonMotionType]);
@@ -822,6 +908,8 @@ function App() {
       glslCode,
       shaderAssetPath,
       sunSize,
+      sunWidth,
+      sunHeight,
       sunColor,
       sunZenith,
       sunMotionType,
@@ -829,7 +917,11 @@ function App() {
       sunStaticY,
       sunMinAltitude,
       sunGlow,
+      sunAtmosphereBlend,
+      sunTransitionSoftness,
       moonSize,
+      moonWidth,
+      moonHeight,
       moonColor,
       moonZenith,
       moonMotionType,
@@ -837,6 +929,8 @@ function App() {
       moonStaticY,
       moonMinAltitude,
       moonGlow,
+      moonAtmosphereBlend,
+      moonTransitionSoftness,
       starsDensity,
       atmosphereIntensity,
       cloudSpeed,
@@ -846,7 +940,7 @@ function App() {
       exportMode,
       importText
     });
-  }, [wallpaperId, wallpaperName, layers, selectedIndex, selectedSystemLayer, isPlaying, daylightTime, workspaceScale, showSafeFrame, previewLoopDuration, featureFlags, glslCode, shaderAssetPath, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunMinAltitude, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonMinAltitude, moonGlow, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity, horizonPoints, exportMode, importText]);
+  }, [wallpaperId, wallpaperName, layers, selectedIndex, selectedSystemLayer, isPlaying, daylightTime, workspaceScale, showSafeFrame, previewLoopDuration, featureFlags, glslCode, shaderAssetPath, sunSize, sunWidth, sunHeight, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunMinAltitude, sunGlow, sunAtmosphereBlend, sunTransitionSoftness, moonSize, moonWidth, moonHeight, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonMinAltitude, moonGlow, moonAtmosphereBlend, moonTransitionSoftness, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity, horizonPoints, exportMode, importText]);
 
   const clearActiveLayerPreview = () => {
     if (activeLayer?.localUrl) {
@@ -1044,7 +1138,7 @@ function App() {
     if (sunMotionType === 'STATIC') {
       return [sunStaticX, sunStaticY];
     }
-    const sunHorizonY = Math.max(getHiddenBehindHorizonY(horizonPoints, sunSize), sunMinAltitude);
+    const sunHorizonY = Math.max(getHiddenBehindHorizonY(horizonPoints, sunVisibilityRadius), sunMinAltitude);
     if (daylightTime < 6 || daylightTime >= 18) {
       return [sunStaticX, sunHorizonY];
     }
@@ -1057,14 +1151,14 @@ function App() {
     // ARCH
     const sX = sunStaticX + (progress - 0.5) * 0.76;
     return [sX, arcY];
-  }, [daylightTime, sunMotionType, sunStaticX, sunStaticY, sunZenith, sunMinAltitude, horizonPoints, sunSize]);
+  }, [daylightTime, sunMotionType, sunStaticX, sunStaticY, sunZenith, sunMinAltitude, horizonPoints, sunVisibilityRadius]);
 
   // Interpolate Moon Position Y vertically on LINEAR
   const moonPosition = useMemo(() => {
     if (moonMotionType === 'STATIC') {
       return [moonStaticX, moonStaticY];
     }
-    const moonHorizonY = Math.max(getHiddenBehindHorizonY(horizonPoints, moonSize), moonMinAltitude);
+    const moonHorizonY = Math.max(getHiddenBehindHorizonY(horizonPoints, moonVisibilityRadius), moonMinAltitude);
     if (daylightTime >= 6 && daylightTime < 18) {
       return [moonStaticX, moonHorizonY];
     }
@@ -1078,7 +1172,7 @@ function App() {
     // ARCH
     const mX = moonStaticX + (progress - 0.5) * 0.76;
     return [mX, arcY];
-  }, [daylightTime, moonMotionType, moonStaticX, moonStaticY, moonZenith, moonMinAltitude, horizonPoints, moonSize]);
+  }, [daylightTime, moonMotionType, moonStaticX, moonStaticY, moonZenith, moonMinAltitude, horizonPoints, moonVisibilityRadius]);
 
   // Parallax Device Orientation Handlers
   useEffect(() => {
@@ -1279,9 +1373,17 @@ function App() {
       moonColor,
       sunSize: effectiveSunSize,
       moonSize: effectiveMoonSize,
+      sunWidth: effectiveSunWidth,
+      sunHeight: effectiveSunHeight,
+      moonWidth: effectiveMoonWidth,
+      moonHeight: effectiveMoonHeight,
       nightBlend,
       sunGlow: effectiveSunGlow,
       moonGlow: effectiveMoonGlow,
+      sunAtmosphereBlend,
+      moonAtmosphereBlend,
+      sunTransitionSoftness,
+      moonTransitionSoftness,
       starsEnabled,
       starsDensity,
       atmosphereIntensity: effectiveAtmosphereIntensity,
@@ -1290,7 +1392,7 @@ function App() {
       cloudDensity,
       cloudIntensity: effectiveCloudIntensity
     };
-  }, [timeState, daylightTime, sunPosition, moonPosition, sunColor, moonColor, effectiveSunSize, effectiveMoonSize, nightBlend, effectiveSunGlow, effectiveMoonGlow, starsEnabled, starsDensity, effectiveAtmosphereIntensity, featureFlags.clouds, cloudSpeed, cloudDensity, effectiveCloudIntensity]);
+  }, [timeState, daylightTime, sunPosition, moonPosition, sunColor, moonColor, effectiveSunSize, effectiveMoonSize, effectiveSunWidth, effectiveSunHeight, effectiveMoonWidth, effectiveMoonHeight, nightBlend, effectiveSunGlow, effectiveMoonGlow, sunAtmosphereBlend, moonAtmosphereBlend, sunTransitionSoftness, moonTransitionSoftness, starsEnabled, starsDensity, effectiveAtmosphereIntensity, featureFlags.clouds, cloudSpeed, cloudDensity, effectiveCloudIntensity]);
 
   // WebGL Render Loop
   useEffect(() => {
@@ -1339,11 +1441,17 @@ function App() {
           
           gl.uniform1f(gl.getUniformLocation(program, 'u_SunSize'), state.sunSize);
           gl.uniform1f(gl.getUniformLocation(program, 'u_MoonSize'), state.moonSize);
+          gl.uniform2f(gl.getUniformLocation(program, 'u_SunScale'), state.sunWidth, state.sunHeight);
+          gl.uniform2f(gl.getUniformLocation(program, 'u_MoonScale'), state.moonWidth, state.moonHeight);
           gl.uniform1f(gl.getUniformLocation(program, 'u_NightBlend'), state.nightBlend);
 
           // Bind extended parameters uniforms
           gl.uniform1f(gl.getUniformLocation(program, 'u_SunGlow'), state.sunGlow);
           gl.uniform1f(gl.getUniformLocation(program, 'u_MoonGlow'), state.moonGlow);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_SunAtmosphereBlend'), state.sunAtmosphereBlend);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_MoonAtmosphereBlend'), state.moonAtmosphereBlend);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_SunTransitionSoftness'), state.sunTransitionSoftness);
+          gl.uniform1f(gl.getUniformLocation(program, 'u_MoonTransitionSoftness'), state.moonTransitionSoftness);
           gl.uniform1f(gl.getUniformLocation(program, 'u_StarsEnabled'), state.starsEnabled ? 1.0 : 0.0);
           gl.uniform1f(gl.getUniformLocation(program, 'u_StarsDensity'), state.starsDensity);
           gl.uniform1f(gl.getUniformLocation(program, 'u_AtmosphereIntensity'), state.atmosphereIntensity);
@@ -1634,23 +1742,31 @@ function App() {
         glslCode: glslCode,
         sun: {
           size: sunSize,
+          width: sunWidth,
+          height: sunHeight,
           color: sunColor,
           zenith: sunZenith,
           motionType: sunMotionType,
           staticX: sunStaticX,
           staticY: sunStaticY,
           minimumAltitude: sunMinAltitude,
-          glow: sunGlow
+          glow: sunGlow,
+          atmosphereBlend: sunAtmosphereBlend,
+          transitionSoftness: sunTransitionSoftness
         },
         moon: {
           size: moonSize,
+          width: moonWidth,
+          height: moonHeight,
           color: moonColor,
           zenith: moonZenith,
           motionType: moonMotionType,
           staticX: moonStaticX,
           staticY: moonStaticY,
           minimumAltitude: moonMinAltitude,
-          glow: moonGlow
+          glow: moonGlow,
+          atmosphereBlend: moonAtmosphereBlend,
+          transitionSoftness: moonTransitionSoftness
         },
         horizonPoints: outputHorizon,
         features: featureFlags,
@@ -1664,7 +1780,7 @@ function App() {
         }
       }
     }, null, 2);
-  }, [wallpaperId, wallpaperName, layers, glslCode, shaderAssetPath, sunSize, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunMinAltitude, sunGlow, moonSize, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonMinAltitude, moonGlow, sortedHorizonPoints, featureFlags, starsEnabled, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity, previewLoopDuration]);
+  }, [wallpaperId, wallpaperName, layers, glslCode, shaderAssetPath, sunSize, sunWidth, sunHeight, sunColor, sunZenith, sunMotionType, sunStaticX, sunStaticY, sunMinAltitude, sunGlow, sunAtmosphereBlend, sunTransitionSoftness, moonSize, moonWidth, moonHeight, moonColor, moonZenith, moonMotionType, moonStaticX, moonStaticY, moonMinAltitude, moonGlow, moonAtmosphereBlend, moonTransitionSoftness, sortedHorizonPoints, featureFlags, starsEnabled, starsDensity, atmosphereIntensity, cloudSpeed, cloudDensity, cloudIntensity, previewLoopDuration]);
 
   const generatedManifestJson = useMemo(() => {
     const layerPaths = sortedLayerPaths(layers);
@@ -1873,9 +1989,13 @@ function App() {
       // Load sky configurations if present
       if (parsed.skyShader) {
         const s = parsed.skyShader;
-        if (s.glslCode) setGlslCode(s.glslCode);
+        if (s.glslCode) setGlslCode(normalizeDefaultCelestialShader(s.glslCode));
         if (s.sun) {
-          setSunSize(s.sun.size ?? 0.06);
+          const importedSunWidth = s.sun.width ?? s.sun.size ?? 0.06;
+          const importedSunHeight = s.sun.height ?? s.sun.size ?? 0.06;
+          setSunSize(s.sun.size ?? ((importedSunWidth + importedSunHeight) / 2));
+          setSunWidth(importedSunWidth);
+          setSunHeight(importedSunHeight);
           setSunColor(s.sun.color ?? '#ffd54f');
           setSunZenith(s.sun.zenith ?? 0.82);
           setSunMotionType(s.sun.motionType ?? 'ARCH');
@@ -1883,9 +2003,15 @@ function App() {
           setSunStaticY(s.sun.staticY ?? 0.16);
           setSunMinAltitude(s.sun.minimumAltitude ?? 0);
           setSunGlow(s.sun.glow ?? 0.4);
+          setSunAtmosphereBlend(s.sun.atmosphereBlend ?? 0.25);
+          setSunTransitionSoftness(s.sun.transitionSoftness ?? 0.22);
         }
         if (s.moon) {
-          setMoonSize(s.moon.size ?? 0.05);
+          const importedMoonWidth = s.moon.width ?? s.moon.size ?? 0.05;
+          const importedMoonHeight = s.moon.height ?? s.moon.size ?? 0.05;
+          setMoonSize(s.moon.size ?? ((importedMoonWidth + importedMoonHeight) / 2));
+          setMoonWidth(importedMoonWidth);
+          setMoonHeight(importedMoonHeight);
           setMoonColor(s.moon.color ?? '#eceff1');
           setMoonZenith(s.moon.zenith ?? 0.78);
           setMoonMotionType(s.moon.motionType ?? 'ARCH');
@@ -1893,6 +2019,8 @@ function App() {
           setMoonStaticY(s.moon.staticY ?? 0.14);
           setMoonMinAltitude(s.moon.minimumAltitude ?? 0);
           setMoonGlow(s.moon.glow ?? 0.25);
+          setMoonAtmosphereBlend(s.moon.atmosphereBlend ?? 0.35);
+          setMoonTransitionSoftness(s.moon.transitionSoftness ?? 0.22);
         }
         if (s.horizonPoints && Array.isArray(s.horizonPoints)) {
           setHorizonPoints(s.horizonPoints.map((p, i) => ({
@@ -2010,6 +2138,8 @@ function App() {
               {/* Overlapping layers resized to cover aspect ratio */}
               {sortedLayers.map(({ layer, index }) => {
                 if (layer.visible === false) return null;
+                const layerOrderIndex = TEXTURE_LAYER_ORDER_OFFSET + index;
+                const isBehindHorizon = layerOrderIndex > HORIZON_LAYER_ORDER_INDEX;
                 let tx = layer.offsetX;
                 let ty = layer.offsetY;
                 let rot = 0;
@@ -2104,7 +2234,9 @@ function App() {
                     style={{
                       zIndex: index + 10,
                       width: `${workspaceScale * 100}%`,
-                      height: `${workspaceScale * 100}%`
+                      height: `${workspaceScale * 100}%`,
+                      clipPath: isBehindHorizon ? horizonOcclusionClipPath : undefined,
+                      WebkitClipPath: isBehindHorizon ? horizonOcclusionClipPath : undefined
                     }}
                   >
                     {layer.mediaType === 'particle' ? (
@@ -2433,7 +2565,9 @@ function App() {
                     <input
                       type="checkbox"
                       checked={item.visible}
+                      disabled={item.locked}
                       onChange={(e) => {
+                        if (item.locked) return;
                         if (item.type === 'texture') {
                           updateLayerAtIndex(item.textureIndex, { visible: e.target.checked });
                         } else {
@@ -2945,12 +3079,27 @@ function App() {
                 </div>
               </div>
               <div className="form-group">
-                <label>Sun Radius Size: {sunSize.toFixed(3)}</label>
-                <input type="range" min="0.01" max="0.2" step="0.005" value={sunSize} onChange={(e) => setSunSize(parseFloat(e.target.value))} />
+                <label>Sun Width: {sunWidth.toFixed(3)}</label>
+                <input type="range" min="0.01" max="0.2" step="0.005" value={sunWidth} onChange={(e) => updateSunWidth(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group">
+                <label>Sun Height: {sunHeight.toFixed(3)}</label>
+                <input type="range" min="0.01" max="0.2" step="0.005" value={sunHeight} onChange={(e) => updateSunHeight(parseFloat(e.target.value))} />
               </div>
               <div className="form-group">
                 <label>Sun Glow Intensity: {sunGlow.toFixed(2)}</label>
                 <input type="range" min="0.0" max="1.5" step="0.05" value={sunGlow} onChange={(e) => setSunGlow(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group form-group-full" style={{ paddingTop: '0.25rem' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#8fb7ff' }}>Sun Transition Controls</span>
+              </div>
+              <div className="form-group">
+                <label>Sun Atmosphere Transition Intensity: {sunAtmosphereBlend.toFixed(2)}</label>
+                <input type="range" min="0" max="1" step="0.05" value={sunAtmosphereBlend} onChange={(e) => setSunAtmosphereBlend(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group">
+                <label>Sun Edge Transition Intensity: {sunTransitionSoftness.toFixed(2)}</label>
+                <input type="range" min="0.05" max="0.6" step="0.01" value={sunTransitionSoftness} onChange={(e) => setSunTransitionSoftness(parseFloat(e.target.value))} />
               </div>
               <div className="form-group">
                 <label>Sun X / Line Anchor: {sunStaticX.toFixed(2)}</label>
@@ -2989,12 +3138,27 @@ function App() {
                 </div>
               </div>
               <div className="form-group">
-                <label>Moon Radius Size: {moonSize.toFixed(3)}</label>
-                <input type="range" min="0.01" max="0.2" step="0.005" value={moonSize} onChange={(e) => setMoonSize(parseFloat(e.target.value))} />
+                <label>Moon Width: {moonWidth.toFixed(3)}</label>
+                <input type="range" min="0.01" max="0.2" step="0.005" value={moonWidth} onChange={(e) => updateMoonWidth(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group">
+                <label>Moon Height: {moonHeight.toFixed(3)}</label>
+                <input type="range" min="0.01" max="0.2" step="0.005" value={moonHeight} onChange={(e) => updateMoonHeight(parseFloat(e.target.value))} />
               </div>
               <div className="form-group">
                 <label>Moon Glow Intensity: {moonGlow.toFixed(2)}</label>
                 <input type="range" min="0.0" max="1.5" step="0.05" value={moonGlow} onChange={(e) => setMoonGlow(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group form-group-full" style={{ paddingTop: '0.25rem' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#d7dce8' }}>Moon Transition Controls</span>
+              </div>
+              <div className="form-group">
+                <label>Moon Atmosphere Transition Intensity: {moonAtmosphereBlend.toFixed(2)}</label>
+                <input type="range" min="0" max="1" step="0.05" value={moonAtmosphereBlend} onChange={(e) => setMoonAtmosphereBlend(parseFloat(e.target.value))} />
+              </div>
+              <div className="form-group">
+                <label>Moon Edge Transition Intensity: {moonTransitionSoftness.toFixed(2)}</label>
+                <input type="range" min="0.05" max="0.6" step="0.01" value={moonTransitionSoftness} onChange={(e) => setMoonTransitionSoftness(parseFloat(e.target.value))} />
               </div>
               <div className="form-group">
                 <label>Moon X / Line Anchor: {moonStaticX.toFixed(2)}</label>
