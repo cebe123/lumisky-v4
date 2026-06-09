@@ -840,6 +840,28 @@ class MainActivity : AppCompatActivity() {
 	}
 
 	private fun requestInAppReview() {
+		try {
+			val manager = com.google.android.play.core.review.ReviewManagerFactory.create(this)
+			manager.requestReviewFlow()
+				.addOnSuccessListener { reviewInfo ->
+					manager.launchReviewFlow(this, reviewInfo)
+						.addOnSuccessListener { Logger.d(TAG, "in-app review flow completed") }
+						.addOnFailureListener { error ->
+							Logger.w(TAG, "in-app review flow failed", error)
+							openStoreReviewPage()
+						}
+				}
+				.addOnFailureListener { error ->
+					Logger.w(TAG, "In-app review request failed", error)
+					openStoreReviewPage()
+				}
+		} catch (e: Exception) {
+			Logger.e(TAG, "Failed to request in-app review", e)
+			openStoreReviewPage()
+		}
+	}
+
+	private fun openStoreReviewPage() {
 		val marketIntent = Intent(
 			Intent.ACTION_VIEW,
 			Uri.parse("market://details?id=$packageName")
@@ -849,20 +871,17 @@ class MainActivity : AppCompatActivity() {
 		}
 		try {
 			startActivity(marketIntent)
-			Logger.d(TAG, "store review opened in Play Store")
 		} catch (playStoreMissing: ActivityNotFoundException) {
-			val webIntent = Intent(
-				Intent.ACTION_VIEW,
-				Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
-			)
-			try {
-				startActivity(webIntent)
-				Logger.d(TAG, "store review opened in browser")
-			} catch (e: Exception) {
-				Logger.e(TAG, "Failed to open store review", e)
+			runCatching {
+				startActivity(
+					Intent(
+						Intent.ACTION_VIEW,
+						Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+					)
+				)
+			}.onFailure { error ->
+				Logger.e(TAG, "Failed to open store review", error)
 			}
-		} catch (e: Exception) {
-			Logger.e(TAG, "Failed to open Play Store review", e)
 		}
 	}
 
