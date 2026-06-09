@@ -26,6 +26,7 @@ class PreviewRendererSurfaceView(
 	private val tiltParallaxTracker = TiltParallaxTracker(context) { x, y ->
 		previewRenderer.setParallaxOffset(x, y)
 		if (parallaxEnabled &&
+			!activityPaused &&
 			windowVisibility == View.VISIBLE &&
 			!previewRenderer.shouldContinueRendering()
 		) {
@@ -57,7 +58,7 @@ class PreviewRendererSurfaceView(
 
 	fun setPlaybackEnabled(enabled: Boolean) {
 		if (playbackEnabled == enabled) {
-			if (enabled && windowVisibility == View.VISIBLE) {
+			if (enabled && !activityPaused && windowVisibility == View.VISIBLE) {
 				armWarmupFrames()
 				frameLoop.postIfNeeded()
 			}

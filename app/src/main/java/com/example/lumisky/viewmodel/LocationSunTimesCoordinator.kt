@@ -72,6 +72,7 @@ internal class LocationSunTimesCoordinator(
 	)
 	@Volatile
 	private var released: Boolean = false
+	private var foregroundActive: Boolean = true
 
 	// ---- observable state ----
 	var locationMode: LocationMode by mutableStateOf(initialSettings.locationMode)
@@ -124,12 +125,14 @@ internal class LocationSunTimesCoordinator(
 	private val sunTimesRefreshRunnable = object : Runnable {
 		override fun run() {
 			if (released) return
+			if (!foregroundActive) return
 			refreshSunTimes()
 			schedulePeriodicSunTimesRefresh()
 		}
 	}
 	private val refreshLocationAndSunTimesRunnable = Runnable {
 		if (released) return@Runnable
+		if (!foregroundActive) return@Runnable
 		refreshPipelineScheduled = false
 		val shouldRefreshSunTimes = refreshPipelineNeedsSunTimes
 		val shouldRequestGps = refreshPipelineNeedsGpsRequest
@@ -171,6 +174,7 @@ internal class LocationSunTimesCoordinator(
 	}
 	private val startupRefreshRunnable = Runnable {
 		if (released) return@Runnable
+		if (!foregroundActive) return@Runnable
 		val resolvedState = resolveLocationState(forceRefresh = true)
 		refreshLocationStateNow(resolvedState)
 		if (locationMode == LocationMode.GPS && !resolvedState.systemEnabled) {
@@ -193,12 +197,21 @@ internal class LocationSunTimesCoordinator(
 	}
 
 	fun onForegroundStarted() {
+		foregroundActive = true
+		schedulePeriodicSunTimesRefresh()
 		refreshOnForegroundIfStale()
 		maybeStartPassiveLocationUpdates()
 	}
 
 	fun onForegroundStopped() {
+		foregroundActive = false
+		locationRefreshInProgress = false
+		resetRefreshPipeline()
+		lastKnownLocationProvider.cancelCurrentLocationRequest()
 		stopPassiveLocationUpdates()
+		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
+		mainHandler.removeCallbacks(refreshLocationAndSunTimesRunnable)
+		mainHandler.removeCallbacks(startupRefreshRunnable)
 	}
 
 	fun release() {
@@ -609,6 +622,7 @@ internal class LocationSunTimesCoordinator(
 		val requestStartedAtMs = SystemClock.elapsedRealtime()
 		val safetyTimeout = Runnable {
 			if (released) return@Runnable
+			if (!foregroundActive) return@Runnable
 			if (locationMode == LocationMode.GPS && locationRefreshInProgress) {
 				Logger.w(tag, "gps request safety timeout")
 				locationRefreshInProgress = false
@@ -623,6 +637,10 @@ internal class LocationSunTimesCoordinator(
 		) { location ->
 			postToMain("current_location_result") {
 				mainHandler.removeCallbacks(safetyTimeout)
+				if (!foregroundActive) {
+					locationRefreshInProgress = false
+					return@postToMain
+				}
 				val elapsedMs = SystemClock.elapsedRealtime() - requestStartedAtMs
 				if (elapsedMs > GPS_REQUEST_RESPONSE_MAX_WAIT_MS) {
 					Logger.w(tag, "gps response too slow elapsedMs=$elapsedMs")
@@ -653,6 +671,10 @@ internal class LocationSunTimesCoordinator(
 		handleProviderChange: Boolean = false
 	) {
 		if (released) return
+		if (!foregroundActive) {
+			resetRefreshPipeline()
+			return
+		}
 		if (Looper.myLooper() != mainHandler.looper) {
 			postToMain("refresh_coalesced:$reason") {
 				refreshLocationAndSunTimesCoalesced(
@@ -862,6 +884,7 @@ internal class LocationSunTimesCoordinator(
 
 	private fun schedulePeriodicSunTimesRefresh() {
 		if (released) return
+		if (!foregroundActive) return
 		mainHandler.removeCallbacks(sunTimesRefreshRunnable)
 		if (!mainHandler.postDelayed(sunTimesRefreshRunnable, SUN_TIMES_REFRESH_INTERVAL_MS)) {
 			Logger.w(tag, "failed to schedule periodic sun-times refresh")
@@ -881,6 +904,15 @@ internal class LocationSunTimesCoordinator(
 			Logger.w(tag, "main handler post failed reason=$reason")
 		}
 		return posted
+	}
+
+	private fun resetRefreshPipeline() {
+		refreshPipelineScheduled = false
+		refreshPipelineNeedsSunTimes = false
+		refreshPipelineNeedsGpsRequest = false
+		refreshPipelineForceLocationState = false
+		refreshPipelineHandleProviderChange = false
+		refreshPipelineReason = "idle"
 	}
 
 	private fun executeLocationLabelTask(task: () -> Unit) {
