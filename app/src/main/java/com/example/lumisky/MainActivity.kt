@@ -5,12 +5,14 @@ import android.app.Activity
 import android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER
 import android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER
 import android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -840,24 +842,46 @@ class MainActivity : AppCompatActivity() {
 	private fun requestInAppReview() {
 		try {
 			val manager = com.google.android.play.core.review.ReviewManagerFactory.create(this)
-			val request = manager.requestReviewFlow()
-			request.addOnCompleteListener { task ->
-				if (task.isSuccessful) {
-					val reviewInfo = task.result
-					val flow = manager.launchReviewFlow(this, reviewInfo)
-					flow.addOnCompleteListener { flowTask ->
-						if (flowTask.isSuccessful) {
-							Logger.d(TAG, "in-app review flow completed")
-						} else {
-							Logger.w(TAG, "in-app review flow failed", flowTask.exception)
+			manager.requestReviewFlow()
+				.addOnSuccessListener { reviewInfo ->
+					manager.launchReviewFlow(this, reviewInfo)
+						.addOnSuccessListener { Logger.d(TAG, "in-app review flow completed") }
+						.addOnFailureListener { error ->
+							Logger.w(TAG, "in-app review flow failed", error)
+							openStoreReviewPage()
 						}
-					}
-				} else {
-					Logger.w(TAG, "In-app review request failed", task.exception)
 				}
-			}
+				.addOnFailureListener { error ->
+					Logger.w(TAG, "In-app review request failed", error)
+					openStoreReviewPage()
+				}
 		} catch (e: Exception) {
-			Logger.e(TAG, "Failed to launch in-app review", e)
+			Logger.e(TAG, "Failed to request in-app review", e)
+			openStoreReviewPage()
+		}
+	}
+
+	private fun openStoreReviewPage() {
+		val marketIntent = Intent(
+			Intent.ACTION_VIEW,
+			Uri.parse("market://details?id=$packageName")
+		).apply {
+			setPackage("com.android.vending")
+			addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+		}
+		try {
+			startActivity(marketIntent)
+		} catch (playStoreMissing: ActivityNotFoundException) {
+			runCatching {
+				startActivity(
+					Intent(
+						Intent.ACTION_VIEW,
+						Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+					)
+				)
+			}.onFailure { error ->
+				Logger.e(TAG, "Failed to open store review", error)
+			}
 		}
 	}
 

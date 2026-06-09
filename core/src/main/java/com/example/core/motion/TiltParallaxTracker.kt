@@ -38,7 +38,7 @@ class TiltParallaxTracker(
 			dispatch(0f, 0f, force = true)
 			return
 		}
-		active = manager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME)
+		active = manager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI)
 		if (!active) {
 			logSensorUnavailableOnce()
 			dispatch(0f, 0f, force = true)
