@@ -51,6 +51,7 @@ internal class WallpaperRenderController(
 	private var currentConfig: WallpaperConfig? = null
 	private var pendingFullRedraw: Boolean = true
 	private var lastRenderElapsedMs: Long = 0L
+	private var lastParallaxRenderElapsedMs: Long = 0L
 	private val surfaceGeneration = AtomicInteger(0)
 	private val framePacingClock = FramePacingClock()
 
@@ -162,6 +163,10 @@ internal class WallpaperRenderController(
 		y: Float
 	) {
 		renderEngine.setParallaxOffset(x, y)
+		if (!visible || !surfaceAttached || resolvedLoopMode() == WallpaperLoopMode.VSYNC) return
+		postRenderTask {
+			renderParallaxFrameIfNeeded()
+		}
 	}
 
 	fun setConfig(config: WallpaperConfig) {
@@ -258,6 +263,15 @@ internal class WallpaperRenderController(
 				}
 			}
 		}
+	}
+
+	private fun renderParallaxFrameIfNeeded() {
+		if (!visible || !surfaceAttached) return
+		if (resolvedLoopMode() == WallpaperLoopMode.VSYNC) return
+		val nowElapsedMs = SystemClock.elapsedRealtime()
+		if (nowElapsedMs - lastParallaxRenderElapsedMs < PARALLAX_RENDER_INTERVAL_MS) return
+		lastParallaxRenderElapsedMs = nowElapsedMs
+		renderCurrentScene(force = true, debounceForcedRender = false)
 	}
 
 	private fun renderCurrentScene(
@@ -538,5 +552,6 @@ internal class WallpaperRenderController(
 		private const val MAX_SETTINGS_FRAME_RATE_FPS = 90
 		private const val NANOS_PER_SECOND = 1_000_000_000L
 		private const val MIN_FRAME_INTERVAL_NANOS = 1L
+		private const val PARALLAX_RENDER_INTERVAL_MS = 33L
 	}
 }
