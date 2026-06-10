@@ -190,15 +190,6 @@ class MainActivity : AppCompatActivity() {
 				LaunchedEffect(Unit) {
 					withFrameNanos { }
 					ensureHomeViewModelCreated()
-					if (!appSettingsRepository.getHasRequestedLocationPermission()) {
-						appSettingsRepository.setHasRequestedLocationPermission(true)
-						startupPermissionLauncher.launch(
-							arrayOf(
-								Manifest.permission.ACCESS_COARSE_LOCATION,
-								Manifest.permission.ACCESS_FINE_LOCATION
-							)
-						)
-					}
 				}
 
 				if (homeViewModel == null) {
@@ -212,6 +203,17 @@ class MainActivity : AppCompatActivity() {
 						startupCacheReady = true
 						startupAnimationsEnabled = true
 						reportFullyDrawn()
+						withFrameNanos { }
+						homeViewModel.onStartupIdle()
+						if (!appSettingsRepository.getHasRequestedLocationPermission()) {
+							appSettingsRepository.setHasRequestedLocationPermission(true)
+							startupPermissionLauncher.launch(
+								arrayOf(
+									Manifest.permission.ACCESS_COARSE_LOCATION,
+									Manifest.permission.ACCESS_FINE_LOCATION
+								)
+							)
+						}
 					}
 					if (!startupCacheReady) {
 						LaunchSkeleton()

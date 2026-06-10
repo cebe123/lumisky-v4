@@ -76,7 +76,7 @@ class HomeViewModel(
 	private var startupBackupPrefetchEnqueued = false
 
 	val items: List<HomeWallpaperItem>
-		get() = _items.toList()
+		get() = _items
 
 	var selectedWallpaperId by mutableStateOf(storedWallpaperId)
 		private set
@@ -123,7 +123,6 @@ class HomeViewModel(
 		}
 		seedInitialCatalog(daylight)
 		locationCoordinator.init()
-		enqueueBackupCityPrefetchIfNeeded()
 	}
 
 	fun activateLivePreview(id: String) {
@@ -147,6 +146,10 @@ class HomeViewModel(
 	}
 
 	fun onUserInteraction() {
+		enqueueBackupCityPrefetchIfNeeded()
+	}
+
+	fun onStartupIdle() {
 		enqueueBackupCityPrefetchIfNeeded()
 	}
 
