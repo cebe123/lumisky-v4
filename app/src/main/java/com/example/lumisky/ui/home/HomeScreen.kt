@@ -616,6 +616,23 @@ private fun WallpaperCard(
 	var livePreviewParallaxEnabled by remember(item.config.id, highRefreshEnabled, performanceMode) {
 		mutableStateOf(false)
 	}
+	var previewSessionKey by remember(item.config.id, highRefreshEnabled, performanceMode) {
+		mutableStateOf(0)
+	}
+	val lifecycleOwner = LocalLifecycleOwner.current
+	DisposableEffect(lifecycleOwner, showLivePreview) {
+		val observer = LifecycleEventObserver { _, event ->
+			if (event == Lifecycle.Event.ON_RESUME && showLivePreview) {
+				livePreviewReady = false
+				livePreviewParallaxEnabled = false
+				previewSessionKey += 1
+			}
+		}
+		lifecycleOwner.lifecycle.addObserver(observer)
+		onDispose {
+			lifecycleOwner.lifecycle.removeObserver(observer)
+		}
+	}
 	LaunchedEffect(showLivePreview) {
 		if (showLivePreview) {
 			if (!hasActivePreviewSession) {
@@ -663,6 +680,7 @@ private fun WallpaperCard(
 					preferFullQuality = isSelected,
 					playbackEnabled = isLive,
 					parallaxEnabled = livePreviewParallaxEnabled,
+					sessionKey = previewSessionKey,
 					modifier = Modifier.fillMaxSize(),
 					onRenderedDayProgressChanged = { dayProgress ->
 						renderedDayProgress = dayProgress
@@ -922,6 +940,7 @@ private fun FocusedWallpaperPreview(
 	preferFullQuality: Boolean,
 	playbackEnabled: Boolean,
 	parallaxEnabled: Boolean,
+	sessionKey: Int,
 	modifier: Modifier = Modifier,
 	onRenderedDayProgressChanged: (Float) -> Unit,
 	onFirstFrameRendered: () -> Unit
@@ -974,7 +993,8 @@ private fun FocusedWallpaperPreview(
 		highRefreshEnabled,
 		performanceMode,
 		previewQualityScale,
-		renderAssetState.fragmentOverride
+		renderAssetState.fragmentOverride,
+		sessionKey
 	) {
 		var previewView by remember { mutableStateOf<PreviewRendererSurfaceView?>(null) }
 		DisposableEffect(lifecycleOwner, previewView) {

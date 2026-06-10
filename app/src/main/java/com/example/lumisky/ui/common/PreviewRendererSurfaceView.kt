@@ -136,6 +136,9 @@ class PreviewRendererSurfaceView(
 		if (parallaxEnabled && isAttachedToWindow && windowVisibility == View.VISIBLE) {
 			tiltParallaxTracker.start()
 		}
+		if (isAttachedToWindow && windowVisibility == View.VISIBLE) {
+			requestRender()
+		}
 		if (shouldScheduleFrame()) {
 			lastRenderFrameNs = 0L
 			frameLoop.postIfNeeded()
