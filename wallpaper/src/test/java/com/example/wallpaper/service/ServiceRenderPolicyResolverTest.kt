@@ -26,9 +26,37 @@ class ServiceRenderPolicyResolverTest {
 	}
 
 	@Test
-	fun dynamic_capability_promotes_minute_tick_to_continuous_loop() {
+	fun dynamic_textures_keep_continuous_loop() {
 		val resolver = ServiceRenderPolicyResolver()
-		val config = WallpaperConfig.default(id = "dynamic").copy(
+		val config = WallpaperConfig.default(id = "dynamic_texture").copy(
+			runtimeRenderPolicy = RuntimeRenderPolicy(
+				policy = RenderPolicy.MINUTE_TICK,
+				continuousFrameIntervalMs = 33L
+			),
+			capabilities = WallpaperCapabilities(
+				dynamicMotion = false,
+				dynamicTextures = true,
+				locationAwareLighting = true,
+				supportsCloudLayer = false,
+				supportsStarLayer = true
+			)
+		)
+
+		val resolved = resolver.resolve(
+			config = config,
+			previewMode = false,
+			visible = true,
+			surfaceAttached = true
+		)
+
+		assertEquals(WallpaperLoopMode.VSYNC, resolved.loopMode)
+		assertEquals(33L, resolved.frameIntervalMs)
+	}
+
+	@Test
+	fun dynamic_motion_without_dynamic_textures_can_remain_minute_tick() {
+		val resolver = ServiceRenderPolicyResolver()
+		val config = WallpaperConfig.default(id = "dynamic_motion_only").copy(
 			runtimeRenderPolicy = RuntimeRenderPolicy(
 				policy = RenderPolicy.MINUTE_TICK,
 				continuousFrameIntervalMs = 33L
@@ -49,8 +77,7 @@ class ServiceRenderPolicyResolverTest {
 			surfaceAttached = true
 		)
 
-		assertEquals(WallpaperLoopMode.VSYNC, resolved.loopMode)
-		assertEquals(33L, resolved.frameIntervalMs)
+		assertEquals(WallpaperLoopMode.MINUTE_TICK, resolved.loopMode)
 	}
 
 	@Test

@@ -673,6 +673,7 @@ private fun WallpaperCard(
 	) {
 		Box(modifier = Modifier.fillMaxSize()) {
 			if (showLivePreview) {
+				val activePreviewSessionKey = previewSessionKey
 				FocusedWallpaperPreview(
 					config = item.config,
 					highRefreshEnabled = highRefreshEnabled,
@@ -686,7 +687,9 @@ private fun WallpaperCard(
 						renderedDayProgress = dayProgress
 					},
 					onFirstFrameRendered = {
-						livePreviewReady = true
+						if (activePreviewSessionKey == previewSessionKey) {
+							livePreviewReady = true
+						}
 					}
 				)
 			}

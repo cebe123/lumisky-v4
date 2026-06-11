@@ -199,11 +199,20 @@ class MainActivity : AppCompatActivity() {
 						startupCacheReady = false
 						startupAnimationsEnabled = false
 						withFrameNanos { }
-						warmHomeStartupCaches(homeViewModel.items)
+						val warmupPlan = splitStartupWarmupItems(
+							items = homeViewModel.items,
+							immediateSnapshotLimit = STARTUP_IMMEDIATE_SNAPSHOT_WARM_LIMIT,
+							renderAssetLimit = STARTUP_RENDER_ASSET_WARM_LIMIT
+						)
+						warmHomeStartupCaches(
+							snapshotItems = warmupPlan.immediateSnapshotItems,
+							renderAssetItems = warmupPlan.renderAssetItems
+						)
 						startupCacheReady = true
 						startupAnimationsEnabled = true
 						reportFullyDrawn()
 						withFrameNanos { }
+						warmHomeDeferredSnapshotCaches(warmupPlan.deferredSnapshotItems)
 						homeViewModel.onStartupIdle()
 						if (!appSettingsRepository.getHasRequestedLocationPermission()) {
 							appSettingsRepository.setHasRequestedLocationPermission(true)
@@ -757,8 +766,11 @@ class MainActivity : AppCompatActivity() {
 		}
 	}
 
-	private suspend fun warmHomeStartupCaches(items: List<HomeWallpaperItem>) {
-		if (items.isEmpty()) return
+	private suspend fun warmHomeStartupCaches(
+		snapshotItems: List<HomeWallpaperItem>,
+		renderAssetItems: List<HomeWallpaperItem>
+	) {
+		if (snapshotItems.isEmpty() && renderAssetItems.isEmpty()) return
 		val appContext = applicationContext
 		val (previewWidthPx, previewHeightPx) = resolveHomeStartupPreviewSizePx()
 		val startedAtMs = SystemClock.elapsedRealtime()
@@ -769,7 +781,7 @@ class MainActivity : AppCompatActivity() {
 		runCatching {
 			withContext(Dispatchers.IO) {
 				val snapshotLoader = SnapshotPreviewAssetLoader(appContext)
-				items.forEach { item ->
+				snapshotItems.forEach { item ->
 					runCatching {
 						snapshotLoader.loadBitmap(
 							configId = item.config.id,
@@ -783,7 +795,7 @@ class MainActivity : AppCompatActivity() {
 						Logger.w(TAG, "failed to warm startup snapshot configId=${item.config.id}", it)
 					}
 				}
-				items.take(STARTUP_RENDER_ASSET_WARM_LIMIT).forEach { item ->
+				renderAssetItems.forEach { item ->
 					runCatching {
 						RenderAssetCache.prewarmWallpaper(
 							context = appContext,
@@ -807,6 +819,25 @@ class MainActivity : AppCompatActivity() {
 				"renderAssets=$renderPrewarmedCount/$renderFailedCount " +
 				"size=${previewWidthPx}x$previewHeightPx elapsedMs=${SystemClock.elapsedRealtime() - startedAtMs}"
 		)
+	}
+
+	private suspend fun warmHomeDeferredSnapshotCaches(items: List<HomeWallpaperItem>) {
+		if (items.isEmpty()) return
+		withContext(Dispatchers.IO) {
+			val snapshotLoader = SnapshotPreviewAssetLoader(applicationContext)
+			val (previewWidthPx, previewHeightPx) = resolveHomeStartupPreviewSizePx()
+			items.forEach { item ->
+				runCatching {
+					snapshotLoader.loadBitmap(
+						configId = item.config.id,
+						targetWidthPx = previewWidthPx,
+						targetHeightPx = previewHeightPx
+					)
+				}.onFailure {
+					Logger.w(TAG, "failed to warm deferred startup snapshot configId=${item.config.id}", it)
+				}
+			}
+		}
 	}
 
 	private fun resolveHomeStartupPreviewSizePx(): Pair<Int, Int> {
@@ -914,6 +945,7 @@ class MainActivity : AppCompatActivity() {
 		private const val SET_WALLPAPER_REFRESH_TIMEOUT_MS = 1_800L
 		private const val WALLPAPER_EXECUTOR_SHUTDOWN_TIMEOUT_MS = 2_000L
 		private const val HOME_STARTUP_CARD_WIDTH_DP = 276f
+		private const val STARTUP_IMMEDIATE_SNAPSHOT_WARM_LIMIT = 3
 		private const val STARTUP_RENDER_ASSET_WARM_LIMIT = 6
 		private const val WALLPAPER_SERVICE_CLASS_NAME = "com.example.wallpaper.SkyWallpaperService"
 		private const val ANIMATION_SYSTEM_BAR_DURATION_MS = 320

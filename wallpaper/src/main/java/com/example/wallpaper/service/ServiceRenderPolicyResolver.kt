@@ -41,8 +41,7 @@ internal class ServiceRenderPolicyResolver(
 		val basePolicy = resolveBasePolicy(config)
 		var policy = basePolicy.policy
 		var frameIntervalMs = basePolicy.continuousFrameIntervalMs.coerceAtLeast(1L)
-		val hasDynamicContent = config.capabilities.dynamicMotion || config.capabilities.dynamicTextures
-		if (hasDynamicContent && policy != RenderPolicy.CONTINUOUS) {
+		if (policy != RenderPolicy.CONTINUOUS && shouldPromoteDynamicContentToContinuous(config)) {
 			policy = RenderPolicy.CONTINUOUS
 		}
 
@@ -101,6 +100,10 @@ internal class ServiceRenderPolicyResolver(
 			continuousFrameIntervalMs = overrideFrameIntervalMs
 				?: config.runtimeRenderPolicy.continuousFrameIntervalMs
 		)
+	}
+
+	private fun shouldPromoteDynamicContentToContinuous(config: WallpaperConfig): Boolean {
+		return config.capabilities.dynamicTextures
 	}
 
 	private fun resolveSettingsFrameRate(

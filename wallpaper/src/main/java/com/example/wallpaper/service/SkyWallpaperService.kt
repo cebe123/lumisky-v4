@@ -143,7 +143,7 @@ open class SkyWallpaperService : WallpaperService() {
 		}
 
 		private fun updateParallaxTrackingState() {
-			if (engineSurfaceAttached && shouldTrackParallax()) {
+			if (engineVisible && engineSurfaceAttached && shouldTrackParallax()) {
 				tiltParallaxTracker.start()
 			} else {
 				tiltParallaxTracker.stop()
