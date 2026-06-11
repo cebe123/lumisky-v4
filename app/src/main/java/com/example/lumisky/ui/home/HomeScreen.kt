@@ -1243,8 +1243,9 @@ private const val HOME_FOCUS_CATCHUP_SECONDS = 4f
 private const val HOME_PREVIEW_RENDER_QUALITY_SCALE = 0.7f
 private const val HOME_PREVIEW_ENABLE_WARMUP_FRAMES = 2
 private const val SNAPSHOT_OVERLAY_FADE_DURATION_MS = 160
-private const val LIVE_PREVIEW_READY_FRAME_COUNT = 1
+private const val LIVE_PREVIEW_READY_FRAME_COUNT = 4
 private const val SMOOTH_FRAME_INTERVAL_MS = 34L
+
 private const val MINUTES_PER_DAY = 24 * 60
 private const val CATEGORY_FOCUS_MAX_ITEMS = 1
 private const val FOCUS_INIT_DELAY_MS = 100L

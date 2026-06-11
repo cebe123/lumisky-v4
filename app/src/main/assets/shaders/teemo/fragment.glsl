@@ -129,11 +129,11 @@ float getStars(vec2 uv) {
 
     vec2 starGrid = rotatedUV * 300.0 + vec2(43.0, 19.0);
     float starNoise = noise(starGrid);
-    float stars = step(0.99, starNoise);
+    float stars = step(0.997, starNoise);
     vec2 starCell = floor(starGrid);
 
     float starPhase = hash(starCell + vec2(5.0, 17.0)) * 6.28;
-    float speed = 0.45 + hash(starCell + vec2(7.0, 13.0)) * 0.7;
+    float speed = 0.12 + hash(starCell + vec2(7.0, 13.0)) * 0.18;
     float wave = sin(u_Time * speed + starPhase) * 0.5 + 0.5;
     float shimmer = sin(u_Time * (speed * 1.9) + starPhase * 1.7) * 0.5 + 0.5;
     float pulse = pow(wave, 4.2);
@@ -148,6 +148,12 @@ float getStars(vec2 uv) {
 vec4 sampleForegroundSoftened(vec2 uv) {
     vec2 fgUv = vec2((uv.x - 0.5) * 0.92 + 0.5, uv.y);
     vec4 fg = texture2D(u_ForegroundTexture, fgUv);
+    if (fg.a <= 0.01) {
+        return vec4(0.0);
+    }
+    if (fg.a >= 0.99) {
+        return fg;
+    }
     vec4 fgNear = texture2D(u_ForegroundTexture, vec2(fgUv.x, min(fgUv.y + 0.010, 1.0)));
     vec4 fgDeep = texture2D(u_ForegroundTexture, vec2(fgUv.x, min(fgUv.y + 0.026, 1.0)));
     float detailMix = smoothstep(0.10, 0.52, fg.a);
@@ -185,7 +191,10 @@ void main() {
     skyWithCelestial *= (1.0 - nightBlend * 0.22);
 
     float starVis = smoothstep(skyHorizonY - 0.01, skyHorizonY + 0.30, skyUv.y);
-    float starField = getStars(skyUv);
+    float starField = 0.0;
+    if (nightBlend * starVis > 0.01) {
+        starField = getStars(skyUv);
+    }
     skyWithCelestial += vec3(0.96, 0.98, 1.0) * starField * nightBlend * starVis * 0.74;
 
     float horizonClip = 1.0 - smoothstep(horizonY - 0.005, horizonY + 0.035, uv.y);

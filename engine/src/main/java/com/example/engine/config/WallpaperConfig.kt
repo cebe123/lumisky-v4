@@ -209,7 +209,7 @@ data class WallpaperConfig(
 				)
 				normalized.contains("flower") -> RuntimeRenderPolicy(
 					policy = RenderPolicy.CONTINUOUS,
-					continuousFrameIntervalMs = 50L
+					continuousFrameIntervalMs = 100L
 				)
 				else -> RuntimeRenderPolicy(
 					policy = RenderPolicy.MINUTE_TICK,

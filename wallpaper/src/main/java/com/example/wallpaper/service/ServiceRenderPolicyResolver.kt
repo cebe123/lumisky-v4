@@ -29,7 +29,8 @@ internal class ServiceRenderPolicyResolver(
 		visible: Boolean,
 		surfaceAttached: Boolean,
 		performanceMode: PerformanceMode = PerformanceMode.AUTO,
-		displayRefreshRateHz: Int = DEFAULT_DISPLAY_REFRESH_RATE_HZ
+		displayRefreshRateHz: Int = DEFAULT_DISPLAY_REFRESH_RATE_HZ,
+		isNight: Boolean = false
 	): ResolvedServiceRenderPolicy {
 		if (!visible || !surfaceAttached) {
 			return ResolvedServiceRenderPolicy(loopMode = WallpaperLoopMode.NONE)
@@ -43,6 +44,10 @@ internal class ServiceRenderPolicyResolver(
 		var frameIntervalMs = basePolicy.continuousFrameIntervalMs.coerceAtLeast(1L)
 		if (policy != RenderPolicy.CONTINUOUS && shouldPromoteDynamicContentToContinuous(config)) {
 			policy = RenderPolicy.CONTINUOUS
+		}
+
+		if (config.id.contains("flower") && !isNight) {
+			policy = RenderPolicy.MINUTE_TICK
 		}
 
 		if (config.serviceRenderPolicy.usePowerSaverThrottle && isPowerSaveModeProvider()) {

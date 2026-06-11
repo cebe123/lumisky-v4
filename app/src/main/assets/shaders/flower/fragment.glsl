@@ -97,7 +97,7 @@ float getStars(vec2 uv) {
 		hash(starCell + vec2(17.0, 3.0))
 	) - 0.5;
 	vec2 delta = starLocal - randomOffset * 0.82;
-	float presence = step(0.77, hash(starCell + vec2(29.0, 31.0)));
+	float presence = step(0.96, hash(starCell + vec2(29.0, 31.0)));
 	float core = smoothstep(0.12, 0.0, length(delta));
 	float cross = max(
 		smoothstep(0.055, 0.0, abs(delta.x)) * smoothstep(0.18, 0.0, abs(delta.y)),
@@ -105,7 +105,7 @@ float getStars(vec2 uv) {
 	);
 	float shape = max(core, cross * 0.42);
 	float phase = hash(starCell + vec2(7.0, 19.0)) * 6.28318;
-	float speed = 0.52 + hash(starCell + vec2(13.0, 5.0)) * 1.18;
+	float speed = 0.28 + hash(starCell + vec2(13.0, 5.0)) * 0.42;
 	float pulse = pow(sin(u_Time * speed + phase) * 0.5 + 0.5, 5.0);
 	float steady = 0.74 + hash(starCell + vec2(3.0, 11.0)) * 0.34;
 	float shimmer = 0.20 + pulse * 2.35;
@@ -115,6 +115,12 @@ float getStars(vec2 uv) {
 
 vec4 sampleForegroundSoftened(vec2 uv) {
 	vec4 fg = texture2D(u_ForegroundTexture, uv);
+	if (fg.a <= 0.01) {
+		return vec4(0.0);
+	}
+	if (fg.a >= 0.99) {
+		return fg;
+	}
 	vec4 fgNear = texture2D(u_ForegroundTexture, vec2(uv.x, min(uv.y + 0.010, 1.0)));
 	vec4 fgDeep = texture2D(u_ForegroundTexture, vec2(uv.x, min(uv.y + 0.026, 1.0)));
 	float detailMix = smoothstep(0.10, 0.55, fg.a);
@@ -155,7 +161,10 @@ void main() {
 	sky += MOON_HALO * moonHorizonGlow * u_NightAmount * 0.08;
 
 	float starVisibility = smoothstep(skyHorizonY + 0.01, skyHorizonY + 0.26, skyUv.y);
-	float stars = getStars(skyUv);
+	float stars = 0.0;
+	if (u_NightAmount * u_HasStars * starVisibility > 0.01) {
+		stars = getStars(skyUv);
+	}
 	sky += vec3(0.96, 0.98, 1.0) * stars * u_NightAmount * starVisibility * u_HasStars * 1.18;
 
 	if (u_DrawSun > 0.5 && u_IsNight < 0.5) {

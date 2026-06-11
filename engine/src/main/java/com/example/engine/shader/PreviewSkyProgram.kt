@@ -116,7 +116,16 @@ class PreviewSkyProgram {
 	}
 
 	fun init(fragmentShaderOverride: String? = null) {
-		if (programHandle != 0) return
+		programHandle = 0
+		creatorProgramHandle = 0
+		fallbackSolidTextureHandle = 0
+		fallbackTransparentTextureHandle = 0
+		backgroundTextureHandle = 0
+		sunTextureHandle = 0
+		moonTextureHandle = 0
+		flareTextureHandle = 0
+		creatorTextureHandles.clear()
+
 		val fragmentShader = fragmentShaderOverride ?: BUILTIN_FRAGMENT_SHADER
 		programHandle = buildProgram(VERTEX_SHADER, fragmentShader)
 		if (programHandle == 0) {

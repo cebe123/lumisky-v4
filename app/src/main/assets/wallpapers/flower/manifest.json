@@ -20,6 +20,6 @@
   },
   "runtimeRenderPolicy": {
     "policy": "CONTINUOUS",
-    "continuousFrameIntervalMs": 50
+    "continuousFrameIntervalMs": 100
   }
 }

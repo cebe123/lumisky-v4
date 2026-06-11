@@ -16,6 +16,9 @@ class LumiskyApplication : Application(), Configuration.Provider {
 	override fun onCreate() {
 		super.onCreate()
 		ErrorReporter.installCrashCapture(applicationContext)
+	}
+
+	fun installCrashlyticsDiagnostics() {
 		installCrashlyticsDiagnosticsWhenUnlocked()
 	}
 

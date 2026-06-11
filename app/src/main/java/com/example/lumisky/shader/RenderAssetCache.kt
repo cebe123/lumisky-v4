@@ -10,6 +10,7 @@ import com.example.engine.config.WallpaperConfig
 object RenderAssetCache {
 	private val fragmentLoadLocks = HashMap<String, Any>()
 	private val textureLoadLocks = HashMap<String, Any>()
+	private val textureLookupLocks = HashMap<String, Any>()
 	private val fragmentCache = object : LruCache<String, String>(MAX_FRAGMENT_ENTRIES) {}
 	private val resolvedTexturePathCache = object : LruCache<String, String>(MAX_RESOLVED_TEXTURE_PATH_ENTRIES) {}
 	private val textureCache = object : LruCache<String, ByteArray>(MAX_TEXTURE_CACHE_BYTES) {
@@ -61,21 +62,31 @@ object RenderAssetCache {
 		)
 		val cachedResolvedPath = getCachedResolvedTexturePath(cacheLookupKey)
 		if (cachedResolvedPath != null) {
-			Logger.v(TAG, "texture path cache hit original=$normalized resolved=$cachedResolvedPath")
-			return loadTextureBytesForResolvedPath(context, cachedResolvedPath)
+			synchronized(textureCache) {
+				textureCache.get(cachedResolvedPath)
+			}?.let { return it }
 		}
-		Logger.v(TAG, "texture path cache miss original=$normalized")
 
-		val resolvedTexture = resolvePreferredTextureBytes(
-			context = context,
-			originalPath = normalized,
-			preferPreviewVariant = preferPreviewVariant
-		) ?: return null
-		putCachedResolvedTexturePath(cacheLookupKey, resolvedTexture.path)
-		synchronized(textureCache) {
-			textureCache.put(resolvedTexture.path, resolvedTexture.bytes)
+		return withLoadLock(
+			lockStore = textureLookupLocks,
+			key = cacheLookupKey
+		) {
+			val doubleCheckResolvedPath = getCachedResolvedTexturePath(cacheLookupKey)
+			if (doubleCheckResolvedPath != null) {
+				return@withLoadLock loadTextureBytesForResolvedPath(context, doubleCheckResolvedPath)
+			}
+
+			val resolvedTexture = resolvePreferredTextureBytes(
+				context = context,
+				originalPath = normalized,
+				preferPreviewVariant = preferPreviewVariant
+			) ?: return@withLoadLock null
+			putCachedResolvedTexturePath(cacheLookupKey, resolvedTexture.path)
+			synchronized(textureCache) {
+				textureCache.put(resolvedTexture.path, resolvedTexture.bytes)
+			}
+			return@withLoadLock resolvedTexture.bytes
 		}
-		return resolvedTexture.bytes
 	}
 
 	fun prewarmWallpaper(

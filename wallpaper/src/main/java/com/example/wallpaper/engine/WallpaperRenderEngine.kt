@@ -189,6 +189,11 @@ class WallpaperRenderEngine(
 		return sceneFingerprintHash
 	}
 
+	@Synchronized
+	fun isNight(): Boolean {
+		return skyEngine.peekState(mode = renderMode)?.isNight ?: false
+	}
+
 	fun setParallaxOffset(
 		x: Float,
 		y: Float

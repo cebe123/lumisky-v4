@@ -78,6 +78,7 @@ import com.example.wallpaper.service.isLumiskyHomeWallpaperActive
 import com.example.wallpaper.service.queryLockWallpaperId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -190,6 +191,7 @@ class MainActivity : AppCompatActivity() {
 				LaunchedEffect(Unit) {
 					withFrameNanos { }
 					ensureHomeViewModelCreated()
+					(application as? LumiskyApplication)?.installCrashlyticsDiagnostics()
 				}
 
 				if (homeViewModel == null) {
@@ -204,15 +206,17 @@ class MainActivity : AppCompatActivity() {
 							immediateSnapshotLimit = STARTUP_IMMEDIATE_SNAPSHOT_WARM_LIMIT,
 							renderAssetLimit = STARTUP_RENDER_ASSET_WARM_LIMIT
 						)
-						warmHomeStartupCaches(
-							snapshotItems = warmupPlan.immediateSnapshotItems,
-							renderAssetItems = warmupPlan.renderAssetItems
-						)
+						withTimeoutOrNull(STARTUP_CRITICAL_TIMEOUT_MS) {
+							warmHomeCriticalCaches(warmupPlan.immediateSnapshotItems)
+						}
 						startupCacheReady = true
 						startupAnimationsEnabled = true
 						reportFullyDrawn()
 						withFrameNanos { }
-						warmHomeDeferredSnapshotCaches(warmupPlan.deferredSnapshotItems)
+						warmHomeDeferredCaches(
+							renderAssetItems = warmupPlan.renderAssetItems,
+							deferredSnapshotItems = warmupPlan.deferredSnapshotItems
+						)
 						homeViewModel.onStartupIdle()
 						if (!appSettingsRepository.getHasRequestedLocationPermission()) {
 							appSettingsRepository.setHasRequestedLocationPermission(true)
@@ -766,18 +770,15 @@ class MainActivity : AppCompatActivity() {
 		}
 	}
 
-	private suspend fun warmHomeStartupCaches(
-		snapshotItems: List<HomeWallpaperItem>,
-		renderAssetItems: List<HomeWallpaperItem>
+	private suspend fun warmHomeCriticalCaches(
+		snapshotItems: List<HomeWallpaperItem>
 	) {
-		if (snapshotItems.isEmpty() && renderAssetItems.isEmpty()) return
+		if (snapshotItems.isEmpty()) return
 		val appContext = applicationContext
 		val (previewWidthPx, previewHeightPx) = resolveHomeStartupPreviewSizePx()
 		val startedAtMs = SystemClock.elapsedRealtime()
 		var snapshotLoadedCount = 0
 		var snapshotFailedCount = 0
-		var renderPrewarmedCount = 0
-		var renderFailedCount = 0
 		runCatching {
 			withContext(Dispatchers.IO) {
 				val snapshotLoader = SnapshotPreviewAssetLoader(appContext)
@@ -792,9 +793,30 @@ class MainActivity : AppCompatActivity() {
 						snapshotLoadedCount++
 					}.onFailure {
 						snapshotFailedCount++
-						Logger.w(TAG, "failed to warm startup snapshot configId=${item.config.id}", it)
+						Logger.w(TAG, "failed to warm critical snapshot configId=${item.config.id}", it)
 					}
 				}
+			}
+		}.onFailure {
+			Logger.w(TAG, "home critical cache warming failed", it)
+		}
+		Logger.d(
+			TAG,
+			"home critical cache warmed snapshots=$snapshotLoadedCount/$snapshotFailedCount " +
+				"elapsedMs=${SystemClock.elapsedRealtime() - startedAtMs}"
+		)
+	}
+
+	private suspend fun warmHomeDeferredCaches(
+		renderAssetItems: List<HomeWallpaperItem>,
+		deferredSnapshotItems: List<HomeWallpaperItem>
+	) {
+		val appContext = applicationContext
+		val startedAtMs = SystemClock.elapsedRealtime()
+		var renderPrewarmedCount = 0
+		var renderFailedCount = 0
+		runCatching {
+			withContext(Dispatchers.IO) {
 				renderAssetItems.forEach { item ->
 					runCatching {
 						RenderAssetCache.prewarmWallpaper(
@@ -806,19 +828,19 @@ class MainActivity : AppCompatActivity() {
 						renderPrewarmedCount++
 					}.onFailure {
 						renderFailedCount++
-						Logger.w(TAG, "failed to prewarm render asset configId=${item.config.id}", it)
+						Logger.w(TAG, "failed to prewarm deferred render asset configId=${item.config.id}", it)
 					}
 				}
 			}
 		}.onFailure {
-			Logger.w(TAG, "home startup cache warming failed", it)
+			Logger.w(TAG, "home deferred render prewarming failed", it)
 		}
 		Logger.d(
 			TAG,
-			"home startup cache warmed snapshots=$snapshotLoadedCount/$snapshotFailedCount " +
-				"renderAssets=$renderPrewarmedCount/$renderFailedCount " +
-				"size=${previewWidthPx}x$previewHeightPx elapsedMs=${SystemClock.elapsedRealtime() - startedAtMs}"
+			"home deferred render prewarmed=$renderPrewarmedCount/$renderFailedCount " +
+				"elapsedMs=${SystemClock.elapsedRealtime() - startedAtMs}"
 		)
+		warmHomeDeferredSnapshotCaches(deferredSnapshotItems)
 	}
 
 	private suspend fun warmHomeDeferredSnapshotCaches(items: List<HomeWallpaperItem>) {
@@ -945,6 +967,7 @@ class MainActivity : AppCompatActivity() {
 		private const val SET_WALLPAPER_REFRESH_TIMEOUT_MS = 1_800L
 		private const val WALLPAPER_EXECUTOR_SHUTDOWN_TIMEOUT_MS = 2_000L
 		private const val HOME_STARTUP_CARD_WIDTH_DP = 276f
+		private const val STARTUP_CRITICAL_TIMEOUT_MS = 1_000L
 		private const val STARTUP_IMMEDIATE_SNAPSHOT_WARM_LIMIT = 3
 		private const val STARTUP_RENDER_ASSET_WARM_LIMIT = 6
 		private const val WALLPAPER_SERVICE_CLASS_NAME = "com.example.wallpaper.SkyWallpaperService"

@@ -239,9 +239,14 @@ internal class WallpaperRenderController(
 
 	private fun onMinuteTick() {
 		if (!visible || !surfaceAttached) return
-		if (resolvedLoopMode() != WallpaperLoopMode.MINUTE_TICK) return
+		updateSchedulerState()
 		postRenderTask {
-			renderMinuteTickIfNeeded()
+			updateRenderLoopsLocked()
+			if (resolvedLoopMode() == WallpaperLoopMode.MINUTE_TICK) {
+				renderMinuteTickIfNeeded()
+			} else {
+				renderCurrentScene(force = true)
+			}
 		}
 	}
 
@@ -436,7 +441,8 @@ internal class WallpaperRenderController(
 			visible = visible,
 			surfaceAttached = surfaceAttached,
 			performanceMode = performanceMode,
-			displayRefreshRateHz = displayRefreshRateHz
+			displayRefreshRateHz = displayRefreshRateHz,
+			isNight = renderEngine.isNight()
 		)
 	}
 

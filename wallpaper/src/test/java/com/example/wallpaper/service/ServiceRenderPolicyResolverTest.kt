@@ -219,4 +219,60 @@ class ServiceRenderPolicyResolverTest {
 
 		assertEquals(WallpaperLoopMode.STATIC, resolved.loopMode)
 	}
+
+	@Test
+	fun flower_wallpaper_demoted_to_minute_tick_during_day() {
+		val resolver = ServiceRenderPolicyResolver()
+		val config = WallpaperConfig.default(id = "flower").copy(
+			runtimeRenderPolicy = RuntimeRenderPolicy(
+				policy = RenderPolicy.CONTINUOUS,
+				continuousFrameIntervalMs = 50L
+			),
+			capabilities = WallpaperCapabilities(
+				dynamicMotion = true,
+				dynamicTextures = true,
+				locationAwareLighting = true,
+				supportsCloudLayer = false,
+				supportsStarLayer = true
+			)
+		)
+
+		val resolved = resolver.resolve(
+			config = config,
+			previewMode = false,
+			visible = true,
+			surfaceAttached = true,
+			isNight = false
+		)
+
+		assertEquals(WallpaperLoopMode.MINUTE_TICK, resolved.loopMode)
+	}
+
+	@Test
+	fun flower_wallpaper_remains_continuous_at_night() {
+		val resolver = ServiceRenderPolicyResolver()
+		val config = WallpaperConfig.default(id = "flower").copy(
+			runtimeRenderPolicy = RuntimeRenderPolicy(
+				policy = RenderPolicy.CONTINUOUS,
+				continuousFrameIntervalMs = 50L
+			),
+			capabilities = WallpaperCapabilities(
+				dynamicMotion = true,
+				dynamicTextures = true,
+				locationAwareLighting = true,
+				supportsCloudLayer = false,
+				supportsStarLayer = true
+			)
+		)
+
+		val resolved = resolver.resolve(
+			config = config,
+			previewMode = false,
+			visible = true,
+			surfaceAttached = true,
+			isNight = true
+		)
+
+		assertEquals(WallpaperLoopMode.VSYNC, resolved.loopMode)
+	}
 }
