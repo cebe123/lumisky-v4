@@ -71,6 +71,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -664,14 +668,25 @@ private fun WallpaperCard(
 	Card(
 		modifier = modifier
 			.padding(vertical = 3.dp)
-			.clickable(onClick = onClick),
+			.semantics {
+				contentDescription = title
+			}
+			.clickable(
+				onClickLabel = title,
+				role = Role.Button,
+				onClick = onClick
+			),
 		shape = RoundedCornerShape(16.dp),
 		elevation = CardDefaults.cardElevation(
 			defaultElevation = if (simplifiedPlaceholderVisuals) 2.dp else 8.dp
 		),
 		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
 	) {
-		Box(modifier = Modifier.fillMaxSize()) {
+		Box(
+			modifier = Modifier
+				.fillMaxSize()
+				.clearAndSetSemantics { }
+		) {
 			if (showLivePreview) {
 				val activePreviewSessionKey = previewSessionKey
 				FocusedWallpaperPreview(
@@ -696,7 +711,7 @@ private fun WallpaperCard(
 			if (snapshotBitmap != null) {
 				Image(
 					bitmap = snapshotBitmap.asImageBitmap(),
-					contentDescription = title,
+					contentDescription = null,
 					contentScale = ContentScale.FillBounds,
 					modifier = Modifier
 						.fillMaxSize()
