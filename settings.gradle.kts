@@ -1,29 +1,12 @@
-pluginManagement {
-	repositories {
-		google {
-			content {
-				includeGroupByRegex("com\\.android.*")
-				includeGroupByRegex("com\\.google.*")
-				includeGroupByRegex("androidx.*")
-			}
-		}
-		mavenCentral()
-		gradlePluginPortal()
-	}
-}
+pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
 plugins {
-	id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+	id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
 }
-dependencyResolutionManagement {
-	repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-	repositories {
-		google()
-		mavenCentral()
-	}
-}
-
+dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
 rootProject.name = "Lumisky"
 include(":app")
-include(":core")
-include(":engine")
-include(":wallpaper")
+// Play Asset Delivery packs can be added later after engine MVP is stable.
+// include(":assetpacks:nature_pack")
+// include(":assetpacks:city_pack")
+// include(":assetpacks:space_pack")
+// include(":assetpacks:premium_pack")

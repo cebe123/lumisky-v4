@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 5,
+  "id": "solar_horizon",
+  "name": "Solar Horizon",
+  "category": "Nature & Landscapes 3D",
+  "assetPack": null,
+  "capabilities": {
+    "parallax": false,
+    "touch": false,
+    "locationAware": true,
+    "supportsPreviewTimeSimulation": true
+  },
+  "displayPolicy": {
+    "foldableAware": true,
+    "baseAspectRatio": 0.5625,
+    "fovPhone": 45.0,
+    "fovExpanded": 38.0,
+    "maxOffsetXPhone": 0.035,
+    "maxOffsetXExpanded": 0.022,
+    "maxOffsetY": 0.018
+  },
+  "ambientPolicy": {
+    "enabled": true,
+    "mode": "BLACK_CLEAR_OR_LOW_LUMINANCE_FRAME",
+    "burnInProtectionPx": 3,
+    "refreshSeconds": 60
+  },
+  "renderScheduler": {
+    "mode": "LAYER_SCHEDULED",
+    "sceneMaxFps": 30,
+    "batterySaverSceneMaxFps": 15,
+    "idleSceneMaxFps": 8
+  },
+  "qualityPolicy": {
+    "defaultTier": "BALANCED",
+    "allowAdaptiveQuality": true,
+    "maxTextureSizeLow": 1024,
+    "maxTextureSizeBalanced": 2048,
+    "maxTextureSizeHigh": 4096
+  },
+  "parallax": {
+    "enabled": false,
+    "maxOffsetX": 0.035,
+    "maxOffsetY": 0.018,
+    "smoothing": 0.12
+  },
+  "layers": [
+    {
+      "id": "main_shader",
+      "type": "ShaderLayer",
+      "enabled": true,
+      "zIndex": 0,
+      "renderPass": "BACKGROUND",
+      "blendMode": "NONE",
+      "renderTarget": "DIRECT",
+      "shaderRef": "wallpapers/solar_horizon/fragment_shader.glsl",
+      "uniforms": {},
+      "textures": [],
+      "framePolicy": {
+        "mode": "MATCH_SCENE",
+        "fps": null,
+        "cacheMode": "NONE",
+        "updateWhenInvisible": false,
+        "degradeInBatterySaver": true,
+        "batterySaverFps": null,
+        "idleFps": null
+      },
+      "parallax": {
+        "factorX": 0.0,
+        "factorY": 0.0,
+        "depth": 0.0
+      },
+      "fallback": {
+        "onShaderError": "use_fallback_shader",
+        "onMissingTexture": "use_transparent_texture"
+      }
+    }
+  ],
+  "events": [],
+  "preview": {
+    "thumbnail": "wallpapers/solar_horizon/thumbnail.webp",
+    "cardMode": "THUMBNAIL",
+    "fullscreenMode": "FAST_TIME_SIMULATION"
+  }
+}

@@ -1,1088 +1,257 @@
-import org.gradle.api.GradleException
-import org.gradle.api.tasks.Sync
-import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
-import java.awt.Graphics2D
-import java.awt.RenderingHints
-import java.awt.image.BufferedImage
-import java.io.File
-import java.util.Properties
-import javax.imageio.IIOImage
-import javax.imageio.ImageIO
-import kotlin.math.roundToInt
-
-buildscript {
-	repositories {
-		google()
-		mavenCentral()
-	}
-	dependencies {
-		classpath("org.sejda.imageio:webp-imageio:0.1.6")
-	}
-}
-
 plugins {
-	alias(libs.plugins.android.application)
-	alias(libs.plugins.kotlin.compose)
-	alias(libs.plugins.google.services)
-	alias(libs.plugins.firebase.crashlytics)
-	alias(libs.plugins.firebase.perf)
-}
-
-val lintIncludeTestSources = providers.gradleProperty("lumisky.lint.includeTestSources")
-	.map { raw -> raw.equals("true", ignoreCase = true) }
-	.orElse(false)
-val appId = providers.gradleProperty("lumisky.applicationId")
-	.orElse("com.lumisky.wallpaper")
-	.get()
-val releaseVersionCode = providers.gradleProperty("lumisky.versionCode")
-	.map { raw ->
-		raw.toIntOrNull()
-			?: throw GradleException("lumisky.versionCode must be an integer.")
-	}
-	.orElse(1)
-val releaseVersionName = providers.gradleProperty("lumisky.versionName")
-	.orElse("1.0.0")
-val appProjectDir = project.projectDir
-val rootProjectDir = rootProject.projectDir
-val phoneRunPreferencesFile = rootProject.layout.projectDirectory
-	.file(".codex-local/phone-runner.properties")
-	.asFile
-val releaseSigningPropertiesFile = rootProject.layout.projectDirectory
-	.file("keystore.properties")
-	.asFile
-val releaseSigningProperties = Properties().apply {
-	if (releaseSigningPropertiesFile.isFile) {
-		releaseSigningPropertiesFile.inputStream().use(::load)
-	}
-}
-fun releaseSigningValue(
-	gradlePropertyName: String,
-	propertiesFileName: String,
-	environmentVariableName: String
-): String? {
-	providers.gradleProperty(gradlePropertyName).orNull
-		?.trim()
-		?.takeIf { it.isNotEmpty() }
-		?.let { return it }
-	releaseSigningProperties.getProperty(propertiesFileName)
-		?.trim()
-		?.takeIf { it.isNotEmpty() }
-		?.let { return it }
-	return providers.environmentVariable(environmentVariableName).orNull
-		?.trim()
-		?.takeIf { it.isNotEmpty() }
-}
-val releaseStoreFilePath = releaseSigningValue(
-	gradlePropertyName = "lumisky.release.storeFile",
-	propertiesFileName = "storeFile",
-	environmentVariableName = "LUMISKY_RELEASE_STORE_FILE"
-)
-val releaseStorePassword = releaseSigningValue(
-	gradlePropertyName = "lumisky.release.storePassword",
-	propertiesFileName = "storePassword",
-	environmentVariableName = "LUMISKY_RELEASE_STORE_PASSWORD"
-)
-val releaseKeyAlias = releaseSigningValue(
-	gradlePropertyName = "lumisky.release.keyAlias",
-	propertiesFileName = "keyAlias",
-	environmentVariableName = "LUMISKY_RELEASE_KEY_ALIAS"
-)
-val releaseKeyPassword = releaseSigningValue(
-	gradlePropertyName = "lumisky.release.keyPassword",
-	propertiesFileName = "keyPassword",
-	environmentVariableName = "LUMISKY_RELEASE_KEY_PASSWORD"
-)
-val releaseStoreFile = releaseStoreFilePath?.let { rootProject.file(it) }
-val releaseSigningConfigured = releaseStoreFile?.isFile == true &&
-	!releaseStorePassword.isNullOrBlank() &&
-	!releaseKeyAlias.isNullOrBlank() &&
-	!releaseKeyPassword.isNullOrBlank()
-
-val teemoDerivedAssetPaths = listOf(
-	"teemo/teemo.webp",
-	"teemo/teemo_sun.webp",
-	"teemo/teemo_moon.webp"
-)
-
-fun String.withPreviewSuffix(): String {
-	val dotIndex = lastIndexOf('.')
-	if (dotIndex <= 0) return "${this}_preview"
-	return "${substring(0, dotIndex)}_preview${substring(dotIndex)}"
-}
-
-fun BufferedImage.ensureArgbCopy(): BufferedImage {
-	if (type == BufferedImage.TYPE_INT_ARGB) {
-		return BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB).also { copy ->
-			val graphics = copy.createGraphics()
-			try {
-				graphics.drawImage(this, 0, 0, null)
-			} finally {
-				graphics.dispose()
-			}
-		}
-	}
-	return BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB).also { copy ->
-		val graphics = copy.createGraphics()
-		try {
-			graphics.drawImage(this, 0, 0, null)
-		} finally {
-			graphics.dispose()
-		}
-	}
-}
-
-fun writeWebpImage(
-	image: BufferedImage,
-	target: File,
-	quality: Float
-) {
-	val writer = createWebpImageWriter()
-	target.parentFile?.mkdirs()
-	try {
-		ImageIO.createImageOutputStream(target).use { output ->
-			writer.output = output
-			val params = writer.defaultWriteParam.apply {
-				if (canWriteCompressed()) {
-					compressionMode = javax.imageio.ImageWriteParam.MODE_EXPLICIT
-					compressionTypes?.firstOrNull()?.let { type ->
-						compressionType = type
-					}
-					compressionQuality = quality
-				}
-			}
-			writer.write(null, IIOImage(image, null, null), params)
-			output.flush()
-		}
-	} finally {
-		writer.dispose()
-	}
-}
-
-fun createWebpImageWriter(): javax.imageio.ImageWriter {
-	ImageIO.scanForPlugins()
-	return ImageIO.getImageWritersByMIMEType("image/webp").asSequence().firstOrNull()
-		?: ImageIO.getImageWritersBySuffix("webp").asSequence().firstOrNull()
-		?: throw GradleException(
-			"WebP writer not found. Ensure org.sejda.imageio:webp-imageio is available."
-		)
-}
-
-fun scaleBufferedImage(
-	image: BufferedImage,
-	scale: Float
-): BufferedImage {
-	val targetWidth = (image.width * scale).roundToInt().coerceAtLeast(1)
-	val targetHeight = (image.height * scale).roundToInt().coerceAtLeast(1)
-	return BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB).also { scaled ->
-		val graphics: Graphics2D = scaled.createGraphics()
-		try {
-			graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
-			graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
-			graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-			graphics.drawImage(image, 0, 0, targetWidth, targetHeight, null)
-		} finally {
-			graphics.dispose()
-		}
-	}
-}
-
-fun bleedTransparentEdgeColorsBuild(
-	image: BufferedImage,
-	minOpaqueAlpha: Int,
-	passes: Int
-): BufferedImage {
-	val width = image.width
-	val height = image.height
-	if (width <= 1 || height <= 1 || passes <= 0) return image
-
-	val sourcePixels = IntArray(width * height)
-	image.getRGB(0, 0, width, height, sourcePixels, 0, width)
-	if (sourcePixels.none { ((it ushr 24) and 0xFF) in 1 until minOpaqueAlpha }) {
-		return image
-	}
-
-	var current = sourcePixels
-	var working = IntArray(sourcePixels.size)
-	var changed = false
-
-	repeat(passes) {
-		System.arraycopy(current, 0, working, 0, current.size)
-		var passChanged = false
-		for (y in 0 until height) {
-			val rowOffset = y * width
-			for (x in 0 until width) {
-				val index = rowOffset + x
-				val pixel = current[index]
-				val alpha = (pixel ushr 24) and 0xFF
-				if (alpha >= minOpaqueAlpha) continue
-
-				var redTotal = 0
-				var greenTotal = 0
-				var blueTotal = 0
-				var neighborCount = 0
-
-				for (offsetY in -1..1) {
-					val neighborY = y + offsetY
-					if (neighborY !in 0 until height) continue
-					val neighborRow = neighborY * width
-					for (offsetX in -1..1) {
-						if (offsetX == 0 && offsetY == 0) continue
-						val neighborX = x + offsetX
-						if (neighborX !in 0 until width) continue
-						val neighbor = current[neighborRow + neighborX]
-						val neighborAlpha = (neighbor ushr 24) and 0xFF
-						if (neighborAlpha < minOpaqueAlpha) continue
-						redTotal += (neighbor ushr 16) and 0xFF
-						greenTotal += (neighbor ushr 8) and 0xFF
-						blueTotal += neighbor and 0xFF
-						neighborCount++
-					}
-				}
-
-				if (neighborCount == 0) continue
-				val red = redTotal / neighborCount
-				val green = greenTotal / neighborCount
-				val blue = blueTotal / neighborCount
-				working[index] = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
-				passChanged = true
-			}
-		}
-
-		if (!passChanged) return@repeat
-		changed = true
-		val swap = current
-		current = working
-		working = swap
-	}
-
-	if (!changed) return image
-	return BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB).also { result ->
-		result.setRGB(0, 0, width, height, current, 0, width)
-	}
-}
-
-fun featherTransparentTopBoundaryBuild(
-	image: BufferedImage,
-	minVisibleAlpha: Int,
-	colorCarryPixels: Int,
-	fadePixels: Int,
-	samplePixels: Int
-): BufferedImage {
-	val width = image.width
-	val height = image.height
-	if (width <= 1 || height <= 1 || fadePixels <= 0) return image
-
-	val sourcePixels = IntArray(width * height)
-	image.getRGB(0, 0, width, height, sourcePixels, 0, width)
-	val result = sourcePixels.copyOf()
-	var changed = false
-
-	for (x in 0 until width) {
-		var boundaryY = -1
-		for (y in 0 until height) {
-			val alpha = (sourcePixels[(y * width) + x] ushr 24) and 0xFF
-			if (alpha >= minVisibleAlpha) {
-				boundaryY = y
-				break
-			}
-		}
-		if (boundaryY <= 0) continue
-
-		var redTotal = 0
-		var greenTotal = 0
-		var blueTotal = 0
-		var weightTotal = 0
-		val sampleEnd = (boundaryY + samplePixels).coerceAtMost(height - 1)
-		for (sampleY in boundaryY..sampleEnd) {
-			val pixel = sourcePixels[(sampleY * width) + x]
-			val alpha = (pixel ushr 24) and 0xFF
-			if (alpha < minVisibleAlpha) continue
-			redTotal += ((pixel ushr 16) and 0xFF) * alpha
-			greenTotal += ((pixel ushr 8) and 0xFF) * alpha
-			blueTotal += (pixel and 0xFF) * alpha
-			weightTotal += alpha
-		}
-		if (weightTotal == 0) continue
-
-		val boundaryRed = (redTotal / weightTotal).coerceIn(0, 255)
-		val boundaryGreen = (greenTotal / weightTotal).coerceIn(0, 255)
-		val boundaryBlue = (blueTotal / weightTotal).coerceIn(0, 255)
-
-		val carryStart = (boundaryY - colorCarryPixels).coerceAtLeast(0)
-		for (carryY in carryStart until boundaryY) {
-			val index = (carryY * width) + x
-			val pixel = result[index]
-			val alpha = (pixel ushr 24) and 0xFF
-			val carriedPixel = (alpha shl 24) or (boundaryRed shl 16) or (boundaryGreen shl 8) or boundaryBlue
-			if (carriedPixel != pixel) {
-				result[index] = carriedPixel
-				changed = true
-			}
-		}
-
-		val fadeEnd = (boundaryY + fadePixels).coerceAtMost(height - 1)
-		for (fadeY in boundaryY..fadeEnd) {
-			val index = (fadeY * width) + x
-			val pixel = sourcePixels[index]
-			val alpha = (pixel ushr 24) and 0xFF
-			if (alpha == 0) continue
-
-			val rawProgress = (fadeY - boundaryY).toFloat() / fadePixels.toFloat()
-			val clampedProgress = rawProgress.coerceIn(0f, 1f)
-			val progress = clampedProgress * clampedProgress * (3f - (2f * clampedProgress))
-			val sourceRed = (pixel ushr 16) and 0xFF
-			val sourceGreen = (pixel ushr 8) and 0xFF
-			val sourceBlue = pixel and 0xFF
-			val fadedAlpha = (alpha * progress).roundToInt().coerceIn(0, 255)
-			val mixedRed = (boundaryRed + ((sourceRed - boundaryRed) * progress)).roundToInt().coerceIn(0, 255)
-			val mixedGreen = (boundaryGreen + ((sourceGreen - boundaryGreen) * progress)).roundToInt().coerceIn(0, 255)
-			val mixedBlue = (boundaryBlue + ((sourceBlue - boundaryBlue) * progress)).roundToInt().coerceIn(0, 255)
-			val featheredPixel = (fadedAlpha shl 24) or (mixedRed shl 16) or (mixedGreen shl 8) or mixedBlue
-			if (featheredPixel != result[index]) {
-				result[index] = featheredPixel
-				changed = true
-			}
-		}
-	}
-
-	if (!changed) return image
-	return BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB).also { output ->
-		output.setRGB(0, 0, width, height, result, 0, width)
-	}
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.dagger.hilt.android")
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.20"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.2.10"
+    id("kotlin-kapt")
 }
 
 android {
-	namespace = "com.example.lumisky"
-	compileSdk {
-		version = release(36)
-	}
-
-	signingConfigs {
-		create("release") {
-			if (releaseSigningConfigured) {
-				storeFile = releaseStoreFile
-				storePassword = releaseStorePassword
-				keyAlias = releaseKeyAlias
-				keyPassword = releaseKeyPassword
-			}
-		}
-	}
-
-	defaultConfig {
-		applicationId = appId
-		minSdk = 28
-		targetSdk = 36
-		versionCode = releaseVersionCode.get()
-		versionName = releaseVersionName.get()
-	}
-
-	buildTypes {
-		release {
-			isMinifyEnabled = true
-			isShrinkResources = true
-			configure<CrashlyticsExtension> {
-				mappingFileUploadEnabled = true
-				nativeSymbolUploadEnabled = true
-			}
-			ndk {
-				debugSymbolLevel = "SYMBOL_TABLE"
-			}
-			proguardFiles(
-				getDefaultProguardFile("proguard-android-optimize.txt"),
-				"proguard-rules.pro"
-			)
-			if (releaseSigningConfigured) {
-				signingConfig = signingConfigs.getByName("release")
-			}
-		}
-	}
-	compileOptions {
-		isCoreLibraryDesugaringEnabled = true
-		sourceCompatibility = JavaVersion.VERSION_11
-		targetCompatibility = JavaVersion.VERSION_11
-	}
-	buildFeatures {
-		compose = true
-		prefab = true
-	}
-	lint {
-		// Fast local lint by default; enable test-source lint in CI/full runs with:
-		// -Plumisky.lint.includeTestSources=true
-		checkTestSources = lintIncludeTestSources.get()
-	}
+    namespace = "com.adnan.lumisky"
+    compileSdk = 35
+    defaultConfig {
+        applicationId = "com.adnan.lumisky"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+    }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 }
 
-val validatePlayReleaseConfig by tasks.registering {
-	group = "verification"
-	description = "Checks release metadata and upload signing inputs before building Play artifacts."
+val validateWallpaperDefinitions = tasks.register("validateWallpaperDefinitions") {
+    group = "verification"
+    description = "Validates v5 wallpaper definitions and referenced asset paths."
 
-	doLast {
-		val missingSigningInputs = buildList {
-			if (releaseStoreFilePath.isNullOrBlank()) add("storeFile")
-			if (releaseStorePassword.isNullOrBlank()) add("storePassword")
-			if (releaseKeyAlias.isNullOrBlank()) add("keyAlias")
-			if (releaseKeyPassword.isNullOrBlank()) add("keyPassword")
-		}
-		if (appId.startsWith("com.example.")) {
-			throw GradleException(
-				"Google Play release applicationId must not use the placeholder com.example namespace."
-			)
-		}
-		if (releaseVersionCode.get() < 1) {
-			throw GradleException("lumisky.versionCode must be greater than zero.")
-		}
-		if (releaseVersionName.get().isBlank()) {
-			throw GradleException("lumisky.versionName must not be blank.")
-		}
-		if (missingSigningInputs.isNotEmpty()) {
-			throw GradleException(
-				"Release signing is incomplete. Provide ${missingSigningInputs.joinToString()} " +
-					"in keystore.properties, Gradle properties, or LUMISKY_RELEASE_* environment variables."
-			)
-		}
-		val storeFile = releaseStoreFile
-		if (storeFile == null || !storeFile.isFile) {
-			throw GradleException("Release signing storeFile does not exist: ${releaseStoreFilePath.orEmpty()}")
-		}
-		logger.lifecycle("validatePlayReleaseConfig: applicationId=$appId version=${releaseVersionName.get()} (${releaseVersionCode.get()})")
-	}
+    val assetsDir = layout.projectDirectory.dir("src/main/assets")
+    inputs.dir(assetsDir.dir("wallpapers"))
+    inputs.dir(assetsDir.dir("shaders"))
+
+    doLast {
+        val root = assetsDir.asFile.canonicalFile
+        val parser = groovy.json.JsonSlurper()
+        val errors = mutableListOf<String>()
+        val supportedLayerTypes = setOf(
+            "AnimationLayer",
+            "CloudLayer",
+            "FogLayer",
+            "ForegroundLayer",
+            "MoonLayer",
+            "RainLayer",
+            "ShaderLayer",
+            "StarsLayer",
+            "SunLayer",
+            "TextureLayer",
+            "VideoOesLayer"
+        )
+        val supportedRenderPasses = setOf(
+            "BACKGROUND",
+            "OPAQUE",
+            "ALPHA_TESTED",
+            "TRANSPARENT",
+            "POST_PROCESS",
+            "OVERLAY"
+        )
+        val supportedBlendModes = setOf("NONE", "ALPHA", "ADDITIVE", "MULTIPLY", "SCREEN")
+        val supportedRenderTargets = setOf("DIRECT", "OFFSCREEN_FBO", "CACHED_TEXTURE", "POST_PROCESS")
+        val supportedFrameModes = setOf(
+            "STATIC",
+            "ON_DEMAND",
+            "MINUTE_TICK",
+            "ONE_FPS",
+            "FIXED_FPS",
+            "MATCH_SCENE",
+            "CONTINUOUS",
+            "VIDEO_SYNC",
+            "EVENT_BASED"
+        )
+        val supportedCacheModes = setOf("NONE", "CPU_STATE_ONLY", "FBO_CACHE", "STATIC_TEXTURE")
+        val builtInShaderRefs = mapOf(
+            "common.gradient.v1" to "shaders/common/gradient.frag",
+            "common.video.oes" to "shaders/common/video_oes.frag",
+            "common.texture2d" to "shaders/common/texture2d.frag"
+        )
+
+        fun assetFile(path: String): File {
+            return root.resolve(path.replace('\\', '/')).canonicalFile
+        }
+
+        fun assetExists(path: String): Boolean {
+            val resolved = assetFile(path)
+            return resolved.toPath().startsWith(root.toPath()) && resolved.isFile
+        }
+
+        fun mapValue(value: Any?): Map<*, *>? = value as? Map<*, *>
+
+        fun listValue(value: Any?): List<*> = value as? List<*> ?: emptyList<Any>()
+
+        fun stringValue(value: Any?): String = value as? String ?: ""
+
+        fun validateAsset(owner: String, kind: String, path: String) {
+            if (path.isBlank()) {
+                errors.add("$owner: blank $kind path")
+            } else if (!assetExists(path)) {
+                errors.add("$owner: missing $kind asset $path")
+            }
+        }
+
+        fun validateDefinition(expectedId: String, definitionPath: String) {
+            val definitionFile = assetFile(definitionPath)
+            if (!definitionFile.toPath().startsWith(root.toPath()) || !definitionFile.isFile) {
+                errors.add("$expectedId: missing definition $definitionPath")
+                return
+            }
+            val definition = mapValue(parser.parse(definitionFile))
+            if (definition == null) {
+                errors.add("$expectedId: definition is not a JSON object")
+                return
+            }
+            if ((definition["schemaVersion"] as? Number)?.toInt() != 5) {
+                errors.add("$expectedId: definition must use schemaVersion 5")
+            }
+            val id = stringValue(definition["id"])
+            if (id != expectedId) {
+                errors.add("$expectedId: definition id mismatch $id")
+            }
+            if (stringValue(definition["name"]).isBlank()) {
+                errors.add("$expectedId: blank wallpaper name")
+            }
+            if (stringValue(definition["category"]).isBlank()) {
+                errors.add("$expectedId: blank wallpaper category")
+            }
+            val preview = mapValue(definition["preview"])
+            if (preview == null) {
+                errors.add("$expectedId: missing preview object")
+            } else {
+                validateAsset(expectedId, "preview thumbnail", stringValue(preview["thumbnail"]))
+                if (stringValue(preview["cardMode"]) != "THUMBNAIL") {
+                    errors.add("$expectedId: catalog preview cardMode must be THUMBNAIL")
+                }
+            }
+
+            listValue(definition["layers"]).forEachIndexed { index, layerValue ->
+                val layer = mapValue(layerValue)
+                if (layer == null) {
+                    errors.add("$expectedId: layer[$index] is not a JSON object")
+                    return@forEachIndexed
+                }
+                val layerOwner = "$expectedId:${stringValue(layer["id"]).ifBlank { "layer[$index]" }}"
+                val layerType = stringValue(layer["type"])
+                if (layerType !in supportedLayerTypes) {
+                    errors.add("$layerOwner: unsupported layer type $layerType")
+                }
+                val renderPass = stringValue(layer["renderPass"]).ifBlank { "BACKGROUND" }
+                if (renderPass !in supportedRenderPasses) {
+                    errors.add("$layerOwner: unsupported renderPass $renderPass")
+                }
+                val blendMode = stringValue(layer["blendMode"]).ifBlank { "NONE" }
+                if (blendMode !in supportedBlendModes) {
+                    errors.add("$layerOwner: unsupported blendMode $blendMode")
+                }
+                val renderTarget = stringValue(layer["renderTarget"]).ifBlank { "DIRECT" }
+                if (renderTarget !in supportedRenderTargets) {
+                    errors.add("$layerOwner: unsupported renderTarget $renderTarget")
+                }
+                val shaderRef = stringValue(layer["shaderRef"])
+                if (shaderRef.isNotBlank()) {
+                    validateAsset(layerOwner, "shader", builtInShaderRefs[shaderRef] ?: shaderRef)
+                }
+                val source = stringValue(layer["source"])
+                if (source.isNotBlank()) {
+                    validateAsset(layerOwner, "source", source)
+                }
+                val framePolicy = mapValue(layer["framePolicy"])
+                if (framePolicy != null) {
+                    val mode = stringValue(framePolicy["mode"]).ifBlank { "MATCH_SCENE" }
+                    if (mode !in supportedFrameModes) {
+                        errors.add("$layerOwner: unsupported framePolicy mode $mode")
+                    }
+                    val cacheMode = stringValue(framePolicy["cacheMode"]).ifBlank { "NONE" }
+                    if (cacheMode !in supportedCacheModes) {
+                        errors.add("$layerOwner: unsupported framePolicy cacheMode $cacheMode")
+                    }
+                }
+                listValue(layer["textures"]).forEachIndexed textureLoop@{ textureIndex, textureValue ->
+                    val texture = mapValue(textureValue)
+                    if (texture == null) {
+                        errors.add("$layerOwner: texture[$textureIndex] is not a JSON object")
+                        return@textureLoop
+                    }
+                    if (stringValue(texture["uniform"]).isBlank()) {
+                        errors.add("$layerOwner: texture[$textureIndex] blank uniform")
+                    }
+                    validateAsset(layerOwner, "texture", stringValue(texture["path"]))
+                }
+            }
+        }
+
+        val catalogFile = assetFile("wallpapers/index.json")
+        if (!catalogFile.isFile) {
+            errors.add("catalog: missing wallpapers/index.json")
+        } else {
+            val catalog = mapValue(parser.parse(catalogFile))
+            if (catalog == null) {
+                errors.add("catalog: index.json is not a JSON object")
+            } else {
+                if ((catalog["schemaVersion"] as? Number)?.toInt() != 5) {
+                    errors.add("catalog: index.json must use schemaVersion 5")
+                }
+                listValue(catalog["wallpapers"]).forEachIndexed { index, itemValue ->
+                    val item = mapValue(itemValue)
+                    if (item == null) {
+                        errors.add("catalog: wallpapers[$index] is not a JSON object")
+                        return@forEachIndexed
+                    }
+                    val id = stringValue(item["id"])
+                    val definitionPath = stringValue(item["definitionPath"])
+                    validateAsset("catalog:$id", "thumbnail", stringValue(item["thumbnail"]))
+                    validateDefinition(id, definitionPath)
+                }
+            }
+        }
+
+        validateDefinition("starter_gradient", "wallpapers/starter_gradient.json")
+
+        if (errors.isNotEmpty()) {
+            throw GradleException(errors.joinToString(separator = System.lineSeparator()))
+        }
+    }
 }
 
-tasks.matching { task ->
-	task.name == "assembleRelease" ||
-		task.name == "bundleRelease" ||
-		task.name == "packageReleaseBundle"
-}.configureEach {
-	dependsOn(validatePlayReleaseConfig)
-	dependsOn("uploadCrashlyticsSymbolFileRelease")
+tasks.named("preBuild") {
+    dependsOn(validateWallpaperDefinitions)
 }
 
 dependencies {
-	testImplementation(libs.junit)
+    testImplementation("junit:junit:4.13.2")
 
-	implementation(libs.androidx.core.ktx)
-	implementation(libs.androidx.appcompat)
-	implementation(libs.play.review.ktx)
-	implementation(libs.androidx.lifecycle.runtime.ktx)
-	implementation(libs.androidx.activity.compose)
-	implementation(libs.androidx.work.runtime.ktx)
-	implementation(platform(libs.androidx.compose.bom))
-	implementation(libs.androidx.compose.ui)
-	implementation(libs.androidx.compose.ui.graphics)
-	implementation("androidx.compose.animation:animation")
-	implementation(libs.androidx.compose.material3)
-	implementation(libs.material)
-	implementation("androidx.compose.material:material-icons-extended")
-	implementation(platform(libs.firebase.bom))
-	implementation(libs.firebase.crashlytics)
-	implementation(libs.firebase.crashlytics.ndk)
-	implementation(libs.firebase.analytics)
-	implementation(libs.firebase.perf)
-	coreLibraryDesugaring(libs.desugar.jdk.libs)
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("com.google.dagger:hilt-android:2.52")
+    kapt("com.google.dagger:hilt-compiler:2.52")
+    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
-	implementation(project(":core"))
-	implementation(project(":engine"))
-	implementation(project(":wallpaper"))
+    // Compose Dependencies
+    implementation("androidx.compose.ui:ui:1.7.5")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.7.5")
+    implementation("androidx.compose.material3:material3:1.3.1")
+    implementation("androidx.compose.runtime:runtime:1.7.5")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 }
-
-tasks.register("lintDebugLocal") {
-	group = "verification"
-	description = "Runs :app:lintDebug with test-source lint disabled by default."
-	dependsOn("lintDebug")
-}
-
-tasks.register("lintDebugFull") {
-	group = "verification"
-	description = "Runs :app:lintDebug with test-source lint enabled when invoked with -Plumisky.lint.includeTestSources=true."
-	dependsOn("lintDebug")
-}
-
-val validateShaderCelestialMotionContinuity by tasks.registering {
-	group = "verification"
-	description = "Fails the build when a shader reintroduces noon-only celestial position locks that cause visible jumps."
-	notCompatibleWithConfigurationCache("Uses Gradle script state while scanning shader assets.")
-
-	val shaderFiles = fileTree(layout.projectDirectory.dir("src/main/assets/shaders")) {
-		include("**/*.glsl")
-	}
-
-	inputs.files(shaderFiles)
-
-	doLast {
-		val disallowedPatterns = listOf(
-			Regex("""\bsunZenithLock\b""") to "sunZenithLock marker",
-			Regex("""abs\s*\(\s*u_Minute\s*-\s*u_SolarNoon\s*\)""") to "minute-to-solarNoon lock window"
-		)
-		val violations = buildList {
-			shaderFiles.files
-				.sortedBy { it.invariantSeparatorsPath.lowercase() }
-				.forEach { shaderFile ->
-					val shaderSource = shaderFile.readText()
-					disallowedPatterns.forEach { (pattern, reason) ->
-						if (pattern.containsMatchIn(shaderSource)) {
-							add("${shaderFile.relativeTo(projectDir).invariantSeparatorsPath}: $reason")
-						}
-					}
-				}
-		}
-		if (violations.isNotEmpty()) {
-			throw GradleException(
-				buildString {
-					appendLine("Detected discontinuous celestial-motion shader logic:")
-					violations.forEach { violation -> appendLine("- $violation") }
-				}
-			)
-		}
-	}
-}
-
-val syncZenithPreviewAssets by tasks.registering {
-	group = "assets"
-	description = "Normalizes local zenith snapshot PNGs and converts them to WebP preview assets."
-	notCompatibleWithConfigurationCache("Uses Gradle script image helpers during asset generation.")
-
-	val rawSnapshotsDir = rootProject.layout.projectDirectory.dir("snapshot-output/zenith-snapshots").asFile
-	val normalizedPngDir = rootProject.layout.projectDirectory.dir("snapshot-output/zenith-png").asFile
-	val previewAssetsDir = layout.projectDirectory.dir("src/main/assets/previews/zenith").asFile
-	val sourceTree = fileTree(rawSnapshotsDir) {
-		include("**/*.png")
-	}
-
-	inputs.files(sourceTree)
-	outputs.dir(normalizedPngDir)
-	outputs.dir(previewAssetsDir)
-
-	doLast {
-		if (!rawSnapshotsDir.exists()) {
-			throw GradleException(
-				"Zenith snapshot source not found at ${rawSnapshotsDir.path}. Run GenerateWallpaperZenithSnapshots.cmd first."
-			)
-		}
-
-		val files = sourceTree.files.sortedBy { it.absolutePath.lowercase() }
-		if (files.isEmpty()) {
-			throw GradleException(
-				"No zenith snapshot PNG files found at ${rawSnapshotsDir.path}."
-			)
-		}
-
-		if (normalizedPngDir.exists() && !normalizedPngDir.deleteRecursively()) {
-			throw GradleException("Failed to clear ${normalizedPngDir.path}.")
-		}
-		if (!normalizedPngDir.exists() && !normalizedPngDir.mkdirs()) {
-			throw GradleException("Failed to create ${normalizedPngDir.path}.")
-		}
-
-		if (previewAssetsDir.exists() && !previewAssetsDir.deleteRecursively()) {
-			throw GradleException("Failed to clear ${previewAssetsDir.path}.")
-		}
-		if (!previewAssetsDir.exists() && !previewAssetsDir.mkdirs()) {
-			throw GradleException("Failed to create ${previewAssetsDir.path}.")
-		}
-
-		val normalizedIds = HashSet<String>(files.size)
-		var converted = 0
-		var failed = 0
-
-		files.forEach { source ->
-			val normalizedId = source.nameWithoutExtension
-				.replace(Regex("^\\d+-"), "")
-				.replace(Regex("-zenith$"), "")
-				.trim()
-			if (normalizedId.isBlank()) {
-				logger.warn("syncZenithPreviewAssets: could not normalize ${source.name}")
-				failed += 1
-				return@forEach
-			}
-			if (!normalizedIds.add(normalizedId)) {
-				logger.warn("syncZenithPreviewAssets: duplicate normalized id $normalizedId")
-				failed += 1
-				return@forEach
-			}
-
-			val normalizedPng = File(normalizedPngDir, "$normalizedId.png")
-			runCatching {
-				if (normalizedPng.exists() && !normalizedPng.delete()) {
-					throw GradleException("Failed to replace ${normalizedPng.path}.")
-				}
-				source.copyTo(normalizedPng, overwrite = true)
-				normalizedPng.setLastModified(source.lastModified())
-			}.onFailure { error ->
-				logger.warn("syncZenithPreviewAssets: failed to copy ${source.path}", error)
-				failed += 1
-				return@forEach
-			}
-
-			val target = File(previewAssetsDir, "$normalizedId.webp")
-			if (target.exists() && !target.delete()) {
-				logger.warn("syncZenithPreviewAssets: failed to replace ${target.path}")
-				failed += 1
-				return@forEach
-			}
-			val image = runCatching { ImageIO.read(source) }.getOrNull()
-			if (image == null) {
-				logger.warn("syncZenithPreviewAssets: failed to read ${source.path}")
-				failed += 1
-				return@forEach
-			}
-
-			val writer = createWebpImageWriter()
-
-			runCatching {
-				ImageIO.createImageOutputStream(target).use { output ->
-					writer.output = output
-					val params = writer.defaultWriteParam.apply {
-						if (canWriteCompressed()) {
-							compressionMode = javax.imageio.ImageWriteParam.MODE_EXPLICIT
-							compressionTypes?.firstOrNull()?.let { type ->
-								compressionType = type
-							}
-							compressionQuality = 0.92f
-						}
-					}
-					writer.write(null, IIOImage(image, null, null), params)
-					output.flush()
-				}
-				target.setLastModified(source.lastModified())
-			}.onSuccess {
-				if (target.length() <= 0L) {
-					target.delete()
-					logger.warn("syncZenithPreviewAssets: empty output ${target.path}")
-					failed += 1
-				} else {
-					converted += 1
-				}
-			}.onFailure { error ->
-				logger.warn("syncZenithPreviewAssets: failed ${source.path} -> ${target.path}", error)
-				failed += 1
-			}.also {
-				writer.dispose()
-			}
-		}
-
-		logger.lifecycle("syncZenithPreviewAssets: converted=$converted failed=$failed")
-		if (failed > 0) {
-			throw GradleException("Zenith snapshot sync failed for $failed file(s).")
-		}
-	}
-}
-
-val convertWallpaperTexturesToWebp by tasks.registering {
-	group = "assets"
-	description = "Converts added wallpaper textures in assets to WebP."
-	notCompatibleWithConfigurationCache("Uses Gradle script image helpers during asset generation.")
-
-	val sourceAssetsDir = layout.projectDirectory.dir("src/main/assets").asFile
-	val convertedTexturesDir = layout.buildDirectory.dir("generated/convertedWallpaperTextures/main").get().asFile
-	val sourceTree = fileTree(sourceAssetsDir) {
-		include("**/*.png", "**/*.jpg", "**/*.jpeg")
-		exclude("**/shaders/**")
-	}
-
-	inputs.files(sourceTree)
-	outputs.dir(convertedTexturesDir)
-
-	doLast {
-		val files = sourceTree.files.sortedBy { it.absolutePath.lowercase() }
-		if (convertedTexturesDir.exists()) {
-			convertedTexturesDir.deleteRecursively()
-		}
-		convertedTexturesDir.mkdirs()
-		if (files.isEmpty()) {
-			logger.lifecycle("convertWallpaperTexturesToWebp: no source textures found.")
-			return@doLast
-		}
-
-		var converted = 0
-		var skipped = 0
-		var failed = 0
-
-		files.forEach { source ->
-			val relativePath = source.relativeTo(sourceAssetsDir).invariantSeparatorsPath
-			val relativeTargetPath = relativePath.substringBeforeLast('.') + ".webp"
-			val target = File(convertedTexturesDir, relativeTargetPath)
-
-			val image = runCatching { ImageIO.read(source) }.getOrNull()
-			if (image == null) {
-				logger.warn("convertWallpaperTexturesToWebp: failed to read ${source.path}")
-				failed += 1
-				return@forEach
-			}
-
-			val writer = createWebpImageWriter()
-
-			runCatching {
-				target.parentFile?.mkdirs()
-				ImageIO.createImageOutputStream(target).use { output ->
-					writer.output = output
-					val params = writer.defaultWriteParam.apply {
-						if (canWriteCompressed()) {
-							compressionMode = javax.imageio.ImageWriteParam.MODE_EXPLICIT
-							compressionTypes?.firstOrNull()?.let { type ->
-								compressionType = type
-							}
-							compressionQuality = 0.90f
-						}
-					}
-					writer.write(null, IIOImage(image, null, null), params)
-					output.flush()
-				}
-				target.setLastModified(source.lastModified())
-			}.onSuccess {
-				if (target.length() <= 0L) {
-					target.delete()
-					logger.warn("convertWallpaperTexturesToWebp: empty output ${target.path}")
-					failed += 1
-				} else {
-					converted += 1
-				}
-			}.onFailure { error ->
-				logger.warn("convertWallpaperTexturesToWebp: failed ${source.path} -> ${target.path}", error)
-				failed += 1
-			}.also {
-				writer.dispose()
-			}
-		}
-
-		logger.lifecycle(
-			"convertWallpaperTexturesToWebp: converted=$converted skipped=$skipped failed=$failed"
-		)
-		if (failed > 0) {
-			throw GradleException("WebP conversion failed for $failed texture(s).")
-		}
-	}
-}
-
-val generateDerivedWallpaperAssets by tasks.registering {
-	group = "assets"
-	description = "Preprocesses heavy wallpaper textures at build-time and emits preview texture variants."
-	notCompatibleWithConfigurationCache("Uses Gradle script image helpers during asset generation.")
-
-	val sourceAssetsDir = layout.projectDirectory.dir("src/main/assets").asFile
-	val derivedAssetsDir = layout.buildDirectory.dir("generated/derivedWallpaperAssets/main").get().asFile
-	val sourceFiles = teemoDerivedAssetPaths.map { relativePath -> File(sourceAssetsDir, relativePath) }
-
-	inputs.files(sourceFiles)
-	outputs.dir(derivedAssetsDir)
-
-	doLast {
-		if (derivedAssetsDir.exists()) {
-			derivedAssetsDir.deleteRecursively()
-		}
-		derivedAssetsDir.mkdirs()
-
-		sourceFiles.forEachIndexed { index, source ->
-			if (!source.isFile) {
-				throw GradleException("Derived wallpaper source not found: ${source.path}")
-			}
-			val relativePath = teemoDerivedAssetPaths[index]
-			val loaded = ImageIO.read(source)
-				?: throw GradleException("Failed to read ${source.path} for derived wallpaper generation.")
-			var processed = loaded.ensureArgbCopy()
-			processed = bleedTransparentEdgeColorsBuild(
-				image = processed,
-				minOpaqueAlpha = 96,
-				passes = 8
-			)
-			if (relativePath == "teemo/teemo.webp") {
-				processed = featherTransparentTopBoundaryBuild(
-					image = processed,
-					minVisibleAlpha = 8,
-					colorCarryPixels = 24,
-					fadePixels = 40,
-					samplePixels = 12
-				)
-			}
-
-			val runtimeTarget = File(derivedAssetsDir, relativePath)
-			writeWebpImage(
-				image = processed,
-				target = runtimeTarget,
-				quality = 0.90f
-			)
-			runtimeTarget.setLastModified(source.lastModified())
-
-			val previewTarget = File(derivedAssetsDir, relativePath.withPreviewSuffix())
-			val previewImage = scaleBufferedImage(processed, 0.5f)
-			writeWebpImage(
-				image = previewImage,
-				target = previewTarget,
-				quality = 0.84f
-			)
-			previewTarget.setLastModified(source.lastModified())
-		}
-	}
-}
-
-val filteredAssetsDir = layout.buildDirectory.dir("generated/filteredAssets/main").get().asFile
-val prepareFilteredAssets by tasks.registering(Sync::class) {
-	group = "assets"
-	description = "Copies app assets for packaging without source raster textures."
-	dependsOn(validateShaderCelestialMotionContinuity)
-	dependsOn(convertWallpaperTexturesToWebp)
-	dependsOn(generateDerivedWallpaperAssets)
-	// Prefer checked-in .webp assets when both source and generated outputs exist.
-	duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
-	from(layout.projectDirectory.dir("src/main/assets")) {
-		exclude("**/*.png", "**/*.jpg", "**/*.jpeg")
-		exclude(*teemoDerivedAssetPaths.toTypedArray())
-	}
-	from(layout.buildDirectory.dir("generated/derivedWallpaperAssets/main"))
-	from(layout.buildDirectory.dir("generated/convertedWallpaperTextures/main"))
-	into(filteredAssetsDir)
-}
-
-android.sourceSets.getByName("main").assets.setSrcDirs(listOf(filteredAssetsDir))
-
-tasks.matching { task ->
-	task.name.startsWith("merge") && task.name.endsWith("Assets")
-}.configureEach {
-	dependsOn(prepareFilteredAssets)
-}
-
-tasks.matching { task ->
-	task.name.startsWith("generate") &&
-		task.name.contains("Lint") &&
-		task.name.endsWith("Model")
-}.configureEach {
-	dependsOn(prepareFilteredAssets)
-}
-
-tasks.matching { task ->
-	task.name.startsWith("lint")
-}.configureEach {
-	dependsOn(prepareFilteredAssets)
-}
-
-tasks.register("deployDebugToConnectedDevice") {
-	group = "deployment"
-	description = "Assembles, installs, and launches the debug build on a connected device. Prefers a physical phone over an emulator."
-	dependsOn("assembleDebug")
-	notCompatibleWithConfigurationCache("Uses adb-driven deployment against a live device.")
-
-	doLast {
-		val adb = resolveAdbExecutable(rootProjectDir)
-		val preferences = loadPhoneRunPreferences(phoneRunPreferencesFile)
-		val selectedSerial = selectPreferredDeviceSerial(
-			workingDir = appProjectDir,
-			adb = adb,
-			preferredSerial = preferences.preferredSerial
-		)
-			?: throw GradleException(
-				"No connected Android device found. Connect a phone with USB debugging enabled or start an emulator."
-			)
-		val apk = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
-		if (!apk.isFile) {
-			throw GradleException("Debug APK not found at ${apk.path}. Run :app:assembleDebug first.")
-		}
-
-		runCommand(
-			workingDir = appProjectDir,
-			command = listOf(adb.absolutePath, "-s", selectedSerial, "wait-for-device")
-		)
-		runCommand(
-			workingDir = appProjectDir,
-			command = listOf(adb.absolutePath, "-s", selectedSerial, "install", "-r", "-d", apk.absolutePath)
-		)
-		val launcherActivity = resolveLauncherActivity(
-			workingDir = appProjectDir,
-			adb = adb,
-			deviceSerial = selectedSerial,
-			applicationId = appId
-		)
-		runCommand(
-			workingDir = appProjectDir,
-			command = listOf(
-				adb.absolutePath,
-				"-s",
-				selectedSerial,
-				"shell",
-				"am",
-				"start",
-				"-n",
-				launcherActivity
-			)
-		)
-
-		savePhoneRunPreferences(
-			file = phoneRunPreferencesFile,
-			preferences = preferences.copy(preferredSerial = selectedSerial)
-		)
-		logger.lifecycle("deployDebugToConnectedDevice: deployed to $selectedSerial")
-	}
-}
-
-tasks.register("enablePhoneAutoRun") {
-	group = "deployment"
-	description = "Turns on persisted phone auto-run preference for local Codex sessions."
-
-	doLast {
-		val preferences = loadPhoneRunPreferences(phoneRunPreferencesFile)
-		savePhoneRunPreferences(
-			file = phoneRunPreferencesFile,
-			preferences = preferences.copy(autoRunOnPhone = true)
-		)
-		logger.lifecycle("enablePhoneAutoRun: autoRunOnPhone=true preferredSerial=${preferences.preferredSerial.orEmpty()}")
-	}
-}
-
-tasks.register("disablePhoneAutoRun") {
-	group = "deployment"
-	description = "Turns off persisted phone auto-run preference for local Codex sessions."
-
-	doLast {
-		val preferences = loadPhoneRunPreferences(phoneRunPreferencesFile)
-		savePhoneRunPreferences(
-			file = phoneRunPreferencesFile,
-			preferences = preferences.copy(autoRunOnPhone = false)
-		)
-		logger.lifecycle("disablePhoneAutoRun: autoRunOnPhone=false preferredSerial=${preferences.preferredSerial.orEmpty()}")
-	}
-}
-
-tasks.register("showPhoneRunPreferences") {
-	group = "deployment"
-	description = "Prints the persisted preferred device serial and phone auto-run flag."
-
-	doLast {
-		val preferences = loadPhoneRunPreferences(phoneRunPreferencesFile)
-		logger.lifecycle(
-			"showPhoneRunPreferences: autoRunOnPhone=${preferences.autoRunOnPhone} preferredSerial=${preferences.preferredSerial.orEmpty()}"
-		)
-	}
-}
-
-private fun resolveAdbExecutable(rootDir: File): File {
-	val sdkDir = System.getenv("ANDROID_SDK_ROOT")
-		?.takeIf { it.isNotBlank() }
-		?.let(::File)
-		?: System.getenv("ANDROID_HOME")
-			?.takeIf { it.isNotBlank() }
-			?.let(::File)
-		?: run {
-			val localProperties = File(rootDir, "local.properties")
-			if (!localProperties.isFile) return@run null
-			val properties = Properties()
-			localProperties.inputStream().use(properties::load)
-			properties.getProperty("sdk.dir")
-				?.takeIf { it.isNotBlank() }
-				?.let(::File)
-		}
-		?: throw GradleException(
-			"Android SDK path not found. Set ANDROID_SDK_ROOT/ANDROID_HOME or define sdk.dir in local.properties."
-		)
-
-	val adbFileName = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
-		"adb.exe"
-	} else {
-		"adb"
-	}
-	return File(sdkDir, "platform-tools/$adbFileName").takeIf { it.isFile }
-		?: throw GradleException("adb not found under ${sdkDir.path}/platform-tools.")
-}
-
-private fun selectPreferredDeviceSerial(
-	workingDir: File,
-	adb: File,
-	preferredSerial: String? = null
-): String? {
-	val connectedSerials = runCommand(
-		workingDir = workingDir,
-		command = listOf(adb.absolutePath, "devices", "-l")
-	)
-	.lineSequence()
-		.drop(1)
-		.map { it.trim() }
-		.filter { it.isNotBlank() }
-		.mapNotNull { line ->
-			val columns = line.split(Regex("\\s+"))
-			if (columns.size < 2 || columns[1] != "device") {
-				return@mapNotNull null
-			}
-			columns[0]
-		}
-		.toList()
-	if (connectedSerials.isEmpty()) return null
-
-	return connectedSerials.firstOrNull { serial -> serial == preferredSerial }
-		?: connectedSerials.firstOrNull { serial -> !serial.startsWith("emulator-") }
-		?: connectedSerials.first()
-}
-
-private fun loadPhoneRunPreferences(file: File): PhoneRunPreferences {
-	if (!file.isFile) return PhoneRunPreferences()
-	val properties = Properties()
-	file.inputStream().use(properties::load)
-	return PhoneRunPreferences(
-		preferredSerial = properties.getProperty("preferredSerial")
-			?.trim()
-			?.takeIf { it.isNotEmpty() },
-		autoRunOnPhone = properties.getProperty("autoRunOnPhone")
-			?.trim()
-			?.equals("true", ignoreCase = true)
-			?: false
-	)
-}
-
-private fun savePhoneRunPreferences(
-	file: File,
-	preferences: PhoneRunPreferences
-) {
-	file.parentFile?.mkdirs()
-	val properties = Properties()
-	preferences.preferredSerial?.let { properties.setProperty("preferredSerial", it) }
-	properties.setProperty("autoRunOnPhone", preferences.autoRunOnPhone.toString())
-	file.outputStream().use { output ->
-		properties.store(output, "Local phone deployment preferences for Codex")
-	}
-}
-
-private fun resolveLauncherActivity(
-	workingDir: File,
-	adb: File,
-	deviceSerial: String,
-	applicationId: String
-): String {
-	val output = runCommand(
-		workingDir = workingDir,
-		command = listOf(
-			adb.absolutePath,
-			"-s",
-			deviceSerial,
-			"shell",
-			"cmd",
-			"package",
-			"resolve-activity",
-			"--brief",
-			applicationId
-		)
-	)
-	return output.lineSequence()
-		.map { it.trim() }
-		.filter { it.contains('/') && !it.startsWith("priority=") }
-		.lastOrNull()
-		?: throw GradleException("Launcher activity not found for $applicationId on $deviceSerial.")
-}
-
-private fun runCommand(
-	workingDir: File,
-	command: List<String>
-): String {
-	val process = ProcessBuilder(command)
-		.directory(workingDir)
-		.redirectErrorStream(true)
-		.start()
-	val output = process.inputStream.bufferedReader().use { it.readText() }
-	val exitCode = process.waitFor()
-	if (exitCode != 0) {
-		throw GradleException(
-			"Command failed (${command.joinToString(" ")}).\n$output"
-		)
-	}
-	return output
-}
-
-private data class PhoneRunPreferences(
-	val preferredSerial: String? = null,
-	val autoRunOnPhone: Boolean = false
-)

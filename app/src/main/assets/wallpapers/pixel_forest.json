@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 5,
+  "id": "pixel_forest",
+  "name": "Pixel Forest 4K Live",
+  "category": "Premium 4K Wallpapers",
+  "assetPack": null,
+  "capabilities": {
+    "parallax": false,
+    "touch": false,
+    "locationAware": true,
+    "supportsPreviewTimeSimulation": true
+  },
+  "displayPolicy": {
+    "foldableAware": true,
+    "baseAspectRatio": 0.5625,
+    "fovPhone": 45.0,
+    "fovExpanded": 38.0,
+    "maxOffsetXPhone": 0.035,
+    "maxOffsetXExpanded": 0.022,
+    "maxOffsetY": 0.018
+  },
+  "ambientPolicy": {
+    "enabled": true,
+    "mode": "BLACK_CLEAR_OR_LOW_LUMINANCE_FRAME",
+    "burnInProtectionPx": 3,
+    "refreshSeconds": 60
+  },
+  "renderScheduler": {
+    "mode": "LAYER_SCHEDULED",
+    "sceneMaxFps": 30,
+    "batterySaverSceneMaxFps": 15,
+    "idleSceneMaxFps": 8
+  },
+  "qualityPolicy": {
+    "defaultTier": "BALANCED",
+    "allowAdaptiveQuality": true,
+    "maxTextureSizeLow": 1024,
+    "maxTextureSizeBalanced": 2048,
+    "maxTextureSizeHigh": 4096
+  },
+  "parallax": {
+    "enabled": false,
+    "maxOffsetX": 0.035,
+    "maxOffsetY": 0.018,
+    "smoothing": 0.12
+  },
+  "horizon": {
+    "offset": 0.45
+  },
+  "celestial": {
+    "sunPathType": "VERTICAL",
+    "moonPathType": "VERTICAL",
+    "sunOrbit": {
+      "pathType": "VERTICAL",
+      "startX": 0.48,
+      "endX": 0.48,
+      "peakY": 0.9
+    },
+    "moonOrbit": {
+      "pathType": "VERTICAL",
+      "startX": 0.52,
+      "endX": 0.52,
+      "peakY": 0.88
+    }
+  },
+  "daylight": {
+    "sunriseMinute": 360,
+    "sunsetMinute": 1080,
+    "solarNoonMinute": 720
+  },
+  "peakY": 0.9,
+  "belowHorizonOffset": 0.1,
+  "layers": [
+    {
+      "id": "main_shader",
+      "type": "ShaderLayer",
+      "enabled": true,
+      "zIndex": 0,
+      "renderPass": "BACKGROUND",
+      "blendMode": "NONE",
+      "renderTarget": "DIRECT",
+      "shaderRef": "wallpapers/pixel_forest/fragment.glsl",
+      "uniforms": {
+        "u_CloudAlpha": {
+          "type": "float",
+          "value": 0.0
+        }
+      },
+      "textures": [
+        {
+          "uniform": "u_ForegroundTexture",
+          "path": "wallpapers/pixel_forest/bg_forest_16px.webp",
+          "filter": "LINEAR",
+          "wrapS": "CLAMP_TO_EDGE",
+          "wrapT": "CLAMP_TO_EDGE",
+          "parallaxFactor": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            1.0,
+            1.0
+          ],
+          "opacity": 1.0
+        },
+        {
+          "uniform": "u_SunTexture",
+          "path": "wallpapers/pixel_forest/sun_16px.webp",
+          "filter": "LINEAR",
+          "wrapS": "CLAMP_TO_EDGE",
+          "wrapT": "CLAMP_TO_EDGE",
+          "parallaxFactor": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            1.0,
+            1.0
+          ],
+          "opacity": 1.0
+        },
+        {
+          "uniform": "u_MoonTexture",
+          "path": "wallpapers/pixel_forest/moon_16px.webp",
+          "filter": "LINEAR",
+          "wrapS": "CLAMP_TO_EDGE",
+          "wrapT": "CLAMP_TO_EDGE",
+          "parallaxFactor": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            1.0,
+            1.0
+          ],
+          "opacity": 1.0
+        }
+      ],
+      "framePolicy": {
+        "mode": "MINUTE_TICK",
+        "fps": null,
+        "cacheMode": "NONE",
+        "updateWhenInvisible": false,
+        "degradeInBatterySaver": true,
+        "batterySaverFps": null,
+        "idleFps": null
+      },
+      "parallax": {
+        "factorX": 0.0,
+        "factorY": 0.0,
+        "depth": 0.0
+      },
+      "fallback": {
+        "onShaderError": "use_fallback_shader",
+        "onMissingTexture": "use_transparent_texture"
+      }
+    },
+    {
+      "id": "stars_effect",
+      "type": "StarsLayer",
+      "enabled": true,
+      "zIndex": 1,
+      "renderPass": "BACKGROUND",
+      "blendMode": "ADDITIVE",
+      "renderTarget": "DIRECT",
+      "shaderRef": "shaders/common/stars.glsl",
+      "uniforms": {
+        "u_StarOpacity": {
+          "type": "float",
+          "value": 0.72
+        }
+      },
+      "textures": [],
+      "framePolicy": {
+        "mode": "MATCH_SCENE",
+        "fps": null,
+        "cacheMode": "NONE",
+        "updateWhenInvisible": false,
+        "degradeInBatterySaver": true,
+        "batterySaverFps": null,
+        "idleFps": null
+      },
+      "parallax": {
+        "factorX": 0.0,
+        "factorY": 0.0,
+        "depth": 0.0
+      },
+      "fallback": {
+        "onShaderError": "disable_layer",
+        "onMissingTexture": "use_transparent_texture"
+      }
+    }
+  ],
+  "events": [],
+  "preview": {
+    "thumbnail": "wallpapers/pixel_forest/thumbnail.webp",
+    "cardMode": "THUMBNAIL",
+    "fullscreenMode": "FAST_TIME_SIMULATION"
+  }
+}

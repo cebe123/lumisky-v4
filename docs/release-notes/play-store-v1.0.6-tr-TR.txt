@@ -1,1 +1,0 @@
-Lumisky 1.0.6, canlı duvar kağıdı deneyimini daha akıcı ve pil dostu hale getirir. Gökyüzü, güneş, ay ve ışık geçişlerinde kararlılık iyileştirildi; önizleme ve duvar kağıdı uygulama akışı daha güvenilir çalışır. Android live wallpaper deneyimi için performans ve görsel kalite odaklı bakım güncellemesi.

@@ -1,0 +1,31 @@
+mDefaultWallpaperComponent=ComponentInfo{com.miui.miwallpaper/com.miui.miwallpaper.wallpaperservice.ImageWallpaper}
+mImageWallpaper=ComponentInfo{com.miui.miwallpaper/com.miui.miwallpaper.wallpaperservice.ImageWallpaper}
+System wallpaper state:
+ User 0: id=180
+ Display state:
+  displayId=0
+  mWidth=2400  mHeight=2400
+  mPadding=Rect(0, 0 - 0, 0)
+  mCropHint=Rect(0, 0 - 0, 0)
+  mName=
+  mAllowBackup=true
+  mWallpaperComponent=ComponentInfo{com.adnan.lumisky/com.adnan.lumisky.core.LumiskyWallpaperService}
+  mWallpaperDimAmount=0.0
+  isColorExtracted=false
+  mUidToDimAmount:
+  Wallpaper connection com.android.server.wallpaper.WallpaperManagerService$WallpaperConnection@c5b8a29:
+    mInfo.component=ComponentInfo{com.adnan.lumisky/com.adnan.lumisky.core.LumiskyWallpaperService}
+     mDisplayId=0
+     mToken=android.os.Binder@7bf60c8
+     mEngine=android.service.wallpaper.IWallpaperEngine$Stub$Proxy@13eb422
+    mService=android.service.wallpaper.IWallpaperService$Stub$Proxy@6e13eb3
+    mLastDiedTime=-12475135
+Lock wallpaper state:
+Fallback wallpaper state:
+ User 0: id=1
+  mCropHint=Rect(0, 0 - 0, 0)
+  mName=
+  mAllowBackup=false
+  Fallback Wallpaper connection com.android.server.wallpaper.WallpaperManagerService$WallpaperConnection@385743:
+    mService=android.service.wallpaper.IWallpaperService$Stub$Proxy@2034858
+    mLastDiedTime=-485170474

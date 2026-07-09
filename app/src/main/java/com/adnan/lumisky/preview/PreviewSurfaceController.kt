@@ -1,0 +1,34 @@
+/**
+ * Lumisky Final Mimari v5 (lumisky_mimari.md)
+ * 
+ * BU DOSYA NE İŞ YAPIYOR:
+ * - App preview surface lifecycle ve tek aktif GL preview kuralı.
+ * 
+ * HEDEF:
+ * - Lumisky v5 mimari standartlarına uygun olarak bu dosyanın temel amacı: App preview surface lifecycle ve tek aktif GL preview kuralı.
+ */
+package com.adnan.lumisky.preview
+
+import android.view.SurfaceHolder
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class PreviewSurfaceController @Inject constructor() {
+    private var activeHolder: SurfaceHolder? = null
+
+    fun claimSurface(holder: SurfaceHolder): Boolean {
+        activeHolder = holder
+        return true
+    }
+
+    fun releaseSurface(holder: SurfaceHolder) {
+        if (activeHolder == holder) {
+            activeHolder = null
+        }
+    }
+
+    fun hasActiveSurface(): Boolean {
+        return activeHolder != null
+    }
+}
