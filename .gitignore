@@ -1,0 +1,16 @@
+# Gradle and Android build outputs
+.gradle/
+.kotlin/
+**/build/
+
+# IDE and local machine configuration
+.idea/
+*.iml
+local.properties
+keystore.properties
+.codex-local/
+
+# Android packaging artifacts
+*.apk
+*.aab
+*.ap_
