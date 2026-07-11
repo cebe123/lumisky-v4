@@ -69,6 +69,8 @@ import com.example.lumisky.data.SettingsRepository
 import com.example.lumisky.data.WallpaperRepository
 import com.example.lumisky.ui.catalog.WallpaperCatalogScreen
 import com.example.lumisky.ui.catalog.WallpaperCatalogViewModel
+import com.example.lumisky.ui.preview.WallpaperPreviewScreen
+import com.example.lumisky.ui.preview.WallpaperPreviewViewModel
 import com.example.lumisky.ui.settings.SettingsScreen
 import com.example.lumisky.ui.settings.SettingsViewModel
 import com.example.lumisky.ui.theme.LumiskyTheme
@@ -204,23 +206,6 @@ private fun LumiskyMainScreen() {
     }
 
 
-    val liveWallpaperPreviewLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val manager = ReviewManagerFactory.create(context)
-            manager.requestReviewFlow().addOnCompleteListener { request ->
-                if (request.isSuccessful) {
-                    val reviewInfo = request.result
-                    val activity = context as? android.app.Activity
-                    if (activity != null) {
-                        manager.launchReviewFlow(activity, reviewInfo)
-                    }
-                }
-            }
-        }
-    }
-
     androidx.compose.runtime.DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(c: Context?, intent: Intent?) {
@@ -266,35 +251,10 @@ private fun LumiskyMainScreen() {
         when {
             screen == SCREEN_HOME -> {
                 val viewModel: WallpaperCatalogViewModel = hiltViewModel()
-                val context = LocalContext.current
-                val coroutineScope = rememberCoroutineScope()
                 WallpaperCatalogScreen(
                     viewModel = viewModel,
                     onItemClick = { id ->
-                        
-                        coroutineScope.launch {
-                            viewModel.selectWallpaperForSet(id)
-                            
-                            val directIntent = Intent(android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
-                                putExtra(
-                                    android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                                    android.content.ComponentName(
-                                        context,
-                                        com.example.lumisky.core.LumiskyWallpaperService::class.java
-                                    )
-                                )
-                            }
-                            try {
-                                liveWallpaperPreviewLauncher.launch(directIntent)
-                            } catch (e: ActivityNotFoundException) {
-                                val chooserIntent = Intent(android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER)
-                                try {
-                                    context.startActivity(chooserIntent)
-                                } catch (e2: ActivityNotFoundException) {
-                                    Toast.makeText(context, "Live Wallpaper chooser unavailable", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
+                        currentScreen = SCREEN_PREVIEW_PREFIX + id
                     },
                     onSettingsClick = { currentScreen = SCREEN_SETTINGS }
                 )
@@ -302,6 +262,14 @@ private fun LumiskyMainScreen() {
             screen == SCREEN_SETTINGS -> {
                 SettingsScreen(
                     viewModel = viewModel,
+                    onBackClick = { currentScreen = SCREEN_HOME }
+                )
+            }
+            screen.startsWith(SCREEN_PREVIEW_PREFIX) -> {
+                val previewViewModel: WallpaperPreviewViewModel = hiltViewModel()
+                WallpaperPreviewScreen(
+                    wallpaperId = screen.removePrefix(SCREEN_PREVIEW_PREFIX),
+                    viewModel = previewViewModel,
                     onBackClick = { currentScreen = SCREEN_HOME }
                 )
             }
