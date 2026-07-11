@@ -4,7 +4,7 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
-    id("kotlin-kapt")
+    id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
 }
@@ -243,7 +243,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("com.google.dagger:hilt-android:2.57.1")
-    kapt("com.google.dagger:hilt-compiler:2.57.1")
+    ksp("com.google.dagger:hilt-compiler:2.57.1")
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
