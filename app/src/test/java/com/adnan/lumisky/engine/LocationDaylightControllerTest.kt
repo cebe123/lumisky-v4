@@ -1,4 +1,4 @@
-package com.adnan.lumisky.engine
+package com.example.lumisky.engine
 
 import java.time.LocalDate
 import org.junit.Assert.assertTrue

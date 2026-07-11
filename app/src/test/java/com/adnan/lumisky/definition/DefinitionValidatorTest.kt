@@ -1,4 +1,4 @@
-package com.adnan.lumisky.definition
+package com.example.lumisky.definition
 
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertTrue

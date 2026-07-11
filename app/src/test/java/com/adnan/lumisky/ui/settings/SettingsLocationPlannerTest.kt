@@ -1,9 +1,9 @@
-package com.adnan.lumisky.ui.settings
+package com.example.lumisky.ui.settings
 
-import com.adnan.lumisky.data.DeviceLocationSnapshot
-import com.adnan.lumisky.data.LocationLightingMode
-import com.adnan.lumisky.data.ManualLocationPreset
-import com.adnan.lumisky.data.SettingsLocationPlanner
+import com.example.lumisky.data.DeviceLocationSnapshot
+import com.example.lumisky.data.LocationLightingMode
+import com.example.lumisky.data.ManualLocationPreset
+import com.example.lumisky.data.SettingsLocationPlanner
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

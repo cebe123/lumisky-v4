@@ -1,9 +1,0 @@
-com.adnan.lumisky.app-pngs-0 D:\Lumisky v4\app\build\generated\res\pngs\release
-com.adnan.lumisky.app-resValues-1 D:\Lumisky v4\app\build\generated\res\resValues\release
-com.adnan.lumisky.app-updated_navigation_xml-2 D:\Lumisky v4\app\build\generated\updated_navigation_xml\release
-com.adnan.lumisky.app-packageReleaseResources-3 D:\Lumisky v4\app\build\intermediates\incremental\release\packageReleaseResources\merged.dir
-com.adnan.lumisky.app-packageReleaseResources-4 D:\Lumisky v4\app\build\intermediates\incremental\release\packageReleaseResources\stripped.dir
-com.adnan.lumisky.app-release-5 D:\Lumisky v4\app\build\intermediates\merged_res\release\mergeReleaseResources
-com.adnan.lumisky.app-main-6 D:\Lumisky v4\app\src\main\res
-com.adnan.lumisky.app-release-7 D:\Lumisky v4\app\src\release\res
-gradleHome-0 C:\Users\adnan\.gradle

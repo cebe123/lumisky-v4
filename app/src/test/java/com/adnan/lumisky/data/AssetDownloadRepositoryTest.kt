@@ -1,6 +1,6 @@
-package com.adnan.lumisky.data
+package com.example.lumisky.data
 
-import com.adnan.lumisky.assets.AssetPackState
+import com.example.lumisky.assets.AssetPackState
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

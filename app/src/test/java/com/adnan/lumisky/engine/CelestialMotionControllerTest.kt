@@ -1,10 +1,10 @@
-package com.adnan.lumisky.engine
+package com.example.lumisky.engine
 
-import com.adnan.lumisky.definition.CelestialDefinition
-import com.adnan.lumisky.definition.CelestialOrbitDefinition
-import com.adnan.lumisky.definition.DaylightDefinition
-import com.adnan.lumisky.definition.HorizonDefinition
-import com.adnan.lumisky.definition.WallpaperDefinition
+import com.example.lumisky.definition.CelestialDefinition
+import com.example.lumisky.definition.CelestialOrbitDefinition
+import com.example.lumisky.definition.DaylightDefinition
+import com.example.lumisky.definition.HorizonDefinition
+import com.example.lumisky.definition.WallpaperDefinition
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

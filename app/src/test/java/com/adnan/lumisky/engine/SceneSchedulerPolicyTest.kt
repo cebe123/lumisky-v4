@@ -1,14 +1,16 @@
-package com.adnan.lumisky.engine
+package com.example.lumisky.engine
 
-import com.adnan.lumisky.core.WallpaperEvent
-import com.adnan.lumisky.definition.LayerFramePolicyDefinition
-import com.adnan.lumisky.definition.QualityProfile
-import com.adnan.lumisky.engine.gl.GlResourceManager
-import com.adnan.lumisky.engine.pipeline.BlendMode
-import com.adnan.lumisky.engine.pipeline.RenderPass
-import com.adnan.lumisky.engine.pipeline.RenderTargetMode
-import com.adnan.lumisky.layers.RenderLayer
+import com.example.lumisky.core.WallpaperEvent
+import com.example.lumisky.definition.LayerFramePolicyDefinition
+import com.example.lumisky.definition.QualityProfile
+import com.example.lumisky.engine.gl.GlResourceManager
+import com.example.lumisky.engine.pipeline.BlendMode
+import com.example.lumisky.engine.pipeline.RenderPass
+import com.example.lumisky.engine.pipeline.RenderTargetMode
+import com.example.lumisky.layers.RenderLayer
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -28,6 +30,55 @@ class SceneSchedulerPolicyTest {
         assertTrue(scheduler.shouldUpdate(layer, frameTimeNanos = 100_000_000L, batterySaver = true))
         assertFalse(scheduler.shouldUpdate(layer, frameTimeNanos = 150_000_000L, batterySaver = true))
         assertTrue(scheduler.shouldUpdate(layer, frameTimeNanos = 200_000_000L, batterySaver = true))
+    }
+
+    @Test
+    fun fixedFpsCacheRefreshDoesNotConsumeUpdateTimestamp() {
+        val scheduler = SceneScheduler()
+        val layer = TestLayer(
+            framePolicy = LayerFramePolicyDefinition(mode = "FIXED_FPS", fps = 10)
+        )
+
+        assertTrue(scheduler.shouldUpdate(layer, frameTimeNanos = 100_000_000L))
+        assertTrue(scheduler.shouldRefreshCache(layer, frameTimeNanos = 100_000_000L))
+        assertFalse(scheduler.shouldUpdate(layer, frameTimeNanos = 150_000_000L))
+        assertFalse(scheduler.shouldRefreshCache(layer, frameTimeNanos = 150_000_000L))
+        assertTrue(scheduler.shouldUpdate(layer, frameTimeNanos = 200_000_000L))
+        assertTrue(scheduler.shouldRefreshCache(layer, frameTimeNanos = 200_000_000L))
+    }
+
+    @Test
+    fun minuteTickSceneDoesNotUseContinuousRendering() {
+        val interval = SceneFramePacingPolicy.frameIntervalNanos(
+            layers = listOf(TestLayer(LayerFramePolicyDefinition(mode = "MINUTE_TICK"))),
+            maxFps = 30,
+            batterySaver = false
+        )
+
+        assertEquals(60_000_000_000L, interval)
+    }
+
+    @Test
+    fun onDemandSceneHasNoRecurringFrame() {
+        val interval = SceneFramePacingPolicy.frameIntervalNanos(
+            layers = listOf(TestLayer(LayerFramePolicyDefinition(mode = "ON_DEMAND"))),
+            maxFps = 30,
+            batterySaver = false
+        )
+
+        assertNull(interval)
+    }
+
+    @Test
+    fun catchUpTemporarilyUsesSceneFps() {
+        val interval = SceneFramePacingPolicy.frameIntervalNanos(
+            layers = listOf(TestLayer(LayerFramePolicyDefinition(mode = "MINUTE_TICK"))),
+            maxFps = 30,
+            batterySaver = false,
+            forceContinuous = true
+        )
+
+        assertEquals(33_333_333L, interval)
     }
 
     private class TestLayer(

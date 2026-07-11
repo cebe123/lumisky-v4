@@ -1,4 +1,4 @@
-package com.adnan.lumisky.definition
+package com.example.lumisky.definition
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

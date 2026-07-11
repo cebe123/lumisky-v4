@@ -1,4 +1,4 @@
-package com.adnan.lumisky.ui.catalog
+package com.example.lumisky.ui.catalog
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -66,13 +66,25 @@ class CatalogPreviewPolicyTest {
     }
 
     @Test
-    fun livePreviewSurfaceCanStayMountedWhileFocusedCardIsScrolling() {
+    fun livePreviewSurfaceMountingFollowsFocusAndScrollState() {
         assertTrue(
             CatalogPreviewPolicy.shouldMountLivePreview(
                 sectionIndex = 1,
                 activeSectionIndex = 1,
                 itemIndex = 2,
-                centeredItemIndex = 2
+                centeredItemIndex = 2,
+                parentScrollInProgress = false,
+                rowScrollInProgress = false
+            )
+        )
+        assertFalse(
+            CatalogPreviewPolicy.shouldMountLivePreview(
+                sectionIndex = 1,
+                activeSectionIndex = 1,
+                itemIndex = 2,
+                centeredItemIndex = 2,
+                parentScrollInProgress = false,
+                rowScrollInProgress = true
             )
         )
         assertFalse(
@@ -80,14 +92,16 @@ class CatalogPreviewPolicyTest {
                 sectionIndex = 1,
                 activeSectionIndex = 1,
                 itemIndex = 0,
-                centeredItemIndex = 2
+                centeredItemIndex = 2,
+                parentScrollInProgress = false,
+                rowScrollInProgress = false
             )
         )
     }
 
     @Test
-    fun unresolvedActiveSectionFallsBackToFirstSection() {
-        assertEquals(0, CatalogPreviewPolicy.resolveActiveSectionIndex(-1, 4))
+    fun unresolvedActiveSectionDisablesLivePreviewUntilCentered() {
+        assertEquals(-1, CatalogPreviewPolicy.resolveActiveSectionIndex(-1, 4))
         assertEquals(2, CatalogPreviewPolicy.resolveActiveSectionIndex(2, 4))
         assertEquals(0, CatalogPreviewPolicy.resolveActiveSectionIndex(7, 4))
     }

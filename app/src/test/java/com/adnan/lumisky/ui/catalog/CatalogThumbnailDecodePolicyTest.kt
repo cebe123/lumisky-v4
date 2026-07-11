@@ -1,4 +1,4 @@
-package com.adnan.lumisky.ui.catalog
+package com.example.lumisky.ui.catalog
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

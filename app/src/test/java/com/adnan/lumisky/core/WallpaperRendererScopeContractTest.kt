@@ -1,4 +1,4 @@
-package com.adnan.lumisky.core
+package com.example.lumisky.core
 
 import java.io.File
 import org.junit.Assert.assertFalse

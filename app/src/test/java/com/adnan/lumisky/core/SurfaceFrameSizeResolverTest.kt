@@ -1,4 +1,4 @@
-package com.adnan.lumisky.core
+package com.example.lumisky.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
