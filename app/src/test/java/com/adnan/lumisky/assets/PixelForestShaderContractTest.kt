@@ -1,4 +1,4 @@
-package com.adnan.lumisky.assets
+package com.example.lumisky.assets
 
 import java.io.File
 import org.junit.Assert.assertFalse

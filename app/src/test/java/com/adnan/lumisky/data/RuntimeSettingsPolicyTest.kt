@@ -1,7 +1,7 @@
-package com.adnan.lumisky.data
+package com.example.lumisky.data
 
-import com.adnan.lumisky.definition.QualityTier
-import com.adnan.lumisky.engine.RenderFeatureFlags
+import com.example.lumisky.definition.QualityTier
+import com.example.lumisky.engine.RenderFeatureFlags
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

@@ -1,4 +1,4 @@
-package com.adnan.lumisky.registry
+package com.example.lumisky.registry
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

@@ -1,3 +1,8 @@
 <resources>
     <style name="Theme.Lumisky" parent="android:style/Theme.Material.Light.NoActionBar" />
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#0B1021</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.Lumisky</item>
+    </style>
 </resources>

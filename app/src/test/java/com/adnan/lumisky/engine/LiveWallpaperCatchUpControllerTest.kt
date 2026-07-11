@@ -1,4 +1,4 @@
-package com.adnan.lumisky.engine
+package com.example.lumisky.engine
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

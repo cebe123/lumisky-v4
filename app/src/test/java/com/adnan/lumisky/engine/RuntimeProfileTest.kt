@@ -1,6 +1,6 @@
-package com.adnan.lumisky.engine
+package com.example.lumisky.engine
 
-import com.adnan.lumisky.definition.QualityTier
+import com.example.lumisky.definition.QualityTier
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test

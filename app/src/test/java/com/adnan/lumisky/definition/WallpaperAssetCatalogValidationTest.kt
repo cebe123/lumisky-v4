@@ -1,4 +1,4 @@
-package com.adnan.lumisky.definition
+package com.example.lumisky.definition
 
 import java.io.File
 import org.junit.Assert.assertTrue

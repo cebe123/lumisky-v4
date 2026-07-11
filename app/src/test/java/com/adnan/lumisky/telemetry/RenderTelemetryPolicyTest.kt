@@ -1,4 +1,4 @@
-package com.adnan.lumisky.telemetry
+package com.example.lumisky.telemetry
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

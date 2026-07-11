@@ -1,4 +1,4 @@
-package com.adnan.lumisky.data
+package com.example.lumisky.data
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
