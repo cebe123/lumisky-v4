@@ -39,10 +39,7 @@ object RuntimeSettingsPolicy {
         featureFlags: RenderFeatureFlags = RenderFeatureFlags.safeDefaults()
     ): RuntimeSettingsPolicyResult {
         val thermalEmergency = thermalStatus >= THERMAL_STATUS_SEVERE
-        val baseMaxFps = when {
-            highRefreshEnabled -> 60
-            else -> sceneMaxFps
-        }
+        val baseMaxFps = if (highRefreshEnabled) sceneMaxFps else sceneMaxFps.coerceAtMost(60)
 
         return when {
             ambientMode -> RuntimeSettingsPolicyResult(

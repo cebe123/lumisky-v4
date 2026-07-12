@@ -39,6 +39,27 @@ object LayerRegistryModule {
 
     @Provides
     @IntoMap
+    @StringKey("ShaderEffectLayer")
+    fun provideShaderEffectLayerFactory(shaderSourceLoader: ShaderSourceLoader): LayerFactory = object : LayerFactory {
+        override fun create(definition: LayerDefinition): RenderLayer = ShaderEffectLayer(definition, shaderSourceLoader)
+    }
+
+    @Provides
+    @IntoMap
+    @StringKey("ParticleLayer")
+    fun provideParticleLayerFactory(shaderSourceLoader: ShaderSourceLoader): LayerFactory = object : LayerFactory {
+        override fun create(definition: LayerDefinition): RenderLayer = ParticleLayer(definition, shaderSourceLoader)
+    }
+
+    @Provides
+    @IntoMap
+    @StringKey("TimeSliceTextureLayer")
+    fun provideTimeSliceTextureLayerFactory(shaderSourceLoader: ShaderSourceLoader): LayerFactory = object : LayerFactory {
+        override fun create(definition: LayerDefinition): RenderLayer = TimeSliceTextureLayer(definition, shaderSourceLoader)
+    }
+
+    @Provides
+    @IntoMap
     @StringKey("VideoOesLayer")
     fun provideVideoOesLayerFactory(shaderSourceLoader: ShaderSourceLoader): LayerFactory = object : LayerFactory {
         override fun create(definition: LayerDefinition): RenderLayer = VideoOesLayer(definition, shaderSourceLoader)

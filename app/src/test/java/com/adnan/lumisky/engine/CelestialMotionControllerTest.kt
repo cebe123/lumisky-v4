@@ -14,6 +14,23 @@ class CelestialMotionControllerTest {
     private val controller = CelestialMotionController()
 
     @Test
+    fun resolveIntoUpdatesPreallocatedFrameState() {
+        val frame = MutableRenderFrameState()
+
+        controller.resolveInto(
+            definition = pixelForestDefinition(),
+            dayProgress = 0.5f,
+            output = frame
+        )
+
+        assertTrue(frame.drawSun)
+        assertFalse(frame.isNight)
+        assertEquals(0.48f, frame.sunX, 0.001f)
+        assertEquals(0.10f, frame.sunY, 0.001f)
+        assertEquals(720f, frame.minute, 0.001f)
+    }
+
+    @Test
     fun verticalSunPathKeepsPixelForestFixedXAndMapsPeakToShaderCoordinates() {
         val result = controller.resolve(
             definition = pixelForestDefinition(),

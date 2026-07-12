@@ -1,0 +1,8 @@
+# Repo-local ayarlar. Codex bu projeyi trusted olarak işaretledikten sonra uygulanır.
+# AGENTS.md + en yakın module AGENTS.md toplamı bu sınırın altında tutulur.
+project_doc_max_bytes = 24576
+
+[agents]
+# Gereksiz paralel araştırma ve token tüketimini sınırlar.
+max_threads = 2
+max_depth = 1

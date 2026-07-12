@@ -29,4 +29,8 @@ class FramebufferPool(private val manager: GlResourceManager) {
         pool.forEach { it.release() }
         pool.clear()
     }
+
+    fun invalidate() {
+        pool.clear()
+    }
 }

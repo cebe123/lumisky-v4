@@ -22,6 +22,7 @@ class TexturePool(private val manager: GlResourceManager) {
     private val prepared = ConcurrentHashMap<String, Bitmap>()
     private val pending = ConcurrentHashMap<String, Long>()
     private val ioExecutor = Executors.newFixedThreadPool(2)
+    private val uploadBudget = TextureUploadBudget(MAX_UPLOADS_PER_FRAME)
     @Volatile private var generation = 0L
     private var fallbackTexture: GlTexture? = null
 
@@ -29,24 +30,31 @@ class TexturePool(private val manager: GlResourceManager) {
         get() = pending.isNotEmpty() || prepared.isNotEmpty()
 
     fun preload(paths: Collection<String>, quality: QualityTier = QualityTier.BALANCED) {
-        paths.filter(String::isNotBlank).forEach { path ->
-            val key = "$path#${quality.name}"
-            val requestGeneration = generation
-            if (pool.containsKey(key) || prepared.containsKey(key) ||
-                pending.putIfAbsent(key, requestGeneration) != null
-            ) return@forEach
-            ioExecutor.execute {
-                var bitmap: Bitmap? = null
-                try {
-                    bitmap = loadBitmap(path, quality)
-                    if (requestGeneration == generation) {
-                        prepared[key] = bitmap
-                        bitmap = null
-                    }
-                } finally {
-                    bitmap?.recycle()
-                    pending.remove(key, requestGeneration)
+        for (path in paths) preload(path, quality)
+    }
+
+    fun beginFrame() {
+        uploadBudget.beginFrame()
+    }
+
+    private fun preload(path: String, quality: QualityTier) {
+        if (path.isBlank()) return
+        val key = "$path#${quality.name}"
+        val requestGeneration = generation
+        if (pool.containsKey(key) || prepared.containsKey(key) ||
+            pending.putIfAbsent(key, requestGeneration) != null
+        ) return
+        ioExecutor.execute {
+            var bitmap: Bitmap? = null
+            try {
+                bitmap = loadBitmap(path, quality)
+                if (requestGeneration == generation) {
+                    prepared[key] = bitmap
+                    bitmap = null
                 }
+            } finally {
+                bitmap?.recycle()
+                pending.remove(key, requestGeneration)
             }
         }
     }
@@ -56,7 +64,11 @@ class TexturePool(private val manager: GlResourceManager) {
         pool[key]?.let { return it }
         val bitmap = prepared.remove(key)
         if (bitmap == null) {
-            preload(listOf(path), quality)
+            preload(path, quality)
+            return fallbackTexture()
+        }
+        if (!uploadBudget.tryAcquireUpload()) {
+            prepared[key] = bitmap
             return fallbackTexture()
         }
         return GlTexture(uploadTexture(bitmap)).also {
@@ -114,6 +126,15 @@ class TexturePool(private val manager: GlResourceManager) {
         pending.clear()
     }
 
+    fun invalidate() {
+        generation++
+        pool.clear()
+        fallbackTexture = null
+        prepared.values.forEach { it.recycle() }
+        prepared.clear()
+        pending.clear()
+    }
+
     fun release() {
         clear()
         ioExecutor.shutdownNow()
@@ -127,5 +148,9 @@ class TexturePool(private val manager: GlResourceManager) {
                 fallbackTexture = it
             }
         }
+    }
+
+    private companion object {
+        const val MAX_UPLOADS_PER_FRAME = 2
     }
 }

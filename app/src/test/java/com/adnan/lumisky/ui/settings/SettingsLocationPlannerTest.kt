@@ -2,6 +2,7 @@ package com.example.lumisky.ui.settings
 
 import com.example.lumisky.data.DeviceLocationSnapshot
 import com.example.lumisky.data.LocationLightingMode
+import com.example.lumisky.data.LocationResolutionSource
 import com.example.lumisky.data.ManualLocationPreset
 import com.example.lumisky.data.SettingsLocationPlanner
 import org.junit.Assert.assertEquals
@@ -39,6 +40,8 @@ class SettingsLocationPlannerTest {
         assertEquals("Kadikoy", resolved.label)
         assertEquals(40.992, resolved.latitude, 0.0001)
         assertTrue(resolved.usesDeviceLocation)
+        assertEquals(LocationLightingMode.DEVICE, resolved.selectedMode)
+        assertEquals(LocationResolutionSource.DEVICE_SNAPSHOT, resolved.source)
     }
 
     @Test
@@ -54,6 +57,31 @@ class SettingsLocationPlannerTest {
 
         assertEquals(manual.label, resolved.label)
         assertFalse(resolved.usesDeviceLocation)
+        assertEquals(LocationLightingMode.DEVICE, resolved.selectedMode)
+        assertEquals(LocationResolutionSource.MANUAL_FALLBACK, resolved.source)
+    }
+
+    @Test
+    fun deviceModeUsesFreshPersistedSnapshotWhenCurrentFixIsMissing() {
+        val persisted = DeviceLocationSnapshot(
+            label = "Last known",
+            latitude = 41.01,
+            longitude = 29.01,
+            timeZoneId = "Europe/Istanbul",
+            capturedAtEpochMs = 2_000L
+        )
+
+        val resolved = SettingsLocationPlanner.resolve(
+            mode = LocationLightingMode.DEVICE,
+            manualLocation = SettingsLocationPlanner.defaultManualLocation(),
+            deviceSnapshot = null,
+            persistedSnapshot = persisted,
+            nowEpochMs = 3_000L
+        )
+
+        assertTrue(resolved.usesDeviceLocation)
+        assertEquals(LocationLightingMode.DEVICE, resolved.selectedMode)
+        assertEquals(LocationResolutionSource.PERSISTED_SNAPSHOT, resolved.source)
     }
 
     @Test
@@ -76,6 +104,7 @@ class SettingsLocationPlannerTest {
 
         assertEquals(manual.label, resolved.label)
         assertFalse(resolved.usesDeviceLocation)
+        assertEquals(LocationResolutionSource.MANUAL_FALLBACK, resolved.source)
     }
 
     @Test

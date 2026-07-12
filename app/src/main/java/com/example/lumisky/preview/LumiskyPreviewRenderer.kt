@@ -28,10 +28,8 @@ import com.example.lumisky.registry.SceneFactory
 
 class LumiskyPreviewRenderer(
     private val shaderSourceLoader: ShaderSourceLoader,
-    private val scheduler: SceneScheduler,
     private val eventTriggerSystem: EventTriggerSystem,
     private val atmosphereController: AtmosphereController,
-    private val parallaxController: ParallaxController,
     private val qualityController: AdaptiveQualityController,
     private val sceneFactory: SceneFactory,
     val runtimeProfile: RuntimeProfile = RuntimeProfile.fullscreenPreview()
@@ -39,10 +37,10 @@ class LumiskyPreviewRenderer(
     private val session = RenderEngineSession(
         runtimeProfile = runtimeProfile,
         shaderSourceLoader = shaderSourceLoader,
-        scheduler = scheduler,
+        scheduler = SceneScheduler(),
         eventTriggerSystem = eventTriggerSystem,
         atmosphereController = atmosphereController,
-        parallaxController = parallaxController,
+        parallaxController = ParallaxController(),
         qualityController = qualityController
     )
     private var currentContext: RenderContext? = null
@@ -90,6 +88,10 @@ class LumiskyPreviewRenderer(
         inputSnapshot: SceneInputSnapshot
     ) {
         session.renderFrame(context, inputSnapshot)
+    }
+
+    fun onFramePresented() {
+        session.onFramePresented()
     }
 
     fun onContextLost() {

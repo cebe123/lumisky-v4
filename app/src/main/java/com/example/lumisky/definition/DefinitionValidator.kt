@@ -22,8 +22,11 @@ class DefinitionValidator @Inject constructor() {
         "MoonLayer",
         "RainLayer",
         "ShaderLayer",
+        "ShaderEffectLayer",
+        "ParticleLayer",
         "StarsLayer",
         "SunLayer",
+        "TimeSliceTextureLayer",
         "TextureLayer",
         "VideoOesLayer"
     )
@@ -69,6 +72,16 @@ class DefinitionValidator @Inject constructor() {
         if (definition.name.isBlank()) errors.add("Wallpaper name is blank")
         if (definition.category.isBlank()) errors.add("Wallpaper category is blank")
         if (definition.schemaVersion != 5) errors.add("Unsupported schemaVersion: ${definition.schemaVersion}")
+        if (definition.sourceKind == WallpaperSourceKind.VIDEO &&
+            definition.layers.none { it.enabled && it.type == "VideoOesLayer" }
+        ) {
+            errors.add("VIDEO wallpaper requires an enabled VideoOesLayer")
+        }
+        if (definition.sourceKind != WallpaperSourceKind.PROCEDURAL &&
+            definition.layers.none { it.enabled }
+        ) {
+            errors.add("${definition.sourceKind} wallpaper requires at least one enabled layer")
+        }
         if (definition.preview.thumbnail.isNotBlank() && !assetExists(definition.preview.thumbnail)) {
             errors.add("Missing preview thumbnail: ${definition.preview.thumbnail}")
         }
@@ -117,6 +130,19 @@ class DefinitionValidator @Inject constructor() {
             layer.source?.let { source ->
                 if (!assetExists(source)) {
                     errors.add("Missing source asset: $source for layer ID: ${layer.id}")
+                }
+            }
+            if (layer.type == "TimeSliceTextureLayer" && layer.timeSlices.isEmpty()) {
+                errors.add("TimeSliceTextureLayer requires time slices for layer ID: ${layer.id}")
+            }
+            layer.timeSlices.forEach { slice ->
+                if (slice.minute !in 0..1439) {
+                    errors.add("Invalid time slice minute '${slice.minute}' for layer ID: ${layer.id}")
+                }
+                if (slice.path.isBlank()) {
+                    errors.add("Time slice path is blank for layer ID: ${layer.id}")
+                } else if (!assetExists(slice.path)) {
+                    errors.add("Missing time slice asset: ${slice.path} for layer ID: ${layer.id}")
                 }
             }
             layer.textures.forEach { texture ->

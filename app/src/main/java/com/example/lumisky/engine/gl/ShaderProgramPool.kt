@@ -37,21 +37,26 @@ class ShaderProgramPool(private val manager: GlResourceManager) {
                 programId = ShaderCompiler.compileAndLink(vertSource, fragSource)
             }
             
+            var fallbackProgramId = 0
             if (programId == 0) {
                 Log.e("ShaderProgramPool", "Failed to compile shader $shaderRef, falling back to default")
                 val fallbackSourceInfo = manager.shaderRegistry.getSourceInfo("common.gradient.v1")
                     ?: throw RuntimeException("Fallback shader not found")
                 val fallbackVert = sourceLoader.load(fallbackSourceInfo.vertexPath)
                 val fallbackFrag = sourceLoader.load(fallbackSourceInfo.fragmentPath)
-                programId = ShaderCompiler.compileAndLink(fallbackVert, fallbackFrag)
+                fallbackProgramId = ShaderCompiler.compileAndLink(fallbackVert, fallbackFrag)
             }
             
-            GlProgram(programId)
+            GlProgram(ShaderProgramFallbackPolicy.requireUsable(programId, fallbackProgramId))
         }
     }
 
     fun clear() {
         pool.values.forEach { it.release() }
+        pool.clear()
+    }
+
+    fun invalidate() {
         pool.clear()
     }
 }

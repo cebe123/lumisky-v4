@@ -33,12 +33,64 @@ data class CelestialUniformState(
 )
 
 class CelestialMotionController {
+    private val sunOrbit = ResolvedOrbit()
+    private val moonOrbit = ResolvedOrbit()
 
     fun resolve(
         definition: WallpaperDefinition?,
         dayProgress: Float,
         daylightOverride: DaylightOverride? = null
     ): CelestialUniformState {
+        resolveValues(definition, dayProgress, daylightOverride)
+        return CelestialUniformState(
+            sunX = resolvedState.sunX,
+            sunY = resolvedState.sunY,
+            moonX = resolvedState.moonX,
+            moonY = resolvedState.moonY,
+            drawSun = resolvedState.drawSun,
+            isNight = resolvedState.isNight,
+            minute = resolvedState.minute,
+            sunriseMinute = resolvedState.sunriseMinute,
+            sunsetMinute = resolvedState.sunsetMinute,
+            solarNoonMinute = resolvedState.solarNoonMinute,
+            nightAmount = resolvedState.nightAmount,
+            horizonY = resolvedState.horizonY,
+            sunColorR = resolvedState.sunColorR,
+            sunColorG = resolvedState.sunColorG,
+            sunColorB = resolvedState.sunColorB
+        )
+    }
+
+    fun resolveInto(
+        definition: WallpaperDefinition?,
+        dayProgress: Float,
+        daylightOverride: DaylightOverride? = null,
+        output: MutableRenderFrameState
+    ) {
+        resolveValues(definition, dayProgress, daylightOverride)
+        output.sunX = resolvedState.sunX
+        output.sunY = resolvedState.sunY
+        output.moonX = resolvedState.moonX
+        output.moonY = resolvedState.moonY
+        output.drawSun = resolvedState.drawSun
+        output.isNight = resolvedState.isNight
+        output.minute = resolvedState.minute
+        output.sunriseMinute = resolvedState.sunriseMinute
+        output.sunsetMinute = resolvedState.sunsetMinute
+        output.solarNoonMinute = resolvedState.solarNoonMinute
+        output.nightAmount = resolvedState.nightAmount
+        output.horizonY = resolvedState.horizonY
+        output.sunColorR = resolvedState.sunColorR
+        output.sunColorG = resolvedState.sunColorG
+        output.sunColorB = resolvedState.sunColorB
+    }
+
+    private fun resolveValues(
+        definition: WallpaperDefinition?,
+        dayProgress: Float,
+        daylightOverride: DaylightOverride?
+    ) {
+        val output = resolvedState
         val resolvedDefinition = definition
         val minute = minuteOfDay(dayProgress)
         val sunrise = daylightOverride?.sunriseMinute?.coerceIn(0, MINUTES_PER_DAY)
@@ -52,126 +104,113 @@ class CelestialMotionController {
         val horizon = (resolvedDefinition?.horizon?.offset ?: DEFAULT_HORIZON_Y).coerceIn(0f, 1f)
         val isDaytime = isDaytime(minute, sunrise.toFloat(), sunset.toFloat())
 
-        val sunOrbit = resolveOrbit(
+        resolveOrbit(
+            target = sunOrbit,
             explicit = resolvedDefinition?.celestial?.sunOrbit,
             pathType = resolvedDefinition?.celestial?.sunPathType,
             fallbackPeakY = resolvedDefinition?.peakY ?: DEFAULT_PEAK_Y
         )
-        val moonOrbit = resolveOrbit(
+        resolveOrbit(
+            target = moonOrbit,
             explicit = resolvedDefinition?.celestial?.moonOrbit,
             pathType = resolvedDefinition?.celestial?.moonPathType,
             fallbackPeakY = resolvedDefinition?.peakY ?: DEFAULT_PEAK_Y
         )
 
-        val sun = if (isDaytime) {
+        val sunPhase = if (isDaytime) {
             val phase = resolvePeakAlignedPhaseProgress(
                 currentMinute = minute,
                 startMinute = sunrise.toFloat(),
                 peakMinute = solarNoon.toFloat(),
                 endMinute = sunset.toFloat()
             )
-            resolveVisiblePosition(sunOrbit, horizon, phase)
+            phase
         } else {
-            resolveHiddenPosition(sunOrbit, horizon)
+            -1f
         }
 
-        val moon = if (isDaytime) {
-            resolveHiddenPosition(moonOrbit, horizon)
+        val moonPhase = if (isDaytime) {
+            -1f
         } else {
-            val phase = resolvePeakAlignedPhaseProgress(
+            resolvePeakAlignedPhaseProgress(
                 currentMinute = minute,
                 startMinute = sunset.toFloat(),
                 peakMinute = ((solarNoon + HALF_DAY_MINUTES) % MINUTES_PER_DAY).toFloat(),
                 endMinute = sunrise.toFloat()
             )
-            resolveVisiblePosition(moonOrbit, horizon, phase)
         }
 
-        val sunColor = resolveSunColor(
-            wallpaperId = resolvedDefinition?.id.orEmpty(),
+        val sunX = if (isDaytime) resolveVisibleX(sunOrbit, sunPhase) else resolveHiddenX(sunOrbit)
+        val sunY = if (isDaytime) resolveVisibleY(sunOrbit, horizon, sunPhase) else resolveHiddenY(sunOrbit, horizon)
+        val moonX = if (isDaytime) resolveHiddenX(moonOrbit) else resolveVisibleX(moonOrbit, moonPhase)
+        val moonY = if (isDaytime) resolveHiddenY(moonOrbit, horizon) else resolveVisibleY(moonOrbit, horizon, moonPhase)
+        val colorPhase = resolveSunColorPhase(
+            wallpaperId = resolvedDefinition?.id,
             minute = minute,
             sunrise = sunrise.toFloat(),
             sunset = sunset.toFloat()
         )
 
-        return CelestialUniformState(
-            sunX = sun.x.coerceIn(0f, 1f),
-            sunY = mapToLegacyShaderY(sun.y),
-            moonX = moon.x.coerceIn(0f, 1f),
-            moonY = mapToLegacyShaderY(moon.y),
-            drawSun = isDaytime,
-            isNight = !isDaytime,
-            minute = minute,
-            sunriseMinute = sunrise,
-            sunsetMinute = sunset,
-            solarNoonMinute = solarNoon,
-            nightAmount = calculateNightAmount(minute, sunrise.toFloat(), sunset.toFloat()),
-            horizonY = mapToLegacyShaderY(horizon),
-            sunColorR = sunColor.r,
-            sunColorG = sunColor.g,
-            sunColorB = sunColor.b
-        )
+        output.sunX = sunX.coerceIn(0f, 1f)
+        output.sunY = mapToLegacyShaderY(sunY)
+        output.moonX = moonX.coerceIn(0f, 1f)
+        output.moonY = mapToLegacyShaderY(moonY)
+        output.drawSun = isDaytime
+        output.isNight = !isDaytime
+        output.minute = minute
+        output.sunriseMinute = sunrise
+        output.sunsetMinute = sunset
+        output.solarNoonMinute = solarNoon
+        output.nightAmount = calculateNightAmount(minute, sunrise.toFloat(), sunset.toFloat())
+        output.horizonY = mapToLegacyShaderY(horizon)
+        output.sunColorR = 1f
+        output.sunColorG = 0.9f - (0.4f * colorPhase)
+        output.sunColorB = 0.8f - (0.6f * colorPhase)
     }
 
     private fun resolveOrbit(
+        target: ResolvedOrbit,
         explicit: CelestialOrbitDefinition?,
         pathType: String?,
         fallbackPeakY: Float
-    ): ResolvedOrbit {
-        val normalizedPathType = (explicit?.pathType ?: pathType ?: "ARC").uppercase()
-        return ResolvedOrbit(
-            pathType = if (normalizedPathType == "VERTICAL") PathType.VERTICAL else PathType.ARC,
-            startX = explicit?.startX,
-            endX = explicit?.endX,
-            peakY = explicit?.peakY ?: fallbackPeakY,
-            hiddenY = explicit?.hiddenY,
-            curve = if ((explicit?.curve ?: "LINEAR").uppercase() == "EASE_IN_OUT") {
-                OrbitCurve.EASE_IN_OUT
-            } else {
-                OrbitCurve.LINEAR
-            }
-        )
+    ) {
+        target.isVertical = (explicit?.pathType ?: pathType).equals("VERTICAL", ignoreCase = true)
+        target.startX = explicit?.startX ?: Float.NaN
+        target.endX = explicit?.endX ?: Float.NaN
+        target.peakY = explicit?.peakY ?: fallbackPeakY
+        target.hiddenY = explicit?.hiddenY ?: Float.NaN
+        target.easeInOut = (explicit?.curve ?: "LINEAR").equals("EASE_IN_OUT", ignoreCase = true)
     }
 
-    private fun resolveVisiblePosition(
-        orbit: ResolvedOrbit,
-        horizonY: Float,
-        phaseProgress: Float
-    ): Vec2 {
-        val shapedProgress = applyCurve(phaseProgress, orbit.curve)
+    private fun resolveVisibleY(orbit: ResolvedOrbit, horizonY: Float, phaseProgress: Float): Float {
+        val shapedProgress = applyCurve(phaseProgress, orbit.easeInOut)
         val peakY = resolvePeakY(horizonY, orbit.peakY)
-        return Vec2(
-            x = resolveVisibleX(orbit, shapedProgress),
-            y = horizonY + (sin(shapedProgress.coerceIn(0f, 1f) * PI.toFloat()) * (peakY - horizonY).coerceAtLeast(0f))
-        )
+        return horizonY + (sin(shapedProgress.coerceIn(0f, 1f) * PI.toFloat()) * (peakY - horizonY).coerceAtLeast(0f))
     }
 
-    private fun resolveHiddenPosition(orbit: ResolvedOrbit, horizonY: Float): Vec2 {
-        return Vec2(
-            x = resolveHiddenX(orbit),
-            y = orbit.hiddenY ?: ((horizonY - HIDDEN_DEPTH).coerceAtMost(HIDDEN_Y_MAX))
-        )
+    private fun resolveHiddenY(orbit: ResolvedOrbit, horizonY: Float): Float {
+        return if (orbit.hiddenY.isNaN()) (horizonY - HIDDEN_DEPTH).coerceAtMost(HIDDEN_Y_MAX) else orbit.hiddenY
     }
 
     private fun resolveVisibleX(orbit: ResolvedOrbit, phaseProgress: Float): Float {
-        return when (orbit.pathType) {
-            PathType.VERTICAL -> (orbit.startX ?: orbit.endX ?: VERTICAL_PATH_X).coerceIn(0f, 1f)
-            PathType.ARC -> lerp(
-                start = orbit.startX ?: ARC_PATH_START_X,
-                end = orbit.endX ?: ARC_PATH_END_X,
+        return if (orbit.isVertical) {
+            firstDefined(orbit.startX, orbit.endX, VERTICAL_PATH_X).coerceIn(0f, 1f)
+        } else {
+            lerp(
+                start = firstDefined(orbit.startX, ARC_PATH_START_X),
+                end = firstDefined(orbit.endX, ARC_PATH_END_X),
                 t = phaseProgress
             ).coerceIn(0f, 1f)
         }
     }
 
     private fun resolveHiddenX(orbit: ResolvedOrbit): Float {
-        return when (orbit.pathType) {
-            PathType.VERTICAL -> (orbit.startX ?: orbit.endX ?: VERTICAL_PATH_X).coerceIn(0f, 1f)
-            PathType.ARC -> {
-                val start = orbit.startX ?: ARC_PATH_START_X
-                val end = orbit.endX ?: ARC_PATH_END_X
-                ((start + end) * 0.5f).coerceIn(0f, 1f)
-            }
+        return if (orbit.isVertical) {
+            firstDefined(orbit.startX, orbit.endX, VERTICAL_PATH_X).coerceIn(0f, 1f)
+        } else {
+            val start = firstDefined(orbit.startX, ARC_PATH_START_X)
+            val end = firstDefined(orbit.endX, ARC_PATH_END_X)
+            ((start + end) * 0.5f).coerceIn(0f, 1f)
         }
     }
 
@@ -180,12 +219,9 @@ class CelestialMotionController {
         return peakY.coerceIn(minimumPeakY, 1f)
     }
 
-    private fun applyCurve(phaseProgress: Float, curve: OrbitCurve): Float {
+    private fun applyCurve(phaseProgress: Float, easeInOut: Boolean): Float {
         val clamped = phaseProgress.coerceIn(0f, 1f)
-        return when (curve) {
-            OrbitCurve.LINEAR -> clamped
-            OrbitCurve.EASE_IN_OUT -> clamped * clamped * (3f - (2f * clamped))
-        }
+        return if (easeInOut) clamped * clamped * (3f - (2f * clamped)) else clamped
     }
 
     private fun resolveSolarNoon(
@@ -257,14 +293,14 @@ class CelestialMotionController {
         return 0f
     }
 
-    private fun resolveSunColor(
-        wallpaperId: String,
+    private fun resolveSunColorPhase(
+        wallpaperId: String?,
         minute: Float,
         sunrise: Float,
         sunset: Float
-    ): Vec3 {
+    ): Float {
         if (sunset <= sunrise || minute < sunrise || minute > sunset) {
-            return Vec3(1.0f, 0.9f, 0.8f)
+            return 0f
         }
         val dayPhase = ((minute - sunrise) / (sunset - sunrise)).coerceIn(0f, 1f)
         var colorPhase = if (dayPhase < 0.5f) {
@@ -272,14 +308,10 @@ class CelestialMotionController {
         } else {
             2f - (dayPhase * 2f)
         }
-        if (wallpaperId.lowercase().contains("pixel_forest")) {
+        if (wallpaperId?.contains("pixel_forest", ignoreCase = true) == true) {
             colorPhase = 1f - colorPhase
         }
-        return Vec3(
-            r = 1.0f,
-            g = 0.9f - (0.4f * colorPhase),
-            b = 0.8f - (0.6f * colorPhase)
-        )
+        return colorPhase
     }
 
     private fun smoothstep(edge0: Float, edge1: Float, value: Float): Float {
@@ -324,28 +356,40 @@ class CelestialMotionController {
         return !isNaN() && this != Float.POSITIVE_INFINITY && this != Float.NEGATIVE_INFINITY
     }
 
-    private data class ResolvedOrbit(
-        val pathType: PathType,
-        val startX: Float?,
-        val endX: Float?,
-        val peakY: Float,
-        val hiddenY: Float?,
-        val curve: OrbitCurve
-    )
+    private fun firstDefined(primary: Float, fallback: Float): Float =
+        if (primary.isNaN()) fallback else primary
 
-    private data class Vec2(val x: Float, val y: Float)
+    private fun firstDefined(primary: Float, secondary: Float, fallback: Float): Float =
+        if (!primary.isNaN()) primary else firstDefined(secondary, fallback)
 
-    private data class Vec3(val r: Float, val g: Float, val b: Float)
-
-    private enum class PathType {
-        VERTICAL,
-        ARC
+    private class ResolvedOrbit {
+        var isVertical = false
+        var startX = Float.NaN
+        var endX = Float.NaN
+        var peakY = DEFAULT_PEAK_Y
+        var hiddenY = Float.NaN
+        var easeInOut = false
     }
 
-    private enum class OrbitCurve {
-        LINEAR,
-        EASE_IN_OUT
+    private class CelestialScratch {
+        var sunX = 0f
+        var sunY = 0f
+        var moonX = 0f
+        var moonY = 0f
+        var drawSun = false
+        var isNight = false
+        var minute = 0f
+        var sunriseMinute = 0
+        var sunsetMinute = 0
+        var solarNoonMinute = 0
+        var nightAmount = 0f
+        var horizonY = 0f
+        var sunColorR = 0f
+        var sunColorG = 0f
+        var sunColorB = 0f
     }
+
+    private val resolvedState = CelestialScratch()
 
     private companion object {
         const val MINUTES_PER_DAY = 1440

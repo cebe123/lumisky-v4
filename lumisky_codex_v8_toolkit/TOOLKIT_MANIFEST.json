@@ -1,0 +1,182 @@
+{
+  "version": "1.0",
+  "architecture": "Lumisky V8",
+  "files": [
+    {
+      "path": ".agents/README.md",
+      "bytes": 563
+    },
+    {
+      "path": ".agents/references/location-daylight.md",
+      "bytes": 680
+    },
+    {
+      "path": ".agents/references/path-routing.md",
+      "bytes": 1059
+    },
+    {
+      "path": ".agents/references/preview-performance.md",
+      "bytes": 659
+    },
+    {
+      "path": ".agents/references/rendering-content.md",
+      "bytes": 793
+    },
+    {
+      "path": ".agents/references/runtime-session.md",
+      "bytes": 622
+    },
+    {
+      "path": ".agents/references/validation-testing.md",
+      "bytes": 720
+    },
+    {
+      "path": ".agents/scripts/changed-scope.ps1",
+      "bytes": 613
+    },
+    {
+      "path": ".agents/scripts/changed-scope.sh",
+      "bytes": 185
+    },
+    {
+      "path": ".agents/scripts/context-scout.ps1",
+      "bytes": 1145
+    },
+    {
+      "path": ".agents/scripts/context-scout.sh",
+      "bytes": 527
+    },
+    {
+      "path": ".agents/scripts/select-tests.ps1",
+      "bytes": 1599
+    },
+    {
+      "path": ".agents/scripts/select-tests.sh",
+      "bytes": 1058
+    },
+    {
+      "path": ".agents/scripts/validate-toolkit.ps1",
+      "bytes": 1068
+    },
+    {
+      "path": ".agents/skills/lumisky-context-scout/SKILL.md",
+      "bytes": 860
+    },
+    {
+      "path": ".agents/skills/lumisky-diff-review/SKILL.md",
+      "bytes": 837
+    },
+    {
+      "path": ".agents/skills/lumisky-egl-resources/SKILL.md",
+      "bytes": 918
+    },
+    {
+      "path": ".agents/skills/lumisky-layer-shader/SKILL.md",
+      "bytes": 882
+    },
+    {
+      "path": ".agents/skills/lumisky-location-daylight/SKILL.md",
+      "bytes": 913
+    },
+    {
+      "path": ".agents/skills/lumisky-preview-performance/SKILL.md",
+      "bytes": 835
+    },
+    {
+      "path": ".agents/skills/lumisky-runtime-session/SKILL.md",
+      "bytes": 791
+    },
+    {
+      "path": ".agents/skills/lumisky-session-handoff/SKILL.md",
+      "bytes": 597
+    },
+    {
+      "path": ".agents/skills/lumisky-surgical-editor/SKILL.md",
+      "bytes": 811
+    },
+    {
+      "path": ".agents/skills/lumisky-test-selector/SKILL.md",
+      "bytes": 833
+    },
+    {
+      "path": ".agents/skills/lumisky-video-oes/SKILL.md",
+      "bytes": 897
+    },
+    {
+      "path": ".agents/skills/lumisky-wallpaper-pack/SKILL.md",
+      "bytes": 946
+    },
+    {
+      "path": ".agents/templates/CHANGE_REPORT.md",
+      "bytes": 163
+    },
+    {
+      "path": ".agents/templates/PERFORMANCE_EVIDENCE.md",
+      "bytes": 216
+    },
+    {
+      "path": ".agents/templates/SESSION_HANDOFF.md",
+      "bytes": 138
+    },
+    {
+      "path": ".agents/templates/TASK_BRIEF.md",
+      "bytes": 272
+    },
+    {
+      "path": ".codex/config.toml",
+      "bytes": 304
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 8170
+    },
+    {
+      "path": "INSTALL_TR.md",
+      "bytes": 2801
+    },
+    {
+      "path": "app/AGENTS.md",
+      "bytes": 1009
+    },
+    {
+      "path": "benchmark/AGENTS.md",
+      "bytes": 566
+    },
+    {
+      "path": "build-logic/AGENTS.md",
+      "bytes": 863
+    },
+    {
+      "path": "codex-profiles/lumisky-deep-review.config.toml",
+      "bytes": 270
+    },
+    {
+      "path": "codex-profiles/lumisky-implementation.config.toml",
+      "bytes": 284
+    },
+    {
+      "path": "codex-profiles/lumisky-low-token.config.toml",
+      "bytes": 271
+    },
+    {
+      "path": "core/AGENTS.md",
+      "bytes": 786
+    },
+    {
+      "path": "docs/architecture/V8_COMPACT_DECISIONS.md",
+      "bytes": 1352
+    },
+    {
+      "path": "docs/architecture/lumisky_v8_architecture.md",
+      "bytes": 66361
+    },
+    {
+      "path": "engine/AGENTS.md",
+      "bytes": 1036
+    },
+    {
+      "path": "wallpaper/AGENTS.md",
+      "bytes": 1043
+    }
+  ]
+}

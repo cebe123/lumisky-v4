@@ -26,10 +26,13 @@ data class RuntimeProfile(
 ) {
     companion object {
         fun liveWallpaper() = RuntimeProfile(mode = RuntimeMode.LIVE_WALLPAPER)
-        fun fullscreenPreview() = RuntimeProfile(mode = RuntimeMode.PREVIEW_FULLSCREEN)
+        fun fullscreenPreview() = RuntimeProfile(
+            mode = RuntimeMode.PREVIEW_FULLSCREEN,
+            maxFps = 120
+        )
         fun catalogCardPreview() = RuntimeProfile(
             mode = RuntimeMode.PREVIEW_CARD,
-            maxFps = 15,
+            maxFps = 60,
             overrideQualityTier = QualityTier.LOW,
             playVideo = false,
             renderScale = 0.25f

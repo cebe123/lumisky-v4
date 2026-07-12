@@ -12,11 +12,21 @@ package com.example.lumisky.definition
 import kotlinx.serialization.Serializable
 
 @Serializable
+enum class WallpaperSourceKind {
+    LAYERED_IMAGE,
+    HYBRID,
+    VIDEO,
+    PROCEDURAL
+}
+
+@Serializable
 data class WallpaperDefinition(
     val schemaVersion: Int = 5,
     val id: String,
     val name: String,
     val category: String,
+    val sourceKind: WallpaperSourceKind = WallpaperSourceKind.PROCEDURAL,
+    val contentLicense: ContentLicenseInfo? = null,
     val assetPack: String? = null,
     val colorHints: ColorHintsDefinition? = null,
     val capabilities: CapabilitiesDefinition = CapabilitiesDefinition(),
@@ -33,6 +43,13 @@ data class WallpaperDefinition(
     val layers: List<LayerDefinition> = emptyList(),
     val events: List<EventDefinition> = emptyList(),
     val preview: PreviewDefinition = PreviewDefinition()
+)
+
+@Serializable
+data class ContentLicenseInfo(
+    val source: String,
+    val license: String,
+    val approvedForDistribution: Boolean
 )
 
 @Serializable

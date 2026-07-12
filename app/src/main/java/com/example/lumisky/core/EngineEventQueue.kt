@@ -10,6 +10,7 @@
 package com.example.lumisky.core
 
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicReference
 
 sealed interface WallpaperEvent {
     object ScreenOn : WallpaperEvent
@@ -23,9 +24,15 @@ sealed interface WallpaperEvent {
 
 class EngineEventQueue {
     private val queue = ConcurrentLinkedQueue<WallpaperEvent>()
+    private val latestTouch = AtomicReference<WallpaperEvent.Touch?>(null)
+    private val latestParallax = AtomicReference<WallpaperEvent.ParallaxChanged?>(null)
 
     fun offer(event: WallpaperEvent) {
-        queue.offer(event)
+        when (event) {
+            is WallpaperEvent.Touch -> latestTouch.set(event)
+            is WallpaperEvent.ParallaxChanged -> latestParallax.set(event)
+            else -> queue.offer(event)
+        }
     }
 
     fun drainTo(target: MutableList<WallpaperEvent>) {
@@ -33,5 +40,7 @@ class EngineEventQueue {
             val event = queue.poll() ?: break
             target.add(event)
         }
+        latestParallax.getAndSet(null)?.let(target::add)
+        latestTouch.getAndSet(null)?.let(target::add)
     }
 }

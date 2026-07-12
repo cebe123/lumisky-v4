@@ -21,23 +21,25 @@ open class TextureLayer(
     private val shaderSourceLoader: ShaderSourceLoader
 ) : BaseLayer(definition) {
     private var program: GlProgram? = null
+    private val asset = TextureAssetHandle.optional(definition.source)
 
     override fun onCreateGl(gl: GlResourceManager, context: RenderContext) {
         program = gl.programs.get("common.texture2d", shaderSourceLoader)
+        asset?.preload(gl)
     }
 
     override fun render(frame: MutableRenderFrameState) {
         val activeProgram = program ?: return
-        val sourcePath = definition.source ?: return
+        val textureAsset = asset ?: return
         
         activeProgram.use()
         
-        val texture = frame.gl.textures.get(sourcePath, frame.quality)
+        val texture = textureAsset.resolve(frame)
         texture.bind(0)
         activeProgram.setUniform("u_Texture", 0)
         
         // Apply texture-level parallax offset scaled by depth
-        val depth = definition.parallax?.depth ?: 0.0f
+        val depth = (definition.parallax?.depth ?: 0.0f).coerceIn(0.0f, MAX_PARALLAX_DEPTH)
         val offsetUvX = frame.parallaxOffsetX * depth
         val offsetUvY = frame.parallaxOffsetY * depth
         activeProgram.setUniform("u_ParallaxOffset", offsetUvX, offsetUvY)
@@ -46,5 +48,9 @@ open class TextureLayer(
         frame.gl.meshes.drawQuad()
         
         texture.unbind()
+    }
+
+    private companion object {
+        const val MAX_PARALLAX_DEPTH = 1.0f
     }
 }

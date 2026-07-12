@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 5,
+  "id": "samurai_fuji_twilight",
+  "name": "Samurai — Fuji Alacakaranlığı",
+  "category": "Scenic Anime",
+  "sourceKind": "HYBRID",
+  "capabilities": { "parallax": true, "touch": false, "locationAware": true, "supportsPreviewTimeSimulation": true },
+  "renderScheduler": { "mode": "LAYER_SCHEDULED", "sceneMaxFps": 30, "batterySaverSceneMaxFps": 15, "idleSceneMaxFps": 8 },
+  "parallax": { "enabled": true, "maxOffsetX": 0.018, "maxOffsetY": 0.012, "smoothing": 0.12 },
+  "layers": [
+    { "id": "time_slice_sky", "type": "TimeSliceTextureLayer", "zIndex": 0, "renderPass": "BACKGROUND", "blendMode": "NONE", "timeSlices": [
+      { "minute": 0, "path": "wallpapers/samurai_fuji_twilight/time_slices/midnight.png" },
+      { "minute": 240, "path": "wallpapers/samurai_fuji_twilight/time_slices/moonset.png" },
+      { "minute": 360, "path": "wallpapers/samurai_fuji_twilight/time_slices/dawn.png" },
+      { "minute": 720, "path": "wallpapers/samurai_fuji_twilight/time_slices/noon.png" },
+      { "minute": 1080, "path": "wallpapers/samurai_fuji_twilight/time_slices/sunset.png" },
+      { "minute": 1200, "path": "wallpapers/samurai_fuji_twilight/time_slices/moonrise.png" }
+    ], "framePolicy": { "mode": "MINUTE_TICK", "cacheMode": "STATIC_TEXTURE" } },
+    { "id": "far_mountains", "type": "TextureLayer", "zIndex": 10, "renderPass": "BACKGROUND", "blendMode": "ALPHA", "source": "wallpapers/samurai_fuji_twilight/layers/far_mountains.png", "framePolicy": { "mode": "STATIC", "cacheMode": "STATIC_TEXTURE" } },
+    { "id": "main_mountain", "type": "TextureLayer", "zIndex": 20, "renderPass": "BACKGROUND", "blendMode": "ALPHA", "source": "wallpapers/samurai_fuji_twilight/layers/main_mountain.png", "framePolicy": { "mode": "STATIC", "cacheMode": "STATIC_TEXTURE" } },
+    { "id": "mid_mountains", "type": "TextureLayer", "zIndex": 30, "renderPass": "BACKGROUND", "blendMode": "ALPHA", "source": "wallpapers/samurai_fuji_twilight/layers/mid_mountains.png", "framePolicy": { "mode": "STATIC", "cacheMode": "STATIC_TEXTURE" } },
+    { "id": "clouds", "type": "TextureLayer", "zIndex": 40, "renderPass": "TRANSPARENT", "blendMode": "ALPHA", "source": "wallpapers/samurai_fuji_twilight/layers/clouds_layer.png", "framePolicy": { "mode": "FIXED_FPS", "fps": 15, "batterySaverFps": 8, "cacheMode": "FBO_CACHE" } },
+    { "id": "pagoda", "type": "TextureLayer", "zIndex": 50, "renderPass": "TRANSPARENT", "blendMode": "ALPHA", "source": "wallpapers/samurai_fuji_twilight/layers/pagoda_or_architecture.png", "framePolicy": { "mode": "STATIC", "cacheMode": "STATIC_TEXTURE" } },
+    { "id": "foreground_cliff", "type": "TextureLayer", "zIndex": 60, "renderPass": "TRANSPARENT", "blendMode": "ALPHA", "source": "wallpapers/samurai_fuji_twilight/layers/foreground_cliff.png", "framePolicy": { "mode": "STATIC", "cacheMode": "STATIC_TEXTURE" } },
+    { "id": "tree", "type": "TextureLayer", "zIndex": 70, "renderPass": "TRANSPARENT", "blendMode": "ALPHA", "source": "wallpapers/samurai_fuji_twilight/layers/left_foreground_tree.png", "framePolicy": { "mode": "STATIC", "cacheMode": "STATIC_TEXTURE" } },
+    { "id": "samurai", "type": "TextureLayer", "zIndex": 80, "renderPass": "TRANSPARENT", "blendMode": "ALPHA", "source": "wallpapers/samurai_fuji_twilight/layers/main_subject_samurai.png", "framePolicy": { "mode": "STATIC", "cacheMode": "STATIC_TEXTURE" } }
+  ],
+  "events": [],
+  "preview": { "thumbnail": "wallpapers/samurai_fuji_twilight/thumbnail.webp", "cardMode": "THUMBNAIL", "fullscreenMode": "FAST_TIME_SIMULATION" }
+}

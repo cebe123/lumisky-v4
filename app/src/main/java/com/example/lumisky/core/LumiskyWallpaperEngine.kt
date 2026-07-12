@@ -77,7 +77,9 @@ class LumiskyWallpaperEngine(
     fun onCreate(surfaceHolder: SurfaceHolder?, isPreview: Boolean) {
         this.surfaceHolder = surfaceHolder
 
-        glThread = WallpaperGlThread(service.applicationContext, renderer, shaderRegistry, isPreview).apply {
+        glThread = WallpaperGlThread(service.applicationContext, renderer, shaderRegistry, isPreview) { definition, scene ->
+            commitSuccessfulScene(definition, scene)
+        }.apply {
             start()
         }
 
@@ -104,16 +106,24 @@ class LumiskyWallpaperEngine(
                     featureFlags = featureFlags
                 )
             }.collectLatest { policy ->
-                glThread?.preferredQualityTier = policy.qualityTier
-                glThread?.maxFps = policy.maxFps
-                glThread?.batterySaver = policy.maxFps <= 15
-                glThread?.renderScale = policy.renderScale
-                glThread?.postProcessEnabled = policy.postProcessEnabled
-                glThread?.particleEffectsEnabled = policy.particleEffectsEnabled
-                glThread?.videoPlaybackEnabled = policy.videoPlaybackEnabled
-                glThread?.sensorParallaxEnabled = policy.sensorParallaxEnabled
-                glThread?.telemetryEnabled = policy.telemetryEnabled
-                glThread?.thermalEmergency = policy.thermalEmergency
+                glThread?.submit(
+                    RenderCommand.SetRuntimePolicy(
+                        qualityTier = policy.qualityTier,
+                        maxFps = policy.maxFps,
+                        renderScale = policy.renderScale,
+                        postProcessEnabled = policy.postProcessEnabled,
+                        particleEffectsEnabled = policy.particleEffectsEnabled,
+                        videoPlaybackEnabled = policy.videoPlaybackEnabled,
+                        sensorParallaxEnabled = policy.sensorParallaxEnabled,
+                        telemetryEnabled = policy.telemetryEnabled
+                    )
+                )
+                glThread?.submit(
+                    RenderCommand.SetPowerPolicy(
+                        batterySaver = policy.maxFps <= 15,
+                        thermalEmergency = policy.thermalEmergency
+                    )
+                )
                 sensorParallaxEnabled = policy.sensorParallaxEnabled
                 updateSensorRegistration(isEngineVisible)
                 if (policy.thermalEmergency && !thermalEmergencyLogged && policy.telemetryEnabled) {
@@ -156,7 +166,7 @@ class LumiskyWallpaperEngine(
                     resolved.timeZoneId
                 )
             }.collectLatest { daylight ->
-                glThread?.daylightOverride = daylight
+                glThread?.submit(RenderCommand.SetDaylight(daylight))
             }
         }
     }
@@ -207,12 +217,9 @@ class LumiskyWallpaperEngine(
 
     fun onTouchEvent(event: MotionEvent) {
         if (event.actionMasked == MotionEvent.ACTION_DOWN || event.actionMasked == MotionEvent.ACTION_MOVE) {
-            glThread?.touchX = event.x
-            glThread?.touchY = event.y
-            glThread?.hasTouch = true
-            glThread?.postEvent(WallpaperEvent.Touch(event.x, event.y))
+            glThread?.submit(RenderCommand.SetTouch(event.x, event.y, active = true))
         } else if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
-            glThread?.hasTouch = false
+            glThread?.submit(RenderCommand.SetTouch(0f, 0f, active = false))
         }
     }
 
@@ -224,13 +231,11 @@ class LumiskyWallpaperEngine(
         xPixelOffset: Int,
         yPixelOffset: Int
     ) {
-        glThread?.postEvent(WallpaperEvent.ParallaxChanged(xOffset, yOffset))
+        glThread?.submit(RenderCommand.SetParallax(xOffset, yOffset))
     }
 
     override fun onSensorValues(x: Float, y: Float) {
-        glThread?.parallaxX = x
-        glThread?.parallaxY = y
-        glThread?.postEvent(WallpaperEvent.ParallaxChanged(x, y))
+        glThread?.submit(RenderCommand.SetParallax(x, y))
     }
 
     fun onComputeColors(): WallpaperColors? {
@@ -270,19 +275,7 @@ class LumiskyWallpaperEngine(
         }
 
         val scene = createScene(definition) ?: lastSuccessfulScene ?: return
-        lastSuccessfulDefinition = definition
-        lastSuccessfulScene = scene
         lastAppliedId = definition.id
-        scope.launch {
-            repository.settings.markLastSuccessfulScene(
-                LastSuccessfulSceneState(
-                    wallpaperId = definition.id,
-                    definitionVersion = definition.schemaVersion,
-                    qualityTier = glThread?.preferredQualityTier ?: QualityTier.BALANCED,
-                    timestampMillis = System.currentTimeMillis()
-                )
-            )
-        }
 
         val holder = surfaceHolder
         when (applyAction) {
@@ -294,6 +287,7 @@ class LumiskyWallpaperEngine(
             WallpaperApplyAction.CREATE_SURFACE -> {
                 renderer.activeDefinition = definition
                 renderer.activeScene = scene
+                glThread?.stageSceneCommit(definition, scene)
                 if (holder != null) {
                     glThread?.onSurfaceCreated(holder)
                     replaySurfaceSizeIfKnown()
@@ -306,6 +300,16 @@ class LumiskyWallpaperEngine(
             }
         }
         notifyColorsChangedIfAvailable()
+    }
+
+    private fun commitSuccessfulScene(definition: WallpaperDefinition, scene: RuntimeScene) {
+        lastSuccessfulDefinition = definition
+        lastSuccessfulScene = scene
+        scope.launch {
+            repository.settings.markLastSuccessfulScene(
+                LastSuccessfulSceneState(definition.id, definition.schemaVersion, glThread?.preferredQualityTier ?: QualityTier.BALANCED, System.currentTimeMillis())
+            )
+        }
     }
 
     private fun createScene(definition: WallpaperDefinition): RuntimeScene? {
@@ -323,7 +327,7 @@ class LumiskyWallpaperEngine(
     }
 
     private fun updateSensorRegistration(shouldRegister: Boolean) {
-        val shouldUseSensor = shouldRegister && sensorParallaxEnabled
+        val shouldUseSensor = RenderLifecycleGate.canRunSensor(shouldRegister) && sensorParallaxEnabled
         if (shouldUseSensor && !isSensorRegistered) {
             sensorDispatcher.registerListener(this)
             isSensorRegistered = true

@@ -188,7 +188,7 @@ vec3 drawMoon(vec2 p, vec2 center) {
 
     vec3 col = vec3(0.0);
 
-    float mask = smoothstep(radius, radius - 0.001, r);
+    float mask = 1.0 - smoothstep(radius - 0.001, radius, r);
 
     if (mask > 0.0) {
         vec2 mp = d / radius;
@@ -218,14 +218,14 @@ vec3 drawMoon(vec2 p, vec2 center) {
     }
 
     // Near glow
-    float glow = smoothstep(radius + 0.08, radius, r);
+    float glow = 1.0 - smoothstep(radius, radius + 0.08, r);
     glow = pow(glow, 2.0);
 
     vec3 glowColor = vec3(0.6, 0.7, 1.0);
     col += glow * glowColor * 0.55;
 
     // Far ambient glow for extra light scatter
-    float farGlow = smoothstep(radius + 0.35, radius, r);
+    float farGlow = 1.0 - smoothstep(radius, radius + 0.35, r);
     farGlow = pow(farGlow, 2.0);
     col += farGlow * glowColor * 0.25;
 

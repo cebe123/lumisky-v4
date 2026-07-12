@@ -25,11 +25,12 @@ class GlResourceManager(
     val binaryCache = ShaderBinaryCache(context)
 
     fun onContextLost() {
-        programs.clear()
-        textures.clear()
-        framebuffers.clear()
-        meshes.clear()
+        programs.invalidate()
+        textures.invalidate()
+        framebuffers.invalidate()
+        meshes.invalidate()
         bitmapPool.clear()
+        releaseQueue.discard()
     }
 
     fun release() {

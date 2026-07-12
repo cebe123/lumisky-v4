@@ -15,6 +15,7 @@ import com.example.lumisky.engine.gl.GlResourceManager
 data class MutableRenderFrameState(
     var width: Int = 0,
     var height: Int = 0,
+    var isVisible: Boolean = false,
     var timeSeconds: Float = 0.0f,
     var deltaTimeSeconds: Float = 0.0f,
     var parallaxOffsetX: Float = 0.0f,

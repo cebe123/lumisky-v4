@@ -12,11 +12,7 @@ package com.example.lumisky.engine
 import com.example.lumisky.layers.LayerFrameMode
 import com.example.lumisky.layers.RenderLayer
 
-import javax.inject.Inject
-import javax.inject.Singleton
-
-@Singleton
-class SceneScheduler @Inject constructor() {
+class SceneScheduler {
     private val lastUpdateTimes = mutableMapOf<String, Long>()
     private val lastCacheRefreshTimes = mutableMapOf<String, Long>()
 

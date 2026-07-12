@@ -1,0 +1,10 @@
+# Kopyalama hedefi: ~/.codex/lumisky-deep-review.config.toml
+# Kullanım: codex --profile lumisky-deep-review
+model_reasoning_effort = "high"
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+project_doc_max_bytes = 24576
+
+[agents]
+max_threads = 2
+max_depth = 1

@@ -45,11 +45,13 @@ class LocationDaylightController {
             isSunrise = false
         )
         if (sunrise == null || sunset == null) {
+            val polarDay = isPolarDay(latitude, dayOfYear = date.dayOfYear)
             return DaylightOverride(
-                sunriseMinute = DEFAULT_SUNRISE,
-                sunsetMinute = DEFAULT_SUNSET,
+                sunriseMinute = if (polarDay) 0 else MINUTES_PER_DAY,
+                sunsetMinute = if (polarDay) MINUTES_PER_DAY else 0,
                 solarNoonMinute = DEFAULT_SOLAR_NOON,
-                timeZoneId = zone.id
+                timeZoneId = zone.id,
+                mode = if (polarDay) DaylightMode.POLAR_DAY else DaylightMode.POLAR_NIGHT
             )
         }
 
@@ -100,6 +102,11 @@ class LocationDaylightController {
         val localMeanTime = hourAngle + rightAscension - (0.06571 * approximateTime) - 6.622
         val utcHour = normalizeHours(localMeanTime - lngHour)
         return normalizeHours(utcHour + offsetHours)
+    }
+
+    private fun isPolarDay(latitude: Double, dayOfYear: Int): Boolean {
+        return (latitude >= 0.0 && dayOfYear in 80..263) ||
+            (latitude < 0.0 && (dayOfYear < 80 || dayOfYear > 263))
     }
 
     private fun hourToMinute(hour: Double): Int {

@@ -8,7 +8,6 @@ Android live wallpaper app written in Kotlin, using Jetpack Compose, `WallpaperS
 - Inspect only relevant files. Use `rg` or symbol search before opening files; read targeted line ranges in large files.
 - Do not scan `.gradle`, `.idea`, `build`, generated outputs, caches or binary assets unless directly relevant.
 - Prefer existing architecture, utilities and dependencies; add dependencies only when required.
-- Do not use web, MCP, subagents or parallel agents unless the task requires them.
 - Filter large command output and inspect only the first relevant error with nearby context.
 - Do not paste complete files or repeat visible code/diffs. Final response: changed files, key decision, validation and unresolved risks; maximum 8 lines unless detail is requested.
 - Stop when the stated acceptance criteria are satisfied.
@@ -76,3 +75,31 @@ Use only applicable project checks:
 ```
 
 Run the complete set only for shared/cross-module engine changes, manifests/catalog generation, shaders, releases or when explicitly requested. Fix only failures caused by the current change and report the first relevant unresolved failure.
+
+# Lumisky V8 Toolkit ekleri
+
+## V8 çalışma değişmezleri
+
+- EGL ve tüm GL handle'ları yalnız render thread owner'ıdır.
+- Compose, sensor, broadcast ve `WallpaperService.Engine` yalnız immutable `RenderCommand` üretir.
+- JSON, asset I/O, shader source okuma ve texture decode render hot path dışında yapılır.
+- Görünmez wallpaper/preview için render, sensor, video ve scheduler işi sıfırdır.
+- Scene geçişi transactionaldır; candidate ilk başarılı swap'i üretmeden current/last-successful yapılmaz.
+- Surface ve EGL context lifecycle ayrıdır; context-loss eski GL ID kullanmaz.
+- Katalog thumbnail-first'tür; scroll sırasında aktif GL preview 0, durduğunda aynı anda en fazla 1 lease.
+- Video `updateTexImage()` yalnız current EGL context'li render thread'de çağrılır.
+
+## V8 modül sınırları
+
+- `app`: Compose UI, katalog, seçim, detail/fullscreen preview ve lease istemcisi.
+- `core`: typed modeller, contractlar, config, location/daylight ve saf policy'ler.
+- `engine`: compiler, compiled scene, layer graph, scheduler, frame demand ve renderer backend.
+- `wallpaper`: `WallpaperService` köprüsü, command mailbox ve render thread/EGL lifecycle.
+- `build-logic`: wallpaper pack, schema/asset/shader/video/license validation ve generated index.
+- `benchmark`: ölçüm ve release gate; production davranışını değiştirmez.
+
+## V8 çalışma yöntemi
+
+- Her görevde önce `git status --short`, sonra hedefli `rg` araması ve en fazla gerekli dosya okunur.
+- Kullanıcının mevcut değişiklikleri korunur; broad rewrite, format-only diff ve gereksiz dependency eklenmez.
+- Değişiklikten sonra en dar ilgili compile/test/validator çalıştırılır.

@@ -17,19 +17,17 @@ import javax.inject.Inject
 
 class LumiskyRenderer @Inject constructor(
     private val shaderSourceLoader: ShaderSourceLoader,
-    private val scheduler: SceneScheduler,
     private val eventTriggerSystem: EventTriggerSystem,
     private val atmosphereController: AtmosphereController,
-    private val parallaxController: ParallaxController,
     private val qualityController: AdaptiveQualityController
 ) {
     private val session = RenderEngineSession(
         runtimeProfile = RuntimeProfile.liveWallpaper(),
         shaderSourceLoader = shaderSourceLoader,
-        scheduler = scheduler,
+        scheduler = SceneScheduler(),
         eventTriggerSystem = eventTriggerSystem,
         atmosphereController = atmosphereController,
-        parallaxController = parallaxController,
+        parallaxController = ParallaxController(),
         qualityController = qualityController
     )
 
@@ -51,6 +49,8 @@ class LumiskyRenderer @Inject constructor(
         get() = session.sceneState.isCatchUpAnimating
     val isPreviewAnimationRunning: Boolean
         get() = session.isPreviewAnimationRunning
+    val hasFrameDemand: Boolean
+        get() = session.hasFrameDemand
 
     var runtimeProfile: RuntimeProfile
         get() = session.runtimeProfile
@@ -88,6 +88,10 @@ class LumiskyRenderer @Inject constructor(
         inputSnapshot: SceneInputSnapshot
     ) {
         session.renderFrame(context, inputSnapshot)
+    }
+
+    fun onFramePresented() {
+        session.onFramePresented()
     }
 
     fun onContextLost() {

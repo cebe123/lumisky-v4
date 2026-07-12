@@ -13,6 +13,7 @@ import android.graphics.SurfaceTexture
 import android.opengl.GLES11Ext
 import android.opengl.GLES30
 import android.view.Surface
+import com.example.lumisky.core.RenderLifecycleGate
 import com.example.lumisky.assets.ShaderSourceLoader
 import com.example.lumisky.core.WallpaperEvent
 import com.example.lumisky.definition.LayerDefinition
@@ -60,6 +61,7 @@ class VideoOesLayer(
     }
 
     override fun update(frame: MutableRenderFrameState) {
+        if (!RenderLifecycleGate.canRunVideo(frame.isVisible, frame.videoPlaybackEnabled)) return
         if (frameAvailable.getAndSet(false)) {
             try {
                 surfaceTexture?.updateTexImage()
@@ -71,6 +73,7 @@ class VideoOesLayer(
     }
 
     override fun render(frame: MutableRenderFrameState) {
+        if (!RenderLifecycleGate.canRunVideo(frame.isVisible, frame.videoPlaybackEnabled)) return
         val activeProgram = program ?: return
         if (oesTexId == 0) return
 
@@ -88,14 +91,24 @@ class VideoOesLayer(
     }
 
     override fun onDestroyGl(gl: GlResourceManager) {
-        surface?.release()
-        surface = null
-        surfaceTexture?.release()
-        surfaceTexture = null
+        releaseVideoResources()
         if (oesTexId != 0) {
             val textures = intArrayOf(oesTexId)
             GLES30.glDeleteTextures(1, textures, 0)
             oesTexId = 0
         }
+    }
+
+    override fun onContextLost() {
+        releaseVideoResources()
+        oesTexId = 0
+    }
+
+    private fun releaseVideoResources() {
+        frameAvailable.set(false)
+        surface?.release()
+        surface = null
+        surfaceTexture?.release()
+        surfaceTexture = null
     }
 }

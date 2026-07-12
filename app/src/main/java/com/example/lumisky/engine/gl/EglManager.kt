@@ -16,11 +16,19 @@ import android.opengl.EGLDisplay
 import android.opengl.EGLSurface
 import android.view.SurfaceHolder
 
+enum class EglSwapResult { SUCCESS, SURFACE_LOST, CONTEXT_LOST }
+
 class EglManager {
+    private val lifecycle = EglLifecycleState()
     private var eglDisplay: EGLDisplay = EGL14.EGL_NO_DISPLAY
     private var eglContext: EGLContext = EGL14.EGL_NO_CONTEXT
     private var eglSurface: EGLSurface = EGL14.EGL_NO_SURFACE
     private var eglConfig: EGLConfig? = null
+
+    val hasContext: Boolean
+        get() = lifecycle.hasContext
+    val hasSurface: Boolean
+        get() = lifecycle.hasSurface
 
     fun initialize() {
         eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
@@ -57,6 +65,7 @@ class EglManager {
         if (eglContext == EGL14.EGL_NO_CONTEXT) {
             throw RuntimeException("eglCreateContext failed")
         }
+        lifecycle.onContextCreated()
     }
 
     fun createSurface(surfaceHolder: SurfaceHolder) {
@@ -66,6 +75,7 @@ class EglManager {
         if (eglSurface == EGL14.EGL_NO_SURFACE) {
             throw RuntimeException("eglCreateWindowSurface failed")
         }
+        lifecycle.onSurfaceCreated()
     }
 
     fun createSurface(surface: android.view.Surface) {
@@ -75,6 +85,7 @@ class EglManager {
         if (eglSurface == EGL14.EGL_NO_SURFACE) {
             throw RuntimeException("eglCreateWindowSurface failed")
         }
+        lifecycle.onSurfaceCreated()
     }
 
     fun createOffscreenSurface(width: Int, height: Int) {
@@ -88,9 +99,11 @@ class EglManager {
         if (eglSurface == EGL14.EGL_NO_SURFACE) {
             throw RuntimeException("eglCreatePbufferSurface failed")
         }
+        lifecycle.onSurfaceCreated()
     }
 
     fun makeCurrent() {
+        check(hasContext && hasSurface) { "EGL current requires a context and surface" }
         if (!EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
             throw RuntimeException("eglMakeCurrent failed")
         }
@@ -100,8 +113,17 @@ class EglManager {
         EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
     }
 
-    fun swapBuffers(): Boolean {
-        return EGL14.eglSwapBuffers(eglDisplay, eglSurface)
+    fun swapBuffers(): EglSwapResult {
+        if (!hasContext || !hasSurface) return EglSwapResult.SURFACE_LOST
+        val result = EglSwapErrorPolicy.classify(
+            success = EGL14.eglSwapBuffers(eglDisplay, eglSurface),
+            errorCode = EGL14.eglGetError(),
+            contextLostErrorCode = EGL14.EGL_CONTEXT_LOST
+        )
+        if (result == EglSwapResult.CONTEXT_LOST) {
+            lifecycle.onContextLost()
+        }
+        return result
     }
 
     fun destroySurface() {
@@ -109,6 +131,7 @@ class EglManager {
             EGL14.eglDestroySurface(eglDisplay, eglSurface)
             eglSurface = EGL14.EGL_NO_SURFACE
         }
+        lifecycle.onSurfaceDestroyed()
     }
 
     fun release() {
@@ -122,5 +145,6 @@ class EglManager {
             EGL14.eglTerminate(eglDisplay)
             eglDisplay = EGL14.EGL_NO_DISPLAY
         }
+        lifecycle.onContextLost()
     }
 }

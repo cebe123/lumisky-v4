@@ -13,7 +13,6 @@ import com.example.lumisky.definition.DefinitionValidator
 import com.example.lumisky.definition.ValidationResult
 import com.example.lumisky.definition.WallpaperDefinitionParser
 import com.example.lumisky.definition.WallpaperParseResult
-import com.example.lumisky.registry.SceneFactory
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,7 +20,7 @@ import javax.inject.Singleton
 class SceneCompiler @Inject constructor(
     private val parser: WallpaperDefinitionParser,
     private val validator: DefinitionValidator,
-    private val sceneFactory: SceneFactory
+    private val hybridRendererBackend: HybridSceneRendererBackend
 ) {
     fun compile(jsonString: String): CompileResult {
         return when (val parseResult = parser.parseWallpaper(jsonString)) {
@@ -29,8 +28,15 @@ class SceneCompiler @Inject constructor(
                 val definition = parseResult.definition
                 when (val valResult = validator.validate(definition)) {
                     is ValidationResult.Valid -> {
-                        val scene = sceneFactory.create(definition)
-                        CompileResult.Success(scene)
+                        val layerGraph = CompiledLayerGraph.compile(definition)
+                        CompileResult.Success(
+                            CompiledWallpaperScene(
+                                id = definition.id,
+                                sourceKind = definition.sourceKind,
+                                layerGraph = layerGraph,
+                                runtimeScene = hybridRendererBackend.applyCompiledGraph(definition, layerGraph)
+                            )
+                        )
                     }
                     is ValidationResult.Invalid -> {
                         CompileResult.Error("Validation errors: ${valResult.errors.joinToString()}")
@@ -45,6 +51,6 @@ class SceneCompiler @Inject constructor(
 }
 
 sealed interface CompileResult {
-    data class Success(val scene: RuntimeScene) : CompileResult
+    data class Success(val scene: CompiledWallpaperScene) : CompileResult
     data class Error(val message: String) : CompileResult
 }

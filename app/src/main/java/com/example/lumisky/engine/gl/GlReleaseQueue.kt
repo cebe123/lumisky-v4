@@ -32,4 +32,8 @@ class GlReleaseQueue {
             }
         }
     }
+
+    fun discard() {
+        queue.clear()
+    }
 }

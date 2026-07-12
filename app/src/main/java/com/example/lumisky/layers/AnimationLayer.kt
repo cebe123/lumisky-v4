@@ -18,6 +18,8 @@ class AnimationLayer(
     definition: LayerDefinition,
     shaderSourceLoader: ShaderSourceLoader
 ) : ShaderLayer(definition, shaderSourceLoader) {
+    private val durationSeconds = (definition.animation?.durationMs ?: DEFAULT_DURATION_MS).coerceAtLeast(1L) / 1_000f
+    private val loop = definition.animation?.loop ?: false
     private var animationTime = 0.0f
     private var isPlaying = false
 
@@ -31,10 +33,14 @@ class AnimationLayer(
     override fun update(frame: MutableRenderFrameState) {
         super.update(frame)
         if (isPlaying) {
-            animationTime += 0.016f
-            if (animationTime > 1.0f) {
-                isPlaying = false
-                animationTime = 0.0f
+            animationTime += frame.deltaTimeSeconds.coerceAtLeast(0f)
+            if (animationTime >= durationSeconds) {
+                if (loop) {
+                    animationTime %= durationSeconds
+                } else {
+                    isPlaying = false
+                    animationTime = 0.0f
+                }
             }
         }
     }
@@ -43,5 +49,9 @@ class AnimationLayer(
         if (isPlaying) {
             super.render(frame)
         }
+    }
+
+    private companion object {
+        const val DEFAULT_DURATION_MS = 1_000L
     }
 }

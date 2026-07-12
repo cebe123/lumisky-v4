@@ -61,4 +61,8 @@ class CachedLayerRenderer(
         fboCache.values.forEach { it.release() }
         fboCache.clear()
     }
+
+    fun invalidate() {
+        fboCache.clear()
+    }
 }

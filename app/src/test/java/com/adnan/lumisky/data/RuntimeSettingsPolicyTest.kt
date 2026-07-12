@@ -28,7 +28,8 @@ class RuntimeSettingsPolicyTest {
         val policy = RuntimeSettingsPolicy.resolve(
             qualityTier = "BALANCED",
             performanceMode = SettingsRepository.PERFORMANCE_MODE_SMOOTH,
-            highRefreshEnabled = true
+            highRefreshEnabled = true,
+            sceneMaxFps = 60
         )
 
         assertEquals(QualityTier.HIGH, policy.qualityTier)

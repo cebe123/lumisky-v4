@@ -11,11 +11,14 @@ package com.example.lumisky.engine
 
 import com.example.lumisky.definition.QualityTier
 
+enum class DaylightMode { NORMAL, POLAR_DAY, POLAR_NIGHT }
+
 data class DaylightOverride(
     val sunriseMinute: Int,
     val sunsetMinute: Int,
     val solarNoonMinute: Int,
-    val timeZoneId: String = ""
+    val timeZoneId: String = "",
+    val mode: DaylightMode = DaylightMode.NORMAL
 )
 
 class SceneInputSnapshot(

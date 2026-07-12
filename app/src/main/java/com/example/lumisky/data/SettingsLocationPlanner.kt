@@ -16,6 +16,12 @@ enum class LocationLightingMode {
     DEVICE
 }
 
+enum class LocationResolutionSource {
+    DEVICE_SNAPSHOT,
+    PERSISTED_SNAPSHOT,
+    MANUAL_FALLBACK
+}
+
 data class ManualLocationPreset(
     val id: String,
     val label: String,
@@ -38,7 +44,9 @@ data class ResolvedLocationLighting(
     val latitude: Double,
     val longitude: Double,
     val timeZoneId: String,
-    val usesDeviceLocation: Boolean
+    val usesDeviceLocation: Boolean,
+    val selectedMode: LocationLightingMode,
+    val source: LocationResolutionSource
 )
 
 data class CelestialTimelineLabels(
@@ -118,27 +126,25 @@ object SettingsLocationPlanner {
         mode: LocationLightingMode,
         manualLocation: ManualLocationPreset,
         deviceSnapshot: DeviceLocationSnapshot?,
-        nowEpochMs: Long
+        nowEpochMs: Long,
+        persistedSnapshot: DeviceLocationSnapshot? = null
     ): ResolvedLocationLighting {
-        val device = deviceSnapshot?.takeIf { snapshot ->
-            snapshot.capturedAtEpochMs > 0L &&
-                kotlin.math.abs(nowEpochMs - snapshot.capturedAtEpochMs) <= DEVICE_LOCATION_MAX_AGE_MS
-        }
+        val device = deviceSnapshot?.takeIf { it.isFreshAt(nowEpochMs) }
         if (mode == LocationLightingMode.DEVICE && device != null) {
-            return ResolvedLocationLighting(
-                label = device.label.ifBlank { formatCoordinates(device.latitude, device.longitude) },
-                latitude = device.latitude.coerceIn(-89.0, 89.0),
-                longitude = device.longitude.coerceIn(-180.0, 180.0),
-                timeZoneId = device.timeZoneId.ifBlank { manualLocation.timeZoneId },
-                usesDeviceLocation = true
-            )
+            return resolveDevice(device, manualLocation, mode, LocationResolutionSource.DEVICE_SNAPSHOT)
+        }
+        val persisted = persistedSnapshot?.takeIf { it.isFreshAt(nowEpochMs) }
+        if (mode == LocationLightingMode.DEVICE && persisted != null) {
+            return resolveDevice(persisted, manualLocation, mode, LocationResolutionSource.PERSISTED_SNAPSHOT)
         }
         return ResolvedLocationLighting(
             label = manualLocation.label,
             latitude = manualLocation.latitude.coerceIn(-89.0, 89.0),
             longitude = manualLocation.longitude.coerceIn(-180.0, 180.0),
             timeZoneId = manualLocation.timeZoneId,
-            usesDeviceLocation = false
+            usesDeviceLocation = false,
+            selectedMode = mode,
+            source = LocationResolutionSource.MANUAL_FALLBACK
         )
     }
 
@@ -170,4 +176,22 @@ object SettingsLocationPlanner {
     private fun nearlySame(left: Double, right: Double): Boolean {
         return kotlin.math.abs(left - right) < 0.0001
     }
+
+    private fun DeviceLocationSnapshot.isFreshAt(nowEpochMs: Long): Boolean =
+        capturedAtEpochMs > 0L && kotlin.math.abs(nowEpochMs - capturedAtEpochMs) <= DEVICE_LOCATION_MAX_AGE_MS
+
+    private fun resolveDevice(
+        snapshot: DeviceLocationSnapshot,
+        manualLocation: ManualLocationPreset,
+        mode: LocationLightingMode,
+        source: LocationResolutionSource
+    ) = ResolvedLocationLighting(
+        label = snapshot.label.ifBlank { formatCoordinates(snapshot.latitude, snapshot.longitude) },
+        latitude = snapshot.latitude.coerceIn(-89.0, 89.0),
+        longitude = snapshot.longitude.coerceIn(-180.0, 180.0),
+        timeZoneId = snapshot.timeZoneId.ifBlank { manualLocation.timeZoneId },
+        usesDeviceLocation = true,
+        selectedMode = mode,
+        source = source
+    )
 }

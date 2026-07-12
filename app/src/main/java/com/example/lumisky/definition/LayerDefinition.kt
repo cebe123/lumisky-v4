@@ -22,12 +22,20 @@ data class LayerDefinition(
     val blendMode: String = "NONE",
     val renderTarget: String = "DIRECT",
     val source: String? = null,
+    val timeSlices: List<TimeSliceDefinition> = emptyList(),
     val shaderRef: String? = null,
     val uniforms: Map<String, UniformValueDefinition> = emptyMap(),
     val textures: List<TextureSlotDefinition> = emptyList(),
+    val animation: AnimationDefinition? = null,
     val framePolicy: LayerFramePolicyDefinition? = null,
     val parallax: LayerParallaxDefinition? = null,
     val fallback: LayerFallbackDefinition? = null
+)
+
+@Serializable
+data class TimeSliceDefinition(
+    val minute: Int,
+    val path: String
 )
 
 @Serializable

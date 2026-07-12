@@ -15,6 +15,8 @@ import android.os.HandlerThread
 import android.os.Looper
 import android.os.PowerManager
 import android.view.SurfaceHolder
+import com.example.lumisky.core.BoundedRenderThreadHandoff
+import com.example.lumisky.core.RenderLifecycleGate
 import com.example.lumisky.core.WallpaperFrameClock
 import com.example.lumisky.data.RuntimeSettingsPolicy
 import com.example.lumisky.data.RuntimeSettingsPolicyResult
@@ -22,8 +24,12 @@ import com.example.lumisky.data.SettingsRepository
 import com.example.lumisky.definition.WallpaperDefinition
 import com.example.lumisky.device.ThermalStateController
 import com.example.lumisky.engine.RenderContext
+import com.example.lumisky.engine.RuntimeMode
+import com.example.lumisky.engine.AdaptiveFrameRateGovernor
+import com.example.lumisky.engine.PreviewFrameRateCap
 import com.example.lumisky.engine.SceneInputSnapshot
 import com.example.lumisky.engine.gl.EglManager
+import com.example.lumisky.engine.gl.EglSwapResult
 import com.example.lumisky.engine.gl.GlResourceManager
 import com.example.lumisky.registry.ShaderRegistry
 import kotlinx.coroutines.CoroutineScope
@@ -48,6 +54,12 @@ class PreviewGlThread(
     override fun onSensorValues(x: Float, y: Float) {
         parallaxX = x
         parallaxY = y
+        handler.post {
+            if (isVisible && hasSurface) {
+                frameClock?.stop()
+                frameClock?.start()
+            }
+        }
     }
 
     private val handler by lazy { Handler(looper) }
@@ -69,10 +81,19 @@ class PreviewGlThread(
         hasTouch = false
     )
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val shutdownHandoff = BoundedRenderThreadHandoff(SHUTDOWN_TIMEOUT_MILLIS)
+    private val frameRateGovernor by lazy {
+        if (renderer.runtimeProfile.mode == RuntimeMode.PREVIEW_CARD) {
+            AdaptiveFrameRateGovernor(intArrayOf(60, 30, 15, 10), initialFps = 30)
+        } else {
+            AdaptiveFrameRateGovernor(intArrayOf(120, 60, 30, 15), initialFps = 60)
+        }
+    }
 
     @Volatile var isVisible = false
     @Volatile var batterySaver = false
     @Volatile var maxFps = 30
+    @Volatile private var policyMaxFps = 30
     @Volatile var minFrameIntervalNanos: Long = 1_000_000_000L / 30
     @Volatile var parallaxX = 0.0f
     @Volatile var parallaxY = 0.0f
@@ -100,13 +121,14 @@ class PreviewGlThread(
                     highRefreshEnabled = highRefreshEnabled,
                     batterySaver = isPowerSave,
                     thermalStatus = thermalStatus,
-                    sceneMaxFps = 60,
+                    sceneMaxFps = renderer.runtimeProfile.maxFps,
                     batterySaverSceneMaxFps = 15
                 )
             }.collectLatest { policy ->
-                val runtimeMaxFps = renderer.runtimeProfile.maxFps
+                val runtimeMaxFps = PreviewFrameRateCap.resolve(renderer.runtimeProfile.maxFps, displayMaxFps())
+                policyMaxFps = policy.maxFps
                 maxFps = if (runtimeMaxFps > 0) {
-                    policy.maxFps.coerceAtMost(runtimeMaxFps)
+                    minOf(frameRateGovernor.targetFps, policyMaxFps, runtimeMaxFps)
                 } else {
                     0
                 }
@@ -120,7 +142,8 @@ class PreviewGlThread(
         }
 
         frameClock = WallpaperFrameClock { frameTimeNanos ->
-            if (isVisible && hasSurface) {
+            if (RenderLifecycleGate.canRender(isVisible, hasSurface)) {
+                val previousFrameNanos = lastRenderedFrameNanos
                 val frameIntervalNanos = if (renderer.shouldContinueRendering) {
                     1_000_000_000L / maxFps.coerceAtLeast(1)
                 } else {
@@ -130,6 +153,15 @@ class PreviewGlThread(
                     val remainingNanos = frameIntervalNanos - (frameTimeNanos - lastRenderedFrameNanos)
                     frameClock?.postNextFrame((remainingNanos / 1_000_000).coerceAtLeast(0))
                     return@WallpaperFrameClock
+                }
+                if (previousFrameNanos > 0L) {
+                    val deadlineMissed = frameTimeNanos - previousFrameNanos > frameIntervalNanos * 2
+                    maxFps = minOf(
+                        frameRateGovernor.report(deadlineMissed, batterySaver),
+                        policyMaxFps,
+                        PreviewFrameRateCap.resolve(renderer.runtimeProfile.maxFps, displayMaxFps())
+                    )
+                    minFrameIntervalNanos = 1_000_000_000L / maxFps.coerceAtLeast(1)
                 }
                 lastRenderedFrameNanos = frameTimeNanos
                 renderContext.update(frameTimeNanos)
@@ -145,7 +177,11 @@ class PreviewGlThread(
                 
                 eglManager?.makeCurrent()
                 renderer.renderFrame(renderContext, inputSnapshot)
-                eglManager?.swapBuffers()
+                when (eglManager?.swapBuffers()) {
+                    EglSwapResult.SUCCESS -> renderer.onFramePresented()
+                    EglSwapResult.CONTEXT_LOST -> handleContextLost()
+                    else -> Unit
+                }
                 if (renderer.activeScene != null) {
                     publishFirstFrameIfNeeded()
                     publishDayProgressIfDue(frameTimeNanos)
@@ -159,12 +195,13 @@ class PreviewGlThread(
 
     fun onSurfaceCreated(holder: SurfaceHolder) {
         handler.post {
-            eglManager?.createSurface(holder)
-            eglManager?.makeCurrent()
+            val egl = ensureEglManager()
+            egl.createSurface(holder)
+            egl.makeCurrent()
             hasSurface = true
             
             val gl = glManager
-            if (gl != null) {
+            if (gl != null && !renderer.isContextCreated) {
                 renderer.onContextCreated(gl, renderContext)
             }
             if (isVisible) {
@@ -175,12 +212,13 @@ class PreviewGlThread(
 
     fun onSurfaceCreated(surface: android.view.Surface) {
         handler.post {
-            eglManager?.createSurface(surface)
-            eglManager?.makeCurrent()
+            val egl = ensureEglManager()
+            egl.createSurface(surface)
+            egl.makeCurrent()
             hasSurface = true
             
             val gl = glManager
-            if (gl != null) {
+            if (gl != null && !renderer.isContextCreated) {
                 renderer.onContextCreated(gl, renderContext)
             }
             if (isVisible) {
@@ -208,8 +246,11 @@ class PreviewGlThread(
 
     fun setVisibility(visible: Boolean) {
         isVisible = visible
-        if (visible) {
-            sensorDispatcher.registerListener(this)
+        if (RenderLifecycleGate.canRunSensor(visible)) {
+            sensorDispatcher.registerListener(
+                listener = this,
+                maxUpdatesPerSecond = if (renderer.runtimeProfile.mode == RuntimeMode.PREVIEW_CARD) 30 else 60
+            )
         } else {
             sensorDispatcher.unregisterListener(this)
         }
@@ -231,11 +272,34 @@ class PreviewGlThread(
         if (hasRenderedFirstFrame) return
         hasRenderedFirstFrame = true
         mainHandler.post {
-            onFirstFrameRendered()
+            if (RenderLifecycleGate.canPublishCallback(isVisible)) onFirstFrameRendered()
         }
     }
 
+    private fun ensureEglManager(): EglManager {
+        eglManager?.takeIf { it.hasContext }?.let { return it }
+        eglManager?.release()
+        return EglManager().also {
+            it.initialize()
+            eglManager = it
+        }
+    }
+
+    private fun handleContextLost() {
+        hasSurface = false
+        frameClock?.stop()
+        renderer.onContextLost()
+    }
+
+    private fun displayMaxFps(): Int {
+        val display = context.display ?: return DEFAULT_DISPLAY_MAX_FPS
+        return display.supportedModes.maxOfOrNull { it.refreshRate.toInt() }
+            ?.coerceAtLeast(DEFAULT_DISPLAY_MAX_FPS)
+            ?: DEFAULT_DISPLAY_MAX_FPS
+    }
+
     private fun publishDayProgressIfDue(frameTimeNanos: Long) {
+        if (!RenderLifecycleGate.canPublishCallback(isVisible)) return
         if (lastDayProgressCallbackNanos > 0L &&
             frameTimeNanos - lastDayProgressCallbackNanos < DAY_PROGRESS_CALLBACK_INTERVAL_NANOS
         ) {
@@ -244,7 +308,7 @@ class PreviewGlThread(
         lastDayProgressCallbackNanos = frameTimeNanos
         val progress = renderer.frameState.dayProgress
         mainHandler.post {
-            onDayProgressChanged(progress)
+            if (RenderLifecycleGate.canPublishCallback(isVisible)) onDayProgressChanged(progress)
         }
     }
 
@@ -264,7 +328,10 @@ class PreviewGlThread(
     override fun quitSafely(): Boolean {
         sensorDispatcher.unregisterListener(this)
         scope.cancel()
-        handler.post {
+        shutdownHandoff.run(
+            isOwnerThread = Thread.currentThread() === this,
+            post = { action -> handler.post(action) }
+        ) {
             frameClock?.stop()
             renderer.onContextLost()
             glManager?.release()
@@ -278,5 +345,7 @@ class PreviewGlThread(
     private companion object {
         // The GL renderer animates celestial motion; Compose only needs badge updates.
         const val DAY_PROGRESS_CALLBACK_INTERVAL_NANOS = 500_000_000L
+        const val SHUTDOWN_TIMEOUT_MILLIS = 1_500L
+        const val DEFAULT_DISPLAY_MAX_FPS = 60
     }
 }

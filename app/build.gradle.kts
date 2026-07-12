@@ -1,4 +1,5 @@
 plugins {
+    id("com.example.lumisky.wallpaper-pack-compiler")
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
@@ -14,6 +15,7 @@ android {
     compileSdk = 35
     defaultConfig {
         applicationId = "com.example.lumisky"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -54,6 +56,7 @@ val validateWallpaperDefinitions = tasks.register("validateWallpaperDefinitions"
             "ShaderLayer",
             "StarsLayer",
             "SunLayer",
+            "TimeSliceTextureLayer",
             "TextureLayer",
             "VideoOesLayer"
         )
@@ -173,6 +176,22 @@ val validateWallpaperDefinitions = tasks.register("validateWallpaperDefinitions"
                 if (source.isNotBlank()) {
                     validateAsset(layerOwner, "source", source)
                 }
+                val timeSlices = listValue(layer["timeSlices"])
+                if (layerType == "TimeSliceTextureLayer" && timeSlices.isEmpty()) {
+                    errors.add("$layerOwner: TimeSliceTextureLayer requires timeSlices")
+                }
+                timeSlices.forEachIndexed timeSliceLoop@{ sliceIndex, sliceValue ->
+                    val slice = mapValue(sliceValue)
+                    if (slice == null) {
+                        errors.add("$layerOwner: timeSlices[$sliceIndex] is not a JSON object")
+                        return@timeSliceLoop
+                    }
+                    val minute = (slice["minute"] as? Number)?.toInt()
+                    if (minute == null || minute !in 0..1439) {
+                        errors.add("$layerOwner: timeSlices[$sliceIndex] invalid minute")
+                    }
+                    validateAsset(layerOwner, "time slice", stringValue(slice["path"]))
+                }
                 val framePolicy = mapValue(layer["framePolicy"])
                 if (framePolicy != null) {
                     val mode = stringValue(framePolicy["mode"]).ifBlank { "MATCH_SCENE" }
@@ -237,6 +256,8 @@ tasks.named("preBuild") {
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
 
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")

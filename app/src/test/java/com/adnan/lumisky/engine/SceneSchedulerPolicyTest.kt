@@ -78,6 +78,16 @@ class SceneSchedulerPolicyTest {
     }
 
     @Test
+    fun separateSessionsDoNotShareScheduleState() {
+        val firstSessionScheduler = SceneScheduler()
+        val secondSessionScheduler = SceneScheduler()
+        val layer = TestLayer(LayerFramePolicyDefinition(mode = "FIXED_FPS", fps = 1))
+
+        assertTrue(firstSessionScheduler.shouldUpdate(layer, frameTimeNanos = 1_000_000_000L, sceneId = "sky"))
+        assertTrue(secondSessionScheduler.shouldUpdate(layer, frameTimeNanos = 1_000_000_000L, sceneId = "sky"))
+    }
+
+    @Test
     fun onDemandSceneHasNoRecurringFrame() {
         val interval = SceneFramePacingPolicy.frameIntervalNanos(
             layers = listOf(TestLayer(LayerFramePolicyDefinition(mode = "ON_DEMAND"))),

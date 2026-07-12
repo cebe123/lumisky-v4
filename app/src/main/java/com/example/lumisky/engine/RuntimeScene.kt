@@ -39,4 +39,8 @@ class RuntimeScene(
     fun onDestroyGl(gl: GlResourceManager) {
         layers.forEach { it.onDestroyGl(gl) }
     }
+
+    fun onContextLost() {
+        layers.forEach { it.onContextLost() }
+    }
 }

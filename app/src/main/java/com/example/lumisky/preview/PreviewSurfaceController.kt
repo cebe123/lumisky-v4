@@ -17,17 +17,21 @@ import javax.inject.Singleton
 class PreviewSurfaceController @Inject constructor() {
     private var activeHolder: SurfaceHolder? = null
 
+    @Synchronized
     fun claimSurface(holder: SurfaceHolder): Boolean {
+        if (activeHolder != null && activeHolder != holder) return false
         activeHolder = holder
         return true
     }
 
+    @Synchronized
     fun releaseSurface(holder: SurfaceHolder) {
         if (activeHolder == holder) {
             activeHolder = null
         }
     }
 
+    @Synchronized
     fun hasActiveSurface(): Boolean {
         return activeHolder != null
     }

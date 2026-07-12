@@ -2,6 +2,14 @@
   "schemaVersion": 5,
   "wallpapers": [
     {
+      "id": "samurai_fuji_twilight",
+      "name": "Samurai — Fuji Alacakaranlığı",
+      "category": "Scenic Anime",
+      "thumbnail": "wallpapers/samurai_fuji_twilight/thumbnail.webp",
+      "definitionPath": "wallpapers/samurai_fuji_twilight.json",
+      "isPremium": false
+    },
+    {
       "id": "pixel_forest",
       "name": "Pixel Forest 4K Live",
       "category": "Premium 4K Wallpapers",

@@ -48,10 +48,8 @@ interface PreviewEntryPoint {
     fun shaderRegistry(): ShaderRegistry
     fun sceneFactory(): SceneFactory
     fun shaderSourceLoader(): ShaderSourceLoader
-    fun sceneScheduler(): SceneScheduler
     fun eventTriggerSystem(): EventTriggerSystem
     fun atmosphereController(): AtmosphereController
-    fun parallaxController(): ParallaxController
     fun adaptiveQualityController(): AdaptiveQualityController
     fun settingsRepository(): SettingsRepository
     fun thermalStateController(): ThermalStateController
@@ -80,10 +78,8 @@ fun LumiskyWallpaperPreviewView(
     val previewRenderer = remember(wallpaperId, runtimeProfile) {
         LumiskyPreviewRenderer(
             shaderSourceLoader = entryPoint.shaderSourceLoader(),
-            scheduler = entryPoint.sceneScheduler(),
             eventTriggerSystem = entryPoint.eventTriggerSystem(),
             atmosphereController = entryPoint.atmosphereController(),
-            parallaxController = entryPoint.parallaxController(),
             qualityController = entryPoint.adaptiveQualityController(),
             sceneFactory = entryPoint.sceneFactory(),
             runtimeProfile = runtimeProfile

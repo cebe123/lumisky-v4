@@ -76,11 +76,9 @@ class SettingsViewModel @Inject constructor(
     fun setLocationMode(mode: String) {
         // Coalesce location mode changes to avoid cascading refreshes
         coalesceLocationRefresh {
-            viewModelScope.launch {
-                settingsRepository.setLocationMode(mode)
-                if (mode == SettingsRepository.LOCATION_MODE_DEVICE) {
-                    performDeviceLocationRefresh()
-                }
+            settingsRepository.setLocationMode(mode)
+            if (mode == SettingsRepository.LOCATION_MODE_DEVICE) {
+                performDeviceLocationRefresh()
             }
         }
     }
@@ -129,17 +127,11 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun performDeviceLocationRefresh() {
-        viewModelScope.launch {
-            val snapshot = deviceLocationProvider.readLastKnownSnapshot()
-            if (snapshot != null) {
-                settingsRepository.setDeviceLocationSnapshot(snapshot)
-                settingsRepository.setLocationMode(SettingsRepository.LOCATION_MODE_DEVICE)
-            } else {
-                if (!deviceLocationProvider.isLocationEnabled()) {
-                    settingsRepository.setLocationMode(SettingsRepository.LOCATION_MODE_MANUAL)
-                }
-            }
+    private suspend fun performDeviceLocationRefresh() {
+        val snapshot = deviceLocationProvider.readLastKnownSnapshot()
+        if (snapshot != null) {
+            settingsRepository.setDeviceLocationSnapshot(snapshot)
+            settingsRepository.setLocationMode(SettingsRepository.LOCATION_MODE_DEVICE)
         }
     }
 

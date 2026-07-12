@@ -22,17 +22,17 @@ import com.example.lumisky.engine.SceneFramePacingPolicy
 import com.example.lumisky.definition.QualityTier
 import com.example.lumisky.definition.WallpaperDefinition
 import com.example.lumisky.engine.gl.EglManager
+import com.example.lumisky.engine.gl.EglSwapResult
 import com.example.lumisky.engine.gl.GlResourceManager
 import com.example.lumisky.registry.ShaderRegistry
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 class WallpaperGlThread(
     private val context: Context,
     private val renderer: LumiskyRenderer,
     private val shaderRegistry: ShaderRegistry,
-    private val isPreview: Boolean = false
+    private val isPreview: Boolean = false,
+    private val onSceneCommitted: (WallpaperDefinition, RuntimeScene) -> Unit = { _, _ -> }
 ) : HandlerThread("LumiskyGlThread") {
 
     private var handler: Handler? = null
@@ -40,6 +40,8 @@ class WallpaperGlThread(
     private var glManager: GlResourceManager? = null
     private val renderContext = RenderContext()
     private var frameClock: WallpaperFrameClock? = null
+    private val renderThreadGuard = RenderThreadGuard()
+    private val shutdownHandoff = BoundedRenderThreadHandoff(SHUTDOWN_TIMEOUT_MILLIS)
 
     init {
         if (isPreview) {
@@ -48,7 +50,9 @@ class WallpaperGlThread(
     }
     private val pendingActions = ConcurrentLinkedQueue<() -> Unit>()
     private val eventQueue = EngineEventQueue()
+    private val commandMailbox = RenderCommandMailbox()
     private val drainedEvents = mutableListOf<WallpaperEvent>()
+    private val drainedCommands = mutableListOf<RenderCommand>()
     @Volatile var hasSurface = false
 
     @Volatile var isVisible = false
@@ -69,6 +73,7 @@ class WallpaperGlThread(
     @Volatile var thermalEmergency: Boolean = false
     @Volatile var daylightOverride: DaylightOverride? = null
     private var lastRenderedFrameTimeNanos: Long = 0L
+    private val sceneCommitTransaction = SceneCommitTransaction<Pair<WallpaperDefinition, RuntimeScene>>()
     private val inputSnapshot = SceneInputSnapshot(
         isVisible = false,
         batterySaver = false,
@@ -80,12 +85,13 @@ class WallpaperGlThread(
     )
 
     override fun onLooperPrepared() {
+        renderThreadGuard.bindCurrentThread()
         handler = Handler(looper)
         eglManager = EglManager().apply { initialize() }
         glManager = GlResourceManager(context, shaderRegistry)
         
         frameClock = WallpaperFrameClock { frameTimeNanos ->
-            if (isVisible && hasSurface) {
+            if (RenderLifecycleGate.canRender(isVisible, hasSurface)) {
                 renderFrameIfDue(frameTimeNanos)
             }
         }
@@ -99,12 +105,13 @@ class WallpaperGlThread(
     fun onSurfaceCreated(holder: SurfaceHolder) {
         postToGl {
             frameClock?.stop()
-            eglManager?.destroySurface()
-            eglManager?.createSurface(holder)
-            eglManager?.makeCurrent()
+            val egl = ensureEglManager()
+            egl.destroySurface()
+            egl.createSurface(holder)
+            egl.makeCurrent()
 
             val gl = glManager
-            if (gl != null) {
+            if (gl != null && !renderer.isContextCreated) {
                 renderer.onContextCreated(gl, renderContext)
             }
             hasSurface = true
@@ -135,6 +142,7 @@ class WallpaperGlThread(
 
     fun switchScene(definition: WallpaperDefinition, newScene: RuntimeScene) {
         postToGl {
+            sceneCommitTransaction.stage(definition to newScene)
             frameClock?.stop()
             renderer.switchWallpaper(definition, newScene, renderContext)
             if (isPreview) {
@@ -153,20 +161,22 @@ class WallpaperGlThread(
         postToGl {
             hasSurface = false
             frameClock?.stop()
-            renderer.onContextLost()
             eglManager?.destroySurface()
         }
     }
 
     fun setVisibility(visible: Boolean) {
-        isVisible = visible
+        submit(RenderCommand.SetVisibility(visible))
+    }
+
+    fun stageSceneCommit(definition: WallpaperDefinition, scene: RuntimeScene) {
+        postToGl { sceneCommitTransaction.stage(definition to scene) }
+    }
+
+    fun submit(command: RenderCommand) {
+        commandMailbox.offer(command)
         postToGl {
-            postEvent(if (visible) WallpaperEvent.ScreenOn else WallpaperEvent.ScreenOff)
-            if (visible && hasSurface) {
-                frameClock?.start()
-            } else {
-                frameClock?.stop()
-            }
+            drainCommands()
         }
     }
 
@@ -189,8 +199,8 @@ class WallpaperGlThread(
     }
 
     private fun renderFrameNow(frameTimeNanos: Long, visibleForFrame: Boolean) {
-        if (!visibleForFrame) return
-        if (!hasSurface) return
+        renderThreadGuard.checkCurrentThread()
+        if (!RenderLifecycleGate.canRender(visibleForFrame, hasSurface)) return
         if (renderContext.width <= 0 || renderContext.height <= 0) return
         if (renderer.activeScene == null) return
         lastRenderedFrameTimeNanos = frameTimeNanos
@@ -216,7 +226,31 @@ class WallpaperGlThread(
 
         eglManager?.makeCurrent()
         renderer.renderFrame(renderContext, inputSnapshot)
-        eglManager?.swapBuffers()
+        when (eglManager?.swapBuffers()) {
+            EglSwapResult.SUCCESS -> {
+                renderer.onFramePresented()
+                sceneCommitTransaction.takeAfterSwap(succeeded = true)?.let { (definition, scene) ->
+                    onSceneCommitted(definition, scene)
+                }
+            }
+            EglSwapResult.CONTEXT_LOST -> handleContextLost()
+            else -> Unit
+        }
+    }
+
+    private fun ensureEglManager(): EglManager {
+        eglManager?.takeIf { it.hasContext }?.let { return it }
+        eglManager?.release()
+        return EglManager().also {
+            it.initialize()
+            eglManager = it
+        }
+    }
+
+    private fun handleContextLost() {
+        hasSurface = false
+        frameClock?.stop()
+        renderer.onContextLost()
     }
 
     private fun applySurfaceSize(width: Int, height: Int) {
@@ -234,6 +268,7 @@ class WallpaperGlThread(
             batterySaver = batterySaver,
             forceContinuous = renderer.isCatchUpAnimating ||
                 renderer.isPreviewAnimationRunning ||
+                renderer.hasFrameDemand ||
                 renderer.hasPendingTextureWork
         ) ?: return
         if (lastRenderedFrameTimeNanos > 0L &&
@@ -274,24 +309,62 @@ class WallpaperGlThread(
     }
 
     private fun runOnGlBlocking(action: () -> Unit) {
-        if (Thread.currentThread() === this) {
-            action()
-            return
-        }
-        val latch = CountDownLatch(1)
-        postToGl {
-            try {
-                action()
-            } finally {
-                latch.countDown()
-            }
-        }
-        latch.await(1500, TimeUnit.MILLISECONDS)
+        shutdownHandoff.run(
+            isOwnerThread = Thread.currentThread() === this,
+            post = ::postToGl,
+            action = action
+        )
     }
 
     private fun drainEvents() {
         drainedEvents.clear()
         eventQueue.drainTo(drainedEvents)
         drainedEvents.forEach(renderer::onEvent)
+    }
+
+    private fun drainCommands() {
+        drainedCommands.clear()
+        commandMailbox.drainTo(drainedCommands)
+        for (command in drainedCommands) {
+            when (command) {
+                is RenderCommand.SetVisibility -> {
+                    isVisible = command.visible
+                    eventQueue.offer(if (command.visible) WallpaperEvent.ScreenOn else WallpaperEvent.ScreenOff)
+                    if (command.visible && hasSurface) frameClock?.start() else frameClock?.stop()
+                }
+                is RenderCommand.SetParallax -> {
+                    parallaxX = command.x
+                    parallaxY = command.y
+                    eventQueue.offer(WallpaperEvent.ParallaxChanged(command.x, command.y))
+                }
+                is RenderCommand.SetTouch -> {
+                    touchX = command.x
+                    touchY = command.y
+                    hasTouch = command.active
+                    if (command.active) eventQueue.offer(WallpaperEvent.Touch(command.x, command.y))
+                }
+                is RenderCommand.SetRuntimePolicy -> {
+                    preferredQualityTier = command.qualityTier
+                    maxFps = command.maxFps
+                    renderScale = command.renderScale
+                    postProcessEnabled = command.postProcessEnabled
+                    particleEffectsEnabled = command.particleEffectsEnabled
+                    videoPlaybackEnabled = command.videoPlaybackEnabled
+                    sensorParallaxEnabled = command.sensorParallaxEnabled
+                    telemetryEnabled = command.telemetryEnabled
+                }
+                is RenderCommand.SetPowerPolicy -> {
+                    batterySaver = command.batterySaver
+                    thermalEmergency = command.thermalEmergency
+                }
+                is RenderCommand.SetDaylight -> daylightOverride = command.daylight
+                else -> Unit
+            }
+        }
+        if (hasSurface && isVisible && drainedCommands.isNotEmpty()) renderFrameNow(System.nanoTime(), true)
+    }
+
+    private companion object {
+        const val SHUTDOWN_TIMEOUT_MILLIS = 1_500L
     }
 }

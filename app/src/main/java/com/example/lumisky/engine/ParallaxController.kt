@@ -10,11 +10,7 @@
 package com.example.lumisky.engine
 
 import com.example.lumisky.definition.WallpaperDefinition
-import javax.inject.Inject
-import javax.inject.Singleton
-
-@Singleton
-class ParallaxController @Inject constructor() {
+class ParallaxController {
     private var currentX = 0.0f
     private var currentY = 0.0f
 

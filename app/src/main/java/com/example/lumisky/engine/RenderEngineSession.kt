@@ -30,6 +30,7 @@ class RenderEngineSession(
     private val celestialMotionController = CelestialMotionController()
     private val previewTimeMotionController = PreviewTimeMotionController()
     private val liveWallpaperCatchUpController = LiveWallpaperCatchUpController()
+    private val frameDemandController = FrameDemandController()
     private var cachedLayerRenderer: CachedLayerRenderer? = null
 
     val frameState = MutableRenderFrameState()
@@ -59,17 +60,20 @@ class RenderEngineSession(
         preloadTextures(gl)
         activeScene?.onCreateGl(gl, context)
         isContextCreated = true
+        frameDemandController.request(FrameDemandReason.INITIAL_FRAME)
     }
 
     fun onSurfaceChanged(context: RenderContext, width: Int, height: Int) {
         frameState.width = width
         frameState.height = height
         activeScene?.onSurfaceChanged(context, width, height)
+        frameDemandController.request(FrameDemandReason.SURFACE_CHANGED)
     }
 
     fun switchScene(newScene: RuntimeScene, context: RenderContext) {
         if (!isContextCreated) {
             activeScene = newScene
+            frameDemandController.request(FrameDemandReason.SCENE_SWITCH)
             return
         }
         val gl = frameState.gl
@@ -83,12 +87,14 @@ class RenderEngineSession(
         if (frameState.width > 0 && frameState.height > 0) {
             activeScene?.onSurfaceChanged(context, frameState.width, frameState.height)
         }
+        frameDemandController.request(FrameDemandReason.SCENE_SWITCH)
     }
 
     fun onEvent(event: WallpaperEvent) {
         val scene = activeScene ?: return
         eventTriggerSystem.handleEvent(event, activeDefinition, scene)
         scene.onEvent(event)
+        frameDemandController.request(FrameDemandReason.EVENT_ANIMATION)
     }
 
     fun renderFrame(
@@ -97,6 +103,7 @@ class RenderEngineSession(
     ) {
         if (!isContextCreated || !frameState.isGlInitialized()) return
         val scene = activeScene ?: return
+        frameState.gl.textures.beginFrame()
 
         sceneState.update(
             deltaTime = context.deltaTimeSeconds,
@@ -121,6 +128,7 @@ class RenderEngineSession(
 
         frameState.timeSeconds = sceneState.timeSeconds
         frameState.deltaTimeSeconds = context.deltaTimeSeconds
+        frameState.isVisible = inputSnapshot.isVisible
         frameState.quality = sceneState.quality
         frameState.dayProgress = sceneState.dayProgress
         frameState.renderScale = runtimeProfile.renderScale * inputSnapshot.renderScale
@@ -130,26 +138,12 @@ class RenderEngineSession(
         frameState.sensorParallaxEnabled = inputSnapshot.sensorParallaxEnabled
         frameState.telemetryEnabled = inputSnapshot.telemetryEnabled
         frameState.thermalEmergency = inputSnapshot.thermalEmergency
-        val celestial = celestialMotionController.resolve(
+        celestialMotionController.resolveInto(
             definition = activeDefinition,
             dayProgress = frameState.dayProgress,
-            daylightOverride = inputSnapshot.daylightOverride
+            daylightOverride = inputSnapshot.daylightOverride,
+            output = frameState
         )
-        frameState.sunX = celestial.sunX
-        frameState.sunY = celestial.sunY
-        frameState.moonX = celestial.moonX
-        frameState.moonY = celestial.moonY
-        frameState.drawSun = celestial.drawSun
-        frameState.isNight = celestial.isNight
-        frameState.minute = celestial.minute
-        frameState.sunriseMinute = celestial.sunriseMinute
-        frameState.sunsetMinute = celestial.sunsetMinute
-        frameState.solarNoonMinute = celestial.solarNoonMinute
-        frameState.nightAmount = celestial.nightAmount
-        frameState.horizonY = celestial.horizonY
-        frameState.sunColorR = celestial.sunColorR
-        frameState.sunColorG = celestial.sunColorG
-        frameState.sunColorB = celestial.sunColorB
 
         parallaxController.update(
             inputSnapshot.parallaxX,
@@ -195,11 +189,15 @@ class RenderEngineSession(
     fun onContextLost() {
         isContextCreated = false
         if (frameState.isGlInitialized()) {
-            activeScene?.onDestroyGl(frameState.gl)
+            activeScene?.onContextLost()
             frameState.gl.onContextLost()
         }
-        cachedLayerRenderer?.clear()
+        cachedLayerRenderer?.invalidate()
         cachedLayerRenderer = null
+    }
+
+    fun onFramePresented() {
+        frameDemandController.onFramePresented()
     }
 
     fun triggerPreviewAnimation() {
@@ -232,6 +230,9 @@ class RenderEngineSession(
 
     val isPreviewAnimationRunning: Boolean
         get() = previewTimeMotionController.isAnimating
+
+    val hasFrameDemand: Boolean
+        get() = frameDemandController.hasDemand(System.nanoTime())
 
     private fun resolveSceneTimeZoneId(daylightOverride: DaylightOverride?): String {
         return daylightOverride?.timeZoneId

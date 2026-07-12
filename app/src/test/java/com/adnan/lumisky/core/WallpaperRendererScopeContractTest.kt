@@ -7,7 +7,7 @@ import org.junit.Test
 class WallpaperRendererScopeContractTest {
     @Test
     fun liveWallpaperRendererIsNotSingletonScoped() {
-        val source = File("src/main/java/com/adnan/lumisky/engine/LumiskyRenderer.kt").readText()
+        val source = File("src/main/java/com/example/lumisky/engine/LumiskyRenderer.kt").readText()
 
         assertFalse(source.contains("@Singleton"))
         assertFalse(source.contains("import javax.inject.Singleton"))
@@ -15,7 +15,7 @@ class WallpaperRendererScopeContractTest {
 
     @Test
     fun liveWallpaperEngineDoesNotTriggerPreviewFastForward() {
-        val source = File("src/main/java/com/adnan/lumisky/core/LumiskyWallpaperEngine.kt").readText()
+        val source = File("src/main/java/com/example/lumisky/core/LumiskyWallpaperEngine.kt").readText()
 
         assertFalse(source.contains("triggerPreviewAnimation()"))
     }

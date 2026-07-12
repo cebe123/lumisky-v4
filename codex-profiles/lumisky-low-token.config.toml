@@ -1,0 +1,10 @@
+# Kopyalama hedefi: ~/.codex/lumisky-low-token.config.toml
+# Kullanım: codex --profile lumisky-low-token
+model_reasoning_effort = "low"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+project_doc_max_bytes = 24576
+
+[agents]
+max_threads = 1
+max_depth = 1

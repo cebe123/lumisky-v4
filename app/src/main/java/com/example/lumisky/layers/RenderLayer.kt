@@ -37,6 +37,7 @@ interface RenderLayer {
     fun render(frame: MutableRenderFrameState)
     fun onQualityChanged(profile: QualityProfile)
     fun onDestroyGl(gl: GlResourceManager)
+    fun onContextLost() {}
 }
 
 enum class LayerFrameMode {

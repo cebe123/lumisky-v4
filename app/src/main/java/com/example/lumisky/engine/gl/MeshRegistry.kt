@@ -60,4 +60,8 @@ class MeshRegistry(private val manager: GlResourceManager) {
         quadVbo?.release()
         quadVbo = null
     }
+
+    fun invalidate() {
+        quadVbo = null
+    }
 }
