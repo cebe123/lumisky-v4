@@ -164,4 +164,9 @@ class CatalogPreviewPolicyTest {
         assertEquals(100L, CatalogPreviewPolicy.previewFocusDelayMillis())
     }
 
+    @Test
+    fun initialPreviewWaitsForStartupUiToSettle() {
+        assertEquals(1_500L, CatalogPreviewPolicy.initialPreviewDelayMillis())
+    }
+
 }

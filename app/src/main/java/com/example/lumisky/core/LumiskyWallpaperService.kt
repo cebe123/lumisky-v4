@@ -15,6 +15,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.location.LocationManager
 import android.os.Build
 import android.service.wallpaper.WallpaperService
 import android.view.MotionEvent
@@ -72,8 +73,22 @@ class LumiskyWallpaperService : WallpaperService() {
 
         private val userPresentReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == Intent.ACTION_USER_PRESENT) {
-                    delegate.suppressNextVisibleCatchUp()
+                when (intent?.action) {
+                    Intent.ACTION_SCREEN_OFF -> delegate.onDisplayInteractiveChanged(false)
+                    Intent.ACTION_SCREEN_ON -> delegate.onDisplayInteractiveChanged(true)
+                    Intent.ACTION_USER_PRESENT -> delegate.suppressNextVisibleCatchUp()
+                }
+            }
+        }
+
+        private val temporalContextReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    Intent.ACTION_TIME_TICK,
+                    Intent.ACTION_TIME_CHANGED,
+                    Intent.ACTION_TIMEZONE_CHANGED,
+                    Intent.ACTION_DATE_CHANGED,
+                    LocationManager.PROVIDERS_CHANGED_ACTION -> delegate.onTemporalContextChanged()
                 }
             }
         }
@@ -85,8 +100,20 @@ class LumiskyWallpaperService : WallpaperService() {
             setOffsetNotificationsEnabled(true)
             delegate.onCreate(surfaceHolder, isPreview)
             
-            val filter = IntentFilter(Intent.ACTION_USER_PRESENT)
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_USER_PRESENT)
+            }
             this@LumiskyWallpaperService.registerReceiver(userPresentReceiver, filter)
+            val temporalFilter = IntentFilter().apply {
+                addAction(Intent.ACTION_TIME_TICK)
+                addAction(Intent.ACTION_TIME_CHANGED)
+                addAction(Intent.ACTION_TIMEZONE_CHANGED)
+                addAction(Intent.ACTION_DATE_CHANGED)
+                addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
+            }
+            this@LumiskyWallpaperService.registerReceiver(temporalContextReceiver, temporalFilter)
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
@@ -128,6 +155,11 @@ class LumiskyWallpaperService : WallpaperService() {
         override fun onDestroy() {
             try {
                 this@LumiskyWallpaperService.unregisterReceiver(userPresentReceiver)
+            } catch (e: Exception) {
+                // Ignore if not registered
+            }
+            try {
+                this@LumiskyWallpaperService.unregisterReceiver(temporalContextReceiver)
             } catch (e: Exception) {
                 // Ignore if not registered
             }

@@ -45,6 +45,7 @@ data class MutableRenderFrameState(
     var telemetryEnabled: Boolean = true,
     var thermalEmergency: Boolean = false
 ) {
+    var runtimeMode: RuntimeMode = RuntimeMode.LIVE_WALLPAPER
     private var isGlInitialized = false
     private lateinit var _gl: GlResourceManager
     

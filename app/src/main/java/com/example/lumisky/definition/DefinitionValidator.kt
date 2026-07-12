@@ -77,6 +77,16 @@ class DefinitionValidator @Inject constructor() {
         ) {
             errors.add("VIDEO wallpaper requires an enabled VideoOesLayer")
         }
+        if (definition.sourceKind == WallpaperSourceKind.VIDEO &&
+            definition.layers.none { it.enabled && it.type == "TextureLayer" && !it.source.isNullOrBlank() }
+        ) {
+            errors.add("VIDEO wallpaper requires an enabled TextureLayer poster fallback")
+        }
+        definition.layers.filter { it.enabled && it.type == "VideoOesLayer" }.forEach { layer ->
+            if (layer.source.isNullOrBlank()) {
+                errors.add("VideoOesLayer '${layer.id}' requires a video source")
+            }
+        }
         if (definition.sourceKind != WallpaperSourceKind.PROCEDURAL &&
             definition.layers.none { it.enabled }
         ) {

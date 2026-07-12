@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.time.ZonedDateTime
 
 class LumiskyWallpaperEngine(
     private val service: LumiskyWallpaperService,
@@ -64,6 +65,8 @@ class LumiskyWallpaperEngine(
     private var surfaceHolder: SurfaceHolder? = null
     private var hasSurface = false
     private var isEngineVisible = false
+    private var isDisplayInteractive = powerManager?.isInteractive != false
+    private var isEffectivelyVisible = false
     private var isSensorRegistered = false
     private var surfaceGeneration = 0L
     private var lastSurfaceWidth = 0
@@ -73,6 +76,10 @@ class LumiskyWallpaperEngine(
     private var sensorParallaxEnabled = true
     private var thermalEmergencyLogged = false
     private var suppressNextVisibleCatchUp = false
+    private var pendingTemporalContextRefresh = false
+    private var lastResolvedLatitude = DEFAULT_LATITUDE
+    private var lastResolvedLongitude = DEFAULT_LONGITUDE
+    private var lastResolvedTimeZoneId = DEFAULT_TIME_ZONE
 
     fun onCreate(surfaceHolder: SurfaceHolder?, isPreview: Boolean) {
         this.surfaceHolder = surfaceHolder
@@ -160,6 +167,9 @@ class LumiskyWallpaperEngine(
                     deviceSnapshot = deviceSnapshot,
                     nowEpochMs = System.currentTimeMillis()
                 )
+                lastResolvedLatitude = resolved.latitude
+                lastResolvedLongitude = resolved.longitude
+                lastResolvedTimeZoneId = resolved.timeZoneId
                 locationDaylightController.resolve(
                     resolved.latitude,
                     resolved.longitude,
@@ -173,9 +183,25 @@ class LumiskyWallpaperEngine(
 
     fun onVisibilityChanged(visible: Boolean) {
         isEngineVisible = visible
+        applyEffectiveVisibility()
+    }
+
+    fun onDisplayInteractiveChanged(interactive: Boolean) {
+        isDisplayInteractive = interactive
+        applyEffectiveVisibility()
+    }
+
+    private fun applyEffectiveVisibility() {
+        val visible = isEngineVisible && isDisplayInteractive
+        if (visible == isEffectivelyVisible) return
+        isEffectivelyVisible = visible
         glThread?.setVisibility(visible)
         updateSensorRegistration(visible)
         if (visible) {
+            if (pendingTemporalContextRefresh) {
+                pendingTemporalContextRefresh = false
+                refreshTemporalContext()
+            }
             if (suppressNextVisibleCatchUp) {
                 suppressNextVisibleCatchUp = false
             } else {
@@ -186,6 +212,27 @@ class LumiskyWallpaperEngine(
 
     fun suppressNextVisibleCatchUp() {
         suppressNextVisibleCatchUp = true
+    }
+
+    fun onTemporalContextChanged() {
+        if (!isEffectivelyVisible) {
+            pendingTemporalContextRefresh = true
+            return
+        }
+        refreshTemporalContext()
+    }
+
+    private fun refreshTemporalContext() {
+        scope.launch {
+            val daylight = locationDaylightController.resolve(
+                lastResolvedLatitude,
+                lastResolvedLongitude,
+                lastResolvedTimeZoneId
+            )
+            glThread?.submit(RenderCommand.SetDaylight(daylight))
+            val now = ZonedDateTime.now(java.time.ZoneId.of(daylight.timeZoneId))
+            glThread?.postEvent(WallpaperEvent.TimeChanged(now.hour, now.minute))
+        }
     }
 
     fun onSurfaceCreated(holder: SurfaceHolder) {
@@ -354,5 +401,8 @@ class LumiskyWallpaperEngine(
 
     private companion object {
         const val FALLBACK_WALLPAPER_ID = "starter_gradient"
+        const val DEFAULT_LATITUDE = 41.0082
+        const val DEFAULT_LONGITUDE = 28.9784
+        const val DEFAULT_TIME_ZONE = "Europe/Istanbul"
     }
 }

@@ -18,6 +18,7 @@ import com.example.lumisky.assets.ShaderSourceLoader
 import com.example.lumisky.core.WallpaperEvent
 import com.example.lumisky.definition.LayerDefinition
 import com.example.lumisky.engine.MutableRenderFrameState
+import com.example.lumisky.engine.FrameDemandReason
 import com.example.lumisky.engine.RenderContext
 import com.example.lumisky.engine.gl.GlProgram
 import com.example.lumisky.engine.gl.GlResourceManager
@@ -25,7 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class VideoOesLayer(
     definition: LayerDefinition,
-    private val shaderSourceLoader: ShaderSourceLoader
+    private val shaderSourceLoader: ShaderSourceLoader,
+    private val mediaController: VideoMediaController
 ) : BaseLayer(definition) {
     private var program: GlProgram? = null
     private var oesTexId = 0
@@ -33,8 +35,17 @@ class VideoOesLayer(
     private var surface: Surface? = null
     private val transformMatrix = FloatArray(16) { if (it % 5 == 0) 1.0f else 0.0f } // Identity matrix
     private val frameAvailable = AtomicBoolean(false)
+    private val playbackFailed = AtomicBoolean(false)
+    private var playbackAllowed = false
 
     var onSurfaceReady: ((Surface) -> Unit)? = null
+
+    init {
+        mediaController.onPlaybackFailure = {
+            playbackFailed.set(true)
+            mediaController.setPlaybackAllowed(false)
+        }
+    }
 
     override fun onCreateGl(gl: GlResourceManager, context: RenderContext) {
         program = gl.programs.get("common.video.oes", shaderSourceLoader)
@@ -58,10 +69,23 @@ class VideoOesLayer(
         }
         surface = Surface(surfaceTexture)
         onSurfaceReady?.invoke(surface!!)
+        val source = definition.source
+        if (source.isNullOrBlank()) {
+            playbackFailed.set(true)
+        } else {
+            playbackFailed.set(false)
+            mediaController.attach(surface!!, source)
+        }
     }
 
     override fun update(frame: MutableRenderFrameState) {
-        if (!RenderLifecycleGate.canRunVideo(frame.isVisible, frame.videoPlaybackEnabled)) return
+        val canPlay = RenderLifecycleGate.canRunVideo(frame.isVisible, frame.videoPlaybackEnabled) &&
+            !playbackFailed.get()
+        if (playbackAllowed != canPlay) {
+            playbackAllowed = canPlay
+            mediaController.setPlaybackAllowed(canPlay)
+        }
+        if (!canPlay) return
         if (frameAvailable.getAndSet(false)) {
             try {
                 surfaceTexture?.updateTexImage()
@@ -74,6 +98,7 @@ class VideoOesLayer(
 
     override fun render(frame: MutableRenderFrameState) {
         if (!RenderLifecycleGate.canRunVideo(frame.isVisible, frame.videoPlaybackEnabled)) return
+        if (playbackFailed.get()) return
         val activeProgram = program ?: return
         if (oesTexId == 0) return
 
@@ -92,6 +117,7 @@ class VideoOesLayer(
 
     override fun onDestroyGl(gl: GlResourceManager) {
         releaseVideoResources()
+        mediaController.release()
         if (oesTexId != 0) {
             val textures = intArrayOf(oesTexId)
             GLES30.glDeleteTextures(1, textures, 0)
@@ -101,8 +127,22 @@ class VideoOesLayer(
 
     override fun onContextLost() {
         releaseVideoResources()
+        mediaController.clearSurface()
         oesTexId = 0
     }
+
+    override fun onEvent(event: WallpaperEvent) {
+        if (event === WallpaperEvent.ScreenOff) {
+            playbackAllowed = false
+            mediaController.setPlaybackAllowed(false)
+        }
+    }
+
+    override val hasPendingFrameDemand: Boolean
+        get() = frameAvailable.get()
+
+    override fun pendingFrameDemandReason(): FrameDemandReason? =
+        if (frameAvailable.get()) FrameDemandReason.VIDEO_FRAME else null
 
     private fun releaseVideoResources() {
         frameAvailable.set(false)

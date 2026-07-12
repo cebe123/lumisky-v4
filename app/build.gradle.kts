@@ -145,7 +145,8 @@ val validateWallpaperDefinitions = tasks.register("validateWallpaperDefinitions"
                 }
             }
 
-            listValue(definition["layers"]).forEachIndexed { index, layerValue ->
+            val layers = listValue(definition["layers"])
+            layers.forEachIndexed { index, layerValue ->
                 val layer = mapValue(layerValue)
                 if (layer == null) {
                     errors.add("$expectedId: layer[$index] is not a JSON object")
@@ -173,6 +174,9 @@ val validateWallpaperDefinitions = tasks.register("validateWallpaperDefinitions"
                     validateAsset(layerOwner, "shader", builtInShaderRefs[shaderRef] ?: shaderRef)
                 }
                 val source = stringValue(layer["source"])
+                if (layerType == "VideoOesLayer" && source.isBlank()) {
+                    errors.add("$layerOwner: VideoOesLayer requires a video source")
+                }
                 if (source.isNotBlank()) {
                     validateAsset(layerOwner, "source", source)
                 }
@@ -213,6 +217,18 @@ val validateWallpaperDefinitions = tasks.register("validateWallpaperDefinitions"
                         errors.add("$layerOwner: texture[$textureIndex] blank uniform")
                     }
                     validateAsset(layerOwner, "texture", stringValue(texture["path"]))
+                }
+            }
+            if (stringValue(definition["sourceKind"]) == "VIDEO") {
+                val enabledLayers = layers.mapNotNull(::mapValue).filter { it["enabled"] != false }
+                if (enabledLayers.none { stringValue(it["type"]) == "VideoOesLayer" }) {
+                    errors.add("$expectedId: VIDEO wallpaper requires an enabled VideoOesLayer")
+                }
+                if (enabledLayers.none {
+                        stringValue(it["type"]) == "TextureLayer" && stringValue(it["source"]).isNotBlank()
+                    }
+                ) {
+                    errors.add("$expectedId: VIDEO wallpaper requires an enabled TextureLayer poster fallback")
                 }
             }
         }

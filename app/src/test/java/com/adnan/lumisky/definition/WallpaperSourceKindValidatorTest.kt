@@ -19,6 +19,41 @@ class WallpaperSourceKindValidatorTest {
     }
 
     @Test
+    fun videoSourceWithoutPosterLayerIsRejected() {
+        val definition = WallpaperDefinition(
+            id = "video",
+            name = "Video",
+            category = "test",
+            sourceKind = WallpaperSourceKind.VIDEO,
+            layers = listOf(
+                LayerDefinition(id = "video", type = "VideoOesLayer", source = "wallpapers/video/loop.mp4")
+            )
+        )
+
+        val result = DefinitionValidator().validate(definition)
+
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun videoLayerWithoutSourceIsRejectedEvenWithPoster() {
+        val definition = WallpaperDefinition(
+            id = "video",
+            name = "Video",
+            category = "test",
+            sourceKind = WallpaperSourceKind.VIDEO,
+            layers = listOf(
+                LayerDefinition(id = "poster", type = "TextureLayer", source = "wallpapers/video/poster.webp"),
+                LayerDefinition(id = "video", type = "VideoOesLayer")
+            )
+        )
+
+        val result = DefinitionValidator().validate(definition)
+
+        assertTrue(result is ValidationResult.Invalid)
+    }
+
+    @Test
     fun timeSliceLayerRequiresItsDeclaredAssets() {
         val definition = WallpaperDefinition(
             id = "time-slices",

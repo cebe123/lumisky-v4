@@ -17,20 +17,21 @@ import android.location.Location
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
 import com.example.lumisky.data.DeviceLocationSnapshot
-import com.example.lumisky.data.SettingsLocationPlanner
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.location.CurrentLocationRequest
-import com.google.android.gms.tasks.Tasks
+import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 @Singleton
 class DeviceLocationProvider @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val snapshotFactory: DeviceLocationSnapshotFactory
 ) {
     private val locationManager: LocationManager? =
         context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
@@ -57,116 +58,68 @@ class DeviceLocationProvider @Inject constructor(
         }.getOrDefault(false)
     }
 
-    private fun resolveCityOrDistrict(latitude: Double, longitude: Double): String? {
-        val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
-        return try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                val result = java.util.concurrent.atomic.AtomicReference<String?>(null)
-                val latch = java.util.concurrent.CountDownLatch(1)
-                geocoder.getFromLocation(latitude, longitude, 1, object : android.location.Geocoder.GeocodeListener {
-                    override fun onGeocode(addresses: List<android.location.Address>) {
-                        val address = addresses.firstOrNull()
-                        if (address != null) {
-                            val label = listOfNotNull(
-                                address.subAdminArea?.takeIf { it.isNotBlank() },
-                                address.locality?.takeIf { it.isNotBlank() },
-                                address.adminArea?.takeIf { it.isNotBlank() }
-                            ).firstOrNull()
-                            result.set(label)
-                        }
-                        latch.countDown()
-                    }
-                    override fun onError(errorMessage: String?) {
-                        latch.countDown()
-                    }
-                })
-                latch.await(2000, java.util.concurrent.TimeUnit.MILLISECONDS)
-                result.get()
-            } else {
-                @Suppress("DEPRECATION")
-                val addresses = geocoder.getFromLocation(latitude, longitude, 1)
-                val address = addresses?.firstOrNull()
-                if (address != null) {
-                    listOfNotNull(
-                        address.subAdminArea?.takeIf { it.isNotBlank() },
-                        address.locality?.takeIf { it.isNotBlank() },
-                        address.adminArea?.takeIf { it.isNotBlank() }
-                    ).firstOrNull()
-                } else null
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
-
     @SuppressLint("MissingPermission")
     suspend fun readLastKnownSnapshot(nowEpochMs: Long = System.currentTimeMillis()): DeviceLocationSnapshot? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         if (!hasLocationPermission()) return@withContext null
-        if (!isLocationEnabled()) return@withContext null
 
-        try {
-            // 1. Try to get last location
-            val lastLocationTask = fusedLocationClient.lastLocation
-            val lastLocation = Tasks.await(lastLocationTask)
+        runCatching {
+            val lastLocation = fusedLocationClient.lastLocation.awaitCancellable()
             if (lastLocation != null) {
                 val ageMs = nowEpochMs - lastLocation.time
-                if (ageMs in 0..(15 * 60 * 1000)) { // less than 15 mins old
-                    val label = resolveCityOrDistrict(lastLocation.latitude, lastLocation.longitude)
-                        ?: SettingsLocationPlanner.formatCoordinates(
-                            lastLocation.latitude,
-                            lastLocation.longitude
-                        )
-                    return@withContext DeviceLocationSnapshot(
-                        label = label,
+                if (ageMs in 0..FRESH_LOCATION_MAX_AGE_MILLIS) {
+                    return@withContext snapshotFactory.create(
                         latitude = lastLocation.latitude,
                         longitude = lastLocation.longitude,
-                        timeZoneId = TimeZone.getDefault().id,
                         capturedAtEpochMs = lastLocation.time
                     )
                 }
             }
 
-            // 2. Request current location
-            val cts = CancellationTokenSource()
-            val request = CurrentLocationRequest.Builder()
-                .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
-                .setDurationMillis(5000)
-                .build()
-            val currentLocationTask = fusedLocationClient.getCurrentLocation(request, cts.token)
-            val currentLocation = Tasks.await(currentLocationTask)
-            if (currentLocation != null) {
-                val label = resolveCityOrDistrict(currentLocation.latitude, currentLocation.longitude)
-                    ?: SettingsLocationPlanner.formatCoordinates(
-                        currentLocation.latitude,
-                        currentLocation.longitude
+            if (isLocationEnabled()) {
+                val cancellation = CancellationTokenSource()
+                val request = CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                    .setDurationMillis(CURRENT_LOCATION_TIMEOUT_MILLIS)
+                    .build()
+                val currentLocation = fusedLocationClient
+                    .getCurrentLocation(request, cancellation.token)
+                    .awaitCancellable(cancellation::cancel)
+                if (currentLocation != null) {
+                    return@withContext snapshotFactory.create(
+                        latitude = currentLocation.latitude,
+                        longitude = currentLocation.longitude,
+                        capturedAtEpochMs = currentLocation.time.takeIf { it > 0L } ?: nowEpochMs
                     )
-                return@withContext DeviceLocationSnapshot(
-                    label = label,
-                    latitude = currentLocation.latitude,
-                    longitude = currentLocation.longitude,
-                    timeZoneId = TimeZone.getDefault().id,
-                    capturedAtEpochMs = currentLocation.time.takeIf { it > 0L } ?: nowEpochMs
-                )
+                }
             }
 
-            // Fallback to whatever lastLocation we had if current request fails/times out
             if (lastLocation != null) {
-                val label = resolveCityOrDistrict(lastLocation.latitude, lastLocation.longitude)
-                    ?: SettingsLocationPlanner.formatCoordinates(
-                        lastLocation.latitude,
-                        lastLocation.longitude
-                    )
-                return@withContext DeviceLocationSnapshot(
-                    label = label,
+                return@withContext snapshotFactory.create(
                     latitude = lastLocation.latitude,
                     longitude = lastLocation.longitude,
-                    timeZoneId = TimeZone.getDefault().id,
                     capturedAtEpochMs = lastLocation.time
                 )
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
         return@withContext null
+    }
+
+    private suspend fun <T> Task<T>.awaitCancellable(onCancellation: () -> Unit = {}): T? =
+        suspendCancellableCoroutine { continuation ->
+            addOnSuccessListener { value ->
+                if (continuation.isActive) continuation.resume(value)
+            }
+            addOnFailureListener {
+                if (continuation.isActive) continuation.resume(null)
+            }
+            addOnCanceledListener {
+                if (continuation.isActive) continuation.cancel()
+            }
+            continuation.invokeOnCancellation { onCancellation() }
+        }
+
+    private companion object {
+        const val FRESH_LOCATION_MAX_AGE_MILLIS = 15 * 60 * 1000L
+        const val CURRENT_LOCATION_TIMEOUT_MILLIS = 5_000L
     }
 }

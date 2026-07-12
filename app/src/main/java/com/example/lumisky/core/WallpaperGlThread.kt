@@ -330,6 +330,7 @@ class WallpaperGlThread(
                 is RenderCommand.SetVisibility -> {
                     isVisible = command.visible
                     eventQueue.offer(if (command.visible) WallpaperEvent.ScreenOn else WallpaperEvent.ScreenOff)
+                    drainEvents()
                     if (command.visible && hasSurface) frameClock?.start() else frameClock?.stop()
                 }
                 is RenderCommand.SetParallax -> {

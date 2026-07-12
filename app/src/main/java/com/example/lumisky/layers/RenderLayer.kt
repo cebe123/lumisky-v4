@@ -18,6 +18,7 @@ import com.example.lumisky.definition.QualityProfile
 import com.example.lumisky.engine.pipeline.BlendMode
 import com.example.lumisky.engine.pipeline.RenderPass
 import com.example.lumisky.engine.pipeline.RenderTargetMode
+import com.example.lumisky.engine.FrameDemandReason
 
 interface RenderLayer {
     val id: String
@@ -38,6 +39,8 @@ interface RenderLayer {
     fun onQualityChanged(profile: QualityProfile)
     fun onDestroyGl(gl: GlResourceManager)
     fun onContextLost() {}
+    val hasPendingFrameDemand: Boolean get() = false
+    fun pendingFrameDemandReason(): FrameDemandReason? = null
 }
 
 enum class LayerFrameMode {

@@ -18,6 +18,7 @@ import dagger.multibindings.IntoMap
 import dagger.multibindings.StringKey
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Provider
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -61,8 +62,12 @@ object LayerRegistryModule {
     @Provides
     @IntoMap
     @StringKey("VideoOesLayer")
-    fun provideVideoOesLayerFactory(shaderSourceLoader: ShaderSourceLoader): LayerFactory = object : LayerFactory {
-        override fun create(definition: LayerDefinition): RenderLayer = VideoOesLayer(definition, shaderSourceLoader)
+    fun provideVideoOesLayerFactory(
+        shaderSourceLoader: ShaderSourceLoader,
+        mediaController: Provider<VideoMediaController>
+    ): LayerFactory = object : LayerFactory {
+        override fun create(definition: LayerDefinition): RenderLayer =
+            VideoOesLayer(definition, shaderSourceLoader, mediaController.get())
     }
 
     @Provides

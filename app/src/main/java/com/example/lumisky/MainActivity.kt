@@ -53,9 +53,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -72,9 +72,8 @@ import com.example.lumisky.ui.preview.WallpaperPreviewViewModel
 import com.example.lumisky.ui.settings.SettingsScreen
 import com.example.lumisky.ui.settings.SettingsViewModel
 import com.example.lumisky.ui.theme.LumiskyTheme
-import com.example.lumisky.ui.wallpaper.LiveWallpaperSetLauncher
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -123,6 +122,7 @@ class MainActivity : ComponentActivity() {
 private const val SCREEN_HOME = "home"
 private const val SCREEN_SETTINGS = "settings"
 private const val SCREEN_PREVIEW_PREFIX = "preview:"
+private const val STARTUP_PERMISSION_IDLE_DELAY_MILLIS = 350L
 
 @Composable
 fun LaunchSkeleton() {
@@ -145,56 +145,21 @@ fun LaunchSkeleton() {
 private fun LumiskyMainScreen() {
     var currentScreen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val viewModel: SettingsViewModel = hiltViewModel()
-
-    val startupLocationLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { result ->
-        val granted = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
-                      result[Manifest.permission.ACCESS_FINE_LOCATION] == true
-        if (granted) {
-            viewModel.refreshDeviceLocation()
-        }
-    }
+    var startLocationWork by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        val hasPermission = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED ||
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        if (!hasPermission) {
-            startupLocationLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                )
-            )
-        } else {
-            // Already have permission, attempt to refresh on startup to ensure latest info
-            viewModel.refreshDeviceLocation()
-        }
+        withFrameNanos { }
+        withFrameNanos { }
+        (context as? MainActivity)?.reportFullyDrawn()
+        delay(STARTUP_PERMISSION_IDLE_DELAY_MILLIS)
+        startLocationWork = true
     }
 
-
-    androidx.compose.runtime.DisposableEffect(context) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(c: Context?, intent: Intent?) {
-                if (intent?.action == LocationManager.PROVIDERS_CHANGED_ACTION) {
-                    viewModel.refreshDeviceLocation()
-                }
-            }
-        }
-        val filter = IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION)
-        context.registerReceiver(receiver, filter)
-        onDispose {
-            context.unregisterReceiver(receiver)
-        }
+    if (startLocationWork) {
+        val startupSettingsViewModel: SettingsViewModel = hiltViewModel()
+        StartupLocationEffects(startupSettingsViewModel)
     }
+
     AnimatedContent(
         targetState = currentScreen,
         transitionSpec = {
@@ -229,17 +194,15 @@ private fun LumiskyMainScreen() {
                 WallpaperCatalogScreen(
                     viewModel = viewModel,
                     onItemClick = { id ->
-                        scope.launch {
-                            viewModel.selectWallpaperForSet(id)
-                            LiveWallpaperSetLauncher.open(context)
-                        }
+                        currentScreen = "$SCREEN_PREVIEW_PREFIX$id"
                     },
                     onSettingsClick = { currentScreen = SCREEN_SETTINGS }
                 )
             }
             screen == SCREEN_SETTINGS -> {
+                val settingsViewModel: SettingsViewModel = hiltViewModel()
                 SettingsScreen(
-                    viewModel = viewModel,
+                    viewModel = settingsViewModel,
                     onBackClick = { currentScreen = SCREEN_HOME }
                 )
             }
@@ -251,6 +214,55 @@ private fun LumiskyMainScreen() {
                     onBackClick = { currentScreen = SCREEN_HOME }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun StartupLocationEffects(viewModel: SettingsViewModel) {
+    val context = LocalContext.current
+    val startupLocationLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        val granted = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
+            result[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        if (granted) viewModel.refreshDeviceLocation()
+    }
+
+    LaunchedEffect(Unit) {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!hasPermission) {
+            startupLocationLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            )
+        } else {
+            // Already have permission, attempt to refresh on startup to ensure latest info
+            viewModel.refreshDeviceLocation()
+        }
+    }
+
+    androidx.compose.runtime.DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action == LocationManager.PROVIDERS_CHANGED_ACTION) {
+                    viewModel.refreshDeviceLocation()
+                }
+            }
+        }
+        val filter = IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION)
+        context.registerReceiver(receiver, filter)
+        onDispose {
+            context.unregisterReceiver(receiver)
         }
     }
 }

@@ -15,6 +15,7 @@ import android.os.HandlerThread
 import android.os.Looper
 import android.os.PowerManager
 import android.view.SurfaceHolder
+import android.view.WindowManager
 import com.example.lumisky.core.BoundedRenderThreadHandoff
 import com.example.lumisky.core.RenderLifecycleGate
 import com.example.lumisky.core.WallpaperFrameClock
@@ -292,7 +293,10 @@ class PreviewGlThread(
     }
 
     private fun displayMaxFps(): Int {
-        val display = context.display ?: return DEFAULT_DISPLAY_MAX_FPS
+        @Suppress("DEPRECATION")
+        val display = (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)
+            ?.defaultDisplay
+            ?: return DEFAULT_DISPLAY_MAX_FPS
         return display.supportedModes.maxOfOrNull { it.refreshRate.toInt() }
             ?.coerceAtLeast(DEFAULT_DISPLAY_MAX_FPS)
             ?: DEFAULT_DISPLAY_MAX_FPS

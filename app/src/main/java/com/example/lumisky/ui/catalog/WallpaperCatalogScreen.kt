@@ -215,6 +215,11 @@ fun WallpaperCatalogScreen(
                 .background(bgColor)
         ) {
             val columnState = rememberLazyListState()
+            var livePreviewLeaseEnabled by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(CatalogPreviewPolicy.initialPreviewDelayMillis())
+                livePreviewLeaseEnabled = true
+            }
             val activeSectionIndex by remember(categories) {
                 derivedStateOf {
                     CatalogPreviewPolicy.resolveActiveSectionIndex(
@@ -295,7 +300,7 @@ fun WallpaperCatalogScreen(
                                 key = { _, item -> item.id },
                                 contentType = { _, _ -> "wallpaper-card" }
                             ) { index, item ->
-                                val shouldMountPreview = CatalogPreviewPolicy.shouldMountLivePreview(
+                                val shouldMountPreview = livePreviewLeaseEnabled && CatalogPreviewPolicy.shouldMountLivePreview(
                                     sectionIndex = sectionIndex,
                                     activeSectionIndex = settledSectionIndex,
                                     itemIndex = index,
@@ -303,7 +308,7 @@ fun WallpaperCatalogScreen(
                                     parentScrollInProgress = columnState.isScrollInProgress,
                                     rowScrollInProgress = listState.isScrollInProgress
                                 )
-                                val shouldPlayPreview = CatalogPreviewPolicy.shouldRenderLivePreview(
+                                val shouldPlayPreview = livePreviewLeaseEnabled && CatalogPreviewPolicy.shouldRenderLivePreview(
                                     sectionIndex = sectionIndex,
                                     activeSectionIndex = settledSectionIndex,
                                     itemIndex = index,

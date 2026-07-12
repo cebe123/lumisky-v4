@@ -7,6 +7,14 @@ repositories {
     mavenCentral()
 }
 
+dependencies {
+    testImplementation(kotlin("test"))
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
 gradlePlugin {
     plugins {
         create("wallpaperPackCompiler") {

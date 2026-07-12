@@ -1,6 +1,7 @@
 package com.example.lumisky.ui.preview
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,7 @@ fun WallpaperPreviewScreen(
     viewModel: WallpaperPreviewViewModel,
     onBackClick: () -> Unit
 ) {
+    BackHandler(onBack = onBackClick)
     val definition by viewModel.definition.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()

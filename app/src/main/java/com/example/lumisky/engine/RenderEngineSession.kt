@@ -104,6 +104,9 @@ class RenderEngineSession(
         if (!isContextCreated || !frameState.isGlInitialized()) return
         val scene = activeScene ?: return
         frameState.gl.textures.beginFrame()
+        scene.layers.forEach { layer ->
+            layer.pendingFrameDemandReason()?.let(frameDemandController::request)
+        }
 
         sceneState.update(
             deltaTime = context.deltaTimeSeconds,
@@ -129,6 +132,7 @@ class RenderEngineSession(
         frameState.timeSeconds = sceneState.timeSeconds
         frameState.deltaTimeSeconds = context.deltaTimeSeconds
         frameState.isVisible = inputSnapshot.isVisible
+        frameState.runtimeMode = runtimeProfile.mode
         frameState.quality = sceneState.quality
         frameState.dayProgress = sceneState.dayProgress
         frameState.renderScale = runtimeProfile.renderScale * inputSnapshot.renderScale
@@ -232,7 +236,8 @@ class RenderEngineSession(
         get() = previewTimeMotionController.isAnimating
 
     val hasFrameDemand: Boolean
-        get() = frameDemandController.hasDemand(System.nanoTime())
+        get() = frameDemandController.hasDemand(System.nanoTime()) ||
+            activeScene?.layers?.any { it.hasPendingFrameDemand } == true
 
     private fun resolveSceneTimeZoneId(daylightOverride: DaylightOverride?): String {
         return daylightOverride?.timeZoneId
