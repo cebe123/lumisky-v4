@@ -29,10 +29,12 @@ class GlResourceManager(
         textures.clear()
         framebuffers.clear()
         meshes.clear()
+        bitmapPool.clear()
     }
 
     fun release() {
         onContextLost()
+        textures.release()
         releaseQueue.drain()
     }
 }

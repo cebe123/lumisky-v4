@@ -42,7 +42,9 @@ class LiveWallpaperCatchUpController(
         sunsetMinute: Int
     ): LiveWallpaperCatchUpWindow {
         val now = nowProgress.coerceIn(0f, 1f)
-        val start = 0.5f // Start exactly at noon (0.5f) as requested
+        val nowMinute = (now * MINUTES_PER_DAY).toInt().coerceIn(0, MINUTES_PER_DAY - 1)
+        val isDaytime = isDaytime(nowMinute, sunriseMinute, sunsetMinute)
+        val start = (if (isDaytime) sunriseMinute else sunsetMinute) / MINUTES_PER_DAY.toFloat()
         val target = if (now >= start) now else now + 1f
         return LiveWallpaperCatchUpWindow(
             startProgress = start,

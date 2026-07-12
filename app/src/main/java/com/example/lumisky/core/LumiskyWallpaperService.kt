@@ -73,7 +73,7 @@ class LumiskyWallpaperService : WallpaperService() {
         private val userPresentReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent?.action == Intent.ACTION_USER_PRESENT) {
-                    delegate.triggerLiveCatchUp()
+                    delegate.suppressNextVisibleCatchUp()
                 }
             }
         }

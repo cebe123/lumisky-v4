@@ -69,7 +69,15 @@ class WallpaperGlThread(
     @Volatile var thermalEmergency: Boolean = false
     @Volatile var daylightOverride: DaylightOverride? = null
     private var lastRenderedFrameTimeNanos: Long = 0L
-    private var forceContinuousUntilNanos: Long = 0L
+    private val inputSnapshot = SceneInputSnapshot(
+        isVisible = false,
+        batterySaver = false,
+        parallaxX = 0f,
+        parallaxY = 0f,
+        touchX = 0f,
+        touchY = 0f,
+        hasTouch = false
+    )
 
     override fun onLooperPrepared() {
         handler = Handler(looper)
@@ -110,7 +118,7 @@ class WallpaperGlThread(
             if (fallbackSize.isValid && (renderContext.width <= 0 || renderContext.height <= 0)) {
                 applySurfaceSize(fallbackSize.width, fallbackSize.height)
             }
-            renderFrameNow(System.nanoTime(), visibleForFrame = true)
+            renderFrameNow(System.nanoTime(), visibleForFrame = isVisible)
             if (isVisible) {
                 frameClock?.start()
             }
@@ -121,7 +129,7 @@ class WallpaperGlThread(
         postToGl {
             if (height == 0) return@postToGl
             applySurfaceSize(width, height)
-            renderFrameNow(System.nanoTime(), visibleForFrame = true)
+            renderFrameNow(System.nanoTime(), visibleForFrame = isVisible)
         }
     }
 
@@ -129,7 +137,12 @@ class WallpaperGlThread(
         postToGl {
             frameClock?.stop()
             renderer.switchWallpaper(definition, newScene, renderContext)
-            renderFrameNow(System.nanoTime(), visibleForFrame = true)
+            if (isPreview) {
+                renderer.triggerPreviewAnimation()
+            } else {
+                startLiveCatchUp()
+            }
+            renderFrameNow(System.nanoTime(), visibleForFrame = isVisible)
             if (isVisible) {
                 frameClock?.start()
             }
@@ -150,8 +163,6 @@ class WallpaperGlThread(
         postToGl {
             postEvent(if (visible) WallpaperEvent.ScreenOn else WallpaperEvent.ScreenOff)
             if (visible && hasSurface) {
-                forceContinuousUntilNanos = System.nanoTime() + CATCH_UP_DURATION_NANOS
-                renderer.triggerLiveCatchUp(daylightOverride)
                 frameClock?.start()
             } else {
                 frameClock?.stop()
@@ -161,8 +172,8 @@ class WallpaperGlThread(
 
     fun triggerLiveCatchUp() {
         postToGl {
-            forceContinuousUntilNanos = System.nanoTime() + CATCH_UP_DURATION_NANOS
-            renderer.triggerLiveCatchUp(daylightOverride)
+            if (isPreview) return@postToGl
+            startLiveCatchUp()
             if (isVisible && hasSurface) frameClock?.start()
         }
     }
@@ -186,27 +197,25 @@ class WallpaperGlThread(
         drainEvents()
         renderContext.update(frameTimeNanos)
 
-        val snapshot = SceneInputSnapshot(
-            isVisible = visibleForFrame,
-            batterySaver = batterySaver,
-            parallaxX = parallaxX,
-            parallaxY = parallaxY,
-            touchX = touchX,
-            touchY = touchY,
-            hasTouch = hasTouch,
-            preferredQualityTier = preferredQualityTier,
-            daylightOverride = daylightOverride,
-            renderScale = renderScale,
-            postProcessEnabled = postProcessEnabled,
-            particleEffectsEnabled = particleEffectsEnabled,
-            videoPlaybackEnabled = videoPlaybackEnabled,
-            sensorParallaxEnabled = sensorParallaxEnabled,
-            telemetryEnabled = telemetryEnabled,
-            thermalEmergency = thermalEmergency
-        )
+        inputSnapshot.isVisible = visibleForFrame
+        inputSnapshot.batterySaver = batterySaver
+        inputSnapshot.parallaxX = parallaxX
+        inputSnapshot.parallaxY = parallaxY
+        inputSnapshot.touchX = touchX
+        inputSnapshot.touchY = touchY
+        inputSnapshot.hasTouch = hasTouch
+        inputSnapshot.preferredQualityTier = preferredQualityTier
+        inputSnapshot.daylightOverride = daylightOverride
+        inputSnapshot.renderScale = renderScale
+        inputSnapshot.postProcessEnabled = postProcessEnabled
+        inputSnapshot.particleEffectsEnabled = particleEffectsEnabled
+        inputSnapshot.videoPlaybackEnabled = videoPlaybackEnabled
+        inputSnapshot.sensorParallaxEnabled = sensorParallaxEnabled
+        inputSnapshot.telemetryEnabled = telemetryEnabled
+        inputSnapshot.thermalEmergency = thermalEmergency
 
         eglManager?.makeCurrent()
-        renderer.renderFrame(renderContext, snapshot)
+        renderer.renderFrame(renderContext, inputSnapshot)
         eglManager?.swapBuffers()
     }
 
@@ -223,7 +232,9 @@ class WallpaperGlThread(
             layers = renderer.activeScene?.layers.orEmpty(),
             maxFps = maxFps,
             batterySaver = batterySaver,
-            forceContinuous = frameTimeNanos < forceContinuousUntilNanos
+            forceContinuous = renderer.isCatchUpAnimating ||
+                renderer.isPreviewAnimationRunning ||
+                renderer.hasPendingTextureWork
         ) ?: return
         if (lastRenderedFrameTimeNanos > 0L &&
             frameTimeNanos - lastRenderedFrameTimeNanos < minFrameIntervalNanos
@@ -236,8 +247,8 @@ class WallpaperGlThread(
         frameClock?.postNextFrame()
     }
 
-    private companion object {
-        const val CATCH_UP_DURATION_NANOS = 2_000_000_000L
+    private fun startLiveCatchUp() {
+        renderer.triggerLiveCatchUp(daylightOverride)
     }
 
     override fun quitSafely(): Boolean {

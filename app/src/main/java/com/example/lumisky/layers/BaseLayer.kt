@@ -25,10 +25,17 @@ abstract class BaseLayer(
 ) : RenderLayer {
     override val id: String get() = definition.id
     override val zIndex: Int get() = definition.zIndex
-    override val renderPass: RenderPass get() = try { RenderPass.valueOf(definition.renderPass) } catch (e: Throwable) { RenderPass.BACKGROUND }
-    override val blendMode: BlendMode get() = try { BlendMode.valueOf(definition.blendMode) } catch (e: Throwable) { BlendMode.NONE }
-    override val renderTargetMode: RenderTargetMode get() = try { RenderTargetMode.valueOf(definition.renderTarget) } catch (e: Throwable) { RenderTargetMode.DIRECT }
-    override val framePolicy: LayerFramePolicyDefinition get() = definition.framePolicy ?: LayerFramePolicyDefinition()
+    override val renderPass: RenderPass = runCatching { RenderPass.valueOf(definition.renderPass) }
+        .getOrDefault(RenderPass.BACKGROUND)
+    override val blendMode: BlendMode = runCatching { BlendMode.valueOf(definition.blendMode) }
+        .getOrDefault(BlendMode.NONE)
+    override val renderTargetMode: RenderTargetMode = runCatching { RenderTargetMode.valueOf(definition.renderTarget) }
+        .getOrDefault(RenderTargetMode.DIRECT)
+    override val framePolicy: LayerFramePolicyDefinition = definition.framePolicy ?: LayerFramePolicyDefinition()
+    override val frameMode: LayerFrameMode = runCatching { LayerFrameMode.valueOf(framePolicy.mode) }
+        .getOrDefault(LayerFrameMode.MATCH_SCENE)
+    override val cacheMode: LayerCacheMode = runCatching { LayerCacheMode.valueOf(framePolicy.cacheMode) }
+        .getOrDefault(LayerCacheMode.NONE)
     override val parallaxDepth: Float get() = definition.parallax?.depth ?: 0.0f
 
     override fun onCreateGl(gl: GlResourceManager, context: RenderContext) {}

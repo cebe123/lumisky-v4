@@ -11,12 +11,15 @@ package com.example.lumisky.engine
 
 import com.example.lumisky.core.WallpaperEvent
 import com.example.lumisky.engine.gl.GlResourceManager
+import com.example.lumisky.engine.pipeline.LayerComposer
 import com.example.lumisky.layers.RenderLayer
 
 class RuntimeScene(
     val id: String,
     val layers: List<RenderLayer>
 ) {
+    val orderedLayers: List<RenderLayer> = LayerComposer.compose(layers)
+
     fun onCreateGl(gl: GlResourceManager, context: RenderContext) {
         layers.forEach { it.onCreateGl(gl, context) }
     }

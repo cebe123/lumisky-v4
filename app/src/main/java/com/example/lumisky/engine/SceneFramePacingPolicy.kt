@@ -17,11 +17,10 @@ internal object SceneFramePacingPolicy {
         if (cappedMaxFps == 0) return null
         if (forceContinuous) return NANOS_PER_SECOND / cappedMaxFps
 
-        return layers.mapNotNull { layer ->
+        var shortestInterval: Long? = null
+        layers.forEach { layer ->
             val policy = layer.framePolicy
-            val mode = runCatching { LayerFrameMode.valueOf(policy.mode) }
-                .getOrDefault(LayerFrameMode.MATCH_SCENE)
-            when (mode) {
+            val interval = when (layer.frameMode) {
                 LayerFrameMode.STATIC,
                 LayerFrameMode.ON_DEMAND,
                 LayerFrameMode.EVENT_BASED -> null
@@ -39,7 +38,11 @@ internal object SceneFramePacingPolicy {
                 LayerFrameMode.CONTINUOUS,
                 LayerFrameMode.VIDEO_SYNC -> NANOS_PER_SECOND / cappedMaxFps
             }
-        }.minOrNull()
+            if (interval != null && (shortestInterval == null || interval < shortestInterval!!)) {
+                shortestInterval = interval
+            }
+        }
+        return shortestInterval
     }
 
     private fun Int?.orDefault(defaultValue: Int): Int = this ?: defaultValue

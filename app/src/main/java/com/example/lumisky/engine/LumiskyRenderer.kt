@@ -45,6 +45,12 @@ class LumiskyRenderer @Inject constructor(
         }
     val isContextCreated: Boolean
         get() = session.isContextCreated
+    val hasPendingTextureWork: Boolean
+        get() = session.hasPendingTextureWork
+    val isCatchUpAnimating: Boolean
+        get() = session.sceneState.isCatchUpAnimating
+    val isPreviewAnimationRunning: Boolean
+        get() = session.isPreviewAnimationRunning
 
     var runtimeProfile: RuntimeProfile
         get() = session.runtimeProfile

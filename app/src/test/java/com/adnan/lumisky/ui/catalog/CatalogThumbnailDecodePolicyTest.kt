@@ -30,4 +30,17 @@ class CatalogThumbnailDecodePolicyTest {
             )
         )
     }
+
+    @Test
+    fun capsHighDensityCardThumbnailsBeforeChoosingTheSampleSize() {
+        assertEquals(
+            4,
+            CatalogThumbnailDecodePolicy.calculateInSampleSize(
+                sourceWidth = 2_160,
+                sourceHeight = 3_840,
+                targetWidth = 760,
+                targetHeight = 1_440
+            )
+        )
+    }
 }

@@ -19,13 +19,18 @@ object CatalogThumbnailDecodePolicy {
         if (sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 || targetHeight <= 0) {
             return 1
         }
+        val boundedTargetWidth = targetWidth.coerceAtMost(MAX_DECODE_WIDTH_PX)
+        val boundedTargetHeight = targetHeight.coerceAtMost(MAX_DECODE_HEIGHT_PX)
         var sampleSize = 1
         while (
-            sourceWidth / (sampleSize * 2) >= targetWidth &&
-            sourceHeight / (sampleSize * 2) >= targetHeight
+            sourceWidth / (sampleSize * 2) >= boundedTargetWidth &&
+            sourceHeight / (sampleSize * 2) >= boundedTargetHeight
         ) {
             sampleSize *= 2
         }
         return sampleSize.coerceAtLeast(2)
     }
+
+    private const val MAX_DECODE_WIDTH_PX = 540
+    private const val MAX_DECODE_HEIGHT_PX = 960
 }

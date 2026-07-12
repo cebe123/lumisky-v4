@@ -24,18 +24,20 @@ class SceneScheduler @Inject constructor() {
         layer: RenderLayer,
         frameTimeNanos: Long,
         batterySaver: Boolean = false,
-        idle: Boolean = false
+        idle: Boolean = false,
+        sceneId: String = ""
     ): Boolean {
-        return shouldRun(layer, frameTimeNanos, batterySaver, idle, lastUpdateTimes)
+        return shouldRun(layer, frameTimeNanos, batterySaver, idle, sceneId, lastUpdateTimes)
     }
 
     fun shouldRefreshCache(
         layer: RenderLayer,
         frameTimeNanos: Long,
         batterySaver: Boolean = false,
-        idle: Boolean = false
+        idle: Boolean = false,
+        sceneId: String = ""
     ): Boolean {
-        return shouldRun(layer, frameTimeNanos, batterySaver, idle, lastCacheRefreshTimes)
+        return shouldRun(layer, frameTimeNanos, batterySaver, idle, sceneId, lastCacheRefreshTimes)
     }
 
     private fun shouldRun(
@@ -43,14 +45,18 @@ class SceneScheduler @Inject constructor() {
         frameTimeNanos: Long,
         batterySaver: Boolean,
         idle: Boolean,
+        sceneId: String,
         lastRunTimes: MutableMap<String, Long>
     ): Boolean {
         val policy = layer.framePolicy
-        val mode = try { LayerFrameMode.valueOf(policy.mode) } catch (e: Throwable) { LayerFrameMode.MATCH_SCENE }
-        
+        val mode = layer.frameMode
+        val key = "$sceneId:${layer.id}"
+
         return when (mode) {
             LayerFrameMode.STATIC -> false
             LayerFrameMode.MATCH_SCENE, LayerFrameMode.CONTINUOUS -> true
+            LayerFrameMode.ONE_FPS -> shouldRunAtInterval(key, frameTimeNanos, 1_000_000_000L, lastRunTimes)
+            LayerFrameMode.MINUTE_TICK -> shouldRunAtInterval(key, frameTimeNanos, 60_000_000_000L, lastRunTimes)
             LayerFrameMode.FIXED_FPS -> {
                 val fps = when {
                     idle && policy.idleFps != null -> policy.idleFps
@@ -58,16 +64,22 @@ class SceneScheduler @Inject constructor() {
                     else -> policy.fps
                 } ?: 30
                 val frameDurationNanos = 1_000_000_000L / fps.coerceAtLeast(1)
-                val lastTime = lastRunTimes[layer.id] ?: 0L
-                if (frameTimeNanos - lastTime >= frameDurationNanos) {
-                    lastRunTimes[layer.id] = frameTimeNanos
-                    true
-                } else {
-                    false
-                }
+                shouldRunAtInterval(key, frameTimeNanos, frameDurationNanos, lastRunTimes)
             }
             else -> true
         }
+    }
+
+    private fun shouldRunAtInterval(
+        key: String,
+        frameTimeNanos: Long,
+        intervalNanos: Long,
+        lastRunTimes: MutableMap<String, Long>
+    ): Boolean {
+        val lastTime = lastRunTimes[key] ?: 0L
+        if (frameTimeNanos - lastTime < intervalNanos) return false
+        lastRunTimes[key] = frameTimeNanos
+        return true
     }
 
 }

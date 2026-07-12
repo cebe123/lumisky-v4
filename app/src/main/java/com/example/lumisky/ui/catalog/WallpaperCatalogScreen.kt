@@ -225,11 +225,12 @@ fun WallpaperCatalogScreen(
             }
             var settledSectionIndex by remember { mutableStateOf(-1) }
             LaunchedEffect(Unit) {
-                kotlinx.coroutines.delay(150)
+                kotlinx.coroutines.delay(CatalogPreviewPolicy.previewFocusDelayMillis())
                 settledSectionIndex = activeSectionIndex
             }
             LaunchedEffect(columnState.isScrollInProgress, activeSectionIndex) {
                 if (!columnState.isScrollInProgress) {
+                    kotlinx.coroutines.delay(CatalogPreviewPolicy.previewFocusDelayMillis())
                     settledSectionIndex = activeSectionIndex
                 }
             }
@@ -253,11 +254,12 @@ fun WallpaperCatalogScreen(
                     }
                     var settledItemIndex by remember { mutableStateOf(-1) }
                     LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(150)
+                        kotlinx.coroutines.delay(CatalogPreviewPolicy.previewFocusDelayMillis())
                         settledItemIndex = centeredIndex
                     }
                     LaunchedEffect(listState.isScrollInProgress, centeredIndex) {
                         if (!listState.isScrollInProgress) {
+                            kotlinx.coroutines.delay(CatalogPreviewPolicy.previewFocusDelayMillis())
                             settledItemIndex = centeredIndex
                         }
                     }
@@ -309,8 +311,10 @@ fun WallpaperCatalogScreen(
                                     parentScrollInProgress = columnState.isScrollInProgress,
                                     rowScrollInProgress = listState.isScrollInProgress
                                 )
-                                android.util.Log.d("LumiskyDebug", "item[$sectionIndex][$index] shouldPlay=$shouldPlayPreview settledSection=$settledSectionIndex settledItem=$settledItemIndex colScroll=${columnState.isScrollInProgress} listScroll=${listState.isScrollInProgress} mountPreview=$shouldMountPreview")
-
+                                val shouldRenderCardChrome = CatalogPreviewPolicy.shouldRenderCardChrome(
+                                    parentScrollInProgress = columnState.isScrollInProgress,
+                                    rowScrollInProgress = listState.isScrollInProgress
+                                )
                                 Column(
                                     modifier = Modifier.width(cardWidth),
                                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -319,6 +323,7 @@ fun WallpaperCatalogScreen(
                                         item = item,
                                         mountLivePreview = shouldMountPreview,
                                         playLivePreview = shouldPlayPreview,
+                                        showChrome = shouldRenderCardChrome,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(cardHeight),
@@ -353,6 +358,7 @@ private fun WallpaperCard(
     item: WallpaperCatalogUiItem,
     mountLivePreview: Boolean,
     playLivePreview: Boolean,
+    showChrome: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -430,7 +436,7 @@ private fun WallpaperCard(
                 )
             }
 
-            run {
+            if (showChrome) {
                 // Title at bottom
                 Column(
                     modifier = Modifier

@@ -14,17 +14,54 @@ import android.graphics.BitmapFactory
 import android.opengl.GLES30
 import android.opengl.GLUtils
 import com.example.lumisky.definition.QualityTier
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
 
 class TexturePool(private val manager: GlResourceManager) {
     private val pool = mutableMapOf<String, GlTexture>()
+    private val prepared = ConcurrentHashMap<String, Bitmap>()
+    private val pending = ConcurrentHashMap<String, Long>()
+    private val ioExecutor = Executors.newFixedThreadPool(2)
+    @Volatile private var generation = 0L
+    private var fallbackTexture: GlTexture? = null
+
+    val hasPendingWork: Boolean
+        get() = pending.isNotEmpty() || prepared.isNotEmpty()
+
+    fun preload(paths: Collection<String>, quality: QualityTier = QualityTier.BALANCED) {
+        paths.filter(String::isNotBlank).forEach { path ->
+            val key = "$path#${quality.name}"
+            val requestGeneration = generation
+            if (pool.containsKey(key) || prepared.containsKey(key) ||
+                pending.putIfAbsent(key, requestGeneration) != null
+            ) return@forEach
+            ioExecutor.execute {
+                var bitmap: Bitmap? = null
+                try {
+                    bitmap = loadBitmap(path, quality)
+                    if (requestGeneration == generation) {
+                        prepared[key] = bitmap
+                        bitmap = null
+                    }
+                } finally {
+                    bitmap?.recycle()
+                    pending.remove(key, requestGeneration)
+                }
+            }
+        }
+    }
 
     fun get(path: String, quality: QualityTier = QualityTier.BALANCED): GlTexture {
         val key = "$path#${quality.name}"
-        return pool.getOrPut(key) {
-            val bitmap = loadBitmap(path, quality)
-            val textureId = uploadTexture(bitmap)
-            manager.bitmapPool.put(bitmap)
-            GlTexture(textureId)
+        pool[key]?.let { return it }
+        val bitmap = prepared.remove(key)
+        if (bitmap == null) {
+            preload(listOf(path), quality)
+            return fallbackTexture()
+        }
+        return GlTexture(uploadTexture(bitmap)).also {
+            bitmap.recycle()
+            pool[key] = it
         }
     }
 
@@ -67,7 +104,28 @@ class TexturePool(private val manager: GlResourceManager) {
     }
 
     fun clear() {
+        generation++
         pool.values.forEach { it.release() }
         pool.clear()
+        fallbackTexture?.release()
+        fallbackTexture = null
+        prepared.values.forEach { it.recycle() }
+        prepared.clear()
+        pending.clear()
+    }
+
+    fun release() {
+        clear()
+        ioExecutor.shutdownNow()
+    }
+
+    private fun fallbackTexture(): GlTexture {
+        return fallbackTexture ?: run {
+            val bitmap = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888)
+            GlTexture(uploadTexture(bitmap)).also {
+                bitmap.recycle()
+                fallbackTexture = it
+            }
+        }
     }
 }

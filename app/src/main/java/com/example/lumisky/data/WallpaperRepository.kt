@@ -25,22 +25,52 @@ class WallpaperRepository @Inject constructor(
     val entitlement: EntitlementRepository,
     val downloads: AssetDownloadRepository
 ) {
+    private val cacheLock = Any()
+    private val definitionCache = object : LinkedHashMap<String, WallpaperDefinition>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, WallpaperDefinition>?): Boolean {
+            return size > DEFINITION_CACHE_SIZE
+        }
+    }
+    private val resolvedPathCache = mutableMapOf<String, String>()
+    private val missingDefinitionIds = mutableSetOf<String>()
+
     suspend fun getCatalog(): CatalogDefinition = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         catalogDataSource.loadCatalog()
     }
 
     suspend fun getDefinition(wallpaperId: String): WallpaperDefinition? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        var path = "wallpapers/${wallpaperId}/manifest.json"
+        synchronized(cacheLock) {
+            definitionCache[wallpaperId]?.let { return@withContext it }
+            if (wallpaperId in missingDefinitionIds) return@withContext null
+        }
+
+        val cachedPath = synchronized(cacheLock) { resolvedPathCache[wallpaperId] }
+        var path = cachedPath ?: "wallpapers/${wallpaperId}/manifest.json"
         var json = localDataSource.loadFileFromAssets(path)
-        if (json.isEmpty()) {
+        if (json.isEmpty() && cachedPath == null) {
             path = "wallpapers/${wallpaperId}.json"
             json = localDataSource.loadFileFromAssets(path)
         }
-        if (json.isEmpty()) return@withContext null
-        
-        return@withContext when (val result = parser.parseWallpaper(json)) {
-            is WallpaperParseResult.Success -> result.definition
-            is WallpaperParseResult.Error -> null
+        if (json.isEmpty()) {
+            synchronized(cacheLock) { missingDefinitionIds += wallpaperId }
+            return@withContext null
         }
+
+        when (val result = parser.parseWallpaper(json)) {
+            is WallpaperParseResult.Success -> result.definition.also { definition ->
+                synchronized(cacheLock) {
+                    definitionCache[wallpaperId] = definition
+                    resolvedPathCache[wallpaperId] = path
+                }
+            }
+            is WallpaperParseResult.Error -> {
+                synchronized(cacheLock) { missingDefinitionIds += wallpaperId }
+                null
+            }
+        }
+    }
+
+    private companion object {
+        const val DEFINITION_CACHE_SIZE = 12
     }
 }

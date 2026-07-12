@@ -10,6 +10,8 @@
 package com.example.lumisky.ui.catalog
 
 object CatalogPreviewPolicy {
+    fun previewFocusDelayMillis(): Long = 100L
+
     fun shouldRenderLivePreview(
         sectionIndex: Int,
         activeSectionIndex: Int,
@@ -32,7 +34,7 @@ object CatalogPreviewPolicy {
     ): Boolean {
         if (parentScrollInProgress || rowScrollInProgress) return false
         if (sectionIndex != activeSectionIndex) return false
-        return itemIndex in (centeredItemIndex - 1)..(centeredItemIndex + 1)
+        return itemIndex == centeredItemIndex
     }
 
     fun resolveActiveSectionIndex(centeredIndex: Int, sectionCount: Int): Int {

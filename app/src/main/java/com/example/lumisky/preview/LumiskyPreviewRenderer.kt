@@ -64,22 +64,15 @@ class LumiskyPreviewRenderer(
         }
     val isContextCreated: Boolean
         get() = session.isContextCreated
+    val hasPendingTextureWork: Boolean
+        get() = session.hasPendingTextureWork
+    val shouldContinueRendering: Boolean
+        get() = session.hasPendingTextureWork || session.isPreviewAnimationRunning
 
     fun loadWallpaper(definition: WallpaperDefinition) {
-        val previousScene = session.activeScene
         session.activeDefinition = definition
         val nextScene = sceneFactory.create(definition)
-        if (session.isContextCreated) {
-            previousScene?.onDestroyGl(session.frameState.gl)
-            val context = currentContext
-            if (context != null) {
-                nextScene.onCreateGl(session.frameState.gl, context)
-                if (session.frameState.width > 0 && session.frameState.height > 0) {
-                    nextScene.onSurfaceChanged(context, session.frameState.width, session.frameState.height)
-                }
-            }
-        }
-        session.activeScene = nextScene
+        currentContext?.let { session.switchScene(nextScene, it) } ?: run { session.activeScene = nextScene }
     }
 
     fun onContextCreated(gl: GlResourceManager, context: RenderContext) {

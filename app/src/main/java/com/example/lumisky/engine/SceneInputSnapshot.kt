@@ -19,20 +19,20 @@ data class DaylightOverride(
 )
 
 class SceneInputSnapshot(
-    val isVisible: Boolean,
-    val batterySaver: Boolean,
-    val parallaxX: Float,
-    val parallaxY: Float,
-    val touchX: Float,
-    val touchY: Float,
-    val hasTouch: Boolean,
-    val preferredQualityTier: QualityTier? = null,
-    val daylightOverride: DaylightOverride? = null,
-    val renderScale: Float = 1.0f,
-    val postProcessEnabled: Boolean = true,
-    val particleEffectsEnabled: Boolean = true,
-    val videoPlaybackEnabled: Boolean = true,
-    val sensorParallaxEnabled: Boolean = true,
-    val telemetryEnabled: Boolean = true,
-    val thermalEmergency: Boolean = false
+    var isVisible: Boolean,
+    var batterySaver: Boolean,
+    var parallaxX: Float,
+    var parallaxY: Float,
+    var touchX: Float,
+    var touchY: Float,
+    var hasTouch: Boolean,
+    var preferredQualityTier: QualityTier? = null,
+    var daylightOverride: DaylightOverride? = null,
+    var renderScale: Float = 1.0f,
+    var postProcessEnabled: Boolean = true,
+    var particleEffectsEnabled: Boolean = true,
+    var videoPlaybackEnabled: Boolean = true,
+    var sensorParallaxEnabled: Boolean = true,
+    var telemetryEnabled: Boolean = true,
+    var thermalEmergency: Boolean = false
 )

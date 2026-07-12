@@ -9,7 +9,6 @@
  */
 package com.example.lumisky
 
-import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
 
@@ -66,7 +65,6 @@ import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.lumisky.R
 import com.example.lumisky.data.SettingsRepository
-import com.example.lumisky.data.WallpaperRepository
 import com.example.lumisky.ui.catalog.WallpaperCatalogScreen
 import com.example.lumisky.ui.catalog.WallpaperCatalogViewModel
 import com.example.lumisky.ui.preview.WallpaperPreviewScreen
@@ -76,15 +74,12 @@ import com.example.lumisky.ui.settings.SettingsViewModel
 import com.example.lumisky.ui.theme.LumiskyTheme
 import com.example.lumisky.ui.wallpaper.LiveWallpaperSetLauncher
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var settingsRepository: SettingsRepository
-    @Inject lateinit var wallpaperRepository: WallpaperRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -103,7 +98,6 @@ class MainActivity : ComponentActivity() {
             LumiskyTheme(darkTheme = darkTheme) {
                 var startupReady by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) {
-                    warmHomeStartupThumbnails()
                     isWarmedUp = true
                     startupReady = true
                 }
@@ -124,26 +118,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun warmHomeStartupThumbnails() {
-        withContext(Dispatchers.IO) {
-            runCatching {
-                wallpaperRepository.getCatalog()
-                    .wallpapers
-                    .take(STARTUP_THUMBNAIL_WARM_LIMIT)
-                    .forEach { item ->
-                        runCatching {
-                            assets.open(item.thumbnail).use { stream ->
-                                BitmapFactory.decodeStream(stream)
-                            }
-                        }
-                    }
-            }
-        }
-    }
-
-    private companion object {
-        const val STARTUP_THUMBNAIL_WARM_LIMIT = 3
-    }
 }
 
 private const val SCREEN_HOME = "home"
@@ -171,6 +145,7 @@ fun LaunchSkeleton() {
 private fun LumiskyMainScreen() {
     var currentScreen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val viewModel: SettingsViewModel = hiltViewModel()
 
     val startupLocationLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -254,7 +229,10 @@ private fun LumiskyMainScreen() {
                 WallpaperCatalogScreen(
                     viewModel = viewModel,
                     onItemClick = { id ->
-                        currentScreen = SCREEN_PREVIEW_PREFIX + id
+                        scope.launch {
+                            viewModel.selectWallpaperForSet(id)
+                            LiveWallpaperSetLauncher.open(context)
+                        }
                     },
                     onSettingsClick = { currentScreen = SCREEN_SETTINGS }
                 )

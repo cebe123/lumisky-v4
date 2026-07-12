@@ -59,6 +59,15 @@ class PreviewGlThread(
     private var lastRenderedFrameNanos = 0L
     private var lastDayProgressCallbackNanos = 0L
     private var hasRenderedFirstFrame = false
+    private val inputSnapshot = SceneInputSnapshot(
+        isVisible = false,
+        batterySaver = false,
+        parallaxX = 0f,
+        parallaxY = 0f,
+        touchX = 0f,
+        touchY = 0f,
+        hasTouch = false
+    )
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     @Volatile var isVisible = false
@@ -95,10 +104,15 @@ class PreviewGlThread(
                     batterySaverSceneMaxFps = 15
                 )
             }.collectLatest { policy ->
-                maxFps = policy.maxFps
-                batterySaver = policy.maxFps <= 15
-                minFrameIntervalNanos = if (policy.maxFps > 0) {
-                    1_000_000_000L / policy.maxFps.coerceAtLeast(1)
+                val runtimeMaxFps = renderer.runtimeProfile.maxFps
+                maxFps = if (runtimeMaxFps > 0) {
+                    policy.maxFps.coerceAtMost(runtimeMaxFps)
+                } else {
+                    0
+                }
+                batterySaver = maxFps <= 15
+                minFrameIntervalNanos = if (maxFps > 0) {
+                    1_000_000_000L / maxFps
                 } else {
                     Long.MAX_VALUE
                 }
@@ -107,33 +121,39 @@ class PreviewGlThread(
 
         frameClock = WallpaperFrameClock { frameTimeNanos ->
             if (isVisible && hasSurface) {
-                if (frameTimeNanos - lastRenderedFrameNanos < minFrameIntervalNanos) {
-                    val remainingNanos = minFrameIntervalNanos - (frameTimeNanos - lastRenderedFrameNanos)
+                val frameIntervalNanos = if (renderer.shouldContinueRendering) {
+                    1_000_000_000L / maxFps.coerceAtLeast(1)
+                } else {
+                    minFrameIntervalNanos
+                }
+                if (frameTimeNanos - lastRenderedFrameNanos < frameIntervalNanos) {
+                    val remainingNanos = frameIntervalNanos - (frameTimeNanos - lastRenderedFrameNanos)
                     frameClock?.postNextFrame((remainingNanos / 1_000_000).coerceAtLeast(0))
                     return@WallpaperFrameClock
                 }
                 lastRenderedFrameNanos = frameTimeNanos
                 renderContext.update(frameTimeNanos)
                 
-                val snapshot = SceneInputSnapshot(
-                    isVisible = isVisible,
-                    batterySaver = batterySaver,
-                    parallaxX = parallaxX,
-                    parallaxY = parallaxY,
-                    touchX = touchX,
-                    touchY = touchY,
-                    hasTouch = hasTouch
-                )
+                inputSnapshot.isVisible = isVisible
+                inputSnapshot.batterySaver = batterySaver
+                inputSnapshot.parallaxX = parallaxX
+                inputSnapshot.parallaxY = parallaxY
+                inputSnapshot.touchX = touchX
+                inputSnapshot.touchY = touchY
+                inputSnapshot.hasTouch = hasTouch
+                inputSnapshot.thermalEmergency = thermalStateController.isThermalThrottling
                 
                 eglManager?.makeCurrent()
-                renderer.renderFrame(renderContext, snapshot)
+                renderer.renderFrame(renderContext, inputSnapshot)
                 eglManager?.swapBuffers()
                 if (renderer.activeScene != null) {
                     publishFirstFrameIfNeeded()
                     publishDayProgressIfDue(frameTimeNanos)
                 }
             }
-            frameClock?.postNextFrame()
+            if (renderer.shouldContinueRendering) {
+                frameClock?.postNextFrame()
+            }
         }
     }
 
@@ -247,6 +267,7 @@ class PreviewGlThread(
         handler.post {
             frameClock?.stop()
             renderer.onContextLost()
+            glManager?.release()
             glManager = null
             eglManager?.release()
             eglManager = null
@@ -255,8 +276,7 @@ class PreviewGlThread(
     }
 
     private companion object {
-        // Optimize day progress callback for smooth sun/moon animation
-        // Changed from 1 second to 50ms for fluid motion
-        const val DAY_PROGRESS_CALLBACK_INTERVAL_NANOS = 50_000_000L
+        // The GL renderer animates celestial motion; Compose only needs badge updates.
+        const val DAY_PROGRESS_CALLBACK_INTERVAL_NANOS = 500_000_000L
     }
 }

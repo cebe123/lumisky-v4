@@ -15,7 +15,6 @@ import com.example.lumisky.definition.WallpaperDefinition
 import com.example.lumisky.engine.gl.GlResourceManager
 import com.example.lumisky.engine.pipeline.CachedLayerRenderer
 import com.example.lumisky.engine.pipeline.FinalCompositeRenderer
-import com.example.lumisky.engine.pipeline.LayerComposer
 import com.example.lumisky.layers.LayerCacheMode
 
 class RenderEngineSession(
@@ -57,6 +56,7 @@ class RenderEngineSession(
     fun onContextCreated(gl: GlResourceManager, context: RenderContext) {
         frameState.gl = gl
         cachedLayerRenderer = CachedLayerRenderer(gl, shaderSourceLoader)
+        preloadTextures(gl)
         activeScene?.onCreateGl(gl, context)
         isContextCreated = true
     }
@@ -76,7 +76,9 @@ class RenderEngineSession(
         val previousScene = activeScene
         previousScene?.onDestroyGl(gl)
         cachedLayerRenderer?.clear()
+        gl.textures.clear()
         activeScene = newScene
+        preloadTextures(gl)
         activeScene?.onCreateGl(gl, context)
         if (frameState.width > 0 && frameState.height > 0) {
             activeScene?.onSurfaceChanged(context, frameState.width, frameState.height)
@@ -103,13 +105,17 @@ class RenderEngineSession(
         sceneState.isVisible = inputSnapshot.isVisible
         sceneState.batterySaver = inputSnapshot.batterySaver
 
-        if (runtimeProfile.mode == RuntimeMode.PREVIEW_FULLSCREEN) {
+        if (runtimeProfile.mode != RuntimeMode.LIVE_WALLPAPER) {
             sceneState.dayProgress = previewTimeMotionController.resolveDayProgress(activeDefinition, context.deltaTimeSeconds)
         }
 
         sceneState.quality = runtimeProfile.overrideQualityTier
             ?: inputSnapshot.preferredQualityTier
-            ?: qualityController.resolveTier(activeDefinition, inputSnapshot.batterySaver, false)
+            ?: qualityController.resolveTier(
+                activeDefinition,
+                inputSnapshot.batterySaver,
+                inputSnapshot.thermalEmergency
+            )
 
         atmosphereController.update(sceneState)
 
@@ -154,12 +160,23 @@ class RenderEngineSession(
         )
 
         scene.layers.forEach { layer ->
-            if (scheduler.shouldUpdate(layer, context.frameTimeNanos, frameState.thermalEmergency || sceneState.batterySaver)) {
+            if (scheduler.shouldUpdate(
+                    layer,
+                    context.frameTimeNanos,
+                    frameState.thermalEmergency || sceneState.batterySaver,
+                    sceneId = scene.id
+                )
+            ) {
                 layer.update(frameState)
             }
-            val cacheMode = layerCacheMode(layer.framePolicy.cacheMode)
+            val cacheMode = layer.cacheMode
             if (cacheMode == LayerCacheMode.FBO_CACHE &&
-                scheduler.shouldRefreshCache(layer, context.frameTimeNanos, frameState.thermalEmergency || sceneState.batterySaver)
+                scheduler.shouldRefreshCache(
+                    layer,
+                    context.frameTimeNanos,
+                    frameState.thermalEmergency || sceneState.batterySaver,
+                    sceneId = scene.id
+                )
             ) {
                 cachedLayerRenderer?.refresh(layer, frameState)
             }
@@ -167,8 +184,8 @@ class RenderEngineSession(
 
         finalCompositeRenderer.prepareFrame(frameState.width, frameState.height)
 
-        LayerComposer.compose(scene.layers).forEach { layer ->
-            when (layerCacheMode(layer.framePolicy.cacheMode)) {
+        scene.orderedLayers.forEach { layer ->
+            when (layer.cacheMode) {
                 LayerCacheMode.FBO_CACHE -> cachedLayerRenderer?.compositeLastTexture(layer, frameState)
                 else -> layer.render(frameState)
             }
@@ -186,7 +203,7 @@ class RenderEngineSession(
     }
 
     fun triggerPreviewAnimation() {
-        triggerLiveCatchUp(null)
+        previewTimeMotionController.startFocusAnimation(activeDefinition)
     }
 
     fun triggerLiveCatchUp(daylightOverride: DaylightOverride?) {
@@ -200,13 +217,21 @@ class RenderEngineSession(
         )
     }
 
-    private fun layerCacheMode(value: String): LayerCacheMode {
-        return try {
-            LayerCacheMode.valueOf(value)
-        } catch (e: Throwable) {
-            LayerCacheMode.NONE
+    private fun preloadTextures(gl: GlResourceManager) {
+        val paths = activeDefinition?.layers.orEmpty().flatMap { layer ->
+            buildList {
+                layer.source?.let(::add)
+                addAll(layer.textures.map { it.path })
+            }
         }
+        gl.textures.preload(paths, frameState.quality)
     }
+
+    val hasPendingTextureWork: Boolean
+        get() = frameState.isGlInitialized() && frameState.gl.textures.hasPendingWork
+
+    val isPreviewAnimationRunning: Boolean
+        get() = previewTimeMotionController.isAnimating
 
     private fun resolveSceneTimeZoneId(daylightOverride: DaylightOverride?): String {
         return daylightOverride?.timeZoneId

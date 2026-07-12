@@ -72,6 +72,7 @@ class LumiskyWallpaperEngine(
     private var lastSuccessfulScene: RuntimeScene? = null
     private var sensorParallaxEnabled = true
     private var thermalEmergencyLogged = false
+    private var suppressNextVisibleCatchUp = false
 
     fun onCreate(surfaceHolder: SurfaceHolder?, isPreview: Boolean) {
         this.surfaceHolder = surfaceHolder
@@ -165,8 +166,16 @@ class LumiskyWallpaperEngine(
         glThread?.setVisibility(visible)
         updateSensorRegistration(visible)
         if (visible) {
-            triggerLiveCatchUp()
+            if (suppressNextVisibleCatchUp) {
+                suppressNextVisibleCatchUp = false
+            } else {
+                glThread?.triggerLiveCatchUp()
+            }
         }
+    }
+
+    fun suppressNextVisibleCatchUp() {
+        suppressNextVisibleCatchUp = true
     }
 
     fun onSurfaceCreated(holder: SurfaceHolder) {

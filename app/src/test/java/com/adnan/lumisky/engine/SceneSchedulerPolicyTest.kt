@@ -59,6 +59,25 @@ class SceneSchedulerPolicyTest {
     }
 
     @Test
+    fun minuteTickLayerUpdatesOnlyOncePerMinute() {
+        val scheduler = SceneScheduler()
+        val layer = TestLayer(LayerFramePolicyDefinition(mode = "MINUTE_TICK"))
+
+        assertTrue(scheduler.shouldUpdate(layer, frameTimeNanos = 60_000_000_000L))
+        assertFalse(scheduler.shouldUpdate(layer, frameTimeNanos = 60_500_000_000L))
+        assertTrue(scheduler.shouldUpdate(layer, frameTimeNanos = 120_000_000_000L))
+    }
+
+    @Test
+    fun identicalLayerIdsInDifferentScenesHaveIndependentSchedules() {
+        val scheduler = SceneScheduler()
+        val layer = TestLayer(LayerFramePolicyDefinition(mode = "FIXED_FPS", fps = 1))
+
+        assertTrue(scheduler.shouldUpdate(layer, frameTimeNanos = 1_000_000_000L, sceneId = "first"))
+        assertTrue(scheduler.shouldUpdate(layer, frameTimeNanos = 1_000_000_000L, sceneId = "second"))
+    }
+
+    @Test
     fun onDemandSceneHasNoRecurringFrame() {
         val interval = SceneFramePacingPolicy.frameIntervalNanos(
             layers = listOf(TestLayer(LayerFramePolicyDefinition(mode = "ON_DEMAND"))),
@@ -89,6 +108,10 @@ class SceneSchedulerPolicyTest {
         override val renderPass: RenderPass = RenderPass.BACKGROUND
         override val blendMode: BlendMode = BlendMode.NONE
         override val renderTargetMode: RenderTargetMode = RenderTargetMode.DIRECT
+        override val frameMode: com.example.lumisky.layers.LayerFrameMode =
+            com.example.lumisky.layers.LayerFrameMode.valueOf(framePolicy.mode)
+        override val cacheMode: com.example.lumisky.layers.LayerCacheMode =
+            com.example.lumisky.layers.LayerCacheMode.valueOf(framePolicy.cacheMode)
         override val parallaxDepth: Float = 0f
 
         override fun onCreateGl(gl: GlResourceManager, context: RenderContext) = Unit

@@ -26,6 +26,8 @@ interface RenderLayer {
     val blendMode: BlendMode
     val renderTargetMode: RenderTargetMode
     val framePolicy: LayerFramePolicyDefinition
+    val frameMode: LayerFrameMode
+    val cacheMode: LayerCacheMode
     val parallaxDepth: Float
 
     fun onCreateGl(gl: GlResourceManager, context: RenderContext)
