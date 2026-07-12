@@ -1,0 +1,43 @@
+{
+  "packageId": "samurai_sunset",
+  "displayName": "Samurai Sunset",
+  "version": "1.0.0",
+  "method": "HYBRID",
+  "canvas": {
+    "master": [
+      1440,
+      2560
+    ],
+    "runtimeHigh": [
+      1080,
+      1920
+    ],
+    "runtimeLow": [
+      720,
+      1280
+    ],
+    "aspectRatio": "9:16"
+  },
+  "rendering": {
+    "sky": "procedural shader",
+    "sun": "procedural shader",
+    "moon": "procedural shader",
+    "foreground": "layered RGBA textures",
+    "glesBaseline": 2,
+    "glesPreferred": 3
+  },
+  "layerOrder": [
+    "mountains",
+    "middle_ground",
+    "atmosphere_overlay",
+    "architecture",
+    "left_foreground",
+    "foreground_cliff",
+    "main_subject"
+  ],
+  "compatibility": {
+    "currentLumiskyManifest": true,
+    "layeredV1DefinitionIncluded": true,
+    "currentCreatorImageLayerCount": 7
+  }
+}

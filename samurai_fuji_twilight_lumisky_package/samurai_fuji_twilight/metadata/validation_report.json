@@ -1,0 +1,276 @@
+{
+  "schemaVersion": 1,
+  "wallpaperId": "samurai_fuji_twilight",
+  "result": "PASS",
+  "failCount": 0,
+  "warningCount": 2,
+  "checks": [
+    {
+      "id": "required_assets_present",
+      "status": "PASS",
+      "details": {
+        "missing": [],
+        "count": 36
+      }
+    },
+    {
+      "id": "layers_canvas_alpha",
+      "status": "PASS",
+      "details": [
+        {
+          "id": "far_mountains",
+          "size": [
+            1440,
+            2560
+          ],
+          "mode": "RGBA",
+          "nonZeroAlphaPixels": 105087,
+          "transparentRgbNonZeroPixels": 0
+        },
+        {
+          "id": "main_mountain",
+          "size": [
+            1440,
+            2560
+          ],
+          "mode": "RGBA",
+          "nonZeroAlphaPixels": 184668,
+          "transparentRgbNonZeroPixels": 0
+        },
+        {
+          "id": "mid_mountains",
+          "size": [
+            1440,
+            2560
+          ],
+          "mode": "RGBA",
+          "nonZeroAlphaPixels": 150485,
+          "transparentRgbNonZeroPixels": 0
+        },
+        {
+          "id": "clouds_layer",
+          "size": [
+            1440,
+            2560
+          ],
+          "mode": "RGBA",
+          "nonZeroAlphaPixels": 89883,
+          "transparentRgbNonZeroPixels": 0
+        },
+        {
+          "id": "pagoda_or_architecture",
+          "size": [
+            1440,
+            2560
+          ],
+          "mode": "RGBA",
+          "nonZeroAlphaPixels": 104364,
+          "transparentRgbNonZeroPixels": 0
+        },
+        {
+          "id": "foreground_cliff",
+          "size": [
+            1440,
+            2560
+          ],
+          "mode": "RGBA",
+          "nonZeroAlphaPixels": 881296,
+          "transparentRgbNonZeroPixels": 0
+        },
+        {
+          "id": "left_foreground_tree",
+          "size": [
+            1440,
+            2560
+          ],
+          "mode": "RGBA",
+          "nonZeroAlphaPixels": 105253,
+          "transparentRgbNonZeroPixels": 0
+        },
+        {
+          "id": "foreground_details",
+          "size": [
+            1440,
+            2560
+          ],
+          "mode": "RGBA",
+          "nonZeroAlphaPixels": 41766,
+          "transparentRgbNonZeroPixels": 0
+        },
+        {
+          "id": "main_subject_samurai",
+          "size": [
+            1440,
+            2560
+          ],
+          "mode": "RGBA",
+          "nonZeroAlphaPixels": 138465,
+          "transparentRgbNonZeroPixels": 0
+        }
+      ]
+    },
+    {
+      "id": "semantic_layers_sky_transparent",
+      "status": "PASS",
+      "details": {
+        "offenders": []
+      }
+    },
+    {
+      "id": "json_parse",
+      "status": "PASS",
+      "details": []
+    },
+    {
+      "id": "relative_paths_and_resolution",
+      "status": "PASS",
+      "details": {
+        "unsafe": [],
+        "absent": []
+      }
+    },
+    {
+      "id": "shader_files_and_uniform_contract",
+      "status": "PASS",
+      "details": [
+        {
+          "api": "gles3",
+          "missingUniforms": [],
+          "hasMain": true
+        },
+        {
+          "api": "gles2",
+          "missingUniforms": [],
+          "hasMain": true
+        }
+      ]
+    },
+    {
+      "id": "strategy_consistency",
+      "status": "PASS",
+      "details": {
+        "strategy": "STATIC_TIME_SLICE_MODE",
+        "renderer": "StaticTimeSliceRenderer",
+        "contentMode": "FULL_SCENE_FLATTENED"
+      }
+    },
+    {
+      "id": "time_slices_complete",
+      "status": "PASS",
+      "details": {
+        "expected": [
+          "dawn",
+          "midnight",
+          "moonrise",
+          "moonset",
+          "noon",
+          "sunset"
+        ],
+        "metadata": [
+          "dawn",
+          "midnight",
+          "moonrise",
+          "moonset",
+          "noon",
+          "sunset"
+        ]
+      }
+    },
+    {
+      "id": "crossfade_defined",
+      "status": "PASS",
+      "details": {
+        "mode": "CYCLIC_CROSSFADE",
+        "curve": "SMOOTHSTEP",
+        "defaultSeconds": 900
+      }
+    },
+    {
+      "id": "composition_matches_reference",
+      "status": "PASS",
+      "details": {
+        "meanAbsoluteError": 0.0,
+        "rmse": 0.0,
+        "psnrDb": 99.0
+      }
+    },
+    {
+      "id": "parallax_overscan_and_reveal_strip",
+      "status": "PASS",
+      "details": {
+        "revealStripPx": 21,
+        "maxClampPx": 18,
+        "allOverscanScaleAboveOne": true
+      }
+    },
+    {
+      "id": "package_external_references",
+      "status": "PASS",
+      "details": {
+        "externalReferences": []
+      }
+    },
+    {
+      "id": "readme_thumbnail_composition_present",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "id": "flattened_source_segmentation",
+      "status": "WARNING",
+      "details": {
+        "reason": "Semantic masks are deterministic automated partitions from a single flattened raster; manual rotoscoping can further improve sub-pixel hair/grass edges.",
+        "mitigation": "Primary runtime uses full-scene slices; semantic layers are optional reference-parallax assets."
+      }
+    },
+    {
+      "id": "gles_runtime_vendor_compile",
+      "status": "WARNING",
+      "details": {
+        "reason": "No offline GLSL compiler was available in the artifact environment; shaders received syntax/contract checks and require real-device compile/link testing."
+      }
+    }
+  ],
+  "sha256": {
+    "README_TR.md": "ee1d97dd042c3ad4fbc2800c8899ba6bbbe2d7347143a503d479cc1ab4e4e941",
+    "assets/layers/clouds_layer.png": "d145d5845209d13c665dfb7f7002758159c788480616974730d2204307f957a8",
+    "assets/layers/far_mountains.png": "ca921026b5bb88ccc27d712f9d5fa46e24fb79f658e764e47ed77b77297b17eb",
+    "assets/layers/foreground_cliff.png": "854bce629b48011a6452251451af6193cf0cfd69dd995941ad578b925877786a",
+    "assets/layers/foreground_details.png": "4a53e9e488ed672749698ac049b932c770f64d7e7b91ba4dcf25d353af31c9f9",
+    "assets/layers/left_foreground_tree.png": "9a57c58ba5067cc1d88af6ebd23b4fbedf00ca894f59a496347581d721fb2382",
+    "assets/layers/main_mountain.png": "9bf24de47408ff5e2efeda3541dafb248f4859807242337f184fa584aaad623a",
+    "assets/layers/main_subject_samurai.png": "0bc170f746e4c498b2a288376be7f2bcf113e2bd9030e827ff42bb32c93e09bc",
+    "assets/layers/mid_mountains.png": "278ba73f96ead95572a305e95b2a35eff11039e61d414f49a8800a0d7662179d",
+    "assets/layers/pagoda_or_architecture.png": "26c183021f671ff0e6f5d5602bc3fde662d25a9e00652c55ec3ad8d8db364ca0",
+    "assets/preview/composition_dawn.png": "0d7b5e682e087ac3241163f0639c929dfa55b2349e8663fdff514994538db374",
+    "assets/preview/composition_midnight.png": "a8787eb13ea38e30cdac5725e73cc2dfb29750b8a996bf2f4a7e48ae8a2f3698",
+    "assets/preview/composition_moonrise.png": "a86b435e1ef0296ea00eb51772a743f780c60f793076c00e2813d4c865bcd2bb",
+    "assets/preview/composition_moonset.png": "1416706afafedd90d6e5410aa37187c71906a34ba8b7430a3f51aff79c4ce1af",
+    "assets/preview/composition_noon.png": "75b27b974302155c4a2ff27bdd1dec5247349d1b2533ef99922ca186c6e19359",
+    "assets/preview/composition_preview.png": "3d572bd0e61e33c6caf341c15458d1465a3229fc3abe58ec22746b64ab29319c",
+    "assets/preview/composition_sunset.png": "3d572bd0e61e33c6caf341c15458d1465a3229fc3abe58ec22746b64ab29319c",
+    "assets/preview/full_preview.png": "e3b6967728f823708333c88a43e9695160fc806dd974a75df5141299251b4b02",
+    "assets/preview/thumbnail.webp": "3d67aa04bfce66aa65d2f1068719404d86c55257f9bb188abfe9165a25eefcff",
+    "assets/reference/source_reference.png": "e3b6967728f823708333c88a43e9695160fc806dd974a75df5141299251b4b02",
+    "assets/time_slices/dawn.png": "0d7b5e682e087ac3241163f0639c929dfa55b2349e8663fdff514994538db374",
+    "assets/time_slices/midnight.png": "a8787eb13ea38e30cdac5725e73cc2dfb29750b8a996bf2f4a7e48ae8a2f3698",
+    "assets/time_slices/moonrise.png": "a86b435e1ef0296ea00eb51772a743f780c60f793076c00e2813d4c865bcd2bb",
+    "assets/time_slices/moonset.png": "1416706afafedd90d6e5410aa37187c71906a34ba8b7430a3f51aff79c4ce1af",
+    "assets/time_slices/noon.png": "75b27b974302155c4a2ff27bdd1dec5247349d1b2533ef99922ca186c6e19359",
+    "assets/time_slices/sunset.png": "3d572bd0e61e33c6caf341c15458d1465a3229fc3abe58ec22746b64ab29319c",
+    "metadata/catalog_entry.json": "ce166da87ce9bf8848bc25136d8469fb4f12398ece517783a6d5a3ab3c112128",
+    "metadata/layer_manifest.json": "463a759f0178ec2692371db4dda25b27f7f0864a1dcbe563ec1ad21e62caf731",
+    "metadata/wallpaper_definition.json": "d44e73e8b55c536117781a86cf5516ec0b5d43baa584143800616c22d2c33561",
+    "shaders/gles2/fullscreen.vert": "2d28a1c676755749bddc5c0f85a7380e21550edccac5b1708d50779baef37f12",
+    "shaders/gles2/moon.frag": "1f06bd6ae0fce009403e213e53b8e76f805774644626d03baab47d502d96890c",
+    "shaders/gles2/sky.frag": "5227e1a33eb1ad1e2790b61c734ff43ea51b588697ee8c3428be847dac257f33",
+    "shaders/gles2/sky_celestial_combined.frag": "9dc6e616029cc9900cecfe96adb4e9b2675233a89a05a4d9f9db99df6d3335b6",
+    "shaders/gles2/sun.frag": "457584eb2d6528f34a32d850251b2c130d1f8d01d370ef8a818808380b95d75a",
+    "shaders/gles3/fullscreen.vert": "c28af14e1ad41d1a4e5677faf77036a2ad214b1e57683bfa7e9b0e99fb4d7184",
+    "shaders/gles3/moon.frag": "a3e2c1f134652adeb28d299918044963171566fa664b2ddf49f46d5f6d0c0221",
+    "shaders/gles3/sky.frag": "3af58275cc8b82404e5e25f85bfd5588858c811362e7afb5e9742fd8590f6055",
+    "shaders/gles3/sky_celestial_combined.frag": "0f9460416697c7a85040ae454826022cd802751ce5055901ffc3b39b093bed51",
+    "shaders/gles3/sun.frag": "71397c0c34f9ec1ab2da055628061936fb79db6ee0017bb0f1aa55d91ca608b4"
+  },
+  "notes": "PASS permits documented WARNING items. No FAIL remains."
+}

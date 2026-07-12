@@ -1,0 +1,6 @@
+Add this object to app/src/main/assets/wallpapers/index.json -> wallpapers[]:
+
+{
+  "id": "samurai_sunset",
+  "manifest": "wallpapers/samurai_sunset/manifest.json"
+}

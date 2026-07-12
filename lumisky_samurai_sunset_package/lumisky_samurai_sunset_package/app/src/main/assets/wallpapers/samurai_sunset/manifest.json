@@ -1,0 +1,198 @@
+{
+  "id": "samurai_sunset",
+  "name": "Samurai Sunset",
+  "horizon": {
+    "offset": 0.39
+  },
+  "celestial": {
+    "sunPathType": "ARC",
+    "moonPathType": "ARC",
+    "sunOrbit": {
+      "pathType": "ARC",
+      "startX": 0.1,
+      "endX": 0.9,
+      "peakY": 0.73,
+      "hiddenY": -0.16,
+      "curve": "EASE_IN_OUT"
+    },
+    "moonOrbit": {
+      "pathType": "ARC",
+      "startX": 0.9,
+      "endX": 0.1,
+      "peakY": 0.78,
+      "hiddenY": -0.14,
+      "curve": "EASE_IN_OUT"
+    }
+  },
+  "features": {
+    "atmosphereEnabled": true,
+    "lensFlareEnabled": false,
+    "starsEnabled": true
+  },
+  "effects": {
+    "clouds": {
+      "enabled": true,
+      "speed": 0.05,
+      "density": 0.48,
+      "intensity": 0.52
+    },
+    "stars": {
+      "enabled": true,
+      "speed": 0.02,
+      "density": 0.35,
+      "intensity": 0.45
+    },
+    "fog": {
+      "enabled": true,
+      "speed": 0.015,
+      "density": 0.42,
+      "intensity": 0.55
+    }
+  },
+  "textures": {
+    "backgroundTexture": null,
+    "flareTexture": null
+  },
+  "shader": {
+    "fragmentAssetPath": "shaders/samurai_sunset/fragment.glsl",
+    "mode": "external_theme",
+    "uniformOverrides": {
+      "cloudAlpha": 0.45,
+      "cloudOffset": 0.0
+    }
+  },
+  "runtimeRenderPolicy": {
+    "policy": "CONTINUOUS",
+    "continuousFrameIntervalMs": 66
+  },
+  "capabilities": {
+    "dynamicMotion": true,
+    "dynamicTextures": false,
+    "locationAwareLighting": true,
+    "supportsCloudLayer": true,
+    "supportsStarLayer": true
+  },
+  "serviceRenderPolicy": {
+    "overridePolicy": "CONTINUOUS",
+    "overrideFrameIntervalMs": 66,
+    "usePowerSaverThrottle": true,
+    "useThermalThrottle": true,
+    "powerSaverPolicy": "CONTINUOUS",
+    "powerSaverFrameIntervalMs": 200,
+    "thermalThrottleFrameIntervalMs": 133
+  },
+  "previewLoopDurationSeconds": 12.0,
+  "focusCatchUpDurationSeconds": 1.2,
+  "peakY": 0.73,
+  "belowHorizonOffset": 0.16,
+  "creator": {
+    "schemaVersion": 1,
+    "layers": [
+      {
+        "texturePath": "wallpapers/samurai_sunset/assets/runtime/high/mountains.webp",
+        "mediaType": "image",
+        "mimeType": "image/webp",
+        "motionType": "STATIC",
+        "offsetX": 0.0,
+        "offsetY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "opacity": 1.0,
+        "blendMode": "normal",
+        "fitMode": "cover",
+        "photoRole": "NONE",
+        "visible": true
+      },
+      {
+        "texturePath": "wallpapers/samurai_sunset/assets/runtime/high/middle_ground.webp",
+        "mediaType": "image",
+        "mimeType": "image/webp",
+        "motionType": "STATIC",
+        "offsetX": 0.0,
+        "offsetY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "opacity": 1.0,
+        "blendMode": "normal",
+        "fitMode": "cover",
+        "photoRole": "NONE",
+        "visible": true
+      },
+      {
+        "texturePath": "wallpapers/samurai_sunset/assets/runtime/high/atmosphere_overlay.webp",
+        "mediaType": "image",
+        "mimeType": "image/webp",
+        "motionType": "STATIC",
+        "offsetX": 0.0,
+        "offsetY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "opacity": 0.92,
+        "blendMode": "normal",
+        "fitMode": "cover",
+        "photoRole": "NONE",
+        "visible": true
+      },
+      {
+        "texturePath": "wallpapers/samurai_sunset/assets/runtime/high/architecture.webp",
+        "mediaType": "image",
+        "mimeType": "image/webp",
+        "motionType": "STATIC",
+        "offsetX": 0.0,
+        "offsetY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "opacity": 1.0,
+        "blendMode": "normal",
+        "fitMode": "cover",
+        "photoRole": "NONE",
+        "visible": true
+      },
+      {
+        "texturePath": "wallpapers/samurai_sunset/assets/runtime/high/left_foreground.webp",
+        "mediaType": "image",
+        "mimeType": "image/webp",
+        "motionType": "STATIC",
+        "offsetX": 0.0,
+        "offsetY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "opacity": 1.0,
+        "blendMode": "normal",
+        "fitMode": "cover",
+        "photoRole": "NONE",
+        "visible": true
+      },
+      {
+        "texturePath": "wallpapers/samurai_sunset/assets/runtime/high/foreground_cliff.webp",
+        "mediaType": "image",
+        "mimeType": "image/webp",
+        "motionType": "STATIC",
+        "offsetX": 0.0,
+        "offsetY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "opacity": 1.0,
+        "blendMode": "normal",
+        "fitMode": "cover",
+        "photoRole": "NONE",
+        "visible": true
+      },
+      {
+        "texturePath": "wallpapers/samurai_sunset/assets/runtime/high/main_subject.webp",
+        "mediaType": "image",
+        "mimeType": "image/webp",
+        "motionType": "STATIC",
+        "offsetX": 0.0,
+        "offsetY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "opacity": 1.0,
+        "blendMode": "normal",
+        "fitMode": "cover",
+        "photoRole": "NONE",
+        "visible": true
+      }
+    ]
+  }
+}

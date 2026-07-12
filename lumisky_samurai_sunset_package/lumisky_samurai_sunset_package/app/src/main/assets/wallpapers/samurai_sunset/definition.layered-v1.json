@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "id": "samurai_sunset",
+  "renderer": "layered-v1",
+  "metadata": {
+    "name": "Samurai Sunset",
+    "category": "illustration",
+    "method": "HYBRID",
+    "masterResolution": [
+      1440,
+      2560
+    ],
+    "aspectRatio": "9:16",
+    "staticFallback": "wallpapers/samurai_sunset/assets/preview/static_fallback.webp",
+    "thumbnail": "wallpapers/samurai_sunset/assets/preview/thumbnail.webp"
+  },
+  "scene": {
+    "schedule": {
+      "mode": "VSYNC_CAPPED",
+      "maxFps": 15,
+      "batterySaverMaxFps": 5
+    },
+    "parallax": {
+      "enabled": true,
+      "maxOffsetX": 0.018,
+      "maxOffsetY": 0.012,
+      "smoothing": 0.88
+    },
+    "fallback": {
+      "onSceneError": "static_fallback",
+      "onOptionalLayerError": "disable_layer",
+      "onMissingTexture": "use_transparent_texture"
+    },
+    "layers": [
+      {
+        "id": "dynamic_sky",
+        "type": "ShaderLayer",
+        "required": true,
+        "pass": "BACKGROUND",
+        "zIndex": 0,
+        "shader": {
+          "gles3": "shaders/samurai_sunset/gles3/sky_celestial_combined.frag",
+          "gles2": "shaders/samurai_sunset/gles2/sky_celestial_combined.frag",
+          "vertexGles3": "shaders/samurai_sunset/gles3/fullscreen.vert",
+          "vertexGles2": "shaders/samurai_sunset/gles2/fullscreen.vert"
+        },
+        "updatePolicy": {
+          "type": "FIXED_FPS",
+          "fps": 15
+        }
+      },
+      {
+        "id": "mountains",
+        "type": "TextureLayer",
+        "required": true,
+        "zIndex": 100,
+        "texture": "wallpapers/samurai_sunset/assets/runtime/high/mountains.webp",
+        "blendMode": "ALPHA",
+        "opacity": 1.0,
+        "updatePolicy": {
+          "type": "STATIC"
+        },
+        "parallax": {
+          "factorX": 0.05,
+          "factorY": 0.02,
+          "depth": 0.1
+        }
+      },
+      {
+        "id": "middle_ground",
+        "type": "TextureLayer",
+        "required": true,
+        "zIndex": 200,
+        "texture": "wallpapers/samurai_sunset/assets/runtime/high/middle_ground.webp",
+        "blendMode": "ALPHA",
+        "opacity": 1.0,
+        "updatePolicy": {
+          "type": "STATIC"
+        },
+        "parallax": {
+          "factorX": 0.12,
+          "factorY": 0.04,
+          "depth": 0.22
+        }
+      },
+      {
+        "id": "atmosphere_overlay",
+        "type": "TextureLayer",
+        "required": false,
+        "zIndex": 250,
+        "texture": "wallpapers/samurai_sunset/assets/runtime/high/atmosphere_overlay.webp",
+        "blendMode": "ALPHA",
+        "opacity": 0.92,
+        "updatePolicy": {
+          "type": "STATIC"
+        },
+        "parallax": {
+          "factorX": 0.08,
+          "factorY": 0.02,
+          "depth": 0.18
+        }
+      },
+      {
+        "id": "architecture",
+        "type": "TextureLayer",
+        "required": false,
+        "zIndex": 300,
+        "texture": "wallpapers/samurai_sunset/assets/runtime/high/architecture.webp",
+        "blendMode": "ALPHA",
+        "opacity": 1.0,
+        "updatePolicy": {
+          "type": "STATIC"
+        },
+        "parallax": {
+          "factorX": 0.18,
+          "factorY": 0.06,
+          "depth": 0.34
+        }
+      },
+      {
+        "id": "left_foreground",
+        "type": "TextureLayer",
+        "required": false,
+        "zIndex": 400,
+        "texture": "wallpapers/samurai_sunset/assets/runtime/high/left_foreground.webp",
+        "blendMode": "ALPHA",
+        "opacity": 1.0,
+        "updatePolicy": {
+          "type": "STATIC"
+        },
+        "parallax": {
+          "factorX": 0.42,
+          "factorY": 0.14,
+          "depth": 0.72
+        }
+      },
+      {
+        "id": "foreground_cliff",
+        "type": "TextureLayer",
+        "required": true,
+        "zIndex": 500,
+        "texture": "wallpapers/samurai_sunset/assets/runtime/high/foreground_cliff.webp",
+        "blendMode": "ALPHA",
+        "opacity": 1.0,
+        "updatePolicy": {
+          "type": "STATIC"
+        },
+        "parallax": {
+          "factorX": 0.48,
+          "factorY": 0.16,
+          "depth": 0.8
+        }
+      },
+      {
+        "id": "main_subject",
+        "type": "TextureLayer",
+        "required": true,
+        "zIndex": 600,
+        "texture": "wallpapers/samurai_sunset/assets/runtime/high/main_subject.webp",
+        "blendMode": "ALPHA",
+        "opacity": 1.0,
+        "updatePolicy": {
+          "type": "STATIC"
+        },
+        "parallax": {
+          "factorX": 0.54,
+          "factorY": 0.18,
+          "depth": 0.9
+        }
+      }
+    ]
+  }
+}

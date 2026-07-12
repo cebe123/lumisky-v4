@@ -1,0 +1,723 @@
+{
+  "schemaVersion": 1,
+  "id": "samurai_fuji_twilight",
+  "name": "Samurai — Fuji Alacakaranlığı",
+  "description": "Stilize Japon gün batımı, Fuji, samuray ve katmanlı dağ silüetlerinden oluşan statik zaman dilimi + parallax canlı duvar kâğıdı.",
+  "category": "SCENIC_ANIME",
+  "renderer": "StaticTimeSliceRenderer",
+  "sourceType": "FULL_SCENE_STATIC_TIME_SLICES_WITH_OPTIONAL_LAYER_ASSETS",
+  "selectedSkyStrategy": "STATIC_TIME_SLICE_MODE",
+  "strategyReason": "Kaynak illüstrasyonun stilize bulutları, büyük güneş/dağ örtüşmesi ve tek flatten edilmiş raster kaynak nedeniyle ana runtime görsel doğruluğu altı FULL_SCENE time-slice texture ile korunur. Semantic PNG katmanları ayrı teslim edilir ve referans/sunset parallax profili ile isteğe bağlı kullanılabilir; ana crossfade hiçbir katman sınırı üretmez.",
+  "canvas": {
+    "width": 1440,
+    "height": 2560,
+    "aspectRatio": "9:16",
+    "colorSpace": "sRGB",
+    "orientation": "PORTRAIT"
+  },
+  "preview": {
+    "thumbnail": "assets/preview/thumbnail.webp",
+    "full": "assets/preview/full_preview.png",
+    "composition": "assets/preview/composition_preview.png",
+    "timeSlicePreviews": {
+      "dawn": "assets/preview/composition_dawn.png",
+      "noon": "assets/preview/composition_noon.png",
+      "sunset": "assets/preview/composition_sunset.png",
+      "moonrise": "assets/preview/composition_moonrise.png",
+      "midnight": "assets/preview/composition_midnight.png",
+      "moonset": "assets/preview/composition_moonset.png"
+    }
+  },
+  "runtime": {
+    "renderMode": "WHEN_DIRTY_WITH_PARALLAX_BURST",
+    "liveWallpaper": {
+      "normalMaxFps": 30,
+      "batterySaverMaxFps": 15,
+      "thermalSevereFpsRange": [
+        8,
+        15
+      ],
+      "idleContinuousRendering": false,
+      "stopWhenInvisible": true,
+      "timeUpdate": "MINUTE_TICK",
+      "parallaxBurstDurationMs": 450
+    },
+    "catalogPreview": {
+      "maxFps": 60,
+      "activeRenderersWhileScrolling": 0,
+      "activeRenderersAfterScroll": 1,
+      "lowDeviceFps": 15,
+      "midDeviceFps": 30,
+      "highDeviceFps": 60
+    },
+    "fullscreenPreview": {
+      "initialFps": 60,
+      "adaptiveHighRefresh": true,
+      "absoluteMaxFps": 120,
+      "fastStepDownOnDeadlineMiss": true,
+      "slowStepUpWhenStable": true
+    },
+    "textureResidency": {
+      "timeSlicesResident": 2,
+      "layerUploadMode": "CROP_TO_ALPHA_BOUNDS",
+      "decodeDownsampleByQuality": true,
+      "releaseOnInvisibleAfterMs": 15000
+    },
+    "alphaMode": "PREMULTIPLIED"
+  },
+  "locationAware": {
+    "enabled": true,
+    "optional": true,
+    "permissionRequired": false,
+    "fallbackSunriseMinutes": 360,
+    "fallbackSunsetMinutes": 1080,
+    "refreshPolicy": "ON_LOCATION_OR_TIMEZONE_CHANGE"
+  },
+  "timeModel": {
+    "type": "LOCAL_SOLAR_FRACTION_WITH_STATIC_SLICE_ANCHORS",
+    "dayProgressRange": [
+      0.0,
+      1.0
+    ],
+    "sunriseFractionSource": "sunriseMinutes/1440f",
+    "sunsetFractionSource": "sunsetMinutes/1440f",
+    "minuteTick": true,
+    "cyclicAtMidnight": true,
+    "moonPhaseSupported": true,
+    "moonPhaseUsage": "Optional shader fallback and metadata-driven intensity; baked slice phases remain the visual source of truth."
+  },
+  "parallax": {
+    "enabled": true,
+    "coordinateSpace": "NORMALIZED_DEVICE_TILT",
+    "directionRule": "FARTHER_MOVES_MORE",
+    "verticalToHorizontalRatioMax": 0.45,
+    "edgeProtection": "OVERSCAN_PLUS_INPAINTED_REVEAL_STRIP",
+    "globalStrength": 1.0,
+    "lowPassFilter": "EXPONENTIAL",
+    "mode": "FULL_SCENE_UV_DEFAULT_WITH_OPTIONAL_SEMANTIC_REFERENCE_PROFILE",
+    "defaultDuringCrossfade": "FULL_SCENE_UV_TRANSLATION_ONLY",
+    "semanticLayerProfile": "Enable only when current/next slice is sunset and transition mix is outside 0.05..0.95, or after runtime mask-quality approval."
+  },
+  "shaders": {
+    "primary": "shaders/gles3/sky_celestial_combined.frag",
+    "vertex": "shaders/gles3/fullscreen.vert",
+    "gles3": {
+      "fullscreen.vert": "shaders/gles3/fullscreen.vert",
+      "sky.frag": "shaders/gles3/sky.frag",
+      "sun.frag": "shaders/gles3/sun.frag",
+      "moon.frag": "shaders/gles3/moon.frag",
+      "sky_celestial_combined.frag": "shaders/gles3/sky_celestial_combined.frag"
+    },
+    "gles2": {
+      "fullscreen.vert": "shaders/gles2/fullscreen.vert",
+      "sky.frag": "shaders/gles2/sky.frag",
+      "sun.frag": "shaders/gles2/sun.frag",
+      "moon.frag": "shaders/gles2/moon.frag",
+      "sky_celestial_combined.frag": "shaders/gles2/sky_celestial_combined.frag"
+    },
+    "uniforms": [
+      "u_Resolution",
+      "u_DayProgress",
+      "u_Sunrise",
+      "u_Sunset",
+      "u_TwilightWidth",
+      "u_StarIntensity",
+      "u_SunRadius",
+      "u_SunGlowRadius",
+      "u_SunIntensity",
+      "u_MoonRadius",
+      "u_MoonGlowRadius",
+      "u_MoonIntensity",
+      "u_MoonPhase",
+      "u_Parallax",
+      "u_SkyStyleMix",
+      "u_CloudOpacity",
+      "u_HorizonGlowIntensity",
+      "u_ColorThemeMix"
+    ],
+    "mainUse": "Two-texture smoothstep crossfade; celestial shaders are fallback/debug paths."
+  },
+  "layers": [
+    {
+      "id": "far_mountains",
+      "file": "assets/layers/far_mountains.png",
+      "type": "RGBA_TEXTURE_LAYER",
+      "canvasWidth": 1440,
+      "canvasHeight": 2560,
+      "hasAlpha": true,
+      "zIndex": 10,
+      "blendMode": "NORMAL_PREMULTIPLIED",
+      "responseX": 0.03,
+      "responseY": 0.012,
+      "clampX": 18,
+      "clampY": 8,
+      "smoothing": 0.86,
+      "overscanScale": 1.035,
+      "contentBoundsPx": {
+        "left": 0,
+        "top": 1215,
+        "right": 1440,
+        "bottom": 1481
+      },
+      "runtimeCropPaddingPx": 16,
+      "runtimeUploadMode": "CROP_TO_ALPHA_BOUNDS",
+      "estimatedMemoryBytes": 1716480,
+      "fullCanvasMemoryBytes": 14745600,
+      "enabled": true,
+      "baseTransform": {
+        "translateX": 0.0,
+        "translateY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "rotationDegrees": 0.0
+      },
+      "updatePolicy": "ON_PARALLAX_BURST",
+      "fpsHint": 30
+    },
+    {
+      "id": "main_mountain",
+      "file": "assets/layers/main_mountain.png",
+      "type": "RGBA_TEXTURE_LAYER",
+      "canvasWidth": 1440,
+      "canvasHeight": 2560,
+      "hasAlpha": true,
+      "zIndex": 20,
+      "blendMode": "NORMAL_PREMULTIPLIED",
+      "responseX": 0.025,
+      "responseY": 0.01,
+      "clampX": 15,
+      "clampY": 7,
+      "smoothing": 0.87,
+      "overscanScale": 1.03,
+      "contentBoundsPx": {
+        "left": 588,
+        "top": 985,
+        "right": 1440,
+        "bottom": 1388
+      },
+      "runtimeCropPaddingPx": 16,
+      "runtimeUploadMode": "CROP_TO_ALPHA_BOUNDS",
+      "estimatedMemoryBytes": 1510320,
+      "fullCanvasMemoryBytes": 14745600,
+      "enabled": true,
+      "baseTransform": {
+        "translateX": 0.0,
+        "translateY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "rotationDegrees": 0.0
+      },
+      "updatePolicy": "ON_PARALLAX_BURST",
+      "fpsHint": 30
+    },
+    {
+      "id": "mid_mountains",
+      "file": "assets/layers/mid_mountains.png",
+      "type": "RGBA_TEXTURE_LAYER",
+      "canvasWidth": 1440,
+      "canvasHeight": 2560,
+      "hasAlpha": true,
+      "zIndex": 30,
+      "blendMode": "NORMAL_PREMULTIPLIED",
+      "responseX": 0.02,
+      "responseY": 0.008,
+      "clampX": 12,
+      "clampY": 6,
+      "smoothing": 0.88,
+      "overscanScale": 1.025,
+      "contentBoundsPx": {
+        "left": 10,
+        "top": 1267,
+        "right": 1440,
+        "bottom": 1711
+      },
+      "runtimeCropPaddingPx": 16,
+      "runtimeUploadMode": "CROP_TO_ALPHA_BOUNDS",
+      "estimatedMemoryBytes": 2741760,
+      "fullCanvasMemoryBytes": 14745600,
+      "enabled": true,
+      "baseTransform": {
+        "translateX": 0.0,
+        "translateY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "rotationDegrees": 0.0
+      },
+      "updatePolicy": "ON_PARALLAX_BURST",
+      "fpsHint": 30
+    },
+    {
+      "id": "clouds_layer",
+      "file": "assets/layers/clouds_layer.png",
+      "type": "RGBA_TEXTURE_LAYER",
+      "canvasWidth": 1440,
+      "canvasHeight": 2560,
+      "hasAlpha": true,
+      "zIndex": 40,
+      "blendMode": "NORMAL_PREMULTIPLIED",
+      "responseX": 0.018,
+      "responseY": 0.007,
+      "clampX": 11,
+      "clampY": 5,
+      "smoothing": 0.88,
+      "overscanScale": 1.025,
+      "contentBoundsPx": {
+        "left": 209,
+        "top": 1426,
+        "right": 1440,
+        "bottom": 1801
+      },
+      "runtimeCropPaddingPx": 16,
+      "runtimeUploadMode": "CROP_TO_ALPHA_BOUNDS",
+      "estimatedMemoryBytes": 2030116,
+      "fullCanvasMemoryBytes": 14745600,
+      "enabled": true,
+      "baseTransform": {
+        "translateX": 0.0,
+        "translateY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "rotationDegrees": 0.0
+      },
+      "updatePolicy": "ON_PARALLAX_BURST",
+      "fpsHint": 30
+    },
+    {
+      "id": "pagoda_or_architecture",
+      "file": "assets/layers/pagoda_or_architecture.png",
+      "type": "RGBA_TEXTURE_LAYER",
+      "canvasWidth": 1440,
+      "canvasHeight": 2560,
+      "hasAlpha": true,
+      "zIndex": 50,
+      "blendMode": "NORMAL_PREMULTIPLIED",
+      "responseX": 0.012,
+      "responseY": 0.005,
+      "clampX": 8,
+      "clampY": 4,
+      "smoothing": 0.9,
+      "overscanScale": 1.02,
+      "contentBoundsPx": {
+        "left": 936,
+        "top": 1571,
+        "right": 1440,
+        "bottom": 1933
+      },
+      "runtimeCropPaddingPx": 16,
+      "runtimeUploadMode": "CROP_TO_ALPHA_BOUNDS",
+      "estimatedMemoryBytes": 819520,
+      "fullCanvasMemoryBytes": 14745600,
+      "enabled": true,
+      "baseTransform": {
+        "translateX": 0.0,
+        "translateY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "rotationDegrees": 0.0
+      },
+      "updatePolicy": "ON_PARALLAX_BURST",
+      "fpsHint": 15
+    },
+    {
+      "id": "foreground_cliff",
+      "file": "assets/layers/foreground_cliff.png",
+      "type": "RGBA_TEXTURE_LAYER",
+      "canvasWidth": 1440,
+      "canvasHeight": 2560,
+      "hasAlpha": true,
+      "zIndex": 60,
+      "blendMode": "NORMAL_PREMULTIPLIED",
+      "responseX": 0.004,
+      "responseY": 0.002,
+      "clampX": 4,
+      "clampY": 2,
+      "smoothing": 0.93,
+      "overscanScale": 1.012,
+      "contentBoundsPx": {
+        "left": 0,
+        "top": 1265,
+        "right": 1440,
+        "bottom": 2560
+      },
+      "runtimeCropPaddingPx": 16,
+      "runtimeUploadMode": "CROP_TO_ALPHA_BOUNDS",
+      "estimatedMemoryBytes": 7551360,
+      "fullCanvasMemoryBytes": 14745600,
+      "enabled": true,
+      "baseTransform": {
+        "translateX": 0.0,
+        "translateY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "rotationDegrees": 0.0
+      },
+      "updatePolicy": "ON_PARALLAX_BURST",
+      "fpsHint": 15
+    },
+    {
+      "id": "left_foreground_tree",
+      "file": "assets/layers/left_foreground_tree.png",
+      "type": "RGBA_TEXTURE_LAYER",
+      "canvasWidth": 1440,
+      "canvasHeight": 2560,
+      "hasAlpha": true,
+      "zIndex": 70,
+      "blendMode": "NORMAL_PREMULTIPLIED",
+      "responseX": 0.008,
+      "responseY": 0.003,
+      "clampX": 6,
+      "clampY": 3,
+      "smoothing": 0.92,
+      "overscanScale": 1.018,
+      "contentBoundsPx": {
+        "left": 0,
+        "top": 829,
+        "right": 277,
+        "bottom": 1466
+      },
+      "runtimeCropPaddingPx": 16,
+      "runtimeUploadMode": "CROP_TO_ALPHA_BOUNDS",
+      "estimatedMemoryBytes": 784068,
+      "fullCanvasMemoryBytes": 14745600,
+      "enabled": true,
+      "baseTransform": {
+        "translateX": 0.0,
+        "translateY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "rotationDegrees": 0.0
+      },
+      "updatePolicy": "ON_PARALLAX_BURST",
+      "fpsHint": 15
+    },
+    {
+      "id": "foreground_details",
+      "file": "assets/layers/foreground_details.png",
+      "type": "RGBA_TEXTURE_LAYER",
+      "canvasWidth": 1440,
+      "canvasHeight": 2560,
+      "hasAlpha": true,
+      "zIndex": 75,
+      "blendMode": "NORMAL_PREMULTIPLIED",
+      "responseX": 0.005,
+      "responseY": 0.002,
+      "clampX": 4,
+      "clampY": 2,
+      "smoothing": 0.93,
+      "overscanScale": 1.014,
+      "contentBoundsPx": {
+        "left": 0,
+        "top": 1467,
+        "right": 646,
+        "bottom": 1749
+      },
+      "runtimeCropPaddingPx": 16,
+      "runtimeUploadMode": "CROP_TO_ALPHA_BOUNDS",
+      "estimatedMemoryBytes": 831472,
+      "fullCanvasMemoryBytes": 14745600,
+      "enabled": true,
+      "baseTransform": {
+        "translateX": 0.0,
+        "translateY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "rotationDegrees": 0.0
+      },
+      "updatePolicy": "ON_PARALLAX_BURST",
+      "fpsHint": 15
+    },
+    {
+      "id": "main_subject_samurai",
+      "file": "assets/layers/main_subject_samurai.png",
+      "type": "RGBA_TEXTURE_LAYER",
+      "canvasWidth": 1440,
+      "canvasHeight": 2560,
+      "hasAlpha": true,
+      "zIndex": 80,
+      "blendMode": "NORMAL_PREMULTIPLIED",
+      "responseX": 0.0025,
+      "responseY": 0.0015,
+      "clampX": 3,
+      "clampY": 2,
+      "smoothing": 0.95,
+      "overscanScale": 1.01,
+      "contentBoundsPx": {
+        "left": 256,
+        "top": 919,
+        "right": 643,
+        "bottom": 1657
+      },
+      "runtimeCropPaddingPx": 16,
+      "runtimeUploadMode": "CROP_TO_ALPHA_BOUNDS",
+      "estimatedMemoryBytes": 1290520,
+      "fullCanvasMemoryBytes": 14745600,
+      "enabled": true,
+      "baseTransform": {
+        "translateX": 0.0,
+        "translateY": 0.0,
+        "scaleX": 1.0,
+        "scaleY": 1.0,
+        "rotationDegrees": 0.0
+      },
+      "updatePolicy": "ON_PARALLAX_BURST",
+      "fpsHint": 15
+    }
+  ],
+  "drawOrder": [
+    "sky_time_slice",
+    "far_mountains",
+    "main_mountain",
+    "mid_mountains",
+    "clouds_layer",
+    "pagoda_or_architecture",
+    "foreground_cliff",
+    "left_foreground_tree",
+    "foreground_details",
+    "main_subject_samurai"
+  ],
+  "zIndex": {
+    "sky_time_slice": 0,
+    "far_mountains": 10,
+    "main_mountain": 20,
+    "mid_mountains": 30,
+    "clouds_layer": 40,
+    "pagoda_or_architecture": 50,
+    "foreground_cliff": 60,
+    "left_foreground_tree": 70,
+    "foreground_details": 75,
+    "main_subject_samurai": 80
+  },
+  "transforms": {
+    "base": "IDENTITY_FULL_CANVAS",
+    "runtimeCropReconstruction": "contentBoundsPx + original canvas transform"
+  },
+  "overscan": {
+    "enabled": true,
+    "minimumRevealStripPx": 21,
+    "maxConfiguredClampPx": 18,
+    "safe": true
+  },
+  "updatePolicy": {
+    "timeSlices": "MINUTE_TICK_AND_TRANSITION_WINDOW",
+    "layers": "ON_PARALLAX_BURST",
+    "visibility": "STOP_ALL_WHEN_FALSE"
+  },
+  "timeSlices": {
+    "mode": "CYCLIC_CROSSFADE",
+    "transitionDurationSecondsDefault": 900,
+    "crossfadeCurve": "SMOOTHSTEP",
+    "preloadNextSliceSeconds": 30,
+    "entries": [
+      {
+        "id": "midnight",
+        "anchorMinuteOfDay": 0,
+        "file": "assets/time_slices/midnight.png",
+        "transitionDurationSeconds": 600,
+        "globalTint": {
+          "mul": [
+            0.3,
+            0.34,
+            0.58
+          ],
+          "add": [
+            0.0,
+            0.004,
+            0.031
+          ]
+        }
+      },
+      {
+        "id": "moonset",
+        "anchorMinuteOfDay": 300,
+        "file": "assets/time_slices/moonset.png",
+        "transitionDurationSeconds": 900,
+        "globalTint": {
+          "mul": [
+            0.53,
+            0.52,
+            0.73
+          ],
+          "add": [
+            0.024,
+            0.012,
+            0.063
+          ]
+        }
+      },
+      {
+        "id": "dawn",
+        "anchorMinuteOfDay": 330,
+        "file": "assets/time_slices/dawn.png",
+        "transitionDurationSeconds": 900,
+        "globalTint": {
+          "mul": [
+            1.0,
+            0.88,
+            1.0
+          ],
+          "add": [
+            0.031,
+            0.008,
+            0.055
+          ]
+        }
+      },
+      {
+        "id": "noon",
+        "anchorMinuteOfDay": 720,
+        "file": "assets/time_slices/noon.png",
+        "transitionDurationSeconds": 1200,
+        "globalTint": {
+          "mul": [
+            0.92,
+            1.02,
+            1.1
+          ],
+          "add": [
+            0.016,
+            0.047,
+            0.086
+          ]
+        }
+      },
+      {
+        "id": "sunset",
+        "anchorMinuteOfDay": 1080,
+        "file": "assets/time_slices/sunset.png",
+        "transitionDurationSeconds": 1200,
+        "globalTint": {
+          "mul": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "add": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      {
+        "id": "moonrise",
+        "anchorMinuteOfDay": 1200,
+        "file": "assets/time_slices/moonrise.png",
+        "transitionDurationSeconds": 900,
+        "globalTint": {
+          "mul": [
+            0.5,
+            0.49,
+            0.72
+          ],
+          "add": [
+            0.0,
+            0.004,
+            0.039
+          ]
+        }
+      }
+    ],
+    "contentMode": "FULL_SCENE_FLATTENED",
+    "layerPolicy": "FULL_SCENE_CROSSFADE_PRIMARY; SEMANTIC_LAYERS_OPTIONAL_REFERENCE_PARALLAX"
+  },
+  "qualityProfiles": {
+    "LOW": {
+      "decodeMaxSize": [
+        720,
+        1280
+      ],
+      "maxFps": 15,
+      "textureFilter": "LINEAR",
+      "residentTimeSlices": 1,
+      "enableStars": false,
+      "maxLayerCount": 7
+    },
+    "MEDIUM": {
+      "decodeMaxSize": [
+        1080,
+        1920
+      ],
+      "maxFps": 30,
+      "textureFilter": "LINEAR",
+      "residentTimeSlices": 2,
+      "enableStars": true,
+      "maxLayerCount": 9
+    },
+    "HIGH": {
+      "decodeMaxSize": [
+        1440,
+        2560
+      ],
+      "maxFps": 30,
+      "textureFilter": "LINEAR",
+      "residentTimeSlices": 2,
+      "enableStars": true,
+      "maxLayerCount": 9
+    }
+  },
+  "requiredAssets": [
+    "README_TR.md",
+    "assets/reference/source_reference.png",
+    "assets/preview/full_preview.png",
+    "assets/preview/thumbnail.webp",
+    "assets/preview/composition_preview.png",
+    "assets/preview/composition_dawn.png",
+    "assets/preview/composition_noon.png",
+    "assets/preview/composition_sunset.png",
+    "assets/preview/composition_moonrise.png",
+    "assets/preview/composition_midnight.png",
+    "assets/preview/composition_moonset.png",
+    "assets/layers/far_mountains.png",
+    "assets/layers/main_mountain.png",
+    "assets/layers/mid_mountains.png",
+    "assets/layers/clouds_layer.png",
+    "assets/layers/pagoda_or_architecture.png",
+    "assets/layers/foreground_cliff.png",
+    "assets/layers/left_foreground_tree.png",
+    "assets/layers/foreground_details.png",
+    "assets/layers/main_subject_samurai.png",
+    "assets/time_slices/dawn.png",
+    "assets/time_slices/noon.png",
+    "assets/time_slices/sunset.png",
+    "assets/time_slices/moonrise.png",
+    "assets/time_slices/midnight.png",
+    "assets/time_slices/moonset.png",
+    "shaders/gles3/fullscreen.vert",
+    "shaders/gles3/sky.frag",
+    "shaders/gles3/sun.frag",
+    "shaders/gles3/moon.frag",
+    "shaders/gles3/sky_celestial_combined.frag",
+    "shaders/gles2/fullscreen.vert",
+    "shaders/gles2/sky.frag",
+    "shaders/gles2/sun.frag",
+    "shaders/gles2/moon.frag",
+    "shaders/gles2/sky_celestial_combined.frag",
+    "metadata/validation_report.json"
+  ],
+  "minimumGles": "2.0",
+  "fallbacks": {
+    "gles3Unavailable": "Use shaders/gles2 equivalents.",
+    "shaderCompileFailure": "CPU-calculated texture crossfade with fixed-function textured quads.",
+    "memoryPressure": "Drop to lower decodeMaxSize, keep one resident slice, merge far/mid layers at upload.",
+    "locationUnavailable": "Use fallback sunrise/sunset and local clock.",
+    "contextLoss": "Recreate programs, reload current+next slice, then lazily restore cropped layer textures."
+  },
+  "estimatedMemoryCost": {
+    "highRgbaBytesCurrentAndNextSlices": 29491200,
+    "highCroppedLayerBytes": 19275616,
+    "highEstimatedPeakBytes": 48766816,
+    "mediumEstimatedPeakBytes": 27431334,
+    "lowEstimatedPeakBytes": 8505304,
+    "note": "PNG package size is not GPU memory. Runtime must crop to alpha bounds and downsample by quality profile."
+  },
+  "estimatedGpuCost": {
+    "rating": "LOW_TO_MEDIUM",
+    "textureSamplesPerPixelDuringTransition": 2,
+    "textureSamplesPerPixelStable": 1,
+    "drawCallsHigh": 2,
+    "continuousShaderNoise": false
+  },
+  "drawOrderPrimary": [
+    "full_scene_time_slice"
+  ]
+}

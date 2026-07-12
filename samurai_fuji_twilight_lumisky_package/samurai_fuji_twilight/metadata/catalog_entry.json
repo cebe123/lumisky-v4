@@ -1,0 +1,27 @@
+{
+  "id": "samurai_fuji_twilight",
+  "name": "Samurai — Fuji Alacakaranlığı",
+  "description": "Sinematik Japon gün batımı; altı zaman dilimi, yumuşak crossfade ve ters derinlik parallax kuralı.",
+  "category": "SCENIC_ANIME",
+  "tags": [
+    "samurai",
+    "fuji",
+    "japan",
+    "sunset",
+    "moon",
+    "parallax",
+    "illustration",
+    "cinematic"
+  ],
+  "thumbnail": "assets/preview/thumbnail.webp",
+  "definitionPath": "metadata/wallpaper_definition.json",
+  "sourceType": "FULL_SCENE_STATIC_TIME_SLICES_WITH_OPTIONAL_LAYER_ASSETS",
+  "selectedSkyStrategy": "STATIC_TIME_SLICE_MODE",
+  "estimatedCost": "LOW_TO_MEDIUM",
+  "minimumGles": "2.0",
+  "premium": false,
+  "productId": null,
+  "downloadRequired": false,
+  "assetDelivery": "BUNDLED_SELF_CONTAINED",
+  "packageVersion": "1.0.0"
+}

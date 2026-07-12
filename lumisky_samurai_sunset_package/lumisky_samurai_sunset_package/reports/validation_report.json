@@ -1,0 +1,89 @@
+{
+  "status": "OK",
+  "packageId": "samurai_sunset",
+  "layers": {
+    "mountains": {
+      "size": [
+        1440,
+        2560
+      ],
+      "mode": "RGBA",
+      "alphaMin": 0,
+      "alphaMax": 255,
+      "transparentPixelRatio": 0.95834,
+      "sha256": "0fd0e89b7206dfa3a878ca90f9cf2bbffdd75c532a9c442d2aa3d236a88ba399"
+    },
+    "middle_ground": {
+      "size": [
+        1440,
+        2560
+      ],
+      "mode": "RGBA",
+      "alphaMin": 0,
+      "alphaMax": 255,
+      "transparentPixelRatio": 0.25966,
+      "sha256": "6f231a5561bb9a65a20ff6425ac3129ff1c9554e46f065ff25ff3747a2d0f824"
+    },
+    "atmosphere_overlay": {
+      "size": [
+        1440,
+        2560
+      ],
+      "mode": "RGBA",
+      "alphaMin": 0,
+      "alphaMax": 255,
+      "transparentPixelRatio": 0.98073,
+      "sha256": "5a5b3486ec3c027dd1c628743807d39f7274d7cda275af824a7f780616d6f61a"
+    },
+    "architecture": {
+      "size": [
+        1440,
+        2560
+      ],
+      "mode": "RGBA",
+      "alphaMin": 0,
+      "alphaMax": 255,
+      "transparentPixelRatio": 0.94905,
+      "sha256": "73f6045418d99ccd360eae5092ba9c6bbb327b86f65fa926185e0e006c7326b3"
+    },
+    "left_foreground": {
+      "size": [
+        1440,
+        2560
+      ],
+      "mode": "RGBA",
+      "alphaMin": 0,
+      "alphaMax": 255,
+      "transparentPixelRatio": 0.95775,
+      "sha256": "7eba73af9884bbdf705f94e6eff3ef3be07cecfdc9d26847207425d3c2fc3599"
+    },
+    "foreground_cliff": {
+      "size": [
+        1440,
+        2560
+      ],
+      "mode": "RGBA",
+      "alphaMin": 0,
+      "alphaMax": 255,
+      "transparentPixelRatio": 0.3185,
+      "sha256": "9f5f1205b6890e39e3683f3ad712dd0e04dab043d71aefcac98b30ea990da431"
+    },
+    "main_subject": {
+      "size": [
+        1440,
+        2560
+      ],
+      "mode": "RGBA",
+      "alphaMin": 0,
+      "alphaMax": 255,
+      "transparentPixelRatio": 0.97508,
+      "sha256": "263f8effc0ad97fa22e044d0e9f7ae92f74545cb76c5951f77ddd4ee39612133"
+    }
+  },
+  "checks": [
+    "All master layers are 1440x2560",
+    "All master layers are true RGBA",
+    "GLES2 and GLES3 shader trees are present",
+    "Current Lumisky creator layer count is 7"
+  ]
+}
