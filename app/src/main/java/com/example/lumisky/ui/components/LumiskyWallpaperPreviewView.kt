@@ -22,9 +22,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import com.example.lumisky.R
 import com.example.lumisky.assets.ShaderSourceLoader
 import com.example.lumisky.data.SettingsRepository
@@ -65,6 +69,10 @@ fun LumiskyWallpaperPreviewView(
     onDayProgressChanged: (Float) -> Unit = {}
 ) {
     val context = LocalContext.current.applicationContext
+    val lifecycleOwner = LocalView.current.findViewTreeLifecycleOwner()
+    var isLifecycleStarted by remember(lifecycleOwner) {
+        mutableStateOf(lifecycleOwner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) != false)
+    }
     var firstFrameRendered by remember(wallpaperId, runtimeProfile) { mutableStateOf(false) }
     var framesRendered by remember(wallpaperId, runtimeProfile) { mutableStateOf(0) }
     
@@ -117,6 +125,15 @@ fun LumiskyWallpaperPreviewView(
 
     var isLoaded by remember(wallpaperId) { mutableStateOf(false) }
 
+    DisposableEffect(lifecycleOwner) {
+        val lifecycle = lifecycleOwner?.lifecycle
+        val observer = LifecycleEventObserver { _, _ ->
+            isLifecycleStarted = lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) != false
+        }
+        lifecycle?.addObserver(observer)
+        onDispose { lifecycle?.removeObserver(observer) }
+    }
+
     LaunchedEffect(wallpaperId) {
         firstFrameRendered = false
         isLoaded = false
@@ -127,9 +144,9 @@ fun LumiskyWallpaperPreviewView(
         }
     }
 
-    LaunchedEffect(playPlayback, isLoaded) {
+    LaunchedEffect(playPlayback, isLifecycleStarted, isLoaded) {
         if (isLoaded) {
-            glThread.setVisibility(playPlayback)
+            glThread.setVisibility(playPlayback && isLifecycleStarted)
         }
     }
 
