@@ -21,13 +21,18 @@ class TexturePool(private val manager: GlResourceManager) {
     private val pool = mutableMapOf<String, GlTexture>()
     private val prepared = ConcurrentHashMap<String, Bitmap>()
     private val pending = ConcurrentHashMap<String, Long>()
+    private val requested = ConcurrentHashMap.newKeySet<String>()
     private val ioExecutor = Executors.newFixedThreadPool(2)
     private val uploadBudget = TextureUploadBudget(MAX_UPLOADS_PER_FRAME)
     @Volatile private var generation = 0L
     private var fallbackTexture: GlTexture? = null
 
     val hasPendingWork: Boolean
-        get() = pending.isNotEmpty() || prepared.isNotEmpty()
+        get() = TexturePendingWorkPolicy.hasRenderBlockingWork(
+            requestedKeys = requested,
+            decodingKeys = pending.keys,
+            preparedKeys = prepared.keys
+        )
 
     fun preload(paths: Collection<String>, quality: QualityTier = QualityTier.BALANCED) {
         for (path in paths) preload(path, quality)
@@ -61,7 +66,11 @@ class TexturePool(private val manager: GlResourceManager) {
 
     fun get(path: String, quality: QualityTier = QualityTier.BALANCED): GlTexture {
         val key = "$path#${quality.name}"
-        pool[key]?.let { return it }
+        pool[key]?.let {
+            requested.remove(key)
+            return it
+        }
+        requested.add(key)
         val bitmap = prepared.remove(key)
         if (bitmap == null) {
             preload(path, quality)
@@ -74,6 +83,7 @@ class TexturePool(private val manager: GlResourceManager) {
         return GlTexture(uploadTexture(bitmap)).also {
             bitmap.recycle()
             pool[key] = it
+            requested.remove(key)
         }
     }
 
@@ -124,6 +134,7 @@ class TexturePool(private val manager: GlResourceManager) {
         prepared.values.forEach { it.recycle() }
         prepared.clear()
         pending.clear()
+        requested.clear()
     }
 
     fun invalidate() {
@@ -133,6 +144,7 @@ class TexturePool(private val manager: GlResourceManager) {
         prepared.values.forEach { it.recycle() }
         prepared.clear()
         pending.clear()
+        requested.clear()
     }
 
     fun release() {

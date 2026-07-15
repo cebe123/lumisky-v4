@@ -102,6 +102,8 @@ class PreviewGlThread(
     @Volatile var touchY = 0.0f
     @Volatile var hasTouch = false
     @Volatile private var hasSurface = false
+    private var previewAnimationPending = false
+    private var previewWarmupFrameRendered = false
 
     override fun onLooperPrepared() {
         eglManager = EglManager().apply { initialize() }
@@ -177,18 +179,24 @@ class PreviewGlThread(
                 inputSnapshot.thermalEmergency = thermalStateController.isThermalThrottling
                 
                 eglManager?.makeCurrent()
+                if (previewAnimationPending && previewWarmupFrameRendered && renderer.activeScene != null && !renderer.hasPendingTextureWork) {
+                    renderContext.deltaTimeSeconds = 0f
+                    renderer.triggerPreviewAnimation()
+                    previewAnimationPending = false
+                }
                 renderer.renderFrame(renderContext, inputSnapshot)
+                if (previewAnimationPending) previewWarmupFrameRendered = true
                 when (eglManager?.swapBuffers()) {
                     EglSwapResult.SUCCESS -> renderer.onFramePresented()
                     EglSwapResult.CONTEXT_LOST -> handleContextLost()
                     else -> Unit
                 }
-                if (renderer.activeScene != null) {
+                if (renderer.activeScene != null && !renderer.hasPendingTextureWork && !previewAnimationPending) {
                     publishFirstFrameIfNeeded()
                     publishDayProgressIfDue(frameTimeNanos)
                 }
             }
-            if (renderer.shouldContinueRendering) {
+            if (renderer.shouldContinueRendering || previewAnimationPending) {
                 frameClock?.postNextFrame()
             }
         }
@@ -259,7 +267,8 @@ class PreviewGlThread(
             if (visible) {
                 lastRenderedFrameNanos = 0L
                 lastDayProgressCallbackNanos = 0L
-                renderer.triggerPreviewAnimation() // GUARANTEE animation starts before first frame!
+                previewAnimationPending = true
+                previewWarmupFrameRendered = false
                 if (hasSurface) {
                     frameClock?.start()
                 }
@@ -319,6 +328,8 @@ class PreviewGlThread(
     fun loadWallpaper(definition: WallpaperDefinition) {
         handler.post {
             hasRenderedFirstFrame = false
+            previewAnimationPending = true
+            previewWarmupFrameRendered = false
             renderer.loadWallpaper(definition)
         }
     }
@@ -329,6 +340,17 @@ class PreviewGlThread(
         }
     }
 
+    fun shutdownAsync() {
+        sensorDispatcher.unregisterListener(this)
+        scope.cancel()
+        handler.postDelayed(::finishAsyncShutdown, ASYNC_SHUTDOWN_DELAY_MILLIS)
+    }
+
+    private fun finishAsyncShutdown() {
+        releaseGlResources()
+        super.quitSafely()
+    }
+
     override fun quitSafely(): Boolean {
         sensorDispatcher.unregisterListener(this)
         scope.cancel()
@@ -336,20 +358,25 @@ class PreviewGlThread(
             isOwnerThread = Thread.currentThread() === this,
             post = { action -> handler.post(action) }
         ) {
-            frameClock?.stop()
-            renderer.onContextLost()
-            glManager?.release()
-            glManager = null
-            eglManager?.release()
-            eglManager = null
+            releaseGlResources()
         }
         return super.quitSafely()
+    }
+
+    private fun releaseGlResources() {
+        frameClock?.stop()
+        renderer.onContextLost()
+        glManager?.release()
+        glManager = null
+        eglManager?.release()
+        eglManager = null
     }
 
     private companion object {
         // The GL renderer animates celestial motion; Compose only needs badge updates.
         const val DAY_PROGRESS_CALLBACK_INTERVAL_NANOS = 500_000_000L
         const val SHUTDOWN_TIMEOUT_MILLIS = 1_500L
+        const val ASYNC_SHUTDOWN_DELAY_MILLIS = 750L
         const val DEFAULT_DISPLAY_MAX_FPS = 60
     }
 }

@@ -48,7 +48,15 @@ class WallpaperCatalogViewModel @Inject constructor(
         }
     }
 
-    suspend fun selectWallpaperForSet(id: String) {
-        repository.settings.setSelectedWallpaperId(id)
+    suspend fun prepareWallpaperForSet(id: String) {
+        repository.settings.setPreviewWallpaperId(id)
+    }
+
+    suspend fun completeWallpaperSet(applied: Boolean) {
+        if (applied) {
+            repository.settings.promotePreviewWallpaper()
+        } else {
+            repository.settings.clearPreviewWallpaper()
+        }
     }
 }

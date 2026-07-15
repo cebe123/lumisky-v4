@@ -10,16 +10,17 @@ class DeviceLocationSnapshotFactoryTest {
             if (latitude == 40.7128 && longitude == -74.0060) "America/New_York" else null
         }
 
-        val snapshot = factory.create(40.7128, -74.0060, 123L)
+        val snapshot = factory.create(40.7128, -74.0060, "New York", 123L)
 
         assertEquals("America/New_York", snapshot.timeZoneId)
+        assertEquals("New York", snapshot.label)
     }
 
     @Test
     fun unresolvedCoordinateUsesStableSafeZone() {
         val factory = DeviceLocationSnapshotFactory { _, _ -> null }
 
-        val snapshot = factory.create(0.0, -160.0, 123L)
+        val snapshot = factory.create(0.0, -160.0, "Current location", 123L)
 
         assertEquals("Etc/UTC", snapshot.timeZoneId)
     }

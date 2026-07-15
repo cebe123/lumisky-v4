@@ -103,3 +103,13 @@ Run the complete set only for shared/cross-module engine changes, manifests/cata
 - Her görevde önce `git status --short`, sonra hedefli `rg` araması ve en fazla gerekli dosya okunur.
 - Kullanıcının mevcut değişiklikleri korunur; broad rewrite, format-only diff ve gereksiz dependency eklenmez.
 - Değişiklikten sonra en dar ilgili compile/test/validator çalıştırılır.
+
+## Kullanıcı kilitli ürün davranışları
+
+- Wallpaper kartı yalnız preview adayı hazırlayıp doğrudan Android sistem live wallpaper picker'ını açar; sistem picker'daki Set düğmesine basılmadan aktif wallpaper değişmez ve kullanıcı istemeden uygulama içi ara set/preview ekranı eklenmez.
+- Katalog fokus animasyonu sistem picker/canlı wallpaper animasyonundan ayrıdır; v2 gibi wallpaper'ın günışığı `sunriseMinute` başlangıcını ve gündüz/gece sarma kuralını kullanır, 4 saniye sürer ve kullanıcı istemeden değiştirilmez.
+- Sistem picker önizlemesi v2 gibi kesintisiz 8 saniyelik tam gün döngüsü oynatır; kart fokusu yapay gecikmesiz başlar ve animasyon saati ilk render edilebilir kareyle birlikte başlatılır.
+- Canlı wallpaper kilit ekranı uyandırıldığında veya başka bir uygulamadan ana ekrana dönüldüğünde 2 saniyelik catch-up animasyonunu yalnız güncel zamanın gündüz/gece modu içinde oynatır; ilk görünür kare karşı moda veya sınır karesine düşmez ve kullanıcı istemeden değiştirilmez.
+- Uygulama başlangıç ikonu, katalog verisi ve thumbnail cache'i hazırlanıp ana ekran iki başarılı Compose karesi üretmeden kaldırılmaz; kullanıcı istemeden değiştirilmez.
+- Cihaz konumu etiketi ters geocode edilmiş yer adı gösterir; koordinatlar kullanıcıya konum adı olarak gösterilmez.
+- APK çalıştırma, cihaz seçme ve UI incelemede kuruluysa resmi Android CLI (`android run`, `android layout`) tercih edilir; APK üretimi Gradle ile yapılır.

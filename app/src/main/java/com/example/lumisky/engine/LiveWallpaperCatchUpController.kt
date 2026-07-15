@@ -44,8 +44,9 @@ class LiveWallpaperCatchUpController(
         val now = nowProgress.coerceIn(0f, 1f)
         val nowMinute = (now * MINUTES_PER_DAY).toInt().coerceIn(0, MINUTES_PER_DAY - 1)
         val isDaytime = isDaytime(nowMinute, sunriseMinute, sunsetMinute)
-        val start = (if (isDaytime) sunriseMinute else sunsetMinute) / MINUTES_PER_DAY.toFloat()
-        val target = if (now >= start) now else now + 1f
+        val modeStart = (if (isDaytime) sunriseMinute else sunsetMinute) / MINUTES_PER_DAY.toFloat()
+        val target = if (now >= modeStart) now else now + 1f
+        val start = modeStart + ((target - modeStart) * MODE_INTERIOR_START_FRACTION)
         return LiveWallpaperCatchUpWindow(
             startProgress = start,
             targetProgress = target
@@ -73,7 +74,9 @@ class LiveWallpaperCatchUpController(
     }
 
     private fun isDaytime(nowMinute: Int, sunriseMinute: Int, sunsetMinute: Int): Boolean {
-        return if (sunsetMinute >= sunriseMinute) {
+        return if (sunsetMinute == sunriseMinute) {
+            true
+        } else if (sunsetMinute > sunriseMinute) {
             nowMinute in sunriseMinute..sunsetMinute
         } else {
             nowMinute >= sunriseMinute || nowMinute <= sunsetMinute
@@ -86,5 +89,6 @@ class LiveWallpaperCatchUpController(
         const val DEFAULT_SUNSET_MINUTE = 1080
         const val DEFAULT_TIME_ZONE = "Europe/Istanbul"
         const val NANOS_PER_DAY = 24L * 60L * 60L * 1_000_000_000L
+        const val MODE_INTERIOR_START_FRACTION = 0.5f
     }
 }

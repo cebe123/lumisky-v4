@@ -2,6 +2,7 @@ package com.example.lumisky.ui.components
 
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -146,13 +147,17 @@ fun LumiskyWallpaperPreviewView(
 
     LaunchedEffect(playPlayback, isLifecycleStarted, isLoaded) {
         if (isLoaded) {
+            if (!playPlayback) {
+                firstFrameRendered = false
+                framesRendered = 0
+            }
             glThread.setVisibility(playPlayback && isLifecycleStarted)
         }
     }
 
     DisposableEffect(glThread) {
         onDispose {
-            glThread.quitSafely()
+            glThread.shutdownAsync()
         }
     }
 
@@ -194,7 +199,7 @@ fun LumiskyWallpaperPreviewView(
                 }
             },
             update = { view ->
-                // Handled via Compose modifier
+                view.visibility = if (playPlayback) View.VISIBLE else View.INVISIBLE
             },
             modifier = Modifier.fillMaxSize().alpha(viewAlpha)
         )

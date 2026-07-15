@@ -9,6 +9,7 @@
  */
 package com.example.lumisky
 
+import android.app.Activity
 import android.os.Build
 import android.os.Bundle
 
@@ -63,29 +64,60 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.lifecycleScope
 import com.example.lumisky.R
 import com.example.lumisky.data.SettingsRepository
+import com.example.lumisky.data.WallpaperRepository
+import com.example.lumisky.ui.catalog.warmCatalogForLaunch
 import com.example.lumisky.ui.catalog.WallpaperCatalogScreen
 import com.example.lumisky.ui.catalog.WallpaperCatalogViewModel
-import com.example.lumisky.ui.preview.WallpaperPreviewScreen
-import com.example.lumisky.ui.preview.WallpaperPreviewViewModel
 import com.example.lumisky.ui.settings.SettingsScreen
 import com.example.lumisky.ui.settings.SettingsViewModel
 import com.example.lumisky.ui.theme.LumiskyTheme
+import com.example.lumisky.ui.wallpaper.LiveWallpaperSetLauncher
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var wallpaperRepository: WallpaperRepository
+    private val startupWarmupFinished = mutableStateOf(false)
+    private val startupUiReady = mutableStateOf(false)
+    private var wallpaperPickerFlowActive = false
+    private var wallpaperChangedReceiverRegistered = false
+    private val wallpaperChangedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != Intent.ACTION_WALLPAPER_CHANGED || !wallpaperPickerFlowActive) return
+            wallpaperPickerFlowActive = false
+            lifecycleScope.launch {
+                settingsRepository.promotePreviewWallpaper()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
-        var isWarmedUp = false
-        splashScreen.setKeepOnScreenCondition { !isWarmedUp }
+        ContextCompat.registerReceiver(
+            this,
+            wallpaperChangedReceiver,
+            IntentFilter(Intent.ACTION_WALLPAPER_CHANGED),
+            ContextCompat.RECEIVER_EXPORTED
+        )
+        wallpaperChangedReceiverRegistered = true
+        splashScreen.setKeepOnScreenCondition { !startupUiReady.value }
         configureEdgeToEdge()
+        lifecycleScope.launch {
+            runCatching {
+                warmCatalogForLaunch(applicationContext, wallpaperRepository)
+            }.onFailure { error ->
+                Log.w("LumiskyStartup", "Catalog warmup failed; continuing with on-demand loading", error)
+            }
+            startupWarmupFinished.value = true
+        }
         setContent {
             val themeMode by settingsRepository.appThemeMode.collectAsState(initial = SettingsRepository.THEME_SYSTEM)
             val systemDark = isSystemInDarkTheme()
@@ -95,13 +127,10 @@ class MainActivity : ComponentActivity() {
                 else -> systemDark
             }
             LumiskyTheme(darkTheme = darkTheme) {
-                var startupReady by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) {
-                    isWarmedUp = true
-                    startupReady = true
-                }
-                if (startupReady) {
+                if (startupWarmupFinished.value) {
                     LumiskyMainScreen()
+                } else {
+                    LaunchSkeleton()
                 }
             }
         }
@@ -117,11 +146,43 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (cancelWallpaperPickerFlowIfActive()) {
+            lifecycleScope.launch {
+                settingsRepository.clearPreviewWallpaper()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        if (wallpaperChangedReceiverRegistered) {
+            unregisterReceiver(wallpaperChangedReceiver)
+            wallpaperChangedReceiverRegistered = false
+        }
+        super.onDestroy()
+    }
+
+    fun beginWallpaperPickerFlow() {
+        wallpaperPickerFlowActive = true
+    }
+
+    fun cancelWallpaperPickerFlowIfActive(): Boolean {
+        if (!wallpaperPickerFlowActive) return false
+        wallpaperPickerFlowActive = false
+        return true
+    }
+
+    fun markStartupUiReady() {
+        if (startupUiReady.value) return
+        startupUiReady.value = true
+        reportFullyDrawn()
+    }
+
 }
 
 private const val SCREEN_HOME = "home"
 private const val SCREEN_SETTINGS = "settings"
-private const val SCREEN_PREVIEW_PREFIX = "preview:"
 private const val STARTUP_PERMISSION_IDLE_DELAY_MILLIS = 350L
 
 @Composable
@@ -145,12 +206,26 @@ fun LaunchSkeleton() {
 private fun LumiskyMainScreen() {
     var currentScreen by rememberSaveable { mutableStateOf(SCREEN_HOME) }
     val context = LocalContext.current
+    val activity = context as? MainActivity
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val catalogViewModel: WallpaperCatalogViewModel = hiltViewModel()
+    val catalogItems by catalogViewModel.items.collectAsState()
+    val wallpaperPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK && activity?.cancelWallpaperPickerFlowIfActive() == true) {
+            scope.launch {
+                catalogViewModel.completeWallpaperSet(applied = false)
+            }
+        }
+    }
     var startLocationWork by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(catalogItems.isNotEmpty()) {
+        if (catalogItems.isEmpty()) return@LaunchedEffect
         withFrameNanos { }
         withFrameNanos { }
-        (context as? MainActivity)?.reportFullyDrawn()
+        activity?.markStartupUiReady()
         delay(STARTUP_PERMISSION_IDLE_DELAY_MILLIS)
         startLocationWork = true
     }
@@ -190,11 +265,19 @@ private fun LumiskyMainScreen() {
     ) { screen ->
         when {
             screen == SCREEN_HOME -> {
-                val viewModel: WallpaperCatalogViewModel = hiltViewModel()
                 WallpaperCatalogScreen(
-                    viewModel = viewModel,
+                    viewModel = catalogViewModel,
                     onItemClick = { id ->
-                        currentScreen = "$SCREEN_PREVIEW_PREFIX$id"
+                        scope.launch {
+                            catalogViewModel.prepareWallpaperForSet(id)
+                            activity?.beginWallpaperPickerFlow()
+                            if (!LiveWallpaperSetLauncher.open(context, wallpaperPickerLauncher::launch)) {
+                                if (activity?.cancelWallpaperPickerFlowIfActive() != false) {
+                                    catalogViewModel.completeWallpaperSet(applied = false)
+                                }
+                                Toast.makeText(context, "Live wallpaper picker is unavailable", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     },
                     onSettingsClick = { currentScreen = SCREEN_SETTINGS }
                 )
@@ -203,14 +286,6 @@ private fun LumiskyMainScreen() {
                 val settingsViewModel: SettingsViewModel = hiltViewModel()
                 SettingsScreen(
                     viewModel = settingsViewModel,
-                    onBackClick = { currentScreen = SCREEN_HOME }
-                )
-            }
-            screen.startsWith(SCREEN_PREVIEW_PREFIX) -> {
-                val previewViewModel: WallpaperPreviewViewModel = hiltViewModel()
-                WallpaperPreviewScreen(
-                    wallpaperId = screen.removePrefix(SCREEN_PREVIEW_PREFIX),
-                    viewModel = previewViewModel,
                     onBackClick = { currentScreen = SCREEN_HOME }
                 )
             }

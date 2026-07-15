@@ -64,7 +64,6 @@ import com.example.lumisky.ui.components.LumiskyWallpaperPreviewView
 import kotlin.math.abs
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -73,8 +72,6 @@ import androidx.compose.ui.platform.LocalDensity
 import java.util.Calendar
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.LocalConfiguration
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
 
@@ -116,34 +113,7 @@ private fun rememberAssetBitmap(path: String, targetWidthPx: Int, targetHeightPx
     var bitmap by remember(cacheKey) { mutableStateOf(CatalogThumbnailMemoryCache.get(cacheKey)) }
     LaunchedEffect(cacheKey) {
         if (bitmap != null) return@LaunchedEffect
-        bitmap = withContext(Dispatchers.IO) {
-            try {
-                val bounds = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
-                context.assets.open(path).use { stream ->
-                    BitmapFactory.decodeStream(stream, null, bounds)
-                }
-
-                val decodeOptions = BitmapFactory.Options().apply {
-                    inSampleSize = CatalogThumbnailDecodePolicy.calculateInSampleSize(
-                        sourceWidth = bounds.outWidth,
-                        sourceHeight = bounds.outHeight,
-                        targetWidth = targetWidthPx,
-                        targetHeight = targetHeightPx
-                    )
-                    inPreferredConfig = Bitmap.Config.RGB_565
-                }
-
-                context.assets.open(path).use { stream ->
-                    BitmapFactory.decodeStream(stream, null, decodeOptions)
-                }?.also { decoded ->
-                    CatalogThumbnailMemoryCache.put(cacheKey, decoded)
-                }
-            } catch (e: Exception) {
-                null
-            }
-        }
+        bitmap = CatalogThumbnailLoader.load(context, path, targetWidthPx, targetHeightPx)
     }
     return bitmap
 }
@@ -215,28 +185,12 @@ fun WallpaperCatalogScreen(
                 .background(bgColor)
         ) {
             val columnState = rememberLazyListState()
-            var livePreviewLeaseEnabled by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) {
-                kotlinx.coroutines.delay(CatalogPreviewPolicy.initialPreviewDelayMillis())
-                livePreviewLeaseEnabled = true
-            }
             val activeSectionIndex by remember(categories) {
                 derivedStateOf {
                     CatalogPreviewPolicy.resolveActiveSectionIndex(
                         centeredIndex = findCenteredIndex(columnState),
                         sectionCount = categories.size
                     )
-                }
-            }
-            var settledSectionIndex by remember { mutableStateOf(-1) }
-            LaunchedEffect(Unit) {
-                kotlinx.coroutines.delay(CatalogPreviewPolicy.previewFocusDelayMillis())
-                settledSectionIndex = activeSectionIndex
-            }
-            LaunchedEffect(columnState.isScrollInProgress, activeSectionIndex) {
-                if (!columnState.isScrollInProgress) {
-                    kotlinx.coroutines.delay(CatalogPreviewPolicy.previewFocusDelayMillis())
-                    settledSectionIndex = activeSectionIndex
                 }
             }
             LazyColumn(
@@ -255,17 +209,6 @@ fun WallpaperCatalogScreen(
                     val centeredIndex by remember {
                         derivedStateOf {
                             findCenteredIndex(listState)
-                        }
-                    }
-                    var settledItemIndex by remember { mutableStateOf(-1) }
-                    LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(CatalogPreviewPolicy.previewFocusDelayMillis())
-                        settledItemIndex = centeredIndex
-                    }
-                    LaunchedEffect(listState.isScrollInProgress, centeredIndex) {
-                        if (!listState.isScrollInProgress) {
-                            kotlinx.coroutines.delay(CatalogPreviewPolicy.previewFocusDelayMillis())
-                            settledItemIndex = centeredIndex
                         }
                     }
                     Column {
@@ -300,19 +243,19 @@ fun WallpaperCatalogScreen(
                                 key = { _, item -> item.id },
                                 contentType = { _, _ -> "wallpaper-card" }
                             ) { index, item ->
-                                val shouldMountPreview = livePreviewLeaseEnabled && CatalogPreviewPolicy.shouldMountLivePreview(
+                                val shouldMountPreview = CatalogPreviewPolicy.shouldMountLivePreview(
                                     sectionIndex = sectionIndex,
-                                    activeSectionIndex = settledSectionIndex,
+                                    activeSectionIndex = activeSectionIndex,
                                     itemIndex = index,
-                                    centeredItemIndex = settledItemIndex,
+                                    centeredItemIndex = centeredIndex,
                                     parentScrollInProgress = columnState.isScrollInProgress,
                                     rowScrollInProgress = listState.isScrollInProgress
                                 )
-                                val shouldPlayPreview = livePreviewLeaseEnabled && CatalogPreviewPolicy.shouldRenderLivePreview(
+                                val shouldPlayPreview = CatalogPreviewPolicy.shouldRenderLivePreview(
                                     sectionIndex = sectionIndex,
-                                    activeSectionIndex = settledSectionIndex,
+                                    activeSectionIndex = activeSectionIndex,
                                     itemIndex = index,
-                                    centeredItemIndex = settledItemIndex,
+                                    centeredItemIndex = centeredIndex,
                                     parentScrollInProgress = columnState.isScrollInProgress,
                                     rowScrollInProgress = listState.isScrollInProgress
                                 )

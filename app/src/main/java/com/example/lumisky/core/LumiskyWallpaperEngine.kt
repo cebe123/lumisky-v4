@@ -67,6 +67,7 @@ class LumiskyWallpaperEngine(
     private var isEngineVisible = false
     private var isDisplayInteractive = powerManager?.isInteractive != false
     private var isEffectivelyVisible = false
+    private var isPreview = false
     private var isSensorRegistered = false
     private var surfaceGeneration = 0L
     private var lastSurfaceWidth = 0
@@ -75,7 +76,6 @@ class LumiskyWallpaperEngine(
     private var lastSuccessfulScene: RuntimeScene? = null
     private var sensorParallaxEnabled = true
     private var thermalEmergencyLogged = false
-    private var suppressNextVisibleCatchUp = false
     private var pendingTemporalContextRefresh = false
     private var lastResolvedLatitude = DEFAULT_LATITUDE
     private var lastResolvedLongitude = DEFAULT_LONGITUDE
@@ -83,6 +83,7 @@ class LumiskyWallpaperEngine(
 
     fun onCreate(surfaceHolder: SurfaceHolder?, isPreview: Boolean) {
         this.surfaceHolder = surfaceHolder
+        this.isPreview = isPreview
 
         glThread = WallpaperGlThread(service.applicationContext, renderer, shaderRegistry, isPreview) { definition, scene ->
             commitSuccessfulScene(definition, scene)
@@ -91,7 +92,21 @@ class LumiskyWallpaperEngine(
         }
 
         scope.launch {
-            repository.settings.selectedWallpaperId.collectLatest { id ->
+            val wallpaperIdFlow = if (isPreview) {
+                combine(
+                    repository.settings.selectedWallpaperId,
+                    repository.settings.previewWallpaperId
+                ) { selectedWallpaperId, previewWallpaperId ->
+                    WallpaperEngineSelectionPolicy.resolve(
+                        isPreview = true,
+                        selectedWallpaperId = selectedWallpaperId,
+                        previewWallpaperId = previewWallpaperId
+                    )
+                }
+            } else {
+                repository.settings.selectedWallpaperId
+            }
+            wallpaperIdFlow.collectLatest { id ->
                 applyDefinition(id)
             }
         }
@@ -195,23 +210,15 @@ class LumiskyWallpaperEngine(
         val visible = isEngineVisible && isDisplayInteractive
         if (visible == isEffectivelyVisible) return
         isEffectivelyVisible = visible
+        if (visible && !isPreview) {
+            glThread?.triggerLiveCatchUp()
+        }
         glThread?.setVisibility(visible)
         updateSensorRegistration(visible)
-        if (visible) {
-            if (pendingTemporalContextRefresh) {
-                pendingTemporalContextRefresh = false
-                refreshTemporalContext()
-            }
-            if (suppressNextVisibleCatchUp) {
-                suppressNextVisibleCatchUp = false
-            } else {
-                glThread?.triggerLiveCatchUp()
-            }
+        if (visible && pendingTemporalContextRefresh) {
+            pendingTemporalContextRefresh = false
+            refreshTemporalContext()
         }
-    }
-
-    fun suppressNextVisibleCatchUp() {
-        suppressNextVisibleCatchUp = true
     }
 
     fun onTemporalContextChanged() {
@@ -256,10 +263,6 @@ class LumiskyWallpaperEngine(
         surfaceHolder = null
         hasSurface = false
         glThread?.onSurfaceDestroyed()
-    }
-
-    fun triggerLiveCatchUp() {
-        glThread?.triggerLiveCatchUp()
     }
 
     fun onTouchEvent(event: MotionEvent) {
@@ -329,7 +332,6 @@ class LumiskyWallpaperEngine(
             WallpaperApplyAction.SKIP -> Unit
             WallpaperApplyAction.SWITCH_SCENE -> {
                 glThread?.switchScene(definition, scene)
-                glThread?.triggerLiveCatchUp()
             }
             WallpaperApplyAction.CREATE_SURFACE -> {
                 renderer.activeDefinition = definition
@@ -338,7 +340,6 @@ class LumiskyWallpaperEngine(
                 if (holder != null) {
                     glThread?.onSurfaceCreated(holder)
                     replaySurfaceSizeIfKnown()
-                    glThread?.triggerLiveCatchUp()
                 }
             }
             WallpaperApplyAction.STORE_PENDING_SCENE -> {

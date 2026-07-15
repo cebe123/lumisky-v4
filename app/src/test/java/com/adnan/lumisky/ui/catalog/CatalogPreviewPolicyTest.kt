@@ -159,14 +159,16 @@ class CatalogPreviewPolicyTest {
         assertTrue(CatalogPreviewPolicy.shouldStartLivePreview(showLivePreview = true, warmupReady = true))
     }
 
+
+
     @Test
     fun previewFocusDelayMatchesTheFastV2Interaction() {
-        assertEquals(100L, CatalogPreviewPolicy.previewFocusDelayMillis())
+        assertEquals(0L, CatalogPreviewPolicy.previewFocusDelayMillis())
     }
 
     @Test
-    fun initialPreviewWaitsForStartupUiToSettle() {
-        assertEquals(1_500L, CatalogPreviewPolicy.initialPreviewDelayMillis())
+    fun initialPreviewStartsWithoutAnArtificialDelay() {
+        assertEquals(0L, CatalogPreviewPolicy.initialPreviewDelayMillis())
     }
 
 }

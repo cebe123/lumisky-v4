@@ -27,6 +27,7 @@ class PreviewTimeMotionController(
     private var window = PreviewFocusCatchUpWindow(0f, 0f)
     private var completedProgress: Float? = null
     private var animationActive = false
+    private var fullDayLoopActive = false
 
     val isAnimating: Boolean
         get() = animationActive
@@ -36,6 +37,7 @@ class PreviewTimeMotionController(
         animationElapsedSeconds = 0f
         completedProgress = null
         animationActive = false
+        fullDayLoopActive = false
         window = PreviewFocusCatchUpWindow(0f, 0f)
     }
 
@@ -49,6 +51,15 @@ class PreviewTimeMotionController(
         )
         animationElapsedSeconds = 0f
         completedProgress = null
+        fullDayLoopActive = false
+        animationActive = true
+    }
+
+    fun startFullDayLoop(wallpaperId: String?) {
+        if (wallpaperId != activeWallpaperId) reset(wallpaperId)
+        animationElapsedSeconds = 0f
+        completedProgress = null
+        fullDayLoopActive = true
         animationActive = true
     }
 
@@ -60,6 +71,10 @@ class PreviewTimeMotionController(
         val wallpaperId = definition?.id
         if (wallpaperId != activeWallpaperId) {
             reset(wallpaperId)
+        }
+        if (fullDayLoopActive) {
+            animationElapsedSeconds += deltaTimeSeconds.coerceAtLeast(0f)
+            return wrapDayProgress(animationElapsedSeconds / FULL_DAY_LOOP_DURATION_SECONDS)
         }
         completedProgress?.let { return it }
         if (!animationActive) return currentDayProgress(definition)
@@ -81,10 +96,22 @@ class PreviewTimeMotionController(
         sunsetMinute: Int
     ): PreviewFocusCatchUpWindow {
         val normalizedNow = nowProgress.coerceIn(0f, 1f)
-        val startProgress = NOON_PROGRESS
-        val targetProgress = 1f + normalizedNow
+        val normalizedSunrise = sunriseMinute.coerceIn(0, MINUTES_PER_DAY)
+        val normalizedSunset = sunsetMinute.coerceIn(0, MINUTES_PER_DAY)
+        val sunriseProgress = normalizedSunrise / MINUTES_PER_DAY.toFloat()
+        val nowMinute = (normalizedNow * MINUTES_PER_DAY).toInt().coerceIn(0, MINUTES_PER_DAY)
+        val isDaytime = if (normalizedSunset >= normalizedSunrise) {
+            nowMinute in normalizedSunrise..normalizedSunset
+        } else {
+            nowMinute >= normalizedSunrise || nowMinute <= normalizedSunset
+        }
+        val targetProgress = when {
+            isDaytime -> 1f + normalizedNow
+            normalizedNow >= sunriseProgress -> normalizedNow
+            else -> normalizedNow + 1f
+        }
         return PreviewFocusCatchUpWindow(
-            startProgress = startProgress,
+            startProgress = sunriseProgress,
             targetProgress = targetProgress
         )
     }
@@ -112,12 +139,13 @@ class PreviewTimeMotionController(
     }
 
     companion object {
+        const val CATALOG_FOCUS_DURATION_SECONDS = 4f
+        const val FULL_DAY_LOOP_DURATION_SECONDS = 8f
         private const val DEFAULT_FOCUS_CATCH_UP_SECONDS = 2f
         private const val MIN_FOCUS_CATCH_UP_SECONDS = 0.3f
         private const val MINUTES_PER_DAY = 24 * 60
         private const val DEFAULT_SUNRISE_MINUTE = 360
         private const val DEFAULT_SUNSET_MINUTE = 1080
-        private const val NOON_PROGRESS = 0.5f
         private const val NANOS_PER_DAY = 24L * 60L * 60L * 1_000_000_000L
     }
 }

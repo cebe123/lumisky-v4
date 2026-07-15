@@ -1,7 +1,6 @@
 package com.example.lumisky.device
 
 import com.example.lumisky.data.DeviceLocationSnapshot
-import com.example.lumisky.data.SettingsLocationPlanner
 import javax.inject.Inject
 
 class DeviceLocationSnapshotFactory @Inject constructor(
@@ -10,9 +9,10 @@ class DeviceLocationSnapshotFactory @Inject constructor(
     fun create(
         latitude: Double,
         longitude: Double,
+        label: String,
         capturedAtEpochMs: Long
     ): DeviceLocationSnapshot = DeviceLocationSnapshot(
-        label = SettingsLocationPlanner.formatCoordinates(latitude, longitude),
+        label = label,
         latitude = latitude,
         longitude = longitude,
         timeZoneId = timeZoneResolver.resolve(latitude, longitude) ?: SAFE_TIME_ZONE,

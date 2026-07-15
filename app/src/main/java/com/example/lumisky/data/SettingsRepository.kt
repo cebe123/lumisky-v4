@@ -29,6 +29,7 @@ class SettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val selectedWallpaperKey = stringPreferencesKey("selected_wallpaper_id")
+    private val previewWallpaperKey = stringPreferencesKey("preview_wallpaper_id")
     private val qualityTierKey = stringPreferencesKey("quality_tier")
     private val locationModeKey = stringPreferencesKey("location_mode")
     private val manualLatitudeKey = doublePreferencesKey("manual_latitude")
@@ -51,6 +52,10 @@ class SettingsRepository @Inject constructor(
 
     val selectedWallpaperId: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[selectedWallpaperKey] ?: "starter_gradient"
+    }
+
+    val previewWallpaperId: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[previewWallpaperKey]
     }
 
     val qualityTier: Flow<String> = context.dataStore.data.map { prefs ->
@@ -127,6 +132,31 @@ class SettingsRepository @Inject constructor(
     suspend fun setSelectedWallpaperId(id: String) {
         context.dataStore.edit { prefs ->
             prefs[selectedWallpaperKey] = id
+        }
+    }
+
+    suspend fun setPreviewWallpaperId(id: String) {
+        context.dataStore.edit { prefs ->
+            prefs[previewWallpaperKey] = id
+        }
+    }
+
+    suspend fun promotePreviewWallpaper(): Boolean {
+        var promoted = false
+        context.dataStore.edit { prefs ->
+            val candidate = prefs[previewWallpaperKey]
+            if (candidate != null) {
+                prefs[selectedWallpaperKey] = candidate
+                prefs.remove(previewWallpaperKey)
+                promoted = true
+            }
+        }
+        return promoted
+    }
+
+    suspend fun clearPreviewWallpaper() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(previewWallpaperKey)
         }
     }
 

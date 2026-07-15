@@ -116,7 +116,15 @@ class RenderEngineSession(
         sceneState.batterySaver = inputSnapshot.batterySaver
 
         if (runtimeProfile.mode != RuntimeMode.LIVE_WALLPAPER) {
-            sceneState.dayProgress = previewTimeMotionController.resolveDayProgress(activeDefinition, context.deltaTimeSeconds)
+            sceneState.dayProgress = previewTimeMotionController.resolveDayProgress(
+                definition = activeDefinition,
+                deltaTimeSeconds = context.deltaTimeSeconds,
+                durationSeconds = if (runtimeProfile.mode == RuntimeMode.PREVIEW_CARD) {
+                    PreviewTimeMotionController.CATALOG_FOCUS_DURATION_SECONDS
+                } else {
+                    PreviewTimeMotionController.FULL_DAY_LOOP_DURATION_SECONDS
+                }
+            )
         }
 
         sceneState.quality = runtimeProfile.overrideQualityTier
@@ -205,7 +213,11 @@ class RenderEngineSession(
     }
 
     fun triggerPreviewAnimation() {
-        previewTimeMotionController.startFocusAnimation(activeDefinition)
+        if (runtimeProfile.mode == RuntimeMode.PREVIEW_FULLSCREEN) {
+            previewTimeMotionController.startFullDayLoop(activeDefinition?.id)
+        } else {
+            previewTimeMotionController.startFocusAnimation(activeDefinition)
+        }
     }
 
     fun triggerLiveCatchUp(daylightOverride: DaylightOverride?) {

@@ -16,6 +16,20 @@ import android.content.Intent
 import com.example.lumisky.core.LumiskyWallpaperService
 
 object LiveWallpaperSetLauncher {
+    fun open(context: Context, launch: (Intent) -> Unit): Boolean {
+        return try {
+            launch(changeLiveWallpaperIntent(context))
+            true
+        } catch (primary: Exception) {
+            try {
+                launch(liveWallpaperChooserIntent())
+                true
+            } catch (fallback: Exception) {
+                false
+            }
+        }
+    }
+
     fun open(context: Context): Boolean {
         return try {
             context.startActivity(changeLiveWallpaperIntent(context))

@@ -76,7 +76,6 @@ class LumiskyWallpaperService : WallpaperService() {
                 when (intent?.action) {
                     Intent.ACTION_SCREEN_OFF -> delegate.onDisplayInteractiveChanged(false)
                     Intent.ACTION_SCREEN_ON -> delegate.onDisplayInteractiveChanged(true)
-                    Intent.ACTION_USER_PRESENT -> delegate.suppressNextVisibleCatchUp()
                 }
             }
         }
@@ -103,7 +102,6 @@ class LumiskyWallpaperService : WallpaperService() {
             val filter = IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_OFF)
                 addAction(Intent.ACTION_SCREEN_ON)
-                addAction(Intent.ACTION_USER_PRESENT)
             }
             this@LumiskyWallpaperService.registerReceiver(userPresentReceiver, filter)
             val temporalFilter = IntentFilter().apply {

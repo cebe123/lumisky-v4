@@ -10,8 +10,8 @@
 package com.example.lumisky.ui.catalog
 
 object CatalogPreviewPolicy {
-    fun previewFocusDelayMillis(): Long = 100L
-    fun initialPreviewDelayMillis(): Long = 1_500L
+    fun previewFocusDelayMillis(): Long = 0L
+    fun initialPreviewDelayMillis(): Long = 0L
 
     fun shouldRenderLivePreview(
         sectionIndex: Int,

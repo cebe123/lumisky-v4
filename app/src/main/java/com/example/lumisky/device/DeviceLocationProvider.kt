@@ -15,6 +15,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
+import android.location.Geocoder
+import android.os.Build
 import androidx.core.content.ContextCompat
 import com.example.lumisky.data.DeviceLocationSnapshot
 import com.google.android.gms.location.LocationServices
@@ -25,6 +27,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.util.Locale
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 
@@ -67,7 +70,7 @@ class DeviceLocationProvider @Inject constructor(
             if (lastLocation != null) {
                 val ageMs = nowEpochMs - lastLocation.time
                 if (ageMs in 0..FRESH_LOCATION_MAX_AGE_MILLIS) {
-                    return@withContext snapshotFactory.create(
+                    return@withContext createSnapshot(
                         latitude = lastLocation.latitude,
                         longitude = lastLocation.longitude,
                         capturedAtEpochMs = lastLocation.time
@@ -85,7 +88,7 @@ class DeviceLocationProvider @Inject constructor(
                     .getCurrentLocation(request, cancellation.token)
                     .awaitCancellable(cancellation::cancel)
                 if (currentLocation != null) {
-                    return@withContext snapshotFactory.create(
+                    return@withContext createSnapshot(
                         latitude = currentLocation.latitude,
                         longitude = currentLocation.longitude,
                         capturedAtEpochMs = currentLocation.time.takeIf { it > 0L } ?: nowEpochMs
@@ -94,7 +97,7 @@ class DeviceLocationProvider @Inject constructor(
             }
 
             if (lastLocation != null) {
-                return@withContext snapshotFactory.create(
+                return@withContext createSnapshot(
                     latitude = lastLocation.latitude,
                     longitude = lastLocation.longitude,
                     capturedAtEpochMs = lastLocation.time
@@ -102,6 +105,45 @@ class DeviceLocationProvider @Inject constructor(
             }
         }
         return@withContext null
+    }
+
+    private suspend fun createSnapshot(
+        latitude: Double,
+        longitude: Double,
+        capturedAtEpochMs: Long
+    ): DeviceLocationSnapshot = snapshotFactory.create(
+        latitude = latitude,
+        longitude = longitude,
+        label = resolveLocationName(latitude, longitude) ?: DEVICE_LOCATION_FALLBACK_LABEL,
+        capturedAtEpochMs = capturedAtEpochMs
+    )
+
+    private suspend fun resolveLocationName(latitude: Double, longitude: Double): String? {
+        if (!Geocoder.isPresent()) return null
+        val geocoder = Geocoder(context, Locale.getDefault())
+        val address = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            suspendCancellableCoroutine { continuation ->
+                geocoder.getFromLocation(latitude, longitude, 1, object : Geocoder.GeocodeListener {
+                    override fun onGeocode(addresses: MutableList<android.location.Address>) {
+                        if (continuation.isActive) continuation.resume(addresses.firstOrNull())
+                    }
+
+                    override fun onError(errorMessage: String?) {
+                        if (continuation.isActive) continuation.resume(null)
+                    }
+                })
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            runCatching { geocoder.getFromLocation(latitude, longitude, 1)?.firstOrNull() }.getOrNull()
+        } ?: return null
+        return listOfNotNull(
+            address.locality,
+            address.subLocality,
+            address.subAdminArea,
+            address.adminArea,
+            address.countryName
+        ).firstOrNull { it.isNotBlank() }
     }
 
     private suspend fun <T> Task<T>.awaitCancellable(onCancellation: () -> Unit = {}): T? =
@@ -121,5 +163,6 @@ class DeviceLocationProvider @Inject constructor(
     private companion object {
         const val FRESH_LOCATION_MAX_AGE_MILLIS = 15 * 60 * 1000L
         const val CURRENT_LOCATION_TIMEOUT_MILLIS = 5_000L
+        const val DEVICE_LOCATION_FALLBACK_LABEL = "Current location"
     }
 }

@@ -147,8 +147,6 @@ class WallpaperGlThread(
             renderer.switchWallpaper(definition, newScene, renderContext)
             if (isPreview) {
                 renderer.triggerPreviewAnimation()
-            } else {
-                startLiveCatchUp()
             }
             renderFrameNow(System.nanoTime(), visibleForFrame = isVisible)
             if (isVisible) {
@@ -169,6 +167,14 @@ class WallpaperGlThread(
         submit(RenderCommand.SetVisibility(visible))
     }
 
+    fun triggerLiveCatchUp() {
+        postToGl {
+            if (isPreview) return@postToGl
+            renderer.triggerLiveCatchUp(daylightOverride)
+            if (isVisible && hasSurface) frameClock?.start()
+        }
+    }
+
     fun stageSceneCommit(definition: WallpaperDefinition, scene: RuntimeScene) {
         postToGl { sceneCommitTransaction.stage(definition to scene) }
     }
@@ -177,14 +183,6 @@ class WallpaperGlThread(
         commandMailbox.offer(command)
         postToGl {
             drainCommands()
-        }
-    }
-
-    fun triggerLiveCatchUp() {
-        postToGl {
-            if (isPreview) return@postToGl
-            startLiveCatchUp()
-            if (isVisible && hasSurface) frameClock?.start()
         }
     }
 
@@ -280,10 +278,6 @@ class WallpaperGlThread(
         }
         renderFrameNow(frameTimeNanos, visibleForFrame = true)
         frameClock?.postNextFrame()
-    }
-
-    private fun startLiveCatchUp() {
-        renderer.triggerLiveCatchUp(daylightOverride)
     }
 
     override fun quitSafely(): Boolean {
