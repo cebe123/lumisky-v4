@@ -78,6 +78,18 @@ object CatalogPreviewPolicy {
         return true
     }
 
+    fun resolveSettledCenteredIndex(
+        currentIndex: Int,
+        observedIndex: Int,
+        itemCount: Int,
+        scrollInProgress: Boolean
+    ): Int {
+        if (itemCount <= 0) return -1
+        val stableCurrent = currentIndex.takeIf { it in 0 until itemCount } ?: 0
+        if (scrollInProgress || observedIndex !in 0 until itemCount) return stableCurrent
+        return observedIndex
+    }
+
     private const val MinutesPerHour = 60
     private const val MinutesPerDay = 24 * MinutesPerHour
     private const val LoopProgressPerSecond = 0.08333f

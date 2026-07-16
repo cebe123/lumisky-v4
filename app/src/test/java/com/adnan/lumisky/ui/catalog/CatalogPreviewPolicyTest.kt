@@ -171,4 +171,26 @@ class CatalogPreviewPolicyTest {
         assertEquals(0L, CatalogPreviewPolicy.initialPreviewDelayMillis())
     }
 
+    @Test
+    fun centeredPreviewChangesOnlyWhenScrollingSettlesWithoutExtraDelay() {
+        assertEquals(
+            1,
+            CatalogPreviewPolicy.resolveSettledCenteredIndex(
+                currentIndex = 1,
+                observedIndex = 2,
+                itemCount = 4,
+                scrollInProgress = true
+            )
+        )
+        assertEquals(
+            2,
+            CatalogPreviewPolicy.resolveSettledCenteredIndex(
+                currentIndex = 1,
+                observedIndex = 2,
+                itemCount = 4,
+                scrollInProgress = false
+            )
+        )
+    }
+
 }

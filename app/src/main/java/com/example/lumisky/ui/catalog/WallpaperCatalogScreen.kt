@@ -43,10 +43,11 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +70,10 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import java.util.Calendar
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.LocalConfiguration
@@ -185,11 +190,18 @@ fun WallpaperCatalogScreen(
                 .background(bgColor)
         ) {
             val columnState = rememberLazyListState()
-            val activeSectionIndex by remember(categories) {
-                derivedStateOf {
-                    CatalogPreviewPolicy.resolveActiveSectionIndex(
-                        centeredIndex = findCenteredIndex(columnState),
-                        sectionCount = categories.size
+            var activeSectionIndex by remember(categories) {
+                mutableIntStateOf(if (categories.isEmpty()) -1 else 0)
+            }
+            LaunchedEffect(columnState, categories.size) {
+                snapshotFlow {
+                    columnState.isScrollInProgress to findCenteredIndex(columnState)
+                }.collect { (scrollInProgress, observedIndex) ->
+                    activeSectionIndex = CatalogPreviewPolicy.resolveSettledCenteredIndex(
+                        currentIndex = activeSectionIndex,
+                        observedIndex = observedIndex,
+                        itemCount = categories.size,
+                        scrollInProgress = scrollInProgress
                     )
                 }
             }
@@ -206,9 +218,19 @@ fun WallpaperCatalogScreen(
                     key = { _, section -> section.title }
                 ) { sectionIndex, section ->
                     val listState = rememberLazyListState()
-                    val centeredIndex by remember {
-                        derivedStateOf {
-                            findCenteredIndex(listState)
+                    var centeredIndex by remember(section.items) {
+                        mutableIntStateOf(if (section.items.isEmpty()) -1 else 0)
+                    }
+                    LaunchedEffect(listState, section.items.size) {
+                        snapshotFlow {
+                            listState.isScrollInProgress to findCenteredIndex(listState)
+                        }.collect { (scrollInProgress, observedIndex) ->
+                            centeredIndex = CatalogPreviewPolicy.resolveSettledCenteredIndex(
+                                currentIndex = centeredIndex,
+                                observedIndex = observedIndex,
+                                itemCount = section.items.size,
+                                scrollInProgress = scrollInProgress
+                            )
                         }
                     }
                     Column {
@@ -330,12 +352,21 @@ private fun WallpaperCard(
     Card(
         modifier = modifier
             .padding(vertical = 3.dp)
-            .clickable(onClick = onClick),
+            .semantics { contentDescription = item.name }
+            .clickable(
+                onClickLabel = item.name,
+                role = Role.Button,
+                onClick = onClick
+            ),
         shape = PlaceholderOuterShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clearAndSetSemantics { }
+        ) {
             if (bitmap != null) {
                 Image(
                     bitmap = bitmap.asImageBitmap(),
@@ -375,12 +406,6 @@ private fun WallpaperCard(
                     onDayProgressChanged = { progress ->
                         rendererDayProgress = progress
                     }
-                )
-                // Capture touch events in Compose to prevent SurfaceView window interception
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable(onClick = onClick)
                 )
             }
 
@@ -488,12 +513,6 @@ private fun WallpaperCard(
                     )
                 }
             }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(onClick = onClick)
-            )
         }
     }
 }
