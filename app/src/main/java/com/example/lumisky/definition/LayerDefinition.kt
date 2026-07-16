@@ -59,7 +59,7 @@ data class LayerFramePolicyDefinition(
 data class LayerParallaxDefinition(
     val factorX: Float = 0.0f,
     val factorY: Float = 0.0f,
-    val depth: Float = 0.0f
+    val depth: Float? = null
 )
 
 @Serializable

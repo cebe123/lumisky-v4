@@ -38,6 +38,12 @@ abstract class BaseLayer(
         .getOrDefault(LayerCacheMode.NONE)
     override val parallaxDepth: Float get() = definition.parallax?.depth ?: 0.0f
 
+    protected fun resolveParallaxX(frame: MutableRenderFrameState): Float =
+        frame.parallaxOffsetX * parallaxDepth.coerceIn(0f, 1f)
+
+    protected fun resolveParallaxY(frame: MutableRenderFrameState): Float =
+        frame.parallaxOffsetY * parallaxDepth.coerceIn(0f, 1f)
+
     override fun onCreateGl(gl: GlResourceManager, context: RenderContext) {}
     override fun onSurfaceChanged(context: RenderContext, width: Int, height: Int) {}
     override fun onEvent(event: WallpaperEvent) {}

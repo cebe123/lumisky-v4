@@ -117,7 +117,7 @@
       "parallax": {
         "factorX": 0.0,
         "factorY": 0.0,
-        "depth": 0.0
+        "depth": 1.0
       },
       "fallback": {
         "onShaderError": "use_fallback_shader",

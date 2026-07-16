@@ -33,7 +33,7 @@ class TimeSliceTextureLayer(
         val texture = asset.resolve(frame)
         texture.bind(0)
         activeProgram.setUniform("u_Texture", 0)
-        activeProgram.setUniform("u_ParallaxOffset", 0f, 0f)
+        activeProgram.setUniform("u_ParallaxOffset", resolveParallaxX(frame), resolveParallaxY(frame))
         blendMode.apply()
         frame.gl.meshes.drawQuad()
         texture.unbind()

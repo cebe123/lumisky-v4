@@ -9,8 +9,10 @@
  */
 package com.example.lumisky.registry
 
+import com.example.lumisky.definition.LayerParallaxDefinition
 import com.example.lumisky.definition.WallpaperDefinition
 import com.example.lumisky.engine.CompiledLayerGraph
+import com.example.lumisky.engine.LayerParallaxDepthResolver
 import com.example.lumisky.engine.RuntimeScene
 import com.example.lumisky.layers.RenderLayer
 import javax.inject.Inject
@@ -25,9 +27,25 @@ class SceneFactory @Inject constructor(
         layerGraph: CompiledLayerGraph = CompiledLayerGraph.compile(definition)
     ): RuntimeScene {
         val layers = mutableListOf<RenderLayer>()
-        
-        layerGraph.layersByIndex.forEach { compiledLayer ->
-            when (val result = layerRegistry.create(compiledLayer.definition, required = false)) {
+        val parallaxEnabled = definition.parallax?.enabled == true
+        val layerCount = layerGraph.layersByIndex.size
+
+        layerGraph.layersByIndex.forEachIndexed { layerIndex, compiledLayer ->
+            val sourceDefinition = compiledLayer.definition
+            val resolvedDefinition = if (parallaxEnabled) {
+                val depth = LayerParallaxDepthResolver.resolveDepth(
+                    layer = sourceDefinition,
+                    layerIndex = layerIndex,
+                    layerCount = layerCount,
+                    parallaxEnabled = true
+                )
+                sourceDefinition.copy(
+                    parallax = (sourceDefinition.parallax ?: LayerParallaxDefinition()).copy(depth = depth)
+                )
+            } else {
+                sourceDefinition
+            }
+            when (val result = layerRegistry.create(resolvedDefinition, required = false)) {
                 is LayerCreateResult.Created -> {
                     layers.add(result.layer)
                 }

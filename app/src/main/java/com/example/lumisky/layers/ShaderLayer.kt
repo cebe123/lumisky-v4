@@ -50,9 +50,8 @@ open class ShaderLayer(
         // Bind standard engine uniforms
         activeProgram.setUniform("u_Time", frame.timeSeconds)
         activeProgram.setUniform("u_Resolution", frame.width.toFloat(), frame.height.toFloat())
-        val parallaxDepth = (definition.parallax?.depth ?: 0f).coerceIn(0f, 1f)
-        val parallaxX = frame.parallaxOffsetX * parallaxDepth
-        val parallaxY = frame.parallaxOffsetY * parallaxDepth
+        val parallaxX = resolveParallaxX(frame)
+        val parallaxY = resolveParallaxY(frame)
         activeProgram.setUniform("u_ParallaxOffset", parallaxX, parallaxY)
         activeProgram.setUniform("u_Parallax", parallaxX, parallaxY)
         activeProgram.setUniform("u_DayProgress", frame.dayProgress)

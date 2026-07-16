@@ -38,19 +38,13 @@ open class TextureLayer(
         texture.bind(0)
         activeProgram.setUniform("u_Texture", 0)
         
-        // Apply texture-level parallax offset scaled by depth
-        val depth = (definition.parallax?.depth ?: 0.0f).coerceIn(0.0f, MAX_PARALLAX_DEPTH)
-        val offsetUvX = frame.parallaxOffsetX * depth
-        val offsetUvY = frame.parallaxOffsetY * depth
+        val offsetUvX = resolveParallaxX(frame)
+        val offsetUvY = resolveParallaxY(frame)
         activeProgram.setUniform("u_ParallaxOffset", offsetUvX, offsetUvY)
         
         blendMode.apply()
         frame.gl.meshes.drawQuad()
         
         texture.unbind()
-    }
-
-    private companion object {
-        const val MAX_PARALLAX_DEPTH = 1.0f
     }
 }
